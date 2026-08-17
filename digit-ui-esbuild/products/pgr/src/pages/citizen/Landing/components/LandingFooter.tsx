@@ -23,13 +23,17 @@ interface FooterGroup {
   links: Array<{ labelKey: LandingCopyKey; route: keyof LandingRoutes; external?: boolean }>;
 }
 
+// Links whose route is still the "#" placeholder are commented out rather than
+// rendered inert: a greyed-out "Page being configured" row reads as an
+// unfinished site to a citizen. Uncomment each one as the county supplies the
+// destination and the matching route in routes.ts stops being "#".
 const GROUPS: FooterGroup[] = [
   {
     titleKey: "FOOTER_CHANNELS",
     links: [
       { labelKey: "FOOTER_PORTAL_WEB", route: "HOME" },
-      { labelKey: "FOOTER_ANDROID", route: "ANDROID_APP", external: true },
-      { labelKey: "FOOTER_WHATSAPP", route: "WHATSAPP", external: true },
+      // { labelKey: "FOOTER_ANDROID", route: "ANDROID_APP", external: true },
+      // { labelKey: "FOOTER_WHATSAPP", route: "WHATSAPP", external: true },
       { labelKey: "FOOTER_GREEN_LINE", route: "GREEN_LINE" },
     ],
   },
@@ -47,14 +51,18 @@ const GROUPS: FooterGroup[] = [
       { labelKey: "FOOTER_EMPLOYEE_LOGIN", route: "EMPLOYEE_LOGIN" },
     ],
   },
-  {
-    titleKey: "FOOTER_LEGAL",
-    links: [
-      { labelKey: "FOOTER_PRIVACY", route: "PRIVACY" },
-      { labelKey: "FOOTER_TERMS", route: "TERMS" },
-      { labelKey: "FOOTER_ACCESSIBILITY", route: "ACCESSIBILITY" },
-    ],
-  },
+  // Legal — every entry is still "#", so the whole group is commented out.
+  // Leaving the links out but keeping the group would ship a bare "Legal"
+  // heading over an empty list, which looks worse than no column at all.
+  // Restore this block once PRIVACY / TERMS / ACCESSIBILITY are real pages.
+  // {
+  //   titleKey: "FOOTER_LEGAL",
+  //   links: [
+  //     { labelKey: "FOOTER_PRIVACY", route: "PRIVACY" },
+  //     { labelKey: "FOOTER_TERMS", route: "TERMS" },
+  //     { labelKey: "FOOTER_ACCESSIBILITY", route: "ACCESSIBILITY" },
+  //   ],
+  // },
 ];
 
 // Brand marks. lucide-react@1.x ships no brand logos (they were dropped for
