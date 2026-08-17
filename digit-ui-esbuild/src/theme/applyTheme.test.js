@@ -445,6 +445,103 @@ test("v2 bridge: re-apply reuses the same style tag (no duplicates)", () => {
   } finally { restore(); }
 });
 
+// ── landing (--pgrl-*) bridge ────────────────────────────────────────────────
+
+test("pgrl bridge: v3 record retints the landing brand/text/surface tokens", () => {
+  const { head, restore } = stubDocument();
+  try {
+    const applyTheme = freshApply();
+    applyTheme({
+      version: "3",
+      colors: {
+        "primary-1": "#1565A8",
+        "primary-2": "#1B85D2",
+        "primary-2-bg": "#7FC0EA",
+        "sidebar-selected-bg": "#093B50",
+        "button-primary-bg-hover": "#1565A8",
+        "button-secondary-bg-hover": "#5FAFE4",
+        "button-primary-text": "#FFFFFF",
+        "text-primary": "#1D2433",
+        "text-secondary": "#5F5C62",
+        "page-bg": "#FFFFFF",
+        "page-secondary-bg": "#FAFAFA",
+        "card-border": "#D6D5D4",
+      },
+    });
+    const css = head.children.find((el) => el.id === "mdms-theme-v2-bridge").textContent;
+    assert.match(css, /--pgrl-primary-brand: 207 78% 37%/); // #1565A8
+    assert.match(css, /--pgrl-ring-brand: 207 78% 37%/);
+    assert.match(css, /--pgrl-deep-brand: 198 80% 17%/); // #093B50, darkest brand surface
+    // Accent = the tint role (#7FC0EA), NOT the button fill #1B85D2: the CTA
+    // label is dark ink, which needs a light surface.
+    assert.match(css, /--pgrl-accent-brand: 204 72% 71%/);
+    assert.match(css, /--pgrl-accent-hover-brand: 204 71% 63%/); // #5FAFE4
+    assert.match(css, /--pgrl-on-primary-brand: 0 0% 100%/);
+    assert.match(css, /--pgrl-ink-brand: 221 28% 16%/);
+    assert.match(css, /--pgrl-ink-soft-brand: 270 3% 37%/);
+    assert.match(css, /--pgrl-surface-brand: 0 0% 100%/);
+    assert.match(css, /--pgrl-page-brand: 0 0% 98%/);
+    assert.match(css, /--pgrl-line-brand: 30 2% 84%/);
+    // Contrast-critical / categorical tokens stay on the shipped defaults.
+    assert.doesNotMatch(css, /--pgrl-on-accent-brand/);
+    assert.doesNotMatch(css, /--pgrl-type-/);
+    assert.doesNotMatch(css, /--pgrl-radius-brand/);
+  } finally { restore(); }
+});
+
+test("pgrl bridge: `landing: false` keeps the bundled default off the landing page", () => {
+  // Regression: index.js applies default.json (DIGIT orange) synchronously at
+  // boot. Bridged, that painted /digit-ui/landing orange instead of leaving it
+  // on its own shipped palette. The v2-scope tokens must still be written.
+  const { head, restore } = stubDocument();
+  try {
+    const applyTheme = freshApply();
+    const defaultTheme = require("./default.json");
+    applyTheme(defaultTheme, { landing: false });
+    const css = head.children.find((el) => el.id === "mdms-theme-v2-bridge").textContent;
+    assert.doesNotMatch(css, /--pgrl-/);
+    assert.match(css, /--v2-primary: /);
+  } finally { restore(); }
+});
+
+test("pgrl bridge: the same record DOES retint when applied as a tenant theme", () => {
+  const { head, restore } = stubDocument();
+  try {
+    const applyTheme = freshApply();
+    applyTheme(require("./default.json"));
+    const css = head.children.find((el) => el.id === "mdms-theme-v2-bridge").textContent;
+    assert.match(css, /--pgrl-primary-brand: /);
+  } finally { restore(); }
+});
+
+test("pgrl bridge: v1 record resolves through the legacy fallbacks", () => {
+  const { head, restore } = stubDocument();
+  try {
+    const applyTheme = freshApply();
+    applyTheme({
+      version: "1",
+      colors: {
+        primary: { main: "#1B85D2", dark: "#1565A8" },
+        text: { primary: "#1D2433", secondary: "#5F5C62" },
+        grey: { light: "#FAFAFA" },
+        border: "#D6D5D4",
+      },
+    });
+    const css = head.children.find((el) => el.id === "mdms-theme-v2-bridge").textContent;
+    assert.match(css, /--pgrl-primary-brand: 207 78% 37%/); // primary.dark
+    assert.match(css, /--pgrl-deep-brand: 207 78% 37%/); // no sidebar token -> primary
+    assert.match(css, /--pgrl-accent-brand: 205 77% 46%/); // primary.main
+    // No light-surface hover role in the record -> accent darkened by 7 points,
+    // so a retinted accent never hovers into the shipped default's yellow.
+    assert.match(css, /--pgrl-accent-hover-brand: 205 77% 39%/);
+    assert.match(css, /--pgrl-page-brand: 0 0% 98%/); // grey.light
+    assert.match(css, /--pgrl-line-brand: 30 2% 84%/); // border
+    // Nothing invented for roles the record doesn't carry.
+    assert.doesNotMatch(css, /--pgrl-surface-brand/);
+    assert.doesNotMatch(css, /--pgrl-on-primary-brand/);
+  } finally { restore(); }
+});
+
 // ── v3 backfill for v1/v2 records ────────────────────────────────────────────
 
 test("v3 backfill: v1 record feeds button + primary-N tokens from palette", () => {

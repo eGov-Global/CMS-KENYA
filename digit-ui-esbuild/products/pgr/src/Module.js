@@ -27,6 +27,10 @@ import SelectImages from "../../pgr/src/pages/citizen/Create/Steps/SelectImages"
 // FormExplorer.js remains in the tree for one release as a safety rollback —
 // can be deleted once v2 is verified on naipepea.
 import CreatePGRFlow from "./pages/citizen/Create/CreatePGRFlowV2";
+// Public landing page (shell-free), mounted by core at /<contextPath>/landing.
+import PGRLandingEntry from "./pages/citizen/Landing/AppEntry";
+// Public privacy-policy page (shell-free), mounted by core at /<contextPath>/privacy-policy.
+import PGRPrivacyPolicyPage from "./pages/citizen/Landing/PrivacyPolicyPage";
 
 
 export const PGRReducers = getRootReducer;
@@ -127,6 +131,8 @@ const componentsToRegister = {
   SelectAddress,
   SelectImages,
   CreatePGRFlow: CreatePGRFlow,
+  PGRLandingPage: PGRLandingEntry,
+  PGRPrivacyPolicy: PGRPrivacyPolicyPage,
 };
 
 export const initPGRComponents = () => {

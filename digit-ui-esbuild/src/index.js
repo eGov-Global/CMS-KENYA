@@ -10,7 +10,10 @@ import defaultTheme from "./theme/default.json";
 // Apply the bundled default theme synchronously before render.
 // MDMS-driven per-tenant theme is applied later in StoreService.digitInitData()
 // via window.Digit.applyTheme(); defaults remain applied on failure.
-applyTheme(defaultTheme);
+// `landing: false` keeps this record out of the PGR landing page's `--pgrl-*`
+// tokens: default.json is DIGIT orange, the landing ships its own complete
+// palette, and only a real tenant ThemeConfig should override it.
+applyTheme(defaultTheme, { landing: false });
 
 // Expose for integration tests in dev builds; esbuild's NODE_ENV define makes
 // this a no-op (and dead-code-eliminated) in production bundles.
