@@ -1,9 +1,7 @@
-// "Tipos de Manifestação" — the four legal submission types.
+// What citizens can report, as cards.
 //
-// Audit fixes vs the prototype: the four cards were visually identical (and
-// three of four translated to the same English word), so each type now gets a
-// distinct icon + accent colour; the whole card is one clickable target via
-// the stretched-link pattern (single tab stop, no repeated "Submit" buttons).
+// Each card gets its own icon and accent colour, and the whole card is one
+// clickable target (stretched link), so it is a single tab stop.
 
 import * as React from "react";
 import { ChevronRight } from "lucide-react";
@@ -11,6 +9,7 @@ import { Section } from "./Section";
 import { LandingLink } from "./LandingLink";
 import { MANIFESTATION_TYPES } from "../content";
 import { useLandingCopy } from "../useLandingCopy";
+import { sectionDomId } from "../config/resolve";
 import { LandingRoutes } from "../routes";
 import { FOCUS_RING } from "../tokens";
 import type { LandingSectionConfig } from "../config/types";
@@ -23,11 +22,13 @@ export interface TypesSectionProps {
 
 export function TypesSection({ routes, section }: TypesSectionProps) {
   const { c } = useLandingCopy();
+  const domId = sectionDomId(section?.code, "types");
   const items: any[] = (section?.items as any[]) ?? MANIFESTATION_TYPES;
 
   return (
     <Section
-      id="pgr-landing-types"
+      id={domId}
+      code={section?.code}
       title={c(section?.titleKey, "TYPES_TITLE")}
       intro={c(section?.subtitleKey, "TYPES_INTRO")}
       tone="page"
@@ -61,12 +62,12 @@ export function TypesSection({ routes, section }: TypesSectionProps) {
                       FOCUS_RING
                     }
                   >
-                    {c(type.titleKey)}
+                    {c(type.titleKey, type.titleKeyDefault)}
                   </LandingLink>
                 </h3>
 
                 <p className="mb-0 mt-2 flex-1 text-sm leading-relaxed text-[hsl(var(--pgrl-ink-soft))]">
-                  {c(type.descKey)}
+                  {c(type.descKey, type.descKeyDefault)}
                 </p>
 
                 <span

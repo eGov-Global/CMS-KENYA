@@ -1,21 +1,21 @@
-// Government footer.
-//
-// Audit fix: the prototype footer only listed channels + copyright. A public
-// grievance portal footer must also carry the trust/legal surface (privacy,
-// terms, accessibility), help links, and both login entries — all routed
-// through the configurable route map.
+// Government footer: channels, help links, the legal surface (privacy, terms,
+// accessibility) and both login entries, all routed through the route map.
 
 import * as React from "react";
 import { cn } from "@egovernments/digit-ui-components-v2";
 import { LandingLink } from "./LandingLink";
 import { DotGrid, DOT_GRID_CORNER } from "./DotGrid";
 import { useLandingCopy } from "../useLandingCopy";
+import { sectionDomId } from "../config/resolve";
+import type { LandingSectionConfig } from "../config/types";
 import { LandingCopyKey, CONTACT, SOCIAL_LINKS } from "../content";
 import { LandingRoutes } from "../routes";
 import { CONTAINER, FOCUS_RING_DARK } from "../tokens";
 
 export interface LandingFooterProps {
   routes: LandingRoutes;
+  /** Config-driven overrides; only `code` is read (DOM/pattern id derivation). */
+  section?: LandingSectionConfig;
 }
 
 interface FooterGroup {
@@ -94,13 +94,14 @@ const FOOT_LINK = cn(
   FOCUS_RING_DARK
 );
 
-export function LandingFooter({ routes }: LandingFooterProps) {
+export function LandingFooter({ routes, section }: LandingFooterProps) {
   const { c } = useLandingCopy();
+  const domId = sectionDomId(section?.code, "footer");
   const year = new Date().getFullYear();
 
   return (
-    <footer className="relative isolate overflow-hidden bg-[linear-gradient(150deg,hsl(var(--pgrl-deep)),hsl(var(--pgrl-primary)))]">
-      <DotGrid id="pgrl-dots-footer" className={DOT_GRID_CORNER} />
+    <footer data-pgrl-code={section?.code} className="relative isolate overflow-hidden bg-[linear-gradient(150deg,hsl(var(--pgrl-deep)),hsl(var(--pgrl-primary)))]">
+      <DotGrid id={`${domId}-dots`} className={DOT_GRID_CORNER} />
       <div className={cn(CONTAINER, "grid grid-cols-1 gap-8 py-12 sm:grid-cols-2 lg:grid-cols-6")}>
         {/* Identity */}
         <div className="sm:col-span-2">

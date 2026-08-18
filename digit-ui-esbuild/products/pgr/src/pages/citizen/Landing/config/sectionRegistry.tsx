@@ -72,6 +72,7 @@ export const SECTION_REGISTRY: Record<string, SectionEntry> = {
       routes: ctx.routes,
       emblemUrl: mediaUrl(s.media) ?? ctx.emblemUrl,
       navItems: buildRichItems(s.items, NAV_ITEMS, ctx.routes as unknown as Record<string, string>),
+      code: s.code,
     }),
   },
   hero: {
@@ -127,7 +128,7 @@ export const SECTION_REGISTRY: Record<string, SectionEntry> = {
     // Footer columns (GROUPS) stay the component default in v1 — their nested
     // group shape isn't expressible in the flat item schema; destinations are
     // already config-driven via `routes` and labels via PGR_LANDING_* keys.
-    buildProps: (s, ctx) => ({ routes: ctx.routes }),
+    buildProps: (s, ctx) => ({ routes: ctx.routes, section: s }),
   },
 };
 

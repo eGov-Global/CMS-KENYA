@@ -2,8 +2,8 @@
 //
 // CTAs on the landing page are navigations, not actions, so they must be real
 // anchors (middle-click, copy-link, SEO) — hence a styled LandingLink instead
-// of the v2 <Button>. Variants mirror the government identity: yellow accent
-// for the primary ask, green for secondary emphasis, outline flavours for
+// of the v2 <Button>. Variants follow the county identity: light-blue accent
+// for the primary ask, brand blue for secondary emphasis, outline flavours for
 // light and dark surfaces.
 
 import * as React from "react";

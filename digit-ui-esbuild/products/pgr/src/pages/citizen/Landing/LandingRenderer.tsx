@@ -74,7 +74,10 @@ export function LandingRenderer({
   // strip's own content (gov name, sign-in) duplicated the header/footer.
   // Still restorable per tenant via LandingPageConfig.showUtilityBar.
   const utilityOn = showUtilityBar ?? page.showUtilityBar ?? false;
-  const fabOn = showWhatsAppFab ?? page.showWhatsAppFab ?? true;
+  // With no sections there is nothing to act on, so hide the strip and the
+  // floating action too rather than leaving them on an empty page.
+  const hasSections = (config.sections || []).length > 0;
+  const fabOn = hasSections && (showWhatsAppFab ?? page.showWhatsAppFab ?? true);
 
   const ctx: RenderCtx = React.useMemo(
     () => ({ routes, news, heroImageUrl, emblemUrl }),
@@ -119,7 +122,7 @@ export function LandingRenderer({
           {c("SKIP_LINK")}
         </a>
 
-        {utilityOn && (
+        {hasSections && utilityOn && (
           <UtilityBar routes={routes} languages={languages} onLanguageChange={onLanguageChange} />
         )}
         {slots.header.map(renderSection)}

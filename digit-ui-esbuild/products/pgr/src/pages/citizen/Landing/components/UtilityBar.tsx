@@ -1,7 +1,5 @@
-// Slim government utility strip: state identity, green line, switchboard,
-// language toggle and sign-in. Deep green (vs the prototype's light grey) so
-// the state band anchors the page and the white masthead below reads as one
-// header instead of three stacked bars.
+// Slim government strip: county identity, hotline, switchboard, language
+// toggle and sign-in. Off by default — the header already carries this.
 
 import * as React from "react";
 import { LogIn } from "lucide-react";

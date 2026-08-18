@@ -36,11 +36,9 @@ export function useLandingCopy(): LandingCopyApi {
     // Resolve a copy key to text. Accepts BOTH the built-in short keys
     // ("HERO_TITLE") and fully-qualified config/MDMS keys
     // ("PGR_LANDING_HERO_TITLE") — config rows carry the prefixed form, so
-    // re-prefixing would double it. The optional `fallbackKey` is the component's
-    // canonical default: when the primary key is empty OR unresolved (missing
-    // from both the i18n store and the built-in deck — e.g. a bad/typo'd config
-    // key), we resolve the fallback instead, so untrusted/incomplete config
-    // never surfaces a raw key.
+    // re-prefixing would double it. The optional `fallbackKey` is the caller's
+    // canonical default, resolved when the primary key is empty or unresolved
+    // (missing from both the i18n store and the built-in deck).
     (key?: LandingCopyKey | string, fallbackKey?: LandingCopyKey | string): string => {
       const resolveOne = (k?: string): string | undefined => {
         if (!k) return undefined;
@@ -54,11 +52,9 @@ export function useLandingCopy(): LandingCopyApi {
         const entry = (LANDING_COPY as Record<string, { pt?: string; en: string }>)[shortKey];
         return entry?.[lang] ?? entry?.en;
       };
-      return (
-        resolveOne(key as string) ??
-        resolveOne(fallbackKey as string) ??
-        String(key ?? fallbackKey ?? "")
-      );
+      // Ends at "", never the key: a bad or unseeded key must show nothing
+      // rather than print PGR_LANDING_* on a public page.
+      return resolveOne(key as string) ?? resolveOne(fallbackKey as string) ?? "";
     },
     [t, lang]
   );

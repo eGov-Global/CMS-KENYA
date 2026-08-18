@@ -47,6 +47,20 @@ export function safeMediaSrc(url?: string): string | undefined {
   return /^https?:\/\/[^/\\]/i.test(u) ? u : undefined;
 }
 
+// ---------------------------------------------------------------------------
+// DOM ids
+// ---------------------------------------------------------------------------
+
+/** DOM id for a section, built from its `code`. Codes are unique per row, so
+ *  two sections of the same type get different ids. */
+export function sectionDomId(code?: string, type?: string, index = 0): string {
+  const slug = String(code || type || "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+  return `pgr-landing-${slug || `section-${index}`}`;
+}
+
 /** A LandingRoutes key (resolved against the routes map) OR a literal URL. */
 export function resolveNavTarget(
   navigationUrl: string | undefined,
@@ -75,6 +89,11 @@ export interface RichItem {
   labelKey?: string;
   titleKey?: string;
   descKey?: string;
+  /** Keys from the matching built-in item. Used as c()'s fallback so an
+   *  unseeded config key still shows the default text. */
+  labelKeyDefault?: string;
+  titleKeyDefault?: string;
+  descKeyDefault?: string;
   ctaKey?: string;
   badgeKey?: string;
   accentVar?: string;
@@ -112,10 +131,13 @@ export function buildRichItems(
         id: it.code ?? base.id ?? `item-${i}`,
         code: it.code,
         icon: resolveIcon(it.iconId, base.icon),
-        // Key-based sections read titleKey/labelKey/descKey through c().
+        // Pass the *Default twin to c() as the fallback.
         labelKey: it.labelKey ?? base.labelKey,
         titleKey: it.labelKey ?? base.titleKey,
         descKey: it.descKey ?? base.descKey,
+        labelKeyDefault: base.labelKey,
+        titleKeyDefault: base.titleKey,
+        descKeyDefault: base.descKey,
         ctaKey: base.ctaKey,
         badgeKey: base.badgeKey,
         accentVar: base.accentVar ?? "--pgrl-primary",
@@ -134,16 +156,16 @@ export function buildRichItems(
 // Sections — order, visibility, role-gating, tenant overlay
 // ---------------------------------------------------------------------------
 
-/** City rows override state rows by `code` (tenant override). Rows without a
- *  code fall through unchanged. */
+/** City rows override state rows by `code`. A row with no code gets one here,
+ *  so every row ends up with a unique code. */
 export function mergeSectionsByCode(
   stateRows: LandingSectionConfig[],
   cityRows: LandingSectionConfig[]
 ): LandingSectionConfig[] {
-  if (!cityRows || cityRows.length === 0) return stateRows || [];
   const merged = new Map<string, LandingSectionConfig>();
-  (stateRows || []).forEach((r, i) => merged.set(r.code ?? `s-${i}`, r));
-  cityRows.forEach((r, i) => merged.set(r.code ?? `c-${i}`, r));
+  const put = (r: LandingSectionConfig, key: string) => merged.set(key, { ...r, code: r.code ?? key });
+  (stateRows || []).forEach((r, i) => put(r, r.code ?? `s-${i}`));
+  (cityRows || []).forEach((r, i) => put(r, r.code ?? `c-${i}`));
   return Array.from(merged.values());
 }
 

@@ -14,20 +14,19 @@
 // the whole page without touching this file, while the page still renders a
 // complete government identity with zero configuration.
 //
-// Default palette: Republic of Mozambique government identity taken from the
-// approved prototype (green 155 55% 32%, yellow 48 95% 52%), contrast-checked
-// for WCAG 2.2 AA — see docs/pgr-landing/LANDING_PAGE_REDESIGN.md §8.
+// Default palette: County Government of Bomet blues, contrast-checked for
+// WCAG 2.2 AA. The hex value and role of each colour is noted inline below.
 
 import * as React from "react";
 
 export interface LandingTokens {
-  /** Brand green — headers, nav, primary emphasis. AA on white for normal text. */
+  /** Brand blue — headers, nav, primary emphasis. AA on white for normal text. */
   primary: string;
-  /** Deep green — hero, footer, final CTA band. */
+  /** Deep navy — hero, footer, final CTA band. */
   deep: string;
-  /** Government yellow — primary CTAs, active nav indicator. Dark text only. */
+  /** Light blue — primary CTAs, active nav indicator. Dark text only. */
   accent: string;
-  /** Accent hover state (slightly darker yellow). */
+  /** Accent hover state (slightly darker blue). */
   accentHover: string;
   /** Text on primary/deep surfaces. */
   onPrimary: string;
@@ -45,11 +44,12 @@ export interface LandingTokens {
   line: string;
   /** Focus ring on light surfaces. */
   ring: string;
-  /** Manifestation-type accents. */
-  typeComplaint: string; // Reclamação
-  typeGrievance: string; // Queixa
-  typePetition: string; // Petição
-  typeReport: string; // Denúncia
+  /** Card accent tints. Names are historical; content.ts decides which service
+   *  area uses which one (see MANIFESTATION_TYPES accentVar). */
+  typeComplaint: string;
+  typeGrievance: string;
+  typePetition: string;
+  typeReport: string;
   /** Corner radius (CSS length, not an HSL triple). */
   radius: string;
 }
@@ -72,7 +72,7 @@ export const DEFAULT_LANDING_TOKENS: LandingTokens = {
   ring: "207 78% 37%",
   typeComplaint: "210 60% 36%",
   typeGrievance: "28 85% 38%",
-  typePetition: "275 45% 42%",  // was green
+  typePetition: "275 45% 42%",
   typeReport: "0 65% 42%",
   radius: "0.375rem",
 };
@@ -121,6 +121,6 @@ export const NO_HOVER_UNDERLINE = "[&_a:hover]:!no-underline";
 export const FOCUS_RING =
   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--pgrl-ring))] focus-visible:ring-offset-2";
 
-/** Focus ring for interactive elements on dark (green) surfaces. */
+/** Focus ring for interactive elements on the dark blue surfaces. */
 export const FOCUS_RING_DARK =
   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--pgrl-accent))] focus-visible:ring-offset-2 focus-visible:ring-offset-transparent";

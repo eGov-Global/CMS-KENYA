@@ -39,11 +39,13 @@ export interface LandingHeaderProps {
   emblemUrl?: string;
   /** Config-driven nav items; absent => the built-in NAV_ITEMS (unchanged). */
   navItems?: any[];
+  /** Config row code, exposed to the Builder preview bridge for hit-testing. */
+  code?: string;
 }
 
 const MENU_ID = "pgr-landing-nav-menu";
 
-export function LandingHeader({ routes, emblemUrl, navItems }: LandingHeaderProps) {
+export function LandingHeader({ routes, emblemUrl, navItems, code }: LandingHeaderProps) {
   const items: any[] = navItems ?? NAV_ITEMS;
   const { c } = useLandingCopy();
   const router = React.useContext(__RouterContext as React.Context<any>);
@@ -72,6 +74,7 @@ export function LandingHeader({ routes, emblemUrl, navItems }: LandingHeaderProp
 
   return (
     <header
+      data-pgrl-code={code}
       className={cn(
         "sticky top-[var(--pgrl-nav-offset,0px)] z-40 font-sans shadow-sm",
         "bg-[hsl(var(--pgrl-surface))] text-[hsl(var(--pgrl-ink))]",
@@ -171,7 +174,7 @@ export function LandingHeader({ routes, emblemUrl, navItems }: LandingHeaderProp
                             "hover:!text-[hsl(var(--pgrl-primary))] hover:after:bg-[hsl(var(--pgrl-primary))]"
                     )}
                   >
-                    {c(item.labelKey)}
+                    {c(item.labelKey, item.labelKeyDefault)}
                   </LandingLink>
                 </li>
               );

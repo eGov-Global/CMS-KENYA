@@ -25,52 +25,27 @@ import * as React from "react";
 import { useTranslation } from "react-i18next";
 import type { ResolvedLandingConfig } from "./types";
 
-/** Section code -> DOM anchor id rendered by the section components. */
-const SCROLL_ANCHORS: Record<string, string> = {
-  hero: "pgr-landing-hero-title",
-  types: "pgr-landing-types",
-  steps: "pgr-landing-how",
-  channels: "pgr-landing-channels",
-  privacy: "pgr-landing-privacy",
-  news: "pgr-landing-news",
-  institutions: "pgr-landing-institutions",
-  cta: "pgr-landing-final-title",
-};
-
-/** Element ids mapping to a specific editable property (click-to-edit). */
-const FIELD_ANCHORS: Record<string, { code: string; field: string }> = {
-  "pgr-landing-hero-title": { code: "hero", field: "titleKey" },
-  "pgr-landing-types-title": { code: "types", field: "titleKey" },
-  "pgr-landing-how-title": { code: "steps", field: "titleKey" },
-  "pgr-landing-channels-title": { code: "channels", field: "titleKey" },
-  "pgr-landing-privacy-title": { code: "privacy", field: "titleKey" },
-  "pgr-landing-news-title": { code: "news", field: "titleKey" },
-  "pgr-landing-institutions-title": { code: "institutions", field: "titleKey" },
-  "pgr-landing-final-title": { code: "cta", field: "titleKey" },
-};
-
-/** Resolve the section root element for a code (anchor may be a heading). */
+/** Find a section by its config `code`. Every section root carries
+ *  data-pgrl-code, so this stays exact when two rows share a type. */
 function sectionRoot(code: string): HTMLElement | null {
-  if (code === "navigation")
-    return document.querySelector(".pgr-landing header") as HTMLElement | null;
-  if (code === "footer")
-    return document.querySelector(".pgr-landing footer") as HTMLElement | null;
-  const el = document.getElementById(SCROLL_ANCHORS[code] || "");
-  if (!el) return null;
-  return (el.closest("section") as HTMLElement) ?? el;
+  const esc = (window as any).CSS?.escape ? (window as any).CSS.escape(code) : code.replace(/["\\]/g, "\\$&");
+  return document.querySelector(`[data-pgrl-code="${esc}"]`) as HTMLElement | null;
 }
 
 /** Which section does a DOM node belong to? */
 function codeForNode(node: HTMLElement): string | null {
-  const sec = node.closest("section, header, footer, nav") as HTMLElement | null;
-  if (!sec) return null;
-  if (sec.tagName === "FOOTER") return "footer";
-  if (sec.tagName === "HEADER" || sec.tagName === "NAV") return "navigation";
-  for (const [code, anchor] of Object.entries(SCROLL_ANCHORS)) {
-    const a = document.getElementById(anchor);
-    if (a && sec.contains(a)) return code;
-  }
-  return null;
+  const sec = node.closest("[data-pgrl-code]") as HTMLElement | null;
+  return sec?.getAttribute("data-pgrl-code") || null;
+}
+
+/** Editable field for a clicked element. Every section heading is rendered as
+ *  `${sectionDomId}-title`; matching the heading tag keeps a section whose own
+ *  id happens to end in "-title" from claiming every click inside it. */
+function fieldForNode(node: HTMLElement): { code: string; field: string } | null {
+  const el = node.closest("h1[id$='-title'], h2[id$='-title']") as HTMLElement | null;
+  if (!el) return null;
+  const code = codeForNode(el);
+  return code ? { code, field: "titleKey" } : null;
 }
 
 export interface PreviewBridge {
@@ -167,10 +142,12 @@ export function usePreviewBridge(): PreviewBridge {
         }
         setConfig({ ...(msg.config as ResolvedLandingConfig) });
       } else if (msg.type === "pgrl-preview-scroll" && typeof msg.code === "string") {
-        if (msg.code === "navigation") window.scrollTo({ top: 0, behavior: "smooth" });
+        const el = sectionRoot(msg.code);
+        if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+        // Row not rendered (filtered out): fall back to the page extremes.
+        else if (msg.code === "navigation") window.scrollTo({ top: 0, behavior: "smooth" });
         else if (msg.code === "footer")
           window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" });
-        else sectionRoot(msg.code)?.scrollIntoView({ behavior: "smooth", block: "start" });
       } else if (msg.type === "pgrl-preview-highlight") {
         applyHighlight(typeof msg.code === "string" ? msg.code : null);
       }
@@ -193,9 +170,9 @@ export function usePreviewBridge(): PreviewBridge {
       if (!t) return;
       e.preventDefault();
       e.stopPropagation();
-      const withId = t.closest("[id]") as HTMLElement | null;
-      if (withId && FIELD_ANCHORS[withId.id]) {
-        post({ type: "pgrl-preview-select", ...FIELD_ANCHORS[withId.id] });
+      const field = fieldForNode(t);
+      if (field) {
+        post({ type: "pgrl-preview-select", ...field });
         return;
       }
       const code = codeForNode(t);

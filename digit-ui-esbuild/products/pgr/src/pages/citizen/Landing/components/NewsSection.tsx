@@ -1,8 +1,7 @@
-// "Últimas Actualizações" — news/updates grid.
+// County updates grid.
 //
-// Audit fixes: excerpts are clamped (the prototype dumped full article bodies
-// into cards), "Ler mais" is a real link (was a <button>), dates use <time>,
-// and missing images degrade to a branded placeholder instead of a grey box.
+// Excerpts are clamped, dates use <time>, and a missing image falls back to a
+// branded placeholder.
 
 import * as React from "react";
 import { Newspaper, ArrowRight, ExternalLink } from "lucide-react";
@@ -11,6 +10,7 @@ import { LandingLink } from "./LandingLink";
 import { CtaLink } from "./CtaLink";
 import { NewsItem } from "../content";
 import { useLandingCopy } from "../useLandingCopy";
+import { sectionDomId } from "../config/resolve";
 import { LandingRoutes } from "../routes";
 import { FOCUS_RING } from "../tokens";
 import type { LandingSectionConfig } from "../config/types";
@@ -28,11 +28,13 @@ const isExternal = (href: string) => /^https?:\/\//i.test(href);
 
 export function NewsSection({ routes, items, section }: NewsSectionProps) {
   const { c } = useLandingCopy();
+  const domId = sectionDomId(section?.code, "news");
   if (!items || !items.length) return null;
 
   return (
     <Section
-      id="pgr-landing-news"
+      id={domId}
+      code={section?.code}
       title={c(section?.titleKey, "NEWS_TITLE")}
       tone="page"
       action={

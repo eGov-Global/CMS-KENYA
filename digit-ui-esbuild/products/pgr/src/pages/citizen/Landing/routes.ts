@@ -50,7 +50,7 @@ export interface LandingRoutes {
   ANDROID_APP: string;
   /** Official WhatsApp deep link (external). */
   WHATSAPP: string;
-  /** Toll-free green line. */
+  /** County toll-free hotline. */
   GREEN_LINE: string;
   /** Switchboard phone shown in the utility bar. */
   PHONE: string;

@@ -1,9 +1,7 @@
-// "Canais de Atendimento" — every way to reach the service, in one place.
+// Every way to reach the service, in one place.
 //
-// Audit fix: the prototype scattered channels across three places (hero chips,
-// a two-card section, and the footer-only Green Line 1490). This section is
-// the single canonical inventory — including the toll-free line, which is the
-// most inclusive channel and was the hardest to find.
+// This is the canonical list — the hero chips and footer are shortcuts to it.
+// The phone line matters most for citizens without a smartphone.
 
 import * as React from "react";
 import { ExternalLink, ChevronRight } from "lucide-react";
@@ -11,6 +9,7 @@ import { Section } from "./Section";
 import { CtaLink } from "./CtaLink";
 import { CHANNELS } from "../content";
 import { useLandingCopy } from "../useLandingCopy";
+import { sectionDomId } from "../config/resolve";
 import { LandingRoutes } from "../routes";
 import type { LandingSectionConfig } from "../config/types";
 
@@ -22,11 +21,13 @@ export interface ChannelsSectionProps {
 
 export function ChannelsSection({ routes, section }: ChannelsSectionProps) {
   const { c } = useLandingCopy();
+  const domId = sectionDomId(section?.code, "channels");
   const items: any[] = (section?.items as any[]) ?? CHANNELS;
 
   return (
     <Section
-      id="pgr-landing-channels"
+      id={domId}
+      code={section?.code}
       title={c(section?.titleKey, "CHANNELS_TITLE")}
       intro={c(section?.subtitleKey, "CHANNELS_INTRO")}
       tone="page"
@@ -53,9 +54,9 @@ export function ChannelsSection({ routes, section }: ChannelsSectionProps) {
                   )}
                 </div>
 
-                <h3 className="mb-0 mt-4 text-lg font-bold text-[hsl(var(--pgrl-ink-soft))]">{c(channel.titleKey)}</h3>
+                <h3 className="mb-0 mt-4 text-lg font-bold text-[hsl(var(--pgrl-ink-soft))]">{c(channel.titleKey, channel.titleKeyDefault)}</h3>
                 <p className="mb-0 mt-2 flex-1 text-sm leading-relaxed text-[hsl(var(--pgrl-ink-soft))]">
-                  {c(channel.descKey)}
+                  {c(channel.descKey, channel.descKeyDefault)}
                 </p>
 
                 {channel.ctaKey && to && (

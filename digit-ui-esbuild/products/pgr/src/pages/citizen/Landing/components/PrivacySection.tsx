@@ -6,6 +6,7 @@ import { Lock, ChevronRight } from "lucide-react";
 import { Section } from "./Section";
 import { CtaLink } from "./CtaLink";
 import { useLandingCopy } from "../useLandingCopy";
+import { sectionDomId } from "../config/resolve";
 import { LandingRoutes } from "../routes";
 import type { LandingSectionConfig } from "../config/types";
 
@@ -17,9 +18,15 @@ export interface PrivacySectionProps {
 
 export function PrivacySection({ routes, section }: PrivacySectionProps) {
   const { c } = useLandingCopy();
+  const domId = sectionDomId(section?.code, "privacy");
 
   return (
-    <Section id="pgr-landing-privacy" title={c(section?.titleKey, "PRIVACY_TITLE")} tone="surface">
+    <Section
+      id={domId}
+      code={section?.code}
+      title={c(section?.titleKey, "PRIVACY_TITLE")}
+      tone="surface"
+    >
       <div className="flex flex-col gap-6 rounded-[var(--pgrl-radius)] border border-solid border-[hsl(var(--pgrl-line))] border-l-4 border-l-[hsl(var(--pgrl-primary))] bg-[hsl(var(--pgrl-page))] p-6 sm:flex-row sm:items-start md:p-8">
         <span
           aria-hidden

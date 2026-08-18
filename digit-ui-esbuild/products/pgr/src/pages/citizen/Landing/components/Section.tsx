@@ -1,17 +1,16 @@
-// Section shell: consistent rhythm, landmark labelling and the signature
-// heading treatment (bold green title over a yellow accent bar).
-//
-// Every landing section renders through this shell so vertical spacing,
-// container width and heading hierarchy stay uniform — the biggest visual
-// consistency problem in the audited prototype.
+// Shared section shell: spacing, container width, landmark labelling and the
+// heading treatment. Every section renders through it so the page stays even.
 
 import * as React from "react";
 import { cn } from "@egovernments/digit-ui-components-v2";
 import { CONTAINER } from "../tokens";
 
 export interface SectionProps {
-  /** Stable id — becomes the aria-labelledby anchor (`${id}-title`). */
+  /** Stable id — becomes the aria-labelledby anchor (`${id}-title`). Derived
+   *  per config row (see sectionDomId), so it is unique even for repeated types. */
   id: string;
+  /** Config row code, exposed to the Builder preview bridge for hit-testing. */
+  code?: string;
   title?: string;
   intro?: string;
   /** Optional element rendered to the right of the title (e.g. "view all"). */
@@ -22,10 +21,11 @@ export interface SectionProps {
   children: React.ReactNode;
 }
 
-export function Section({ id, title, intro, action, tone = "page", className, children }: SectionProps) {
+export function Section({ id, code, title, intro, action, tone = "page", className, children }: SectionProps) {
   return (
     <section
       id={id}
+      data-pgrl-code={code}
       aria-labelledby={title ? `${id}-title` : undefined}
       className={cn(tone === "surface" && "bg-[hsl(var(--pgrl-surface))]", className)}
     >

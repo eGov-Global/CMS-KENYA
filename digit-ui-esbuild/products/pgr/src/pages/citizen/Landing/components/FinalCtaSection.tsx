@@ -5,6 +5,7 @@ import { Megaphone, Send, MessageCircle } from "lucide-react";
 import { cn } from "@egovernments/digit-ui-components-v2";
 import { CtaLink } from "./CtaLink";
 import { useLandingCopy } from "../useLandingCopy";
+import { sectionDomId } from "../config/resolve";
 import { LandingRoutes } from "../routes";
 import { CONTAINER } from "../tokens";
 import type { LandingSectionConfig } from "../config/types";
@@ -17,10 +18,13 @@ export interface FinalCtaSectionProps {
 
 export function FinalCtaSection({ routes, section }: FinalCtaSectionProps) {
   const { c } = useLandingCopy();
+  const domId = sectionDomId(section?.code, "cta");
 
   return (
     <section
-      aria-labelledby="pgr-landing-final-title"
+      id={domId}
+      data-pgrl-code={section?.code}
+      aria-labelledby={`${domId}-title`}
       className="bg-[hsl(var(--pgrl-surface))]"
     >
       <div className={cn(CONTAINER, "flex flex-col items-start gap-6 py-12 md:flex-row md:items-center md:justify-between md:py-14")}>
@@ -31,7 +35,7 @@ export function FinalCtaSection({ routes, section }: FinalCtaSectionProps) {
             <Megaphone aria-hidden className="h-6 w-6 text-[hsl(var(--pgrl-primary))]" />
           </p>
           <h2
-            id="pgr-landing-final-title"
+            id={`${domId}-title`}
             className="mb-0 mt-4 text-2xl font-bold leading-tight text-[hsl(var(--pgrl-deep))] md:text-3xl"
           >
             {c(section?.titleKey, "FINAL_TITLE")}

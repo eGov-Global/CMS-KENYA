@@ -84,7 +84,7 @@ export const LANDING_COPY = {
   HERO_TITLE: { en: "Bomet Feedback Hub" },
   HERO_PILOT_NOTICE: {
     en:
-      "Pilot phase: complaints are handled for Health and Water & Sanitation across all five sub-counties Sotik, Chepalungu, Bomet East, Bomet Central and Konoin.",
+      "Pilot phase: complaints are handled for Health and Water & Sanitation across all five sub-counties — Sotik, Chepalungu, Bomet East, Bomet Central and Konoin.",
   },
   HERO_LEDE: {
     en:
@@ -92,7 +92,7 @@ export const LANDING_COPY = {
   },
   HERO_CTA_SUBMIT: { en: "Report an Issue" },
   HERO_CTA_TRACK: { en: "Track a Complaint" },
-  HERO_TRUST_CONFIDENTIAL: { en: "No National ID needed ONLY name and phone number" },
+  HERO_TRUST_CONFIDENTIAL: { en: "No National ID needed — just your name and phone number" },
   HERO_TRUST_CASE_NUMBER: { en: "Unique case number" },
   HERO_TRUST_NOTIFICATIONS: { en: "SMS acknowledgement with your case number" },
   HERO_CHANNELS_LABEL: { en: "Also available through:" },

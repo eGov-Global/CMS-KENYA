@@ -1,14 +1,14 @@
-// "Como Funciona" — the six-step case lifecycle.
+// The six steps a complaint goes through.
 //
-// Semantically an ordered list (the prototype used unordered articles). The
-// three loose trailing paragraphs from the prototype are consolidated into a
-// single "guaranteed follow-up" callout so the reassurances read as one unit.
+// A real ordered list, with the follow-up reassurances gathered into one
+// callout underneath.
 
 import * as React from "react";
 import { Bell, Check } from "lucide-react";
 import { Section } from "./Section";
 import { HOW_STEPS } from "../content";
 import { useLandingCopy } from "../useLandingCopy";
+import { sectionDomId } from "../config/resolve";
 import type { LandingSectionConfig } from "../config/types";
 
 export interface HowItWorksSectionProps {
@@ -18,12 +18,18 @@ export interface HowItWorksSectionProps {
 
 export function HowItWorksSection({ section }: HowItWorksSectionProps = {}) {
   const { c } = useLandingCopy();
+  const domId = sectionDomId(section?.code, "steps");
   const items: any[] = (section?.items as any[]) ?? HOW_STEPS;
 
   const notes = [c("HOW_NOTE_NOTIFY"), c("HOW_NOTE_RECORD"), c("HOW_NOTE_CHANNELS")];
 
   return (
-    <Section id="pgr-landing-how" title={c(section?.titleKey, "HOW_TITLE")} tone="surface">
+    <Section
+      id={domId}
+      code={section?.code}
+      title={c(section?.titleKey, "HOW_TITLE")}
+      tone="surface"
+    >
       <ol className="m-0 grid list-none grid-cols-1 gap-4 p-0 sm:grid-cols-2 lg:grid-cols-3">
         {items.map((step, i) => {
           const Icon = step.icon;
@@ -44,7 +50,7 @@ export function HowItWorksSection({ section }: HowItWorksSectionProps = {}) {
                   {c("HOW_STEP_LABEL")} {i + 1}
                 </span>
                 <span className="text-base font-semibold leading-snug text-[hsl(var(--pgrl-ink-soft))]">
-                  {c(step.titleKey)}
+                  {c(step.titleKey, step.titleKeyDefault)}
                 </span>
               </span>
             </li>
