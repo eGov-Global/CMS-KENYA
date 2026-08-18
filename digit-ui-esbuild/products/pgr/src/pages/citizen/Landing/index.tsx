@@ -12,8 +12,8 @@
 //   </Route>
 //
 // Works with or without a react-router v5 <Router> above it; strings resolve
-// from MDMS localization (PGR_LANDING_* keys) with built-in PT/EN fallbacks;
-// colors resolve from --pgrl-*-brand CSS vars with Mozambique gov defaults.
+// from MDMS localization (PGR_LANDING_* keys) with built-in EN fallbacks;
+// colors resolve from --pgrl-*-brand CSS vars with Bomet county defaults.
 
 import * as React from "react";
 
@@ -81,12 +81,10 @@ function ConfiguredLanding(props: PGRLandingPageProps) {
   // path doesn't need this — the Builder pushes messages over the bridge.
   useLandingMessages(i18n);
 
-  // Language switching must go through the platform's localization service:
-  // it FETCHES the target locale's message bundles (LocalizationService
-  // .changeLanguage -> getLocale -> addResources) and records the choice in
-  // Digit's store before switching i18next. A bare i18n.changeLanguage()
-  // switches to a locale with no resources loaded and the page stays put —
-  // which is exactly the EN/PT-toggle-does-nothing bug this fixes.
+  // Language switching goes through the platform's localization service: it
+  // fetches the target locale's bundles and records the choice before switching
+  // i18next. A bare i18n.changeLanguage() would switch to a locale with no
+  // resources loaded, leaving the page unchanged.
   const defaultLanguageChange = React.useCallback(
     (code: string) => {
       try {
@@ -105,15 +103,9 @@ function ConfiguredLanding(props: PGRLandingPageProps) {
     [i18n]
   );
 
-  // English-first public page (Bomet): if the app's active locale isn't
-  // English, switch to en_IN once on mount — through the same handler the
-  // switcher uses, so the locale bundle actually loads. Keeps the landing in
-  // English even when the app default is another locale.
-  React.useEffect(() => {
-    const active = String(i18n?.language || "").toLowerCase();
-    if (!active.startsWith("en")) (props.onLanguageChange ?? defaultLanguageChange)("en_IN");
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  // Deliberately no locale force-switch: src/index.js pins the deployment
+  // default on every boot, so switching here would only overwrite — and
+  // persist — a language the citizen chose themselves.
 
   return (
     <LandingRenderer

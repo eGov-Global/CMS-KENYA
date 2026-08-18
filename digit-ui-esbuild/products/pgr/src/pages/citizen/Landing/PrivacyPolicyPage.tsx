@@ -6,6 +6,7 @@ import * as React from "react";
 import { ArrowLeft } from "lucide-react";
 import { buildTokenStyle, CONTAINER, NO_HOVER_UNDERLINE } from "./tokens";
 import { useLandingCopy } from "./useLandingCopy";
+import { useLandingMessages } from "./config/useLandingMessages";
 import { LandingLink } from "./components/LandingLink";
 
 const BODY_KEYS = [
@@ -20,26 +21,10 @@ export function PGRPrivacyPolicyPage() {
   const { c, i18n } = useLandingCopy();
   const ctx = (typeof window !== "undefined" && (window as any)?.contextPath) || "digit-ui";
 
-  // Portuguese-first public page: if the app's active locale isn't PT, switch
-  // to pt_PT once on mount. Prefer the platform LocalizationService (fetches
-  // the locale bundle + records the choice) and fall back to a bare i18n switch
-  // (the copy deck's pt strings still resolve). Runs once.
-  React.useEffect(() => {
-    const active = String(i18n?.language || "").toLowerCase();
-    if (active.startsWith("pt")) return;
-    try {
-      const D = (typeof window !== "undefined" ? (window as any).Digit : undefined) as any;
-      const stateCode = D?.ULBService?.getStateId?.();
-      if (D?.LocalizationService?.changeLanguage) {
-        D.LocalizationService.changeLanguage("pt_PT", stateCode);
-        return;
-      }
-    } catch {
-      /* fall through */
-    }
-    i18n?.changeLanguage?.("pt_PT");
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  // Never changes the app locale: changeLanguage persists to localStorage and
+  // would leak into every later screen. Loads the rainmaker-pgr bundle so
+  // Builder overrides apply to this notice.
+  useLandingMessages(i18n);
 
   return (
     // Two levels, like LandingRenderer: the v2 preset scopes every utility as

@@ -16,6 +16,7 @@ import * as React from "react";
 import { __RouterContext } from "react-router";
 import { cn } from "@egovernments/digit-ui-components-v2";
 import { useLandingCopy } from "../useLandingCopy";
+import { safeHref } from "../config/resolve";
 
 export interface LandingLinkProps extends React.AnchorHTMLAttributes<HTMLAnchorElement> {
   to: string;
@@ -30,8 +31,11 @@ export const LandingLink = React.forwardRef<HTMLAnchorElement, LandingLinkProps>
     const { c } = useLandingCopy();
     const router = React.useContext(__RouterContext as React.Context<any>);
 
-    const isPlaceholder = to === "#";
-    const isInternal = to.startsWith("/");
+    // Sanitised at the sink too: every `to` traces back to operator-editable
+    // config, and this is the one place a string becomes navigation.
+    const href0 = safeHref(to);
+    const isPlaceholder = href0 === "#";
+    const isInternal = href0.startsWith("/");
     const safeRel = target === "_blank" ? rel ?? "noopener noreferrer" : rel;
 
     if (isPlaceholder) {
@@ -62,7 +66,7 @@ export const LandingLink = React.forwardRef<HTMLAnchorElement, LandingLinkProps>
         (!target || target === "_self")
       ) {
         e.preventDefault();
-        router.history.push(to);
+        router.history.push(href0);
       }
     };
 
@@ -71,8 +75,8 @@ export const LandingLink = React.forwardRef<HTMLAnchorElement, LandingLinkProps>
     // createHref prepends the basename so those resolve too. Standalone (no
     // router) keeps the plain path.
     const href = isInternal && router?.history?.createHref
-      ? router.history.createHref({ pathname: to })
-      : to;
+      ? router.history.createHref({ pathname: href0 })
+      : href0;
 
     return (
       <a

@@ -2,9 +2,8 @@
 //
 // Same convention as CreatePGRFlowV2's `tr()` helper: react-i18next echoes the
 // key back when a translation is missing, so we detect that and fall back to
-// the built-in copy deck — picking PT or EN from the active i18n language
-// (this deployment's default locale is pt_PT). Seeding `PGR_LANDING_*` keys in
-// MDMS localization overrides any built-in string without a code change.
+// the built-in copy deck. Seeding `PGR_LANDING_*` keys in MDMS localization
+// overrides any built-in string without a code change.
 
 import * as React from "react";
 import { useTranslation } from "react-i18next";

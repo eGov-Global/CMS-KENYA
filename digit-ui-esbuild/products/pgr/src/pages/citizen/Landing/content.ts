@@ -2,7 +2,7 @@
 //
 // Every user-visible string resolves in three steps (see useLandingCopy.ts):
 //   1. MDMS/i18next translation for key `PGR_LANDING_<KEY>` — wins when seeded.
-//   2. Built-in copy below (`en`, with an optional `pt` for pt_PT deployments).
+//   2. Built-in copy below (`en`; other locales come from seeded MDMS keys).
 //   3. The raw key (never expected to surface).
 //
 // ── Deployment: County Government of Bomet, Kenya ("Bomet Feedback Hub") ──
@@ -94,7 +94,7 @@ export const LANDING_COPY = {
   HERO_CTA_TRACK: { en: "Track a Complaint" },
   HERO_TRUST_CONFIDENTIAL: { en: "No National ID needed ONLY name and phone number" },
   HERO_TRUST_CASE_NUMBER: { en: "Unique case number" },
-  HERO_TRUST_NOTIFICATIONS: { en: "SMS updates at every step" },
+  HERO_TRUST_NOTIFICATIONS: { en: "SMS acknowledgement with your case number" },
   HERO_CHANNELS_LABEL: { en: "Also available through:" },
   HERO_CHANNEL_APP: { en: "Counter desks in the pilot wards" },
   HERO_CHANNEL_WA: { en: "SMS case updates" },
@@ -173,7 +173,7 @@ export const LANDING_COPY = {
   CHANNEL_SMS_TITLE: { en: "SMS Updates" },
   CHANNEL_SMS_DESC: {
     en:
-      "Every status change is sent to the phone number on your case acknowledgement, assignment, escalation and resolution. No smartphone or data needed.",
+      "When your complaint is registered you get an SMS with your case number, then further SMS as its status changes. No smartphone or data needed.",
   },
   // Retained key: referenced directly by WhatsAppFab, which renders nothing
   // while the WHATSAPP route is "#" (WhatsApp is not a Bomet pilot channel).
@@ -185,9 +185,11 @@ export const LANDING_COPY = {
     en:
       "The County Government of Bomet protects the personal information you submit in line with the Data Protection Act, 2019.",
   },
+  // No identity-shielding exists in the product (no create-flow field, no
+  // backend flag), so this states only what the service actually does.
   PRIVACY_P2: {
     en:
-      "You may ask for your complaint to be treated confidentially. Your identity is then hidden from the officers handling the case, except where the law requires it to be disclosed.",
+      "Your details are used to register, route and resolve your complaint and to send you SMS updates. They are seen by the authorised county officers handling your case and are not shared with unauthorised third parties.",
   },
   PRIVACY_LINK: { en: "Read the Privacy Notice" },
 
@@ -203,7 +205,7 @@ export const LANDING_COPY = {
   },
   PRIVACY_PAGE_P3: {
     en:
-      "Your information is accessed only by authorised county officers responsible for handling your complaint, the Office of the Ombudsman, the sub-county administrators, and the department officers in the escalation chain. It is not shared with unauthorised third parties and is never used for commercial or marketing purposes. Where you request confidential handling, your identity is withheld from the handling officers and disclosed only to a restricted senior group, or where the law requires it.",
+      "Your information is accessed only by authorised county officers responsible for handling your complaint, the Office of the Ombudsman, the sub-county administrators, and the department officers in the escalation chain. It is not shared with unauthorised third parties and is never used for commercial or marketing purposes. The portal does not currently offer anonymous or identity-shielded reporting: the officers handling your complaint can see the name and phone number you registered with.",
   },
   PRIVACY_PAGE_P4: {
     en:

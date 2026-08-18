@@ -12,7 +12,7 @@ import { LandingRoutes } from "../routes";
 import { CONTAINER, FOCUS_RING_DARK } from "../tokens";
 
 export interface LanguageOption {
-  /** i18n locale code, e.g. "pt_PT". */
+  /** i18n locale code, e.g. "en_IN" or "sw_KE". */
   code: string;
   /** Short visible label, e.g. "PT". */
   label: string;

@@ -32,7 +32,7 @@ import {
   NewsItem,
 } from "../content";
 import { LandingRoutes } from "../routes";
-import { buildRichItems, safeHref } from "./resolve";
+import { buildRichItems, safeMediaSrc } from "./resolve";
 import type { LandingMediaConfig, LandingSectionConfig } from "./types";
 
 export type Slot = "header" | "main" | "footer";
@@ -50,14 +50,11 @@ export interface SectionEntry {
   buildProps: (section: LandingSectionConfig, ctx: RenderCtx) => Record<string, any>;
 }
 
-/** media.imageId as a direct URL passes through (safe-guarded); a bare
- *  filestore id is left for the P2 media phase (signed-URL resolver) and
- *  ignored here so the section falls back to its default (no image). */
+/** media.imageId as a direct URL passes through (see safeMediaSrc); a bare
+ *  filestore id is left for the P2 media phase and ignored here, so the
+ *  section falls back to its default (no image). */
 function mediaUrl(media?: LandingMediaConfig): string | undefined {
-  const id = media?.imageId;
-  if (!id) return undefined;
-  if (/^(https?:)?\/\//i.test(id) || id.startsWith("/")) return safeHref(id);
-  return undefined;
+  return safeMediaSrc(media?.imageId);
 }
 
 /** section with its items normalised to the rich runtime shape (or left absent

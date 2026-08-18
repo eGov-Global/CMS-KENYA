@@ -1,5 +1,5 @@
-// Confidentiality / data-protection assurance — the page's key trust block,
-// now with a route into the actual privacy policy (missing in the prototype).
+// Data-protection block, with a route into the actual privacy notice. Copy
+// states only what the service enforces — no confidentiality claim (see content.ts).
 
 import * as React from "react";
 import { Lock, ChevronRight } from "lucide-react";

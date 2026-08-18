@@ -12,16 +12,39 @@ import type { LandingItemConfig, LandingSectionConfig } from "./types";
 // Links
 // ---------------------------------------------------------------------------
 
-/** Allow only in-app ("/", "#"), http(s), tel and mailto/wa targets. Anything
- *  else (javascript:, data:, vbscript: …) collapses to the inert "#". */
+/** In-app path: a single "/" not followed by another separator. Rejects the
+ *  protocol-relative forms ("//host", "/\host") that history.push and the URL
+ *  parser resolve to a foreign origin. */
+const isInAppPath = (u: string): boolean => /^\/(?![/\\])/.test(u);
+
+/** Strip the control characters browsers silently drop when parsing a URL, so
+ *  a hidden tab cannot smuggle a scheme or separator past the checks below. */
+const normaliseUrl = (url: string): string => url.replace(/[\u0000-\u001f\u007f]/g, "").trim();
+
+/** Allow only in-app ("/path", "#anchor"), http(s), tel and mailto/wa targets.
+ *  Anything else (javascript:, data:, protocol-relative "//host") collapses to
+ *  the inert "#". */
 export function safeHref(url?: string): string {
   if (!url || typeof url !== "string") return "#";
-  const u = url.trim();
-  if (u === "#" || u.startsWith("/") || u.startsWith("#")) return u;
+  const u = normaliseUrl(url);
+  if (!u) return "#";
+  if (u === "#" || u.startsWith("#")) return u;
+  // Before the scheme allowlist, so "//" can never fall through as a path.
+  if (u.startsWith("/") || u.startsWith("\\")) return isInAppPath(u) ? u : "#";
   if (/^(https?:|tel:|mailto:|wa:)/i.test(u)) return u;
   // wa.me / plain domain without scheme -> treat cautiously as external https
   if (/^wa\.me\//i.test(u) || /^www\./i.test(u)) return "https://" + u;
   return "#";
+}
+
+/** Same allowlist narrowed for `<img src>`: an explicit https?: origin or an
+ *  in-app path. Returns undefined so the caller falls back to no image. */
+export function safeMediaSrc(url?: string): string | undefined {
+  if (!url || typeof url !== "string") return undefined;
+  const u = normaliseUrl(url);
+  if (!u) return undefined;
+  if (isInAppPath(u)) return u;
+  return /^https?:\/\/[^/\\]/i.test(u) ? u : undefined;
 }
 
 /** A LandingRoutes key (resolved against the routes map) OR a literal URL. */
