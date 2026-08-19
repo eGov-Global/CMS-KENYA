@@ -243,6 +243,9 @@ async function start() {
       // Force single instance of shared packages
       react: path.resolve(__dirname, "node_modules/react"),
       "react-dom": path.resolve(__dirname, "node_modules/react-dom"),
+      // Single copy of both: a nested duplicate gives a different
+      // __RouterContext object, and navigation silently stops working.
+      "react-router": path.resolve(__dirname, "node_modules/react-router"),
       "react-router-dom": path.resolve(__dirname, "node_modules/react-router-dom"),
       "react-redux": path.resolve(__dirname, "node_modules/react-redux"),
       "react-query": path.resolve(__dirname, "node_modules/react-query"),

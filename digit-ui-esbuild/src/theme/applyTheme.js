@@ -262,6 +262,51 @@ function flatten(obj, prefix, out) {
 // the MDMS record cleanly falls back to defaults on next load.
 const V2_BRIDGE_STYLE_ID = "mdms-theme-v2-bridge";
 
+// The PGR public landing page (products/pgr/.../Landing/tokens.ts) has the same
+// problem and the same fix. Its palette lives in `--pgrl-*` tokens that
+// buildTokenStyle emits inline on the landing root — itself a `.v2-scope`
+// element — as `--pgrl-x: var(--pgrl-x-brand, <shipped default>)`. Defining the
+// `-brand` half in this rule is therefore the documented tenant hook: the record
+// retints the landing page, and an absent/incomplete record falls straight back
+// to the shipped defaults.
+//
+// Each entry is [brand var, ordered source `--color-*` vars]; the first source
+// present in `vars` wins, so a v1/v2/v3 record all resolve through the same map
+// (`vars` already encodes record precedence). Deliberately NOT mapped:
+//   --pgrl-on-accent  contrast-critical pairing with the accent surface
+//   --pgrl-type-*     a 4-way categorical scale, not a brand role
+//   --pgrl-radius     a CSS length, not a color
+const PGRL_BRIDGE = [
+  ["--pgrl-primary-brand", ["--color-primary-1", "--color-primary-dark"]],
+  ["--pgrl-ring-brand", ["--color-primary-1", "--color-primary-dark"]],
+  // Hero / footer / final-CTA band: the darkest brand surface the record has.
+  ["--pgrl-deep-brand", ["--color-sidebar-selected-bg", "--color-primary-1", "--color-primary-dark"]],
+  // Accent is a FILLED surface carrying dark ink (CTA buttons, the pilot notice,
+  // section rules, the active-nav bar), so it resolves from the accent-brand
+  // *tint* role first — `primary-2` itself is the button fill that pairs with
+  // white text, and using it here would leave the CTA label at ~4.3:1.
+  ["--pgrl-accent-brand", ["--color-primary-2-bg", "--color-primary-2", "--color-primary-main"]],
+  ["--pgrl-on-primary-brand", ["--color-button-primary-text"]],
+  ["--pgrl-ink-brand", ["--color-text-primary"]],
+  ["--pgrl-ink-soft-brand", ["--color-text-secondary"]],
+  ["--pgrl-surface-brand", ["--color-page-bg"]],
+  ["--pgrl-page-brand", ["--color-page-secondary-bg", "--color-grey-light"]],
+  ["--pgrl-line-brand", ["--color-card-border", "--color-border"]],
+];
+
+// The accent's hover state can't be left to the shipped default: a record that
+// moves the accent off yellow would hover into the default darker yellow. Prefer
+// the record's light-surface hover role, else darken the resolved accent by 7
+// lightness points — the relationship the shipped pair already encodes
+// (accent 48 95% 52% -> accentHover 45 92% 45%).
+const PGRL_ACCENT_HOVER_SOURCES = ["--color-button-secondary-bg-hover"];
+
+function darkenTriplet(triplet, points) {
+  const m = /^(\d+) (\d+)% (\d+)%$/.exec(triplet || "");
+  if (!m) return null;
+  return `${m[1]} ${m[2]}% ${Math.max(0, Number(m[3]) - points)}%`;
+}
+
 function hexToHslTriplet(hex) {
   if (typeof hex !== "string") return null;
   const m = /^#?([0-9a-f]{3}|[0-9a-f]{6})$/i.exec(hex.trim());
@@ -288,7 +333,15 @@ function hexToHslTriplet(hex) {
 
 // vars already encodes record precedence (v3 > v2 > v1), so reading from it
 // keeps the bridge consistent with whatever won for the legacy surfaces.
-function injectV2Bridge(vars) {
+//
+// `landing` gates only the `--pgrl-*` half. index.js applies default.json
+// synchronously at boot so the app never flashes unthemed, and that record is
+// DIGIT orange — bridging it would repaint the landing page orange on every
+// load and, worse, keep it orange on any tenant whose MDMS ThemeConfig is
+// absent or fails to fetch. The landing ships its own complete government
+// palette, so the bundled default must lose to it; only a real tenant record
+// (StoreService.digitInitData -> window.Digit.applyTheme) retints the page.
+function injectV2Bridge(vars, landing) {
   if (typeof document.createElement !== "function" || !document.head) return 0;
   const primaryHex =
     vars["--color-button-primary-bg-default"] || vars["--color-primary-main"];
@@ -299,6 +352,24 @@ function injectV2Bridge(vars) {
   if (primary) decls.push(`--v2-primary: ${primary}`, `--v2-ring: ${primary}`);
   const fg = hexToHslTriplet(fgHex);
   if (fg) decls.push(`--v2-primary-foreground: ${fg}`);
+
+  const resolve = (sources) => {
+    const src = sources.find((v) => typeof vars[v] === "string");
+    return src ? hexToHslTriplet(vars[src]) : null;
+  };
+
+  let accent = null;
+  for (const [name, sources] of landing ? PGRL_BRIDGE : []) {
+    const hsl = resolve(sources);
+    if (!hsl) continue;
+    if (name === "--pgrl-accent-brand") accent = hsl;
+    decls.push(`${name}: ${hsl}`);
+  }
+  if (accent) {
+    const hover = resolve(PGRL_ACCENT_HOVER_SOURCES) || darkenTriplet(accent, 7);
+    if (hover) decls.push(`--pgrl-accent-hover-brand: ${hover}`);
+  }
+
   if (decls.length === 0) return 0;
 
   let el = document.getElementById(V2_BRIDGE_STYLE_ID);
@@ -311,7 +382,7 @@ function injectV2Bridge(vars) {
   return decls.length;
 }
 
-function applyTheme(config) {
+function applyTheme(config, options) {
   if (!config || typeof config !== "object" || Array.isArray(config)) {
     console.warn("[theme] config must be an object, skipping apply");
     return;
@@ -393,7 +464,7 @@ function applyTheme(config) {
   for (const name of Object.keys(vars)) {
     root.style.setProperty(name, vars[name]);
   }
-  const bridged = injectV2Bridge(vars);
+  const bridged = injectV2Bridge(vars, (options || {}).landing !== false);
   console.log(
     `[theme] applied ${Object.keys(vars).length} variables` +
       (bridged ? ` (+${bridged} v2-scope tokens)` : ""),
