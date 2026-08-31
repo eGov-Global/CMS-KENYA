@@ -1,5 +1,35 @@
 [
     {
+        "code": "Home",
+        "message": "Home",
+        "module": "rainmaker-common",
+        "locale": "en_IN"
+    },
+    {
+        "code": "Create Complaint",
+        "message": "Create Complaint",
+        "module": "rainmaker-common",
+        "locale": "en_IN"
+    },
+    {
+        "code": "Search Complaint",
+        "message": "Search Complaint",
+        "module": "rainmaker-common",
+        "locale": "en_IN"
+    },
+    {
+        "code": "Dashboard viewer",
+        "message": "Dashboard viewer",
+        "module": "rainmaker-common",
+        "locale": "en_IN"
+    },
+    {
+        "code": "Search",
+        "message": "Search",
+        "module": "rainmaker-common",
+        "locale": "en_IN"
+    },
+    {
         "code": "AADHAAR_IS_REQUIRED",
         "message": "Aadhaar number is required",
         "module": "rainmaker-common",
@@ -205,7 +235,7 @@
     },
     {
         "code": "ACTION_TEST_COMPLAINTS",
-        "message": "Citizen Complaint Resolution System",
+        "message": "Fala Cidadão",
         "module": "rainmaker-common",
         "locale": "en_IN"
     },
@@ -385,7 +415,7 @@
     },
     {
         "code": "ACTION_TEST_PGR",
-        "message": "Citizen Complaint Resolution System",
+        "message": "Fala Cidadão",
         "module": "rainmaker-common",
         "locale": "en_IN"
     },
@@ -6493,7 +6523,7 @@
     },
     {
         "code": "CS_COMMON_HOME_COMPLAINTS",
-        "message": "Citizen Complaint Resolution System",
+        "message": "Fala Cidadão",
         "module": "rainmaker-common",
         "locale": "en_IN"
     },
@@ -6655,7 +6685,7 @@
     },
     {
         "code": "CS_COMMON_INBOX_PGR",
-        "message": "Citizen Complaint Resolution System",
+        "message": "Fala Cidadão",
         "module": "rainmaker-common",
         "locale": "en_IN"
     },
@@ -8113,7 +8143,7 @@
     },
     {
         "code": "PGR",
-        "message": "Citizen Complaint Resolution System",
+        "message": "Fala Cidadão",
         "module": "rainmaker-common",
         "locale": "en_IN"
     },
@@ -8933,7 +8963,7 @@
         "module": "rainmaker-common",
         "locale": "en_IN"
     },
-        {
+    {
         "code": "HR_COMMON_CREATE_EMPLOYEE_HEADER",
         "message": "Create Employee",
         "module": "rainmaker-common",
@@ -9013,7 +9043,7 @@
     },
     {
         "code": "ES_PGR_HEADER_COMPLAINT",
-        "message": "Citizen Complaint Resolution System",
+        "message": "Fala Cidadão",
         "module": "rainmaker-common",
         "locale": "en_IN"
     },
@@ -9133,13 +9163,13 @@
     },
     {
         "code": "ACTION_TEST_NATIONAL_PGR",
-        "message": "Citizen Complaint Resolution System",
+        "message": "Fala Cidadão",
         "module": "rainmaker-common",
         "locale": "en_IN"
     },
     {
         "code": "MODULE_PGR",
-        "message": "Citizen Complaint Resolution System",
+        "message": "Fala Cidadão",
         "module": "rainmaker-common",
         "locale": "en_IN"
     },
@@ -9776,6 +9806,96 @@
     {
         "code": "WF_COMMON_COMMENTS",
         "message": "Comments",
+        "module": "rainmaker-common",
+        "locale": "en_IN"
+    },
+    {
+        "code": "CORE_COMMON_PROFILE_PERSONAL_DETAILS",
+        "message": "Personal details",
+        "module": "rainmaker-common",
+        "locale": "en_IN"
+    },
+    {
+        "code": "CCRS_PRIVACY_HEADER",
+        "message": "Privacy Policy",
+        "module": "rainmaker-common",
+        "locale": "en_IN"
+    },
+    {
+        "code": "CCRS_PRIVACY_SECTION_1",
+        "message": "Privacy Policy",
+        "module": "rainmaker-common",
+        "locale": "en_IN"
+    },
+    {
+        "code": "CCRS_PRIVACY_P1",
+        "message": "The Fala Cidadão Platform is committed to protecting your privacy and to ensuring that your personal information is handled securely, transparently and in accordance with applicable law.",
+        "module": "rainmaker-common",
+        "locale": "en_IN"
+    },
+    {
+        "code": "CCRS_PRIVACY_P2",
+        "message": "By using this Platform, you consent to the collection and processing of the information you provide for the purposes of registering, investigating, managing and resolving your complaints, petitions, grievances and reports. The information collected may include your name, contact details, identification elements where applicable, complaint details, supporting documents, photographs and any other evidence you choose to submit.",
+        "module": "rainmaker-common",
+        "locale": "en_IN"
+    },
+    {
+        "code": "CCRS_PRIVACY_P3",
+        "message": "Your personal information will only be accessed by duly authorised Government officials and institutions responsible for handling your complaint. It will not be shared with unauthorised third parties, nor used for commercial or marketing purposes. In the cases provided for by the Platform, complaints submitted as confidential will have the author's identity protected, being disclosed only to a restricted group of senior officials or when required by law.",
+        "module": "rainmaker-common",
+        "locale": "en_IN"
+    },
+    {
+        "code": "CCRS_PRIVACY_P4",
+        "message": "The Platform implements appropriate technical and organisational measures to safeguard your information against unauthorised access, alteration, disclosure or loss. Technical information, such as device data, IP address and system usage, may also be collected in order to improve security, system performance and service quality.",
+        "module": "rainmaker-common",
+        "locale": "en_IN"
+    },
+    {
+        "code": "CCRS_PRIVACY_P5",
+        "message": "Your information will be retained only for as long as necessary to process your complaint, comply with legal obligations and maintain official Government records. You may request access to your personal information, or its correction, subject to applicable law and to any restrictions necessary to protect ongoing investigations.",
+        "module": "rainmaker-common",
+        "locale": "en_IN"
+    },
+    {
+        "code": "CCRS_PRIVACY_P6",
+        "message": "By selecting “I agree to the Privacy Policy”, you confirm that the information provided is accurate and that you understand and accept the collection, use, storage and processing of your personal data for the purposes described above.",
+        "module": "rainmaker-common",
+        "locale": "en_IN"
+    },
+    {
+        "code": "USERNAME",
+        "message": "Username",
+        "module": "rainmaker-common",
+        "locale": "en_IN"
+    },
+    {
+        "code": "CORE_FORGOT_USERNAME_PLACEHOLDER",
+        "message": "Your work username",
+        "module": "rainmaker-common",
+        "locale": "en_IN"
+    },
+    {
+        "code": "CORE_COMMON_BACK_TO_LOGIN",
+        "message": "Back to login",
+        "module": "rainmaker-common",
+        "locale": "en_IN"
+    },
+    {
+        "code": "ENGLISH",
+        "message": "English",
+        "module": "rainmaker-common",
+        "locale": "en_IN"
+    },
+    {
+        "code": "PORTUGUESE",
+        "message": "Português",
+        "module": "rainmaker-common",
+        "locale": "en_IN"
+    },
+    {
+        "code": "CS_CITIZEN_SIDEBAR_PGR",
+        "message": "Home",
         "module": "rainmaker-common",
         "locale": "en_IN"
     }

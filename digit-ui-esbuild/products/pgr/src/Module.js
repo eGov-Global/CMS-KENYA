@@ -3,13 +3,19 @@ import React, { useState } from "react";
 import { useRouteMatch } from "react-router-dom";
 import { default as EmployeeApp } from "./pages/employee";
 import PGRCard from "./components/PGRCard";
+import PGRAdminSearch from "./pages/employee/AdminSearch";
 import { overrideHooks, updateCustomConfigs } from "./utils";
 import { ProviderContext } from "./utils/context";
 import BoundaryComponent from "./components/BoundaryComponent";
+import OnlyMyComplaintsFilter from "./components/OnlyMyComplaintsFilter";
 import ComplaintHierarchyComponent from "./components/ComplaintHierarchyComponent";
+import PGRDatePicker from "./components/PGRDatePicker";
 import PGRDetails from "./pages/employee/PGRDetails";
 import TimelineWrapper from "./components/TimeLineWrapper";
 import AssigneeComponent from "./components/AssigneeComponent";
+import VerificationDocsComponent from "./components/VerificationDocsComponent";
+import ActionUploadComponent from "./components/ActionUploadComponent";
+import ChannelChipsComponent from "./components/ChannelChipsComponent";
 import PGRSearchInbox from "./pages/employee/PGRInbox";
 import CreateComplaint from "./pages/employee/CreateComplaint";
 import Response from "./components/Response";
@@ -52,20 +58,16 @@ export const PGRModule = ({ stateCode, userType, tenants }) => {
   });
   let user = Digit?.SessionStorage.get("User");
 
-  // Initialize boundary hierarchy for both employee AND citizen users.
-  // Citizens reach the create-complaint flow on naipepea, where the
-  // location step is now driven by `<PGRBoundaryComponent>` (closes
-  // egovernments/CCRS#428 + #433). The component reads
-  // `boundaryHierarchyOrder` from SessionStorage, which this hook
-  // populates on module mount. Without it, the citizen location step
-  // would render nothing.
-  const { isLoading: isPGRInitializing } = Digit.Hooks.pgr.usePGRInitialization({
-    tenantId: tenantId,
-  });
+  // NOTE: the former usePGRInitialization mount-time boundary prefetch is gone.
+  // It fired before the citizen picked an authority (wrong tenant on
+  // multi-authority envs → 400 → react-query retry spam) and its failure left
+  // boundaryHierarchyOrder unset, blanking the cascade. fetchBoundaries now
+  // derives and stores boundaryHierarchyOrder from the SAME response the
+  // cascade renders — one call, right tenant, fired only when needed.
 
   Digit.SessionStorage.set("PGR_TENANTS", tenants);
 
-  if (isLoading || isPGRInitializing) {
+  if (isLoading) {
     return <Loader />;
   }
 
@@ -107,11 +109,17 @@ const componentsToRegister = {
   PGRLinks,
   PGRCard,
   PGRBoundaryComponent: BoundaryComponent,
+  PGROnlyMyComplaintsFilter: OnlyMyComplaintsFilter,
   PGRComplaintHierarchyComponent: ComplaintHierarchyComponent,
+  PGRDatePicker,
   PGRComplaintDetails: PGRDetails,
   PGRTimeLineWrapper: TimelineWrapper,
   PGRAssigneeComponent: AssigneeComponent,
+  PGRVerificationDocsComponent: VerificationDocsComponent,
+  PGRActionUploadComponent: ActionUploadComponent,
+  PGRChannelChipsComponent: ChannelChipsComponent,
   PGRSearchInbox,
+  PGRAdminSearch,
   PGRCreateComplaint: CreateComplaint,
   PGRResponse: Response,
   PGRBreadCrumbs: BreadCrumbs,

@@ -22,6 +22,10 @@ export interface ResourceConfig {
     update?: string;
   };
   dedicated?: boolean;
+  /** When set, the generic UI hides/blocks Edit + Create unless the logged-in
+   *  user has one of these role codes. UX gate only — server authority is the
+   *  role-action mapping (e.g. action 2627 → MDMS_ADMIN for the enc policy). */
+  writeRoles?: string[];
   /** For `type: 'custom'` resources only: the origin-relative path of the
    *  read-only GET endpoint on the out-of-band service (e.g.
    *  `/novu-bridge/novu-adapter/v1/logs`). The data provider prefixes it with
@@ -121,12 +125,40 @@ export const REGISTRY: Record<string, ResourceConfig> = {
     type: 'mdms', label: 'Complaint Hierarchies', schema: 'RAINMAKER-PGR.ComplaintHierarchyDefinition',
     idField: 'hierarchyType', nameField: 'hierarchyType', dedicated: true,
   },
+  // Analytics destinations for the citizen/employee SPA (one row per destination).
+  //
+  // `dedicated: true` is load-bearing here, not cosmetic. The generic MDMS CRUD
+  // would be actively unsafe for this master: dataProvider's update and delete
+  // both re-resolve the record with a mdmsSearch that is NOT scoped to the
+  // session tenant, so a city admin editing a row INHERITED from the state
+  // tenant would rewrite the state row for every city that inherits it, and one
+  // delete click would deactivate analytics everywhere. The dedicated editor
+  // writes only rows the current tenant owns and never deletes — turning a
+  // destination off is `enabled: false` on a permanent record.
+  'analytics-providers': {
+    type: 'mdms', label: 'Analytics Providers', schema: 'common-masters.AnalyticsProvider',
+    idField: 'code', nameField: 'code', descriptionField: 'type', dedicated: true,
+  },
+
+  // Config-driven public landing (CCSD-2008). P3 = generic CRUD through the
+  // standard MdmsResource pages; the P4 Landing Page Builder will swap only the
+  // edit surface via the descriptor customEditor key — same resource, routes,
+  // MDMS APIs and schema, so there is no migration between P3 and P4.
+  // dedicated:true places them in a curated sidebar group instead of Advanced.
+  'landing-sections': {
+    type: 'mdms', label: 'Landing Sections', schema: 'RAINMAKER-PGR.LandingSection',
+    idField: 'code', nameField: 'code', descriptionField: 'type', dedicated: true,
+  },
+  'landing-page-config': {
+    type: 'mdms', label: 'Landing Page Settings', schema: 'RAINMAKER-PGR.LandingPageConfig',
+    idField: 'code', nameField: 'code', dedicated: true,
+  },
 
   // Generic MDMS Resources
   // (RAINMAKER-PGR.ClassificationNode is gone — interior nodes now live in the
   // ComplaintHierarchy master alongside the leaves; cascade pickers read it
   // directly. No standalone classification-nodes resource anymore.)
-  'state-info': { type: 'mdms', label: 'State Info', schema: 'common-masters.StateInfo', idField: 'code', nameField: 'name' },
+  'state-info': { type: 'mdms', label: 'Branding', schema: 'common-masters.StateInfo', idField: 'code', nameField: 'name' }, // CCSD-1997: renamed State Info -> Branding
   'city-modules': { type: 'mdms', label: 'City Modules', schema: 'tenant.citymodule', idField: 'code', nameField: 'module' },
   'id-formats': { type: 'mdms', label: 'ID Formats', schema: 'common-masters.IdFormat', idField: 'idname', nameField: 'idname' },
   'workflow-services': { type: 'mdms', label: 'Business Services', schema: 'Workflow.BusinessService', idField: 'businessService', nameField: 'business' },
@@ -136,8 +168,8 @@ export const REGISTRY: Record<string, ResourceConfig> = {
   'role-actions': { type: 'mdms', label: 'Role Actions', schema: 'ACCESSCONTROL-ROLEACTIONS.roleactions', idField: 'id', nameField: 'rolecode', descriptionField: 'actionid' },
   roles: { type: 'mdms', label: 'Roles', schema: MDMS_SCHEMAS.ROLES, idField: 'code', nameField: 'name', descriptionField: 'description' },
   'action-mappings': { type: 'mdms', label: 'Action Mappings', schema: 'ACCESSCONTROL-ACTIONS-TEST.actions-test', idField: 'id', nameField: 'displayName', descriptionField: 'url' },
-  'encryption-policy': { type: 'mdms', label: 'Encryption Policy', schema: 'DataSecurity.EncryptionPolicy', idField: 'key', nameField: 'key' },
-  'decryption-abac': { type: 'mdms', label: 'Decryption ABAC', schema: 'DataSecurity.DecryptionABAC', idField: 'model', nameField: 'model' },
+  'encryption-policy': { type: 'mdms', label: 'Encryption Policy', schema: 'DataSecurity.EncryptionPolicy', idField: 'key', nameField: 'key', writeRoles: ['MDMS_ADMIN', 'SUPERUSER'] }, // CCSD-1998
+  'decryption-abac': { type: 'mdms', label: 'Decryption ABAC', schema: 'DataSecurity.DecryptionABAC', idField: 'key', nameField: 'key' }, // CCSD-1999: schema id is 'key', not 'model'
   'masking-patterns': { type: 'mdms', label: 'Masking Patterns', schema: 'DataSecurity.MaskingPatterns', idField: 'patternId', nameField: 'patternId' },
   'security-policy': { type: 'mdms', label: 'Security Policy', schema: 'DataSecurity.SecurityPolicy', idField: 'model', nameField: 'model' },
   'inbox-config': { type: 'mdms', label: 'Inbox Config', schema: 'INBOX.InboxQueryConfiguration', idField: 'module', nameField: 'module' },

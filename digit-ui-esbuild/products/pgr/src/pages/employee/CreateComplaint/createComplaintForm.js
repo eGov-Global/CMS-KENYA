@@ -17,7 +17,7 @@ import React, { useEffect, useState, useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { useHistory } from "react-router-dom";
 import { formPayloadToCreateComplaint } from "../../../utils";
-import { isPostalCodeValid, getPostalCodeErrorMessage } from "../../../utils/postalCode";
+import { fieldsFromSchema, deriveCaseRelatedTo } from "../../../utils/extendedAttributes";
 
 const CreateComplaintForm = ({
   createComplaintConfig,      // Form configuration for Create Complaint screen
@@ -33,6 +33,42 @@ const CreateComplaintForm = ({
   const [toast, setToast] = useState({ show: false, label: "", type: "" }); // Toast UI state
   const [type, setType] = useState({});
   const [subType, setSubType] = useState([]);
+
+  // Hydrate the form ONCE from the session draft, then keep the reference
+  // FIXED. FormComposerV2 calls reset(defaultValues) whenever the defaultValues
+  // reference changes (guarded only by non-empty), so passing the live
+  // sessionFormData would reset the form — dropping focus and in-flight
+  // edits — on every persisted change. onFormValueChange below mirrors each
+  // change into sessionStorage; this ref is only the mount-time snapshot.
+  //
+  // The draft carries a __draftMeta {tenant, user} stamp and is DISCARDED on
+  // mismatch: after a ULB switch (ChangeCity) or a re-login, restoring the old
+  // tenant's SelectComplaintType/SelectedBoundary would submit foreign codes
+  // under the new tenant while the pickers render blank.
+  // NOTE: read the user directly — `const user` is declared further down and
+  // referencing it here is a temporal-dead-zone ReferenceError that crashed
+  // the whole page to the error boundary.
+  const draftUserUuid = Digit.UserService.getUser()?.info?.uuid;
+  const initialDraftRef = useRef(null);
+  if (initialDraftRef.current === null) {
+    const { __draftMeta, ...draftValues } = sessionFormData || {};
+    const draftValid = __draftMeta
+      ? __draftMeta.tenant === tenantId && __draftMeta.user === draftUserUuid
+      : Object.keys(draftValues).length === 0; // legacy/unstamped non-empty drafts are stale — drop
+    const seeded = draftValid ? draftValues : {};
+    // QA #26: channel-of-receipt defaults to "Presencial" (in person) — the
+    // Reception Officer's most common case — unless the draft carries a
+    // choice already. The user can still change it; the code rides
+    // service.source at submit.
+    if (!seeded.ReceivedChannel) {
+      seeded.ReceivedChannel = { code: "inperson", name: "PGR_CHANNEL_IN_PERSON" };
+    }
+    initialDraftRef.current = seeded;
+  }
+  // JSON snapshot of the last persisted draft — cheap change detection so the
+  // sessionStorage write (and the re-render it causes) happens only on real
+  // value changes, never in a loop.
+  const draftJsonRef = useRef(JSON.stringify(initialDraftRef.current));
 
   const user = Digit.UserService.getUser();
 
@@ -67,9 +103,17 @@ const CreateComplaintForm = ({
   // token doesn't carry the department, so look it up from HRMS by the
   // current user's uuid (same source AssigneeComponent uses).
   const hrmsContext = window?.globalConfigs?.getConfig?.("HRMS_CONTEXT_PATH") || "egov-hrms";
+  // Same rationale as AssigneeComponent: this is the logged-in user's own
+  // record, which cannot change mid-session, so the 1s/5s defaults only cost
+  // repeat fetches on every remount of the create form.
   const { data: currentEmployeeData } = Digit.Hooks.useCustomAPIHook({
     url: `/${hrmsContext}/employees/_search`,
     params: { tenantId, uuids: user?.info?.uuid },
+    changeQueryName: `hrms-current-employee-${user?.info?.uuid}`,
+    options: {
+      staleTime: 5 * 60 * 1000,
+      cacheTime: 10 * 60 * 1000,
+    },
     config: { enabled: !!user?.info?.uuid },
   });
   // All departments the logged-in employee is actively assigned to. A user
@@ -188,6 +232,97 @@ const CreateComplaintForm = ({
   // egovernments/CCRS#438 + #447 items 6-7).
 
 
+  // ── Per-category dynamic "extended attributes" (Mozambique IGE/IGSAE) ──
+  // The employee is always logged in under one sub-tenant (e.g. mz.ige), so the
+  // category is implied — derive caseRelatedTo from the tenant (NO picker) and
+  // render that category's JSON-Schema-driven fields. Purely additive: a tenant
+  // not present in ComplaintRelatedToMap gets no extra fields (form unchanged).
+  const stateTenant = (tenantId || "").split(".")[0] || tenantId;
+  const { data: relatedToMap } = Digit.Hooks.useCustomMDMS(
+    stateTenant,
+    "RAINMAKER-PGR",
+    [{ name: "ComplaintRelatedToMap" }],
+    { cacheTime: Infinity, select: (raw) => raw?.["RAINMAKER-PGR"]?.ComplaintRelatedToMap || [] },
+    { schemaCode: "PGR_COMPLAINT_RELATED_TO_MAP", tenantId: stateTenant }
+  );
+  const { data: templatesAll } = Digit.Hooks.useCustomMDMS(
+    stateTenant,
+    "RAINMAKER-PGR",
+    [{ name: "ComplaintTemplateType" }],
+    { cacheTime: Infinity, select: (raw) => raw?.["RAINMAKER-PGR"]?.ComplaintTemplateType || [] },
+    { schemaCode: "PGR_COMPLAINT_TEMPLATE_TYPE", tenantId: stateTenant }
+  );
+  const { data: schemasByRef } = Digit.Hooks.useCustomMDMS(
+    stateTenant,
+    "RAINMAKER-PGR",
+    [{ name: "ComplaintExtendedAttributeSchema" }],
+    {
+      cacheTime: Infinity,
+      select: (raw) => {
+        const rows = raw?.["RAINMAKER-PGR"]?.ComplaintExtendedAttributeSchema || [];
+        const byRef = {};
+        rows.forEach((r) => {
+          if (r?.schemaRef) byRef[r.schemaRef] = r.schema;
+        });
+        return byRef;
+      },
+    },
+    { schemaCode: "PGR_COMPLAINT_EXT_ATTR_SCHEMA", tenantId: stateTenant }
+  );
+  const caseRelatedTo = useMemo(() => deriveCaseRelatedTo(relatedToMap, tenantId), [relatedToMap, tenantId]);
+  const extFields = useMemo(() => {
+    const tpl = (templatesAll || []).find((x) => x?.active !== false && x?.caseRelatedTo === caseRelatedTo);
+    const schema = tpl?.schemaRef ? (schemasByRef || {})[tpl.schemaRef] : null;
+    return fieldsFromSchema(schema);
+  }, [templatesAll, schemasByRef, caseRelatedTo]);
+
+  // Generated FormComposerV2 field configs for the dynamic fields + a
+  // confidentiality checkbox. NOTE: x-security fields render in clear text until
+  // backend encryption lands (same interim posture as the citizen flow).
+  const extFieldConfigs = useMemo(() => {
+    if (!extFields.length) return [];
+    const toType = (dt) => (dt === "textarea" ? "textarea" : dt === "date" ? "date" : dt === "number" ? "number" : "text");
+    const cfgs = extFields.map((f) => {
+      // Date fields → our self-contained calendar-popover component (avoids the
+      // native date input / react-datepicker CSS issues). Writes YYYY-MM-DD.
+      // PGR_EXT_* label keys are seeded in egov-localization (en+pt) —
+      // FormComposerV2 t()'s the label, so pass the key and let the raw
+      // prettified label be the visible fallback only when a key is absent.
+      const label = f.labelKey || f.label;
+      if (f.dataType === "date") {
+        return {
+          inline: true,
+          key: f.fieldKey,
+          label,
+          isMandatory: !!f.mandatory,
+          type: "component",
+          component: "PGRDatePicker",
+          // "Date of fact"-style fields record when something HAPPENED —
+          // future dates are meaningless and now blocked (CCSD-1952).
+          populators: { name: f.fieldKey, maxDate: "today" },
+        };
+      }
+      const type = toType(f.dataType);
+      const populators = { name: f.fieldKey };
+      if ((type === "text" || type === "textarea") && f.maxLength) populators.maxLength = f.maxLength;
+      if (f.mandatory) {
+        populators.validation = { required: true };
+        populators.error = "CORE_COMMON_REQUIRED_ERRMSG";
+      }
+      return { inline: true, key: f.fieldKey, label, isMandatory: !!f.mandatory, type, disable: false, populators };
+    });
+    cfgs.push({
+      key: "isConfidential",
+      type: "checkbox",
+      isMandatory: false,
+      // Left edge sits in the control column (~x698), i.e. directly beneath the
+      // upload drop zone above it — NOT pulled to the extreme left. This is the
+      // default label-column layout, so no withoutLabel/inline override.
+      populators: { name: "isConfidential", title: "PGR_EXT_IS_CONFIDENTIAL_LABEL" },
+    });
+    return cfgs;
+  }, [extFields]);
+
   const updatedConfig = useMemo(() => {
 
     const baseConfig = Digit.Utils.preProcessMDMSConfig(
@@ -241,28 +376,65 @@ const CreateComplaintForm = ({
               disable: disabledFields[field.populators.name],
             }];
           }
-          if (fname === "postalCode") {
-            // Show the SAME dynamic, length-aware message the citizen flows
-            // show ("Please enter a valid 4-digit postal code" on a 4-digit
-            // tenant) instead of the static generic key the raw config
-            // carries. getPostalCodeErrorMessage(t) returns final localized
-            // text; FieldV1 passes it through t() again, which echoes an
-            // unknown key back verbatim, so the text survives untouched.
-            return [{
-              ...field,
-              populators: {
-                ...field.populators,
-                error: getPostalCodeErrorMessage(t),
-              },
-            }];
-          }
           return [field];
         }),
       };
     });
 
-    return { ...baseConfig, form: updatedForm };
-  }, [createComplaintConfig, serviceDefs, t, disabledFields, subType, loggedInUserDepartments, hasHierarchy, departmentGate]);
+    // Attachment uploader — reuses the SAME component the assign/action modals
+    // use (PGRActionUploadComponent → PgrFileUpload: drag-drop, previews,
+    // 5MB/file), emitting already-shaped {documentType, fileStoreId} docs under
+    // `SelectedDocuments`. tenantId is the create tenant so files land on the
+    // right (tenant-scoped) filestore. Optional — never gates submit.
+    const uploadFieldConfig = {
+      // inline:true → same label-left / control-right row as the fields above,
+      // so the uploader's width:100% fills the capped control column instead of
+      // spanning the full card (was overflowing to the right).
+      inline: true,
+      type: "component",
+      component: "PGRActionUploadComponent",
+      key: "SelectedDocuments",
+      label: "CS_ADDCOMPLAINT_UPLOAD_PHOTO",
+      isMandatory: false,
+      // maxWidth caps the drop zone to the same width as the text-input control
+      // column (600px) so its right edge lines up with the fields above.
+      populators: { name: "SelectedDocuments", tenantId, maxWidth: "600px" },
+    };
+
+    // Append the per-category dynamic fields (when present) + the attachment
+    // uploader to the "Additional details" section. The uploader goes BEFORE
+    // the isConfidential checkbox (last element of extFieldConfigs) so the
+    // checkbox stays at the very bottom of the section.
+    const confIdx = extFieldConfigs.findIndex((c) => c.key === "isConfidential");
+    const extBeforeConf = confIdx >= 0 ? extFieldConfigs.slice(0, confIdx) : extFieldConfigs;
+    const extConfField = confIdx >= 0 ? extFieldConfigs.slice(confIdx) : [];
+    const withExt = (updatedForm || []).map((section) =>
+      section?.head === "CS_COMPLAINT_DETAILS_ADDITIONAL_DETAILS"
+        ? { ...section, body: [...section.body, ...extBeforeConf, uploadFieldConfig, ...extConfField] }
+        : section
+    );
+
+    // CCSD-1955: every NON-mandatory field's label gets an "(Optional)" suffix.
+    // Labels are localization keys the composer t()s — so pre-translate here and
+    // append the localized suffix; t() on an already-translated string is a
+    // pass-through, so the composer renders it verbatim.
+    const optionalSuffix = (() => {
+      const v = t("CS_OPTIONAL_SUFFIX");
+      return v === "CS_OPTIONAL_SUFFIX" ? "(Optional)" : v;
+    })();
+    const withOptional = withExt.map((section) => ({
+      ...section,
+      body: (section.body || []).map((field) =>
+        // noOptionalSuffix: per-field opt-out (e.g. the channel chips — it
+        // always has a value via its default, so "(Optional)" is noise).
+        field?.label && field.isMandatory !== true && !field.noOptionalSuffix
+          ? { ...field, label: `${t(field.label)} ${optionalSuffix}` }
+          : field
+      ),
+    }));
+
+    return { ...baseConfig, form: withOptional };
+  }, [createComplaintConfig, serviceDefs, t, disabledFields, subType, loggedInUserDepartments, hasHierarchy, departmentGate, extFieldConfigs, tenantId]);
 
 
 
@@ -278,8 +450,6 @@ const CreateComplaintForm = ({
   // actually changes — preventing the infinite render loop that trigger() causes
   // (trigger → errors change → re-render → watch() new ref → useEffect fires → loop).
   const mobileErrorRef = useRef(null);
-  // Same guard for the postal-code field's real-time validation.
-  const postalErrorRef = useRef(null);
 
   // Track whether every isMandatory field in the live config has a
   // non-empty value, so we can gate the SUBMIT button. FormComposerV2
@@ -320,6 +490,11 @@ const CreateComplaintForm = ({
     if (reset && formResetRef.current !== reset) {
       formResetRef.current = reset;
     }
+    // After a successful create, ignore all further change events for this mount
+    // so the post-submit reset() cannot re-persist the just-submitted draft
+    // (CCSD-2117). The component unmounts on navigation to the response page, so
+    // the next Create Complaint mount starts with submittedRef=false again.
+    if (submittedRef.current) return;
     recomputeSubmitDisabled(formData);
 
     // Real-time mobile validation: show/hide CardLabelError as the user types.
@@ -346,22 +521,6 @@ const CreateComplaintForm = ({
       mobileErrorRef.current = null;
     }
 
-    // Real-time postal validation, same guarded setError/clearErrors pattern
-    // as the mobile field above (react-hook-form 6 is mode:"onSubmit", so
-    // the field's own `validate` rule only fires on submit — this surfaces
-    // the SAME error while the user types). The message text comes from the
-    // field's populators.error, which updatedConfig set to the dynamic,
-    // length-aware getPostalCodeErrorMessage(t). Optional field: empty is
-    // never an error.
-    const pc = String(formData?.postalCode ?? "").trim();
-    const postalInvalid = pc.length > 0 && !isPostalCodeValid(pc);
-    if (postalInvalid && postalErrorRef.current !== "invalid") {
-      setError?.("postalCode", { type: "validate" });
-      postalErrorRef.current = "invalid";
-    } else if (!postalInvalid && postalErrorRef.current === "invalid") {
-      clearErrors?.("postalCode");
-      postalErrorRef.current = null;
-    }
 
     // The flat Type→Sub-Type cascade only applies to the legacy dropdowns.
     // When the hierarchy component is active it owns both fields, so skip this
@@ -378,11 +537,21 @@ const CreateComplaintForm = ({
       if (prevCodes !== newCodes) {
         prevSubTypeRef.current = newSubTypes;
         setSubType(newSubTypes);
-        // Mirror citizen FormExplorer fix (CCRS#437): reset the subtype
-        // immediately so the prior selection cannot leak into the next
-        // render under a different ComplaintType. Pass `undefined` so the
-        // Dropdown falls back cleanly to its empty state.
-        setValue("SelectSubComplaintType", undefined, { shouldDirty: true, shouldTouch: true, shouldValidate: false });
+        // Mirror citizen FormExplorer fix (CCRS#437): reset the subtype so the
+        // prior selection cannot leak into the next render under a different
+        // ComplaintType — but only when the held value is actually INVALID for
+        // the new list. The list also "changes" on mount when a session draft
+        // restores SelectComplaintType (empty -> restored options); wiping
+        // unconditionally would destroy the restored SelectSubComplaintType.
+        const curSub = formData?.SelectSubComplaintType;
+        const stillValid =
+          curSub &&
+          newSubTypes.some(
+            (s) => (s.serviceCode && s.serviceCode === curSub.serviceCode) || (s.code && s.code === curSub.code)
+          );
+        if (!stillValid) {
+          setValue("SelectSubComplaintType", undefined, { shouldDirty: true, shouldTouch: true, shouldValidate: false });
+        }
       }
     }
 
@@ -406,6 +575,16 @@ const CreateComplaintForm = ({
       setValue("ComplainantName", updatedData.ComplainantName);
       setValue("ComplainantContactNumber", updatedData.ComplainantContactNumber);
       setSessionFormData(updatedData);
+    }
+
+    // Persist the whole draft on every real change so a page refresh restores
+    // the form (initialDraftRef seeds defaultValues once at mount, so this
+    // write never triggers a form reset). Stamped with tenant+user for the
+    // validity check above; cleared on successful create.
+    const draftJson = JSON.stringify(formData ?? {});
+    if (draftJson !== draftJsonRef.current) {
+      draftJsonRef.current = draftJson;
+      setSessionFormData({ ...JSON.parse(draftJson), __draftMeta: { tenant: tenantId, user: draftUserUuid } });
     }
   };
 
@@ -444,6 +623,13 @@ const CreateComplaintForm = ({
   // sessionStorage cache; resetForm() clears react-hook-form's in-memory
   // values (also closes egovernments/CCRS#478 — form-clear-on-success).
   const formResetRef = useRef(null);
+  // True once a complaint has been created successfully. Suppresses any further
+  // draft persistence for the remaining life of this mount (CCSD-2117): without
+  // it, the reset() we fire on success re-runs onFormValueChange with the still
+  // stale submitted values, which re-writes the draft with a fresh __draftMeta —
+  // so returning to Create Complaint restored the just-submitted data. The ref
+  // resets to false on remount, so the next complaint persists normally.
+  const submittedRef = useRef(false);
 
   const onFormSubmit = (_data) => {
     if (!isBoundaryLeaf(_data?.SelectedBoundary)) {
@@ -454,25 +640,10 @@ const CreateComplaintForm = ({
       });
       return;
     }
-    // Postal pattern check. Optional field; only enforce format when filled.
-    // Kept as an explicit submit-time check (in addition to the config-level
-    // `validation.pattern`) so a mangled or programmatically-set value can
-    // never slip past field-level validation. Closes
-    // egovernments/CCRS#478 — postal validation message, CSR path.
-    // Pattern + message are both config-driven per tenant (CCRS#722) — see
-    // utils/postalCode.js.
-    if (_data?.postalCode != null && String(_data.postalCode).trim().length > 0) {
-      const pc = String(_data.postalCode).trim();
-      if (!isPostalCodeValid(pc)) {
-        setToast({
-          show: true,
-          label: getPostalCodeErrorMessage(t),
-          type: "error",
-        });
-        return;
-      }
-    }
-    const payload = formPayloadToCreateComplaint(_data, tenantId, user?.info);
+    const payload = formPayloadToCreateComplaint(_data, tenantId, user?.info, {
+      caseRelatedTo,
+      fieldKeys: extFields.map((f) => f.fieldKey),
+    });
     handleResponseForCreateComplaint(payload);
   };
 
@@ -481,19 +652,34 @@ const CreateComplaintForm = ({
    */
   const handleResponseForCreateComplaint = async (payload) => {
 
+    // A submit ATTEMPT (either outcome) invalidates the persisted draft:
+    // coming back to this page must show a blank form. On failure the
+    // IN-MEMORY values stay on screen so the operator can correct and
+    // resubmit immediately — and because draftJsonRef already equals the
+    // current form JSON, the change-guard in onFormValueChange won't
+    // re-persist them until the operator actually edits something.
+    const dropDraft = () => {
+      clearSessionFormData();
+    };
     await CreateComplaintMutation(payload, {
       onError: async () => {
+        dropDraft();
         setToast({ show: true, label: t("FAILED_TO_CREATE_COMPLAINT"), type: "error" });
       },
       onSuccess: async (responseData) => {
         if (responseData?.ResponseInfo?.Errors) {
+          dropDraft();
           setToast({ show: true, label: t("FAILED_TO_CREATE_COMPLAINT"), type: "error" });
         } else {
           // Clear both the sessionStorage cache and the in-memory form
           // state before navigating, so that if the operator hits Back
           // (or the route is remounted) the form is empty rather than
           // restored to the just-submitted complaint's values.
+          // submittedRef guards onFormValueChange so the reset() below can't
+          // re-persist the stale draft (CCSD-2117); set it before resetting.
+          submittedRef.current = true;
           clearSessionFormData();
+          draftJsonRef.current = JSON.stringify({});
           if (typeof formResetRef.current === "function") {
             try { formResetRef.current({}); } catch (_) { /* noop */ }
           }
@@ -529,7 +715,7 @@ const CreateComplaintForm = ({
     <React.Fragment>
       <FormComposerV2
         onSubmit={onFormSubmit}
-        defaultValues={sessionFormData}
+        defaultValues={initialDraftRef.current}
         heading={t("")}
         config={updatedConfig?.form}
         className="custom-form"

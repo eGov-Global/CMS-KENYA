@@ -181,6 +181,61 @@ server {
   }
 
 {% endif %}
+{% if nginx_features.matomo | default(false) %}
+  # ── Matomo tracking endpoints, proxied SAME-ORIGIN ──────────────────────
+  # Pairs with local-setup/docker-compose.matomo.yml (dashboard bound to
+  # 127.0.0.1:{{ matomo_port | default(8080) }}) and the MDMS AnalyticsProvider
+  # row scriptUrl:/matomo/matomo.js. ONLY the tracker and collector are exposed,
+  # deliberately: Matomo emits absolute asset URLs, so serving the whole app
+  # under /matomo/ breaks its dashboard — admins reach that via an SSH tunnel.
+  #
+  # Same-origin means the portal loads the tracker over its OWN scheme (works
+  # with no TLS listener) and needs no ANALYTICS_SCRIPT_HOSTS entry.
+  #
+  # Host header is Matomo's OWN origin, not $host: Matomo refuses a Host it
+  # does not recognise, the installer records the origin it was driven on
+  # (127.0.0.1:{{ matomo_port | default(8080) }}), and the matomo:5-apache
+  # image ignores MATOMO_GENERAL_TRUSTED_HOSTS. The tracked page URL travels
+  # in the payload's url= parameter, so nothing is lost.
+  location = /matomo/matomo.js {
+    proxy_pass http://127.0.0.1:{{ matomo_port | default(8080) }}/matomo.js;
+    proxy_set_header Host 127.0.0.1:{{ matomo_port | default(8080) }};
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+    proxy_http_version 1.1;
+  }
+
+  location = /matomo/matomo.php {
+    proxy_pass http://127.0.0.1:{{ matomo_port | default(8080) }}/matomo.php;
+    proxy_set_header Host 127.0.0.1:{{ matomo_port | default(8080) }};
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+    proxy_http_version 1.1;
+  }
+{% if matomo_dashboard | default(false) %}
+
+  # ── Matomo DASHBOARD under the /matomo/ prefix ──────────────────────────
+  # The two exact-match (`location =`) tracker blocks above always win over this
+  # prefix, so tracking is unaffected. Host is $host (not the pin) so Matomo's
+  # absolute URLs carry the portal host; X-Forwarded-Uri + Matomo's own
+  # proxy_uri_header=1 (set by `ccrs-migrate --matomo --matomo-dashboard`) keep
+  # the /matomo prefix on generated links. This publishes an ADMIN CONSOLE with
+  # visitor data on the public domain — protect it with a strong password, and
+  # consider an allow/deny below. Off unless matomo_dashboard: true.
+  location /matomo/ {
+    proxy_pass http://127.0.0.1:{{ matomo_port | default(8080) }}/;
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+    proxy_set_header X-Forwarded-Uri /matomo;
+    proxy_http_version 1.1;
+  }
+{% endif %}
+
+{% endif %}
 {% if nginx_features.mcp %}
   # DIGIT MCP server (HTTP transport at /mcp; healthcheck at /mcp/healthz).
   # Streaming-friendly: long timeouts and buffering disabled for SSE.
@@ -436,6 +491,31 @@ server {
   }
 
 {% if digit_ui_mode == "static" %}
+{% if testing_ui_enabled | default(false) %}
+  # ── TESTING ENTRANCE (static mode) — same build, testing config, password
+  #    at the door. Rendered ONLY when host_vars sets testing_ui_enabled. ──
+  location = /{{ testing_ui_path | default('digit-ui-test') }} {
+    return 302 /{{ testing_ui_path | default('digit-ui-test') }}/;
+  }
+  location /{{ testing_ui_path | default('digit-ui-test') }}/ {
+    auth_basic           "Testing";
+    auth_basic_user_file {{ digit_dir }}/nginx/.htpasswd-testing;
+    alias /opt/digit-ui-esbuild/build/;
+    try_files $uri $uri/ /{{ testing_ui_path | default('digit-ui-test') }}/index.html;
+    add_header Cache-Control "no-cache" always;
+    sub_filter_once on;
+    sub_filter_types text/html;
+    sub_filter '</head>' '<script src="/{{ testing_ui_path | default('digit-ui-test') }}/globalConfigs.js"></script></head>';
+    sub_filter '<div id="root">' '<div style="position:fixed;bottom:0;left:0;right:0;z-index:99999;background:#B32D2D;color:#fff;text-align:center;font:600 12px/1.6 Roboto,sans-serif;padding:3px 8px">{{ testing_ui_banner | default('TESTING ENVIRONMENT &#8212; data created here is not real') }}</div><div id="root">';
+  }
+  location = /{{ testing_ui_path | default('digit-ui-test') }}/globalConfigs.js {
+    auth_basic           "Testing";
+    auth_basic_user_file {{ digit_dir }}/nginx/.htpasswd-testing;
+    alias {{ digit_dir }}/nginx/globalConfigs.testing.js;
+    default_type application/javascript;
+    add_header Cache-Control "no-cache, must-revalidate" always;
+  }
+{% endif %}
   # digit-ui in static mode: host nginx serves the build artifact from
   # /opt/digit-ui-esbuild/build/ directly. Built by the playbook
   # (`node esbuild.build.js`) — no inner Docker container, no esbuild
@@ -446,6 +526,22 @@ server {
   location /digit-ui/ {
     alias /opt/digit-ui-esbuild/build/;
     try_files $uri $uri/ /digit-ui/index.html;
+
+    # gzip is SCOPED to this static-UI location ONLY (not server-level), so no
+    # Kong-proxied API route is affected — this location serves files from disk
+    # (the ~7-8 MB bundle + CSS), never proxies. ~4x smaller over the wire.
+    # sub_filter runs before gzip, so the globalConfigs.js/theme HTML injection
+    # is unaffected. text/html is gzip's built-in default (not re-listed).
+    gzip on;
+    gzip_vary on;
+    gzip_min_length 1024;
+    gzip_comp_level 5;
+    gzip_types text/css application/javascript text/javascript application/json image/svg+xml;
+
+    # Non-hashed bundle (fixed index.js): revalidate every load (cheap ETag
+    # 304), so a redeploy is picked up immediately with no stale-cache risk.
+    # Do NOT switch to immutable/long max-age until filenames are hashed.
+    add_header Cache-Control "no-cache" always;
     sub_filter_once on;
     sub_filter_types text/html;
     # Inject globalConfigs.js + (optional) tenant theme tokens into <head>. Theme
@@ -528,6 +624,23 @@ server {
   # Kong. The pre-fix template had NO `container` branch, so this fell
   # into the HMR `else` and sent /user/oauth/token to
   # :{{ upstream_esbuild_port }} (no API there) → 504 on every login.
+{% if testing_ui_enabled | default(false) %}
+  # ── TESTING ENTRANCE (container mode) — host routes; auth + config live in
+  #    the container's digit-ui.conf (rendered by the playbook). ──
+  location = /{{ testing_ui_path | default('digit-ui-test') }} {
+    return 302 /{{ testing_ui_path | default('digit-ui-test') }}/;
+  }
+  location /{{ testing_ui_path | default('digit-ui-test') }}/ {
+    proxy_set_header Accept-Encoding "";
+    proxy_pass http://{{ nginx_upstream_host | default('127.0.0.1') }}:{{ upstream_esbuild_port }};
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+    proxy_read_timeout 120s;
+    proxy_buffering off;
+  }
+{% endif %}
   location = /digit-ui {
     return 302 /digit-ui/;
   }

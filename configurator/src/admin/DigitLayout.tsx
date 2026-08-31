@@ -1,10 +1,11 @@
-import { useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useLocaleState, useLocales, useTranslate } from 'ra-core';
 import { useApp } from '../App';
 import {
   HelpCircle,
   LogOut,
+  ExternalLink,
   User,
   Building2,
   MapPin,
@@ -35,6 +36,8 @@ import {
   MessageCircle,
   UserCog,
   Map,
+  LayoutTemplate,
+  Paintbrush,
   Globe2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -79,6 +82,16 @@ const navGroups = [
     ],
   },
   {
+    // CCSD-2008: config-driven public landing (RAINMAKER-PGR.LandingSection /
+    // LandingPageConfig) — generic CRUD in P3, Builder editor lands in P4.
+    labelKey: 'app.nav.landing_page',
+    items: [
+      { id: 'landing-builder', nameKey: 'app.nav.landing_builder', path: '/manage/landing-builder', icon: Paintbrush },
+      { id: 'landing-sections', nameKey: 'app.nav.landing_sections', path: '/manage/landing-sections', icon: LayoutTemplate },
+      { id: 'landing-page-config', nameKey: 'app.nav.landing_page_config', path: '/manage/landing-page-config', icon: Settings },
+    ],
+  },
+  {
     labelKey: 'app.nav.people',
     items: [
       { id: 'employees', nameKey: 'app.nav.employees', path: '/manage/employees', icon: Users },
@@ -94,6 +107,10 @@ const navGroups = [
       { id: 'workflow-processes', nameKey: 'app.nav.processes', path: '/manage/workflow-processes', icon: History },
       { id: 'mdms-schemas', nameKey: 'app.nav.mdms_schemas', path: '/manage/mdms-schemas', icon: FileCode },
       { id: 'boundaries', nameKey: 'app.nav.boundaries', path: '/manage/boundaries', icon: MapPin },
+      // Only useful to people who can change destinations; requiredRoles keeps it
+      // out of everyone else's sidebar (the route itself renders read-only for
+      // them, so this is a tidiness gate, not the security boundary).
+      { id: 'analytics-providers', nameKey: 'app.nav.analytics_providers', path: '/manage/analytics-providers', icon: BarChart3, requiredRoles: ['SUPERUSER', 'MDMS_ADMIN'] },
     ],
   },
 ];
@@ -107,10 +124,38 @@ const advancedResources = Object.keys(getGenericMdmsResources()).map((name) => (
 
 export function DigitLayout({ children }: { children?: ReactNode }) {
   const { state, logout, setMode, toggleHelp } = useApp();
+
+  // Hide nav items that declare requiredRoles from users who hold none of them.
+  // navGroups is a module-level constant, so the filter runs here where the
+  // session's roles are known.
+  const userRoles = state.user?.roles ?? [];
+  const visibleNavGroups = navGroups
+    .map((group) => ({
+      ...group,
+      items: group.items.filter(
+        (item) => !('requiredRoles' in item) || (item as { requiredRoles?: string[] }).requiredRoles?.some((r) => userRoles.includes(r))
+      ),
+    }))
+    .filter((group) => group.items.length > 0);
   const navigate = useNavigate();
   const location = useLocation();
   const translate = useTranslate();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  // CCSD-2009 (Builder v2 polish): the Builder is a full-canvas workspace —
+  // auto-collapse the nav sidebar and hide the docs pane while it's open,
+  // restoring the user's previous state on leave.
+  const isBuilderRoute = location.pathname.includes('/landing-builder');
+  const preBuilderCollapsed = useRef<boolean | null>(null);
+  useEffect(() => {
+    if (isBuilderRoute) {
+      if (preBuilderCollapsed.current === null) preBuilderCollapsed.current = sidebarCollapsed;
+      setSidebarCollapsed(true);
+    } else if (preBuilderCollapsed.current !== null) {
+      setSidebarCollapsed(preBuilderCollapsed.current);
+      preBuilderCollapsed.current = null;
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isBuilderRoute]);
   const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>(() => {
     // Auto-expand groups that contain the active route, collapse others
     const initial: Record<string, boolean> = {};
@@ -158,17 +203,26 @@ export function DigitLayout({ children }: { children?: ReactNode }) {
           sidebarCollapsed ? 'w-16' : 'w-64'
         } bg-card border-r border-border flex flex-col transition-all duration-200 h-full`}
       >
-        {/* Sidebar Header — DIGIT Admin Console branding */}
+        {/* Sidebar Header — DIGIT Admin Console branding.
+            CCSD-2125: the brand is a BUTTON back to the admin home — QA
+            reported "no way back to the home page"; a logo-click-goes-home is
+            the affordance they asked for (and the convention everywhere else). */}
         <div className="h-16 border-b border-border flex items-center px-4 gap-2">
-          <div className="w-1 h-8 bg-primary" />
-          {!sidebarCollapsed && (
-            <div>
-              <span className="font-condensed font-bold text-foreground">DIGIT</span>
-              <span className="font-condensed font-medium text-muted-foreground ml-1">
-                {translate('app.header.brand', { _: 'Complaints Management' })}
-              </span>
-            </div>
-          )}
+          <button
+            onClick={() => navigate('/manage')}
+            className="flex items-center gap-2 text-left rounded-md hover:opacity-80 transition-opacity"
+            title={translate('app.nav.dashboard')}
+          >
+            <div className="w-1 h-8 bg-primary" />
+            {!sidebarCollapsed && (
+              <div>
+                <span className="font-condensed font-bold text-foreground">DIGIT</span>
+                <span className="font-condensed font-medium text-muted-foreground ml-1">
+                  {translate('app.header.brand', { _: 'Complaints Management' })}
+                </span>
+              </div>
+            )}
+          </button>
           <Button
             variant="ghost"
             size="icon"
@@ -229,7 +283,7 @@ export function DigitLayout({ children }: { children?: ReactNode }) {
           </div>
 
           {/* Grouped navigation */}
-          {navGroups.map((group) => {
+          {visibleNavGroups.map((group) => {
             const isCollapsed = collapsedGroups[group.labelKey];
             return (
               <div key={group.labelKey} className="mt-3">
@@ -368,6 +422,20 @@ export function DigitLayout({ children }: { children?: ReactNode }) {
                   </p>
                   <p className="text-xs text-muted-foreground truncate">{state.tenant}</p>
                 </div>
+                {/* CCSD-2125: the configurator had NO link to the portal at
+                    all — leaving it meant hand-editing the URL. Same-origin
+                    /digit-ui/ is how every CCRS box serves the portal next to
+                    /configurator (host nginx), so a relative link needs no new
+                    config. Opens a new tab: admins keep their editing session. */}
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => window.open('/digit-ui/', '_blank', 'noopener')}
+                  title={translate('app.nav.open_portal', { _: 'Open citizen portal' })}
+                  className="text-muted-foreground hover:text-foreground h-8 w-8 flex-shrink-0"
+                >
+                  <ExternalLink className="w-4 h-4" />
+                </Button>
                 <Button
                   variant="ghost"
                   size="icon"
@@ -431,7 +499,7 @@ export function DigitLayout({ children }: { children?: ReactNode }) {
       </div>
 
       {/* Documentation Pane */}
-      <DocsPane />
+      {!isBuilderRoute && <DocsPane />}
     </div>
   );
 }

@@ -110,6 +110,29 @@ function cleanObject(obj) {
   return obj;
 }
 
+/** The createdBy uuid the PGR inbox scopes itself to, or null when it does not.
+ *
+ *  Reception officers file complaints on citizens' behalf but are neither the
+ *  accountId (that's the citizen) nor ever an assignee, so an unscoped inbox
+ *  shows them nothing of their own work. Applied whenever the user HOLDS the
+ *  reception role, regardless of other roles: granting a second role (e.g.
+ *  dashboard viewer) must not silently widen the inbox. A multi-role user can
+ *  still widen it explicitly via the "only my complaints" checkbox, which
+ *  renders under the same condition.
+ *
+ *  Exported as one function so the inbox SEARCH and the row's DETAIL LINK agree
+ *  by construction. They used to decide independently: the search read the role
+ *  list, while the link compared `auditDetails.createdBy` on the row. When that
+ *  field was absent from the inbox payload the link silently dropped the param,
+ *  the details page then queried unscoped, and the officer got "No Results
+ *  Found" on a complaint they had just clicked.
+ */
+export const receptionOnlyCreatedByUuid = () => {
+  const info = Digit.UserService.getUser()?.info;
+  const isReception = (info?.roles || []).some((r) => r?.code === "CMS_RECEPTION_OFFICER");
+  return isReception ? info?.uuid || null : null;
+};
+
 export const UICustomizations = {
   businessServiceMap,
   updatePayload: (applicationDetails, data, action, businessService) => {
@@ -1606,6 +1629,25 @@ export const UICustomizations = {
         sortOrder: (clonedData?.state?.tableForm?.sortOrder || "ASC").toUpperCase(),
       };
 
+      // Reception-officer inbox: a CMS_RECEPTION_OFFICER files complaints on
+      // citizens' behalf but is neither the accountId (that's the citizen) nor
+      // ever an assignee — so the inbox showed them nothing of their own work.
+      // Scope their inbox to the complaints THEY created (audit createdby;
+      // pgr-services filters on it server-side, so pagination/count stay
+      // correct). Applied whenever the user HOLDS the reception role — a
+      // second role must not silently widen the inbox; a multi-role user
+      // widens it explicitly by unchecking the filter below.
+      // Default ON: an unset value means the officer has not touched the filter,
+      // so the inbox opens scoped to their own work as before. Unchecking widens
+      // it to every complaint their role can otherwise see.
+      // Read from filterForm, not searchForm: the control lives in the left FILTER
+      // panel, and this preProcess destructures the two form states separately.
+      // Reading the wrong one leaves the value permanently undefined, so the
+      // `!== false` default would report "checked" no matter what the user did.
+      const ownCreatedByUuid = receptionOnlyCreatedByUuid();
+      const onlyMyComplaints = filterForm?.onlyMyComplaints !== false;
+      if (ownCreatedByUuid && onlyMyComplaints) params.createdBy = ownCreatedByUuid;
+
       // Search form fields
       if (searchForm.complaintNumber) {
         params.serviceRequestId = searchForm.complaintNumber;
@@ -1645,11 +1687,28 @@ export const UICustomizations = {
       // When the operator hasn't explicitly checked any state, default to
       // open / actionable states only — the inbox is otherwise dominated
       // by closed/resolved/rejected/cancelled rows that nobody can act on.
+      //
+      // Non-terminal (actionable) states across the supported PGR BusinessServices:
+      //   • standard PGR — PENDINGFORASSIGNMENT / PENDINGFORREASSIGNMENT / PENDINGATLME / PENDINGATSUPERVISOR
+      //   • mz.igsae CMS — PENDINGFORASSIGNMENT / PENDINGFORREASSIGNMENT / REFERRED / INVESTIGATION / INFOFROMCITIZEN
+      // We union them so the default works for either workflow without per-tenant code —
+      // a status absent from a given tenant's workflow simply matches nothing (harmless).
+      // (A fully dynamic default would read the BusinessService's non-terminal states, but this
+      //  preProcess is synchronous and has no BusinessService in scope.)
+      // NOTE: pgr search filters on applicationStatus (not state name). Two CMS states
+      // have state ≠ applicationStatus — PENDINGFORREASSIGNMENT→"REASSIGND" (spec's
+      // spelling) and INFOFROMCITIZEN→"AWAITINGINFORMATION" — so both spellings are
+      // included; a value unknown to a tenant's workflow simply matches nothing.
       const OPEN_STATES = [
         "PENDINGFORASSIGNMENT",
         "PENDINGFORREASSIGNMENT",
         "PENDINGATLME",
         "PENDINGATSUPERVISOR",
+        "REFERRED",
+        "INVESTIGATION",
+        "INFOFROMCITIZEN",
+        "REASSIGND",
+        "AWAITINGINFORMATION",
       ];
       const rawStatuses = filterForm.status || {};
       const statuses = Object.keys(rawStatuses).filter((key) => rawStatuses[key] === true);
@@ -1715,11 +1774,22 @@ export const UICustomizations = {
           return (
             <div style={{ display: "grid" }}>
               <span className="link" style={{ display: "grid" }}>
-                <Link
-                  to={`/${window.contextPath}/employee/pgr/complaint-details/${value}`}
-                >
-                  {String(value ? (column.translate ? t(column.prefix ? `${column.prefix}${value}` : value) : value) : t("ES_COMMON_NA"))}
-                </Link>
+                {(() => {
+                  // Carry createdBy ONLY for a row this user created. The details page
+                  // applies the param as a search filter, so passing it for someone
+                  // else's complaint scopes the lookup to this user and resolves to
+                  // nothing — reachable as soon as the "only my complaints" filter is
+                  // unchecked and the list includes other people's rows.
+                  const currentUserUuid = Digit.UserService.getUser()?.info?.uuid;
+                  const creatorUuid = row?.businessObject?.service?.auditDetails?.createdBy;
+                  const query =
+                    creatorUuid && creatorUuid === currentUserUuid ? `?createdBy=${encodeURIComponent(currentUserUuid)}` : "";
+                  return (
+                    <Link to={`/${window.contextPath}/employee/pgr/complaint-details/${value}${query}`}>
+                      {String(value ? (column.translate ? t(column.prefix ? `${column.prefix}${value}` : value) : value) : t("ES_COMMON_NA"))}
+                    </Link>
+                  );
+                })()}
               </span>
               {(() => {
                 // Complaint Type label = the parent group's NODE NAME, straight
@@ -1770,7 +1840,11 @@ export const UICustomizations = {
     MobileDetailsOnClick: (row, tenantId) => {
       const complaintNo = row?.["CS_COMMON_COMPLAINT_NO"];
       if (!complaintNo) return `/${window.contextPath}/employee/pgr/inbox-v2`;
-      return `/${window.contextPath}/employee/pgr/complaint-details/${complaintNo}`;
+      const currentUserUuid = Digit.UserService.getUser()?.info?.uuid;
+      const creatorUuid = row?.businessObject?.service?.auditDetails?.createdBy || row?.businessObject?.service?.createdBy;
+      const query =
+        creatorUuid && creatorUuid === currentUserUuid ? `?createdBy=${encodeURIComponent(currentUserUuid)}` : "";
+      return `/${window.contextPath}/employee/pgr/complaint-details/${complaintNo}${query}`;
     },
   },
   CampaignsInboxConfig: {
