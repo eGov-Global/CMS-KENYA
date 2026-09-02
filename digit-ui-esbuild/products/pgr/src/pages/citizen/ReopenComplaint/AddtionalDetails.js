@@ -9,7 +9,8 @@ import { BackButton, Card, CardHeader, CardText, CardLabelError, TextArea, Submi
 import { updateComplaints } from "../../../redux/actions/index";
 import { LOCALIZATION_KEY } from "../../../constants/Localization";
 import { mergeAdditionalDetail } from "../../../utils/additionalDetail";
-import { findLatestAssigneeUuidByRole } from "../../../utils/workflowAssignee";
+import { findLatestAssigneeUuidByRole, findLatestAssigneeUuidByAnyRole } from "../../../utils/workflowAssignee";
+import { deriveAssigneeRoles } from "../../../utils/autoAssign";
 
 const AddtionalDetails = (props) => {
   const history = useHistory();
@@ -19,6 +20,11 @@ const AddtionalDetails = (props) => {
   let { t } = useTranslation();
 
   const { complaintDetails } = props;
+  // Roles that may hold an assignment come from the LIVE workflow, not a
+  // hardcoded constant: Bomet's 2-level PGR has no CMS_SUPERVISOR.
+  const reopenTenant = complaintDetails?.service?.tenantId || Digit.ULBService.getCurrentTenantId();
+  const { businessService } = Digit.Hooks.pgr.useBusinessServiceStates(reopenTenant);
+  const autoAssignment = Digit.Hooks.pgr.useAutoAssignment(reopenTenant);
   const queryClient = useQueryClient();
 
   // CCSD-2082 Issue 3: reason details are now MANDATORY (reverses CCSD-1955,
@@ -84,8 +90,35 @@ const AddtionalDetails = (props) => {
       // Complaint's tenant, not the state root — see SelectRating.js note.
       const wfTenant = complaintDetails?.service?.tenantId || Digit.ULBService.getStateId();
       const businessId = complaintDetails?.service?.serviceRequestId || id;
-      const supervisorUuid = await findLatestAssigneeUuidByRole(wfTenant, businessId, "CMS_SUPERVISOR");
-      const assignes = supervisorUuid ? [supervisorUuid] : [];
+      // Reopen routes back to the LME who handled the complaint before, so the
+      // citizen's follow-up reaches the person with the context. REOPEN lands
+      // in PENDINGATLME, and that state has NO ASSIGN action — an unassigned
+      // reopen can therefore never be given an owner again, so this must not
+      // be left empty.
+      //
+      // 1) CMS_SUPERVISOR keeps the Mozambique CMS workflow behaviour.
+      // 2) Otherwise the previous holder of any role the live workflow treats
+      //    as assignable (Bomet: PGR_LME / PGR_VIEWER).
+      // 3) Otherwise fall back to fresh department+jurisdiction routing, the
+      //    same resolver the citizen create flow uses — covers a complaint
+      //    whose original handler has since left.
+      let reopenAssignee = await findLatestAssigneeUuidByRole(wfTenant, businessId, "CMS_SUPERVISOR");
+      if (!reopenAssignee) {
+        reopenAssignee = await findLatestAssigneeUuidByAnyRole(
+          wfTenant,
+          businessId,
+          deriveAssigneeRoles(businessService)
+        );
+      }
+      if (!reopenAssignee) {
+        const resolved = autoAssignment.resolve({
+          departmentCode: complaintDetails?.service?.additionalDetail?.autoAssignment?.departmentCode,
+          localityCode: complaintDetails?.service?.address?.locality?.code,
+          seed: `${businessId}:reopen`,
+        });
+        reopenAssignee = resolved?.uuid || null;
+      }
+      const assignes = reopenAssignee ? [reopenAssignee] : [];
       complaintDetails.workflow = getUpdatedWorkflow(
         reopenDetails,
         // complaintDetails,
