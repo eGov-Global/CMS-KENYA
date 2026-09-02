@@ -4,7 +4,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.egov.common.contract.request.RequestInfo;
 import org.egov.novubridge.config.NovuBridgeConfiguration;
 import org.egov.novubridge.repository.DispatchLogRepository;
-import org.egov.novubridge.service.provider.OzekiOverridesBuilder;
+import org.egov.novubridge.service.provider.SmsProviderOverridesFactory;
 import org.egov.novubridge.util.PiiMask;
 import org.egov.novubridge.web.models.*;
 import org.egov.tracer.model.CustomException;
@@ -260,9 +260,10 @@ public class DispatchPipelineService {
      * dedicated OTP workflow needed, since the workflow step is a bare
      * {@code payload.body} passthrough regardless of event type.
      *
-     * <p>When {@code novu.bridge.otp.sms.provider=ozeki}, attaches the Ozeki
-     * generic-sms overrides envelope ({@link OzekiOverridesBuilder}) so this one
-     * trigger delivers via the (possibly non-primary) Ozeki integration instead
+     * <p>When {@code novu.bridge.otp.sms.provider} names a supported gateway
+     * ({@code ozeki} or {@code bongatech}), attaches that gateway's generic-sms
+     * overrides envelope ({@link SmsProviderOverridesFactory}) so this one
+     * trigger delivers via the (possibly non-primary) integration instead
      * of whatever's primary for the sms channel — Twilio and PGR complaint
      * delivery are untouched either way, since this flag is only read here, not
      * in {@link #deriveContext} / the pass-through path above.
@@ -304,8 +305,8 @@ public class DispatchPipelineService {
         }
 
         String subscriberId = event.getTenantId() + ":" + formattedMobile;
-        String body = "Seu código de login de uso único é \"" + otp 
-        + "\". Ele expira em 5 minutos. Não compartilhe este código.";
+        String body = "Your one-time login code is \"" + otp
+        + "\". It expires in 5 minutes. Do not share this code with anyone.";
         Map<String, Object> payload = new HashMap<>();
         payload.put("otp", otp);
         payload.put("mobile", formattedMobile);
@@ -315,9 +316,8 @@ public class DispatchPipelineService {
             payload.put("userType", userType);
         }
 
-        Map<String, Object> overrides = config.isOtpOzekiEnabled()
-                ? OzekiOverridesBuilder.build(config.getOzekiIntegrationIdentifier(), transactionId, formattedMobile, body)
-                : null;
+        Map<String, Object> overrides = SmsProviderOverridesFactory.build(
+                config, config.getOtpSmsProvider(), transactionId, formattedMobile, body);
 
         // Determined once, before delivery, so the failure path's error code/message agrees
         // with which gateway was actually used.
@@ -325,9 +325,9 @@ public class DispatchPipelineService {
 
         NovuClient.NovuResponse response;
         try {
-            // When SMS is direct, `overrides` (the Ozeki-via-Novu envelope built above from
-            // config.isOtpOzekiEnabled()) simply goes unused — the two settings are
-            // independent, non-conflicting ways to route SMS to Ozeki (via Novu, or not at all).
+            // When SMS is direct, `overrides` (the generic-sms-via-Novu envelope built above
+            // from otpSmsProvider) simply goes unused — the two settings are independent,
+            // non-conflicting ways to route SMS to a gateway (via Novu, or not at all).
             response = viaDirect
                     ? directDeliveryService.sendSms(formattedMobile, body, transactionId)
                     : novuClient.trigger(config.getNovuWorkflowSms(), subscriberId, formattedMobile, payload, transactionId, overrides);

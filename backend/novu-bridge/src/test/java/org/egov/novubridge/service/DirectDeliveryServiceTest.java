@@ -5,13 +5,20 @@ import org.egov.tracer.model.CustomException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.mail.MailException;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponentsBuilder;
 
 import java.net.URI;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -41,9 +48,9 @@ class DirectDeliveryServiceTest {
         restTemplate = mock(RestTemplate.class);
         mailSender = mock(JavaMailSender.class);
         config = new NovuBridgeConfiguration();
-        config.setOzekiDirectBaseUrl("http://ozeki:9501");
-        config.setOzekiDirectUsername("api-user");
-        config.setOzekiDirectPassword("api-pass");
+        config.setDirectSmsBaseUrl("http://ozeki:9501/api");
+        config.setDirectSmsUsername("api-user");
+        config.setDirectSmsPassword("api-pass");
         config.setDirectEmailFrom("no-reply@example.org");
         service = new DirectDeliveryService(restTemplate, mailSender, config);
     }
@@ -65,6 +72,7 @@ class DirectDeliveryServiceTest {
         verify(restTemplate).getForObject(uriCaptor.capture(), eq(String.class));
         var params = UriComponentsBuilder.fromUri(uriCaptor.getValue()).build().getQueryParams();
         assertEquals("http", uriCaptor.getValue().getScheme());
+        assertEquals("/api", uriCaptor.getValue().getPath());
         assertEquals("sendmessage", params.getFirst("action"));
         assertEquals("api-user", params.getFirst("username"));
         assertEquals("api-pass", params.getFirst("password"));
@@ -103,6 +111,66 @@ class DirectDeliveryServiceTest {
         CustomException ex = assertThrows(CustomException.class,
                 () -> service.sendSms("+254712345678", "Hello", "txn-4"));
         assertEquals("NB_DIRECT_SMS_FAILED", ex.getCode());
+    }
+
+    @Test
+    void sendSms_bongatechSuccess_buildsBearerAuthedJsonRequest() {
+        config.setDirectSmsProvider("bongatech");
+        config.setDirectSmsBaseUrl("https://bulk.bongatech.co.ke/api/v1/send-sms");
+        config.setDirectSmsToken("secret-token");
+        config.setSmsSenderId("CMS-MOZ");
+
+        Map<String, Object> body = Map.of("status", true, "message", "Message successfully queued!",
+                "data", Map.of("correlator", "txn-7", "uniqueId", "abc-123"));
+        when(restTemplate.exchange(eq("https://bulk.bongatech.co.ke/api/v1/send-sms"), eq(HttpMethod.POST),
+                any(HttpEntity.class), eq(Map.class)))
+                .thenReturn(new ResponseEntity<>(body, HttpStatus.OK));
+
+        NovuClient.NovuResponse response = service.sendSms("+254712345678", "Hello there", "txn-7");
+
+        assertEquals(200, response.getStatusCode());
+        assertEquals(true, response.getResponse().get("status"));
+
+        ArgumentCaptor<HttpEntity> entityCaptor = ArgumentCaptor.forClass(HttpEntity.class);
+        verify(restTemplate).exchange(eq("https://bulk.bongatech.co.ke/api/v1/send-sms"), eq(HttpMethod.POST),
+                entityCaptor.capture(), eq(Map.class));
+        HttpEntity<Map<String, Object>> sentEntity = entityCaptor.getValue();
+        assertEquals("Bearer secret-token", sentEntity.getHeaders().getFirst(HttpHeaders.AUTHORIZATION));
+        assertEquals("CMS-MOZ", sentEntity.getBody().get("sender"));
+        assertEquals("Hello there", sentEntity.getBody().get("message"));
+        assertEquals("+254712345678", sentEntity.getBody().get("phone"));
+        assertEquals("txn-7", sentEntity.getBody().get("correlator"));
+    }
+
+    @Test
+    void sendSms_bongatechRejected_mapsToFailureResponse_withoutThrowing() {
+        config.setDirectSmsProvider("bongatech");
+        config.setDirectSmsBaseUrl("https://bulk.bongatech.co.ke/api/v1/send-sms");
+        config.setDirectSmsToken("secret-token");
+
+        Map<String, Object> body = Map.of("status", false, "message", "Invalid sender id");
+        when(restTemplate.exchange(any(String.class), eq(HttpMethod.POST), any(HttpEntity.class), eq(Map.class)))
+                .thenReturn(new ResponseEntity<>(body, HttpStatus.OK));
+
+        NovuClient.NovuResponse response = service.sendSms("+254712345678", "Hello", "txn-8");
+
+        assertEquals(502, response.getStatusCode());
+        assertEquals(false, response.getResponse().get("status"));
+    }
+
+    @Test
+    void sendSms_bongatechUnauthenticated_mapsHttpStatusToFailureResponse_withoutThrowing() {
+        config.setDirectSmsProvider("bongatech");
+        config.setDirectSmsBaseUrl("https://bulk.bongatech.co.ke/api/v1/send-sms");
+        config.setDirectSmsToken("bad-token");
+
+        when(restTemplate.exchange(any(String.class), eq(HttpMethod.POST), any(HttpEntity.class), eq(Map.class)))
+                .thenThrow(HttpClientErrorException.create(HttpStatus.UNAUTHORIZED, "Unauthorized",
+                        HttpHeaders.EMPTY, "{\"status\":false,\"message\":\"Unauthenticated.\"}".getBytes(), null));
+
+        NovuClient.NovuResponse response = service.sendSms("+254712345678", "Hello", "txn-9");
+
+        assertEquals(401, response.getStatusCode());
     }
 
     @Test
