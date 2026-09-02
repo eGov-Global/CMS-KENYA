@@ -64,3 +64,28 @@ export const findLatestAssigneeUuidByRole = async (stateCode, businessId, roleCo
   }
   return null;
 };
+
+/**
+ * Same lookup, but for ANY of several role codes — the first (most recent)
+ * history participant holding one of them wins.
+ *
+ * Bomet's 2-level workflow has no single fixed "supervisor" role the way the
+ * CMS workflow does: the assignable set is derived from the live
+ * BusinessService (deriveAssigneeRoles -> e.g. PGR_LME, PGR_VIEWER), so the
+ * caller passes that list rather than hardcoding a role that may not exist
+ * on this tenant.
+ *
+ * @param {string} stateCode   tenant the workflow is searched at
+ * @param {string} businessId  complaint serviceRequestId
+ * @param {string[]} roleCodes e.g. ["PGR_LME", "PGR_VIEWER"]
+ * @returns {Promise<string|null>}
+ */
+export const findLatestAssigneeUuidByAnyRole = async (stateCode, businessId, roleCodes) => {
+  const wanted = (Array.isArray(roleCodes) ? roleCodes : []).filter(Boolean);
+  if (!stateCode || !businessId || wanted.length === 0) return null;
+  for (const role of wanted) {
+    const uuid = await findLatestAssigneeUuidByRole(stateCode, businessId, role);
+    if (uuid) return uuid;
+  }
+  return null;
+};

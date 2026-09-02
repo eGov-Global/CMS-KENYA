@@ -1768,6 +1768,14 @@ const CreatePGRFlowV2: React.FC = () => {
 
   const { mutate: createMutation } = Digit.Hooks.pgr.useCreateComplaint(resolvedTenant);
 
+  // Client-side routing (see utils/autoAssign.js): prefetches the workflow
+  // definition, HRMS candidates and the boundary tree while the citizen fills
+  // the form, so submit can attach `workflow.assignes` synchronously and the
+  // complaint lands in a real employee's "My" inbox — the live workflow's
+  // APPLY goes straight to PENDINGATLME with no downstream ASSIGN step.
+  // Keyed on the resolved sub-tenant, the tenant the complaint is filed under.
+  const autoAssignment = Digit.Hooks.pgr.useAutoAssignment(resolvedTenant);
+
   const patch = React.useCallback((partial: Partial<FormData>) => {
     setFormData((prev) => ({ ...prev, ...partial }));
     if (error) setError(null);
@@ -1840,6 +1848,44 @@ const CreatePGRFlowV2: React.FC = () => {
       setSubmitting(true);
       const user = Digit.UserService.getUser();
       const payload = mapFormDataToRequest(formData, resolvedTenant, user?.info ?? user, evidenceDocType);
+
+      // Best-effort auto-assignment: department code comes from the picked
+      // ComplaintHierarchy leaf, jurisdiction from the submitted locality.
+      // A null resolution (data still loading, no candidates, interior-node
+      // serviceCode with no department) submits the payload unchanged —
+      // routing never blocks the citizen.
+      const leaf = formData?.SelectSubComplaintType ?? formData?.SelectComplaintType;
+      const assignment = autoAssignment.resolve({
+        departmentCode: (leaf as any)?.department,
+        localityCode: (payload.service as any)?.address?.locality?.code,
+        seed: `${(user?.info ?? user)?.uuid ?? ""}:${Date.now()}`,
+      });
+      if (assignment) {
+        (payload.workflow as Record<string, unknown>).assignes = [assignment.uuid];
+        // MERGE into the existing additionalDetail — never replace it. This
+        // flow already serialises category/dynamic-field data there, and
+        // overwriting would silently drop it. pgr-services'
+        // extractAdditionalDetails only preserves Map-shaped payloads, so the
+        // merged result is sent as an OBJECT, not a JSON string.
+        const svc = payload.service as Record<string, unknown>;
+        let existing: Record<string, unknown> = {};
+        try {
+          const raw = svc.additionalDetail;
+          existing = typeof raw === "string" ? JSON.parse(raw || "{}") : ((raw as Record<string, unknown>) || {});
+        } catch (e) {
+          existing = {};
+        }
+        svc.additionalDetail = {
+          ...existing,
+          autoAssignment: {
+            assignee: assignment.uuid,
+            departmentCode: assignment.department,
+            tier: assignment.tier,
+            ...(assignment.jurisdiction ? { jurisdiction: assignment.jurisdiction } : {}),
+            source: "citizen-create",
+          },
+        };
+      }
       createMutation(payload, {
         onError: () => {
           dispatch({ type: "CREATE_COMPLAINT", payload: { responseInfo: { status: "failed" } } });
