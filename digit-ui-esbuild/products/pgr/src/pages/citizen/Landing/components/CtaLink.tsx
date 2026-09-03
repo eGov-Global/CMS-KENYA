@@ -35,11 +35,11 @@ const VARIANTS: Record<CtaVariant, string> = {
     "bg-[hsl(var(--pgrl-accent))] !text-[hsl(var(--pgrl-on-accent))] hover:bg-[hsl(var(--pgrl-accent-hover))] shadow-sm " +
     FOCUS_RING_DARK,
   primary:
-    "bg-[hsl(var(--pgrl-primary))] !text-[hsl(var(--pgrl-on-primary))] hover:bg-[hsl(var(--pgrl-primary)/0.9)] shadow-sm " +
+    "bg-[hsl(var(--pgrl-primary))] !text-[hsl(var(--pgrl-on-primary))] hover:bg-[hsl(var(--pgrl-primary-hover))] shadow-sm " +
     FOCUS_RING,
   outline:
     "border border-solid border-[hsl(var(--pgrl-primary))] bg-transparent !text-[hsl(var(--pgrl-primary))] " +
-    "hover:bg-[hsl(var(--pgrl-primary)/0.08)] " +
+    "hover:border-[hsl(var(--pgrl-primary-hover))] hover:!text-[hsl(var(--pgrl-primary-hover))] hover:bg-[hsl(var(--pgrl-primary)/0.08)] " +
     FOCUS_RING,
   inverse:
     // Sits on the flat primary bands (hero, final CTA). Hover is a white tint
@@ -49,7 +49,7 @@ const VARIANTS: Record<CtaVariant, string> = {
     FOCUS_RING_DARK,
   subtle:
     // No hover underline (house style) — the color shift carries the affordance.
-    "bg-transparent !text-[hsl(var(--pgrl-primary))] hover:!text-[hsl(var(--pgrl-deep))] px-0 min-h-[24px] " + FOCUS_RING,
+    "bg-transparent !text-[hsl(var(--pgrl-primary))] hover:!text-[hsl(var(--pgrl-primary-hover))] px-0 min-h-[24px] " + FOCUS_RING,
 };
 
 const SIZES: Record<CtaSize, string> = {

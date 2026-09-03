@@ -15,9 +15,9 @@
 // The <header> itself is the sticky box (not an inner <nav>): sticky
 // positioning is constrained to the parent, so a sticky child of a static
 // header would have zero travel and never stick. The element also carries
-// font-sans explicitly — the vendored legacy CSS has a bare
-// `header { font-family: "Roboto Condensed" ... }` element rule that direct-
-// targets the element and would otherwise retype the masthead.
+// font-condensed explicitly — the vendored legacy CSS has a bare
+// `header { font-family: ... }` element rule that direct-targets the element,
+// so the masthead states its family rather than relying on inheritance.
 //
 // In-shell mounting: if the page renders under an app chrome with its own
 // fixed topbar, set `--pgrl-nav-offset` (e.g. "82px") so the bar pins below it
@@ -76,7 +76,7 @@ export function LandingHeader({ routes, emblemUrl, navItems, code }: LandingHead
     <header
       data-pgrl-code={code}
       className={cn(
-        "sticky top-[var(--pgrl-nav-offset,0px)] z-40 font-sans shadow-sm",
+        "sticky top-[var(--pgrl-nav-offset,0px)] z-40 font-condensed shadow-sm",
         "bg-[hsl(var(--pgrl-surface))] text-[hsl(var(--pgrl-ink))]",
         // Hairline: the page background (#FAFAFA) is nearly white, so the
         // shadow alone doesn't reliably separate the bar from the content.
@@ -171,7 +171,7 @@ export function LandingHeader({ routes, emblemUrl, navItems, code }: LandingHead
                         : // ink-soft, not ink: near-black idle labels read as
                           // heavy next to the blue they turn on hover.
                           "!text-[hsl(var(--pgrl-ink-soft))] after:bg-transparent " +
-                            "hover:!text-[hsl(var(--pgrl-primary))] hover:after:bg-[hsl(var(--pgrl-primary))]"
+                            "hover:!text-[hsl(var(--pgrl-primary-hover))] hover:after:bg-[hsl(var(--pgrl-primary-hover))]"
                     )}
                   >
                     {c(item.labelKey, item.labelKeyDefault)}

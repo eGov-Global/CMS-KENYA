@@ -1,6 +1,8 @@
 // What citizens can report, as cards.
 //
-// Each card gets its own icon and accent colour, and the whole card is one
+// Every card carries the secondary green on its top border and icon tile; the
+// title and the "report" link share the soft ink colour and bold weight; the
+// link turns green when the card is hovered. The whole card is one
 // clickable target (stretched link), so it is a single tab stop.
 
 import * as React from "react";
@@ -37,7 +39,7 @@ export function TypesSection({ routes, section }: TypesSectionProps) {
       <ul className="m-0 grid list-none grid-cols-1 gap-5 p-0 sm:grid-cols-2 lg:grid-cols-3">
         {items.map((type) => {
           const Icon = type.icon;
-          const accent = `hsl(var(${type.accentVar}))`;
+          const accent = "hsl(var(--pgrl-secondary))";
           return (
             <li key={type.id} className="m-0 p-0">
               <article
@@ -47,7 +49,7 @@ export function TypesSection({ routes, section }: TypesSectionProps) {
                 <span
                   aria-hidden
                   className="flex h-12 w-12 items-center justify-center rounded-[var(--pgrl-radius)]"
-                  style={{ backgroundColor: `hsl(var(${type.accentVar})/0.12)`, color: accent }}
+                  style={{ backgroundColor: "hsl(var(--pgrl-secondary)/0.12)", color: accent }}
                 >
                   <Icon className="h-6 w-6" />
                 </span>
@@ -72,8 +74,7 @@ export function TypesSection({ routes, section }: TypesSectionProps) {
 
                 <span
                   aria-hidden
-                  className="mt-4 inline-flex items-center gap-1 text-sm font-semibold"
-                  style={{ color: accent }}
+                  className="mt-4 inline-flex items-center gap-1 text-sm font-bold text-[hsl(var(--pgrl-ink-soft))] motion-safe:transition-colors group-hover:text-[hsl(var(--pgrl-secondary))]"
                 >
                   {c("TYPE_CTA")}
                   <ChevronRight className="h-4 w-4 motion-safe:transition-transform group-hover:translate-x-0.5" />

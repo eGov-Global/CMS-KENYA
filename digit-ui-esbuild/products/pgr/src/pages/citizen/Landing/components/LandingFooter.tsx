@@ -4,13 +4,12 @@
 import * as React from "react";
 import { cn } from "@egovernments/digit-ui-components-v2";
 import { LandingLink } from "./LandingLink";
-import { DotGrid, DOT_GRID_CORNER } from "./DotGrid";
 import { useLandingCopy } from "../useLandingCopy";
 import { sectionDomId } from "../config/resolve";
 import type { LandingSectionConfig } from "../config/types";
 import { LandingCopyKey, CONTACT, SOCIAL_LINKS } from "../content";
 import { LandingRoutes } from "../routes";
-import { CONTAINER, FOCUS_RING_DARK } from "../tokens";
+import { CONTAINER, FOCUS_RING } from "../tokens";
 
 export interface LandingFooterProps {
   routes: LandingRoutes;
@@ -89,9 +88,9 @@ function BrandMark({ id }: { id: SocialId }) {
 
 // !important text colors: see CtaLink.tsx — legacy anchor rule collision.
 const FOOT_LINK = cn(
-  "inline-flex min-h-[32px] items-center text-sm !text-[hsl(var(--pgrl-on-primary)/0.8)] no-underline",
-  "hover:!text-[hsl(var(--pgrl-accent))] motion-safe:transition-colors",
-  FOCUS_RING_DARK
+  "inline-flex min-h-[32px] items-center text-sm !text-[hsl(var(--pgrl-ink-soft))] no-underline",
+  "hover:!text-[hsl(var(--pgrl-primary-hover))] motion-safe:transition-colors",
+  FOCUS_RING
 );
 
 export function LandingFooter({ routes, section }: LandingFooterProps) {
@@ -100,52 +99,51 @@ export function LandingFooter({ routes, section }: LandingFooterProps) {
   const year = new Date().getFullYear();
 
   return (
-    <footer data-pgrl-code={section?.code} className="relative isolate overflow-hidden bg-[linear-gradient(150deg,hsl(var(--pgrl-deep)),hsl(var(--pgrl-primary)))]">
-      <DotGrid id={`${domId}-dots`} className={DOT_GRID_CORNER} />
+    <footer data-pgrl-code={section?.code} className="relative isolate overflow-hidden border-0 border-t border-solid border-[hsl(var(--pgrl-line))] bg-[hsl(var(--pgrl-surface))]">
       <div className={cn(CONTAINER, "grid grid-cols-1 gap-8 py-12 sm:grid-cols-2 lg:grid-cols-6")}>
         {/* Identity */}
         <div className="sm:col-span-2">
-          <p className="m-0 text-xs font-semibold uppercase tracking-wide text-[hsl(var(--pgrl-on-primary)/0.7)]">
+          <p className="m-0 text-xs font-semibold uppercase tracking-wide text-[hsl(var(--pgrl-ink-soft))]">
             {c("GOV_NAME")}
           </p>
-          <p className="mb-0 mt-1 text-lg font-bold leading-snug text-[hsl(var(--pgrl-on-primary))]">
+          <p className="mb-0 mt-1 text-lg font-bold leading-snug text-[hsl(var(--pgrl-ink-soft))]">
             {c("PORTAL_NAME")}
           </p>
-          <p className="mb-0 mt-2 text-sm text-[hsl(var(--pgrl-on-primary)/0.8)]">
+          <p className="mb-0 mt-2 text-sm text-[hsl(var(--pgrl-ink-soft))]">
             {c("FOOTER_ORG")} · {c("TAGLINE")}
           </p>
-          <p className="mb-0 mt-3 inline-block rounded-full bg-[hsl(var(--pgrl-accent)/0.15)] px-3 py-1 text-xs font-semibold uppercase tracking-widest text-[hsl(var(--pgrl-accent))]">
+          <p className="mb-0 mt-3 inline-block rounded-full bg-[hsl(var(--pgrl-primary)/0.1)] px-3 py-1 text-xs font-semibold uppercase tracking-widest text-[hsl(var(--pgrl-primary))]">
             {c("MOTTO_VALUES")}
           </p>
 
           {/* Contact details. <address> is the semantic element for an owner's
               contact info; it italicises by default, hence not-italic. */}
           <address className="mt-5 not-italic">
-            <p className="m-0 text-sm font-bold uppercase tracking-wide text-[hsl(var(--pgrl-on-primary))]">
+            <p className="m-0 text-sm font-bold uppercase tracking-wide text-[hsl(var(--pgrl-ink-soft))]">
               {c("FOOTER_CONTACT")}
             </p>
-            <ul className="m-0 mt-2 flex list-none flex-col gap-1 p-0 text-sm text-[hsl(var(--pgrl-on-primary)/0.8)]">
+            <ul className="m-0 mt-2 flex list-none flex-col gap-1 p-0 text-sm text-[hsl(var(--pgrl-ink-soft))]">
               <li className="m-0 p-0">
-                <span className="text-[hsl(var(--pgrl-on-primary)/0.6)]">{c("CONTACT_HOTLINE")}: </span>
+                <span className="text-[hsl(var(--pgrl-ink-soft))]">{c("CONTACT_HOTLINE")}: </span>
                 <a href={`tel:${CONTACT.hotline}`} className={FOOT_LINK}>
                   {CONTACT.hotlineDisplay}
                 </a>
               </li>
               <li className="m-0 p-0">
-                <span className="text-[hsl(var(--pgrl-on-primary)/0.6)]">{c("CONTACT_EMAIL")}: </span>
+                <span className="text-[hsl(var(--pgrl-ink-soft))]">{c("CONTACT_EMAIL")}: </span>
                 <a href={`mailto:${CONTACT.email}`} className={FOOT_LINK}>
                   {CONTACT.email}
                 </a>
               </li>
               <li className="m-0 p-0">
-                <span className="text-[hsl(var(--pgrl-on-primary)/0.6)]">{c("CONTACT_POST")}: </span>
+                <span className="text-[hsl(var(--pgrl-ink-soft))]">{c("CONTACT_POST")}: </span>
                 {CONTACT.poBox}
               </li>
             </ul>
           </address>
 
           {/* Social channels */}
-          <p className="m-0 mt-5 text-sm font-bold uppercase tracking-wide text-[hsl(var(--pgrl-on-primary))]">
+          <p className="m-0 mt-5 text-sm font-bold uppercase tracking-wide text-[hsl(var(--pgrl-ink-soft))]">
             {c("FOOTER_FOLLOW")}
           </p>
           <ul className="m-0 mt-2 flex list-none flex-row items-center gap-2 p-0">
@@ -158,10 +156,10 @@ export function LandingFooter({ routes, section }: LandingFooterProps) {
                   aria-label={`${c(social.labelKey)} (${c("EXTERNAL_LINK_NOTE")})`}
                   className={cn(
                     "inline-flex h-9 w-9 items-center justify-center rounded-full no-underline",
-                    "bg-[hsl(var(--pgrl-on-primary)/0.1)] !text-[hsl(var(--pgrl-on-primary)/0.8)]",
+                    "bg-[hsl(var(--pgrl-primary)/0.1)] !text-[hsl(var(--pgrl-ink-soft))]",
                     "hover:bg-[hsl(var(--pgrl-accent))] hover:!text-[hsl(var(--pgrl-deep))]",
                     "motion-safe:transition-colors",
-                    FOCUS_RING_DARK
+                    FOCUS_RING
                   )}
                 >
                   <BrandMark id={social.id} />
@@ -173,7 +171,7 @@ export function LandingFooter({ routes, section }: LandingFooterProps) {
 
         {GROUPS.map((group) => (
           <nav key={group.titleKey} aria-label={c(group.titleKey)}>
-            <p className="m-0 text-sm font-bold uppercase tracking-wide text-[hsl(var(--pgrl-on-primary))]">
+            <p className="m-0 text-sm font-bold uppercase tracking-wide text-[hsl(var(--pgrl-ink-soft))]">
               {c(group.titleKey)}
             </p>
             <ul className="m-0 mt-3 flex list-none flex-col gap-1 p-0">
@@ -196,9 +194,9 @@ export function LandingFooter({ routes, section }: LandingFooterProps) {
         ))}
       </div>
 
-      <div className="border-0 border-t border-solid border-[hsl(var(--pgrl-on-primary)/0.15)]">
+      <div className="border-0 border-t border-solid border-[hsl(var(--pgrl-line))]">
         <div className={cn(CONTAINER, "py-4")}>
-          <p className="m-0 text-center text-xs text-[hsl(var(--pgrl-on-primary)/0.7)]">
+          <p className="m-0 text-center text-xs text-[hsl(var(--pgrl-ink-soft))]">
             © {year} {c("FOOTER_COPYRIGHT")}
           </p>
         </div>

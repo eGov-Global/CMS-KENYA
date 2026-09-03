@@ -22,6 +22,10 @@ import * as React from "react";
 export interface LandingTokens {
   /** Brand blue — headers, nav, primary emphasis. AA on white for normal text. */
   primary: string;
+  /** Hover state for primary-coloured buttons and links (darker blue). */
+  primaryHover: string;
+  /** Secondary green — top border and icon tile on the "What You Can Report" cards. */
+  secondary: string;
   /** Deep navy — hero, footer, final CTA band. */
   deep: string;
   /** Light blue — primary CTAs, active nav indicator. Dark text only. */
@@ -55,7 +59,9 @@ export interface LandingTokens {
 }
 
 export const DEFAULT_LANDING_TOKENS: LandingTokens = {
-  primary: "200.4 75.8% 48.6%", // #1E9ADA  header, nav, section titles
+  primary: "205.2 77.2% 46.5%", // #1B85D2  header, nav, section titles, primary buttons/links
+  primaryHover: "207.3 77.8% 37.1%", // #1565A8  hover for primary buttons/links
+  secondary: "119.5 98.3% 23.5%",    // #027701  type-card border + icon tile
   deep: "198 80% 17%",          // #093B50  hero, footer, CTA band
   accent: "204 72% 71%",        // #7FC0EA  buttons, accent bars, active nav
   accentHover: "204 71% 63%",   // #5FAFE4

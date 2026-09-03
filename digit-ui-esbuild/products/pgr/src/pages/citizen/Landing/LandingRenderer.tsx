@@ -106,7 +106,9 @@ export function LandingRenderer({
     <div className="v2-scope" style={tokenStyle}>
       <div
         className={cn(
-          "pgr-landing flex min-h-screen flex-col bg-[hsl(var(--pgrl-page))] text-[hsl(var(--pgrl-ink))]",
+          "pgr-landing flex min-h-screen flex-col bg-[hsl(var(--pgrl-page))] font-condensed text-[hsl(var(--pgrl-ink))]",
+          // Preflight is off, so form controls keep the UA font unless told to inherit.
+          "[&_button]:font-[family-name:inherit] [&_input]:font-[family-name:inherit] [&_select]:font-[family-name:inherit] [&_textarea]:font-[family-name:inherit]",
           NO_HOVER_UNDERLINE,
           className
         )}
