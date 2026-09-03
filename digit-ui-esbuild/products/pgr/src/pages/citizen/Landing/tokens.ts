@@ -24,7 +24,7 @@ export interface LandingTokens {
   primary: string;
   /** Hover state for primary-coloured buttons and links (darker blue). */
   primaryHover: string;
-  /** Secondary green — top border and icon tile on the "What You Can Report" cards. */
+  /** Secondary green. Reserved; nothing on the page uses it at the moment. */
   secondary: string;
   /** Deep navy — hero, footer, final CTA band. */
   deep: string;
@@ -61,7 +61,7 @@ export interface LandingTokens {
 export const DEFAULT_LANDING_TOKENS: LandingTokens = {
   primary: "205.2 77.2% 46.5%", // #1B85D2  header, nav, section titles, primary buttons/links
   primaryHover: "207.3 77.8% 37.1%", // #1565A8  hover for primary buttons/links
-  secondary: "119.5 98.3% 23.5%",    // #027701  type-card border + icon tile
+  secondary: "119.5 98.3% 23.5%",    // #027701  reserved, currently unused
   deep: "198 80% 17%",          // #093B50  hero, footer, CTA band
   accent: "204 72% 71%",        // #7FC0EA  buttons, accent bars, active nav
   accentHover: "204 71% 63%",   // #5FAFE4

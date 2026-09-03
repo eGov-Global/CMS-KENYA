@@ -39,7 +39,6 @@ export function Section({ id, code, title, intro, action, tone = "page", classNa
               >
                 {title}
               </h2>
-              <div aria-hidden className="mt-3 h-1 w-12 rounded-full bg-[hsl(var(--pgrl-accent))]" />
               {intro && (
                 <p className="mb-0 mt-4 max-w-2xl text-base leading-relaxed text-[hsl(var(--pgrl-ink-soft))]">
                   {intro}

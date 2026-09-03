@@ -13,6 +13,8 @@ import { CONTAINER, FOCUS_RING } from "../tokens";
 
 export interface LandingFooterProps {
   routes: LandingRoutes;
+  /** Wide logo lockup (e.g. national arms + county seal) beside the identity text. */
+  logoUrl?: string;
   /** Config-driven overrides; only `code` is read (DOM/pattern id derivation). */
   section?: LandingSectionConfig;
 }
@@ -93,7 +95,7 @@ const FOOT_LINK = cn(
   FOCUS_RING
 );
 
-export function LandingFooter({ routes, section }: LandingFooterProps) {
+export function LandingFooter({ routes, logoUrl, section }: LandingFooterProps) {
   const { c } = useLandingCopy();
   const domId = sectionDomId(section?.code, "footer");
   const year = new Date().getFullYear();
@@ -101,20 +103,31 @@ export function LandingFooter({ routes, section }: LandingFooterProps) {
   return (
     <footer data-pgrl-code={section?.code} className="relative isolate overflow-hidden border-0 border-t border-solid border-[hsl(var(--pgrl-line))] bg-[hsl(var(--pgrl-surface))]">
       <div className={cn(CONTAINER, "grid grid-cols-1 gap-8 py-12 sm:grid-cols-2 lg:grid-cols-6")}>
-        {/* Identity */}
+        {/* Identity: logo lockup beside the text, as in the masthead. */}
         <div className="sm:col-span-2">
-          <p className="m-0 text-xs font-semibold uppercase tracking-wide text-[hsl(var(--pgrl-ink-soft))]">
-            {c("GOV_NAME")}
-          </p>
-          <p className="mb-0 mt-1 text-lg font-bold leading-snug text-[hsl(var(--pgrl-ink-soft))]">
-            {c("PORTAL_NAME")}
-          </p>
-          <p className="mb-0 mt-2 text-sm text-[hsl(var(--pgrl-ink-soft))]">
-            {c("FOOTER_ORG")} · {c("TAGLINE")}
-          </p>
-          <p className="mb-0 mt-3 inline-block rounded-full bg-[hsl(var(--pgrl-primary)/0.1)] px-3 py-1 text-xs font-semibold uppercase tracking-widest text-[hsl(var(--pgrl-primary))]">
-            {c("MOTTO_VALUES")}
-          </p>
+          <div className="flex items-start gap-4">
+            {logoUrl && (
+              // object-contain keeps the arms and seal uncropped; the lockup is
+              // landscape, so it gets a fixed height and free width.
+              <span className="flex h-16 shrink-0 items-center bg-white">
+                <img src={logoUrl} alt="" className="h-full w-auto max-w-[160px] object-contain" />
+              </span>
+            )}
+            <div>
+              <p className="m-0 text-xs font-semibold uppercase tracking-wide text-[hsl(var(--pgrl-ink-soft))]">
+                {c("GOV_NAME")}
+              </p>
+              <p className="mb-0 mt-1 text-lg font-bold leading-snug text-[hsl(var(--pgrl-ink-soft))]">
+                {c("PORTAL_NAME")}
+              </p>
+              <p className="mb-0 mt-2 text-sm text-[hsl(var(--pgrl-ink-soft))]">
+                {c("FOOTER_ORG")} · {c("TAGLINE")}
+              </p>
+              <p className="mb-0 mt-3 text-xs font-bold uppercase tracking-widest text-[hsl(var(--pgrl-ink-soft))]">
+                {c("MOTTO_VALUES")}
+              </p>
+            </div>
+          </div>
 
           {/* Contact details. <address> is the semantic element for an owner's
               contact info; it italicises by default, hence not-italic. */}

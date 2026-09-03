@@ -33,7 +33,10 @@ export const DEFAULT_LANDING_SECTIONS: LandingSectionConfig[] = [
   // this one line brings the section back at order 80.
   // row("news", "news", 80),
   row("institutions", "institutions", 90),
-  row("cta", "cta", 100),
+  // The closing CTA now lives at the bottom of the channels section. The
+  // standalone band (FinalCtaSection + registry entry) is kept for tenants that
+  // enable it via MDMS; restoring this line brings it back at order 100.
+  // row("cta", "cta", 100),
   row("footer", "footer", 110),
 ];
 

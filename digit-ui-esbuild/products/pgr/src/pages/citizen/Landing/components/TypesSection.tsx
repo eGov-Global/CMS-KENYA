@@ -1,8 +1,8 @@
 // What citizens can report, as cards.
 //
-// Every card carries the secondary green on its top border and icon tile; the
+// Every card carries the primary blue on its top border and icon tile; the
 // title and the "report" link share the soft ink colour and bold weight; the
-// link turns green when the card is hovered. The whole card is one
+// link turns blue when the card is hovered. The whole card is one
 // clickable target (stretched link), so it is a single tab stop.
 
 import * as React from "react";
@@ -39,7 +39,7 @@ export function TypesSection({ routes, section }: TypesSectionProps) {
       <ul className="m-0 grid list-none grid-cols-1 gap-5 p-0 sm:grid-cols-2 lg:grid-cols-3">
         {items.map((type) => {
           const Icon = type.icon;
-          const accent = "hsl(var(--pgrl-secondary))";
+          const accent = "hsl(var(--pgrl-primary))";
           return (
             <li key={type.id} className="m-0 p-0">
               <article
@@ -49,7 +49,7 @@ export function TypesSection({ routes, section }: TypesSectionProps) {
                 <span
                   aria-hidden
                   className="flex h-12 w-12 items-center justify-center rounded-[var(--pgrl-radius)]"
-                  style={{ backgroundColor: "hsl(var(--pgrl-secondary)/0.12)", color: accent }}
+                  style={{ backgroundColor: "hsl(var(--pgrl-primary)/0.1)", color: accent }}
                 >
                   <Icon className="h-6 w-6" />
                 </span>
@@ -74,7 +74,7 @@ export function TypesSection({ routes, section }: TypesSectionProps) {
 
                 <span
                   aria-hidden
-                  className="mt-4 inline-flex items-center gap-1 text-sm font-bold text-[hsl(var(--pgrl-ink-soft))] motion-safe:transition-colors group-hover:text-[hsl(var(--pgrl-secondary))]"
+                  className="mt-4 inline-flex items-center gap-1 text-sm font-bold text-[hsl(var(--pgrl-ink-soft))] motion-safe:transition-colors group-hover:text-[hsl(var(--pgrl-primary))]"
                 >
                   {c("TYPE_CTA")}
                   <ChevronRight className="h-4 w-4 motion-safe:transition-transform group-hover:translate-x-0.5" />

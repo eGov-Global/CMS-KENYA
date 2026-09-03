@@ -1,10 +1,11 @@
-// Every way to reach the service, in one place.
+// Every way to reach the service, in one place, closing with the page's final
+// call to action (folded in from the former standalone CTA band).
 //
 // This is the canonical list — the hero chips and footer are shortcuts to it.
 // The phone line matters most for citizens without a smartphone.
 
 import * as React from "react";
-import { ExternalLink, ChevronRight } from "lucide-react";
+import { ExternalLink, ChevronRight, Megaphone, Send } from "lucide-react";
 import { Section } from "./Section";
 import { CtaLink } from "./CtaLink";
 import { CHANNELS } from "../content";
@@ -81,6 +82,35 @@ export function ChannelsSection({ routes, section }: ChannelsSectionProps) {
           );
         })}
       </ul>
+
+      {/* Closing call to action: headline, reassurance and the report button. */}
+      <div className="mt-8 flex flex-col items-start gap-6 rounded-[var(--pgrl-radius)] border border-solid border-[hsl(var(--pgrl-line))] bg-[hsl(var(--pgrl-surface))] p-6 shadow-sm md:flex-row md:items-center md:justify-between md:p-8">
+        <div className="flex items-start gap-4">
+          <span
+            aria-hidden
+            className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[hsl(var(--pgrl-primary)/0.1)] text-[hsl(var(--pgrl-primary))]"
+          >
+            <Megaphone className="h-6 w-6" />
+          </span>
+          <div className="max-w-2xl">
+            <h3 className="m-0 text-xl font-bold leading-tight text-[hsl(var(--pgrl-deep))] md:text-2xl">
+              {c("FINAL_TITLE")}
+            </h3>
+            <p className="mb-0 mt-2 text-base leading-relaxed text-[hsl(var(--pgrl-ink-soft))]">
+              {c("FINAL_TEXT")}
+            </p>
+          </div>
+        </div>
+        <CtaLink
+          to={routes.REGISTER_COMPLAINT}
+          variant="accent"
+          size="lg"
+          leading={<Send aria-hidden className="h-5 w-5" />}
+          className="w-full sm:w-auto md:shrink-0"
+        >
+          {c("FINAL_CTA")}
+        </CtaLink>
+      </div>
     </Section>
   );
 }

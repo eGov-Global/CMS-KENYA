@@ -1,10 +1,10 @@
-// Data-protection block, with a route into the actual privacy notice. Copy
-// states only what the service enforces — no confidentiality claim (see content.ts).
+// Data-protection block. Copy states only what the service enforces — no
+// confidentiality claim (see content.ts). The "read the privacy notice" link is
+// left out until the county supplies a real notice (routes.PRIVACY is still "#").
 
 import * as React from "react";
-import { Lock, ChevronRight } from "lucide-react";
+import { Lock } from "lucide-react";
 import { Section } from "./Section";
-import { CtaLink } from "./CtaLink";
 import { useLandingCopy } from "../useLandingCopy";
 import { sectionDomId } from "../config/resolve";
 import { LandingRoutes } from "../routes";
@@ -37,14 +37,6 @@ export function PrivacySection({ routes, section }: PrivacySectionProps) {
         <div className="max-w-3xl">
           <p className="m-0 text-base font-semibold leading-relaxed text-[hsl(var(--pgrl-ink-soft))]">{c(section?.bodyKey, "PRIVACY_P1")}</p>
           <p className="mb-0 mt-3 text-sm leading-relaxed text-[hsl(var(--pgrl-ink-soft))]">{c(section?.subtitleKey, "PRIVACY_P2")}</p>
-          <CtaLink
-            to={routes.PRIVACY}
-            variant="subtle"
-            className="mt-4 text-sm font-semibold"
-            trailing={<ChevronRight aria-hidden className="h-4 w-4" />}
-          >
-            {c("PRIVACY_LINK")}
-          </CtaLink>
         </div>
       </div>
     </Section>

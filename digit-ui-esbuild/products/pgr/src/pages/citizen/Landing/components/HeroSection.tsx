@@ -1,5 +1,5 @@
-// Hero: headline, the two CTAs (report / track), trust markers and the other
-// ways to reach the service.
+// Hero: headline, the two CTAs (report / track) and trust markers. The full
+// list of channels lives in ChannelsSection.
 //
 // The background is plain white; text uses the same soft
 // ink as the card headings. A deployment can layer a photo through `imageUrl`;
@@ -7,13 +7,13 @@
 // whatever the photo looks like.
 
 import * as React from "react";
-import { Send, Search, Lock, Hash, Bell, MapPin, Phone, Info } from "lucide-react";
+import { Send, Search, Lock, Hash, Bell, Info } from "lucide-react";
 import { cn } from "@egovernments/digit-ui-components-v2";
 import { CtaLink } from "./CtaLink";
 import { useLandingCopy } from "../useLandingCopy";
 import { sectionDomId } from "../config/resolve";
 import { LandingRoutes } from "../routes";
-import { CONTAINER, FOCUS_RING } from "../tokens";
+import { CONTAINER } from "../tokens";
 import type { LandingSectionConfig } from "../config/types";
 
 export interface HeroSectionProps {
@@ -23,10 +23,6 @@ export interface HeroSectionProps {
   /** Config-driven overrides; absent => the built-in deck (unchanged). */
   section?: LandingSectionConfig;
 }
-
-const CHIP =
-  "inline-flex min-h-[40px] items-center justify-center gap-2 rounded-full " +
-  "border-[hsl(var(--pgrl-line))] px-4 text-sm font-medium normal-case ";
 
 export function HeroSection({ routes, imageUrl, section }: HeroSectionProps) {
   const { c } = useLandingCopy();
@@ -46,14 +42,6 @@ export function HeroSection({ routes, imageUrl, section }: HeroSectionProps) {
         { icon: Bell, label: c("HERO_TRUST_NOTIFICATIONS") },
       ];
 
-  // Other ways to reach the service. Counter desks and SMS are information, not
-  // places to click, so only the call centre carries a link.
-  const chips: Array<{ icon: typeof MapPin; label: string; to?: string }> = [
-    { icon: MapPin, label: c("HERO_CHANNEL_APP") },
-    { icon: Bell, label: c("HERO_CHANNEL_WA") },
-    { icon: Phone, label: c("HERO_CHANNEL_LINE"), to: routes.GREEN_LINE },
-  ];
-
   return (
     <section
       id={domId}
@@ -70,7 +58,7 @@ export function HeroSection({ routes, imageUrl, section }: HeroSectionProps) {
 
       <div className={cn(CONTAINER, "py-14 md:py-20")}>
         <div className="max-w-3xl">
-          <p className="m-0 inline-flex items-center rounded-full bg-[hsl(var(--pgrl-primary)/0.1)] px-3 py-1 text-xs font-semibold uppercase tracking-widest text-[hsl(var(--pgrl-primary))]">
+          <p className="m-0 text-xs font-bold uppercase tracking-widest text-[hsl(var(--pgrl-ink-soft))]">
             {c(section?.bodyKey, "HERO_EYEBROW")}
           </p>
 
@@ -128,33 +116,6 @@ export function HeroSection({ routes, imageUrl, section }: HeroSectionProps) {
               </li>
             ))}
           </ul>
-
-          {/* Secondary channels */}
-          <div className="mt-8 border-0 border-t border-solid border-[hsl(var(--pgrl-line))] pt-5">
-            <p className="m-0 text-xs font-semibold uppercase tracking-wide text-[hsl(var(--pgrl-ink-soft))]">
-              {c("HERO_CHANNELS_LABEL")}
-            </p>
-            <div className="mt-3 flex flex-wrap gap-2">
-              {chips.map(({ icon: Icon, label, to }) =>
-                to && to !== "#" ? (
-                  <CtaLink
-                    key={label}
-                    to={to}
-                    variant="outline"
-                    className={CHIP + FOCUS_RING}
-                    leading={<Icon aria-hidden className="h-4 w-4" />}
-                  >
-                    {label}
-                  </CtaLink>
-                ) : (
-                  <span key={label} className={`${CHIP} border border-solid text-[hsl(var(--pgrl-ink-soft))]`}>
-                    <Icon aria-hidden className="h-4 w-4" />
-                    {label}
-                  </span>
-                )
-              )}
-            </div>
-          </div>
         </div>
       </div>
     </section>
