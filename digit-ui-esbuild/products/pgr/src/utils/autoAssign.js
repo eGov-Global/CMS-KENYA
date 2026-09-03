@@ -25,6 +25,21 @@
 // workflow state may list but that must never receive an assignment.
 const NON_ASSIGNEE_ROLES = new Set(["CITIZEN", "AUTO_ESCALATE", "ANONYMOUS"]);
 
+// The last-mile role a NEW complaint is assigned to. deriveAssigneeRoles reads
+// every role on the create target state's forward actions, which on a
+// multi-tier workflow lists both the last-mile role (PGR_LME) and the
+// supervisor/viewer role that can also act on that state (PGR_VIEWER). A fresh
+// complaint must land on the last-mile officer, never a senior viewer — those
+// receive it only via escalation. narrowToLastMile keeps just PGR_LME when the
+// workflow has one, and otherwise returns the derived set unchanged so a
+// single-tier tenant that routes straight to a viewer still resolves someone.
+// create-time only; reopen keeps the full set (it matches the PREVIOUS holder,
+// who legitimately may have been a viewer).
+export const LAST_MILE_ROLE = "PGR_LME";
+
+export const narrowToLastMile = (roles) =>
+  Array.isArray(roles) && roles.includes(LAST_MILE_ROLE) ? [LAST_MILE_ROLE] : roles || [];
+
 /**
  * Derive the assignable role set from the live BusinessService instead of
  * hardcoding one: take the create action's target state and union the roles

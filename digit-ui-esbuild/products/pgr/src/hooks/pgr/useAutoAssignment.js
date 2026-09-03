@@ -3,7 +3,7 @@ import { useQuery } from "react-query";
 import { Request } from "@egovernments/digit-ui-libraries";
 import useBusinessServiceStates from "./useBusinessServiceStates";
 import useFetchBoundaries from "../boundary/useFetchBoundaries";
-import { deriveAssigneeRoles, resolveAutoAssignee } from "../../utils/autoAssign";
+import { deriveAssigneeRoles, narrowToLastMile, resolveAutoAssignee } from "../../utils/autoAssign";
 
 const hrmsContext = () => window?.globalConfigs?.getConfig("HRMS_CONTEXT_PATH") || "egov-hrms";
 
@@ -26,7 +26,9 @@ const useAutoAssignment = (tenantId) => {
   // already populates — no second BusinessService request per tenant.
   const { businessService } = useBusinessServiceStates(tenantId);
 
-  const roles = deriveAssigneeRoles(businessService);
+  // Narrow to the last-mile role for create-time assignment (see narrowToLastMile):
+  // a new complaint must land on PGR_LME, never a senior PGR_VIEWER.
+  const roles = narrowToLastMile(deriveAssigneeRoles(businessService));
 
   const { data: employees } = useQuery(
     ["pgrAutoAssignEmployees", tenantId, roles.join(",")],

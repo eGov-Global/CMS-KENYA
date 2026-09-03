@@ -35,7 +35,7 @@ function bundle(entry) {
   return require(out);
 }
 
-const { deriveAssigneeRoles, boundaryAncestorCodes, resolveAutoAssignee } = bundle("autoAssign.js");
+const { deriveAssigneeRoles, narrowToLastMile, boundaryAncestorCodes, resolveAutoAssignee } = bundle("autoAssign.js");
 
 /* ------------------------------------------------------------------ */
 /* Fixtures                                                            */
@@ -135,6 +135,29 @@ test("no start state / no APPLY / missing target all yield []", () => {
     }),
     []
   );
+});
+
+/* ------------------------------------------------------------------ */
+/* narrowToLastMile — create-time assignment must skip senior viewers */
+/* ------------------------------------------------------------------ */
+
+test("narrowToLastMile keeps only PGR_LME when the workflow lists both", () => {
+  // The Bomet regression: PENDINGATLME → RESOLVE/REJECT grant PGR_LME AND
+  // PGR_VIEWER, so a new complaint could land on a senior CECM (PGR_VIEWER)
+  // instead of the last-mile DIRECTOR (PGR_LME).
+  assert.deepEqual(narrowToLastMile(["PGR_VIEWER", "PGR_LME"]), ["PGR_LME"]);
+});
+
+test("narrowToLastMile falls back to the full set when there is no PGR_LME", () => {
+  // A single-tier tenant that routes straight to a viewer must still resolve
+  // someone rather than being narrowed to an empty role list.
+  assert.deepEqual(narrowToLastMile(["PGR_VIEWER"]), ["PGR_VIEWER"]);
+});
+
+test("narrowToLastMile handles empty / nullish input", () => {
+  assert.deepEqual(narrowToLastMile([]), []);
+  assert.deepEqual(narrowToLastMile(null), []);
+  assert.deepEqual(narrowToLastMile(undefined), []);
 });
 
 /* ------------------------------------------------------------------ */
