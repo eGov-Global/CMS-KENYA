@@ -128,10 +128,38 @@ export function LandingFooter({ routes, logoUrl, section }: LandingFooterProps) 
               </p>
             </div>
           </div>
+        </div>
 
+        {GROUPS.map((group) => (
+          <nav key={group.titleKey} aria-label={c(group.titleKey)}>
+            <p className="m-0 text-sm font-bold uppercase tracking-wide text-[hsl(var(--pgrl-ink-soft))]">
+              {c(group.titleKey)}
+            </p>
+            <ul className="m-0 mt-3 flex list-none flex-col gap-1 p-0">
+              {group.links.map((link) => {
+                const to = routes[link.route];
+                return (
+                  <li key={link.labelKey} className="m-0 p-0">
+                    <LandingLink
+                      to={to}
+                      target={link.external && to !== "#" ? "_blank" : undefined}
+                      className={FOOT_LINK}
+                    >
+                      {c(link.labelKey)}
+                    </LandingLink>
+                  </li>
+                );
+              })}
+            </ul>
+          </nav>
+        ))}
+
+        {/* Contact + social: own column so the row reads identity, three link
+            groups, contact. Fills the sixth grid column on desktop. */}
+        <div>
           {/* Contact details. <address> is the semantic element for an owner's
               contact info; it italicises by default, hence not-italic. */}
-          <address className="mt-5 not-italic">
+          <address className="not-italic">
             <p className="m-0 text-sm font-bold uppercase tracking-wide text-[hsl(var(--pgrl-ink-soft))]">
               {c("FOOTER_CONTACT")}
             </p>
@@ -181,30 +209,6 @@ export function LandingFooter({ routes, logoUrl, section }: LandingFooterProps) 
             ))}
           </ul>
         </div>
-
-        {GROUPS.map((group) => (
-          <nav key={group.titleKey} aria-label={c(group.titleKey)}>
-            <p className="m-0 text-sm font-bold uppercase tracking-wide text-[hsl(var(--pgrl-ink-soft))]">
-              {c(group.titleKey)}
-            </p>
-            <ul className="m-0 mt-3 flex list-none flex-col gap-1 p-0">
-              {group.links.map((link) => {
-                const to = routes[link.route];
-                return (
-                  <li key={link.labelKey} className="m-0 p-0">
-                    <LandingLink
-                      to={to}
-                      target={link.external && to !== "#" ? "_blank" : undefined}
-                      className={FOOT_LINK}
-                    >
-                      {c(link.labelKey)}
-                    </LandingLink>
-                  </li>
-                );
-              })}
-            </ul>
-          </nav>
-        ))}
       </div>
 
       <div className="border-0 border-t border-solid border-[hsl(var(--pgrl-line))]">
