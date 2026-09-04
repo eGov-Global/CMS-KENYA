@@ -9,7 +9,7 @@
 import * as React from "react";
 import { useTranslation } from "react-i18next";
 import { Link, useLocation, useHistory } from "react-router-dom";
-import { Home, Pencil, LogOut, Phone, AlertOctagon, LogIn } from "lucide-react";
+import { Pencil, LogOut, Phone, AlertOctagon, LogIn } from "lucide-react";
 import { cn } from "../../lib/cn";
 
 declare const Digit: any;
@@ -39,6 +39,8 @@ interface ProfileInfo {
   name?: string;
   mobileNumber?: string;
   emailId?: string;
+  /** Bare fileStoreId (or URL) of the uploaded profile photo, if any. */
+  photo?: string;
 }
 
 export interface CitizenSidebarProps {
@@ -50,8 +52,31 @@ export interface CitizenSidebarProps {
   contextPath?: string;
 }
 
-function Avatar({ name }: { name?: string }) {
+function Avatar({ name, photoUrl }: { name?: string; photoUrl?: string | null }) {
   const initial = (name || "").trim().charAt(0).toUpperCase() || null;
+  // Uploaded profile photo wins; the letter/glyph disc stays the fallback
+  // (and the error fallback if the photo URL dies).
+  const [broken, setBroken] = React.useState(false);
+  React.useEffect(() => setBroken(false), [photoUrl]);
+  if (photoUrl && !broken) {
+    return (
+      <img
+        src={photoUrl}
+        alt=""
+        aria-hidden
+        onError={() => setBroken(true)}
+        style={{
+          height: "5rem",
+          width: "5rem",
+          borderRadius: "9999px",
+          objectFit: "cover",
+          objectPosition: "center",
+          flexShrink: 0,
+          backgroundColor: "rgba(255, 255, 255, 0.92)",
+        }}
+      />
+    );
+  }
   // Inline sizing so the avatar still renders even if the v2 Tailwind
   // build hasn't compiled `h-20 w-20`. The colour pulls from a neutral
   // theme var so it tints with the tenant palette.
@@ -246,11 +271,73 @@ function SidebarRow({ item, isActive }: { item: NavItem; isActive: boolean }) {
 }
 
 function Profile({ info }: { info: ProfileInfo }) {
+  // Resolve the session profile photo (bare fileStoreId written by the
+  // profile save) to a URL — shown in the avatar when present, letter
+  // initial otherwise. Re-resolves when the photo changes (no re-login).
+  const [photoUrl, setPhotoUrl] = React.useState<string | null>(null);
+  const rawPhoto = (info as any)?.photo as string | undefined;
+  React.useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        if (!rawPhoto) {
+          if (!cancelled) setPhotoUrl(null);
+          return;
+        }
+        if (/^https?:\/\//.test(rawPhoto)) {
+          if (!cancelled) setPhotoUrl(rawPhoto);
+          return;
+        }
+        const D = (window as any).Digit;
+        const stateId = D?.ULBService?.getStateId?.();
+        const res = await D?.UploadServices?.Filefetch?.([rawPhoto], stateId);
+        const d = res?.data || {};
+        let url: string | null = null;
+        if (Array.isArray(d.fileStoreIds) && d.fileStoreIds[0]?.url) {
+          url = String(d.fileStoreIds[0].url).split(",")[0];
+        } else if (typeof d[rawPhoto] === "string") {
+          url = String(d[rawPhoto]).split(",")[0];
+        }
+        if (!cancelled) setPhotoUrl(url);
+      } catch (e) {
+        if (!cancelled) setPhotoUrl(null);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [rawPhoto]);
+  // Publish this block's measured height as --v2-citizen-profile-height so
+  // page content can line up with the divider underneath it (the pgr-home
+  // banner does). It CANNOT be a constant: the block grows a line per
+  // optional field (name / mobile / email) and with locale text wrapping —
+  // a citizen with an email is ~20px taller than one without. Kept live via
+  // ResizeObserver so a profile edit (photo, added email) re-aligns without
+  // a reload.
+  const profileRef = React.useRef<HTMLDivElement | null>(null);
+  React.useEffect(() => {
+    const el = profileRef.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    const publish = () => {
+      document.documentElement.style.setProperty("--v2-citizen-profile-height", `${Math.round(el.getBoundingClientRect().height)}px`);
+    };
+    publish();
+    const ro = new ResizeObserver(publish);
+    ro.observe(el);
+    return () => {
+      ro.disconnect();
+      // Clear on unmount (logout / employee shell) so stale values can't
+      // size a banner on a page that has no sidebar — consumers fall back.
+      document.documentElement.style.removeProperty("--v2-citizen-profile-height");
+    };
+  }, []);
+
   // Mirror the legacy StaticCitizenSideBar exactly: show the name line
   // only when info.name is present and isn't a duplicate of the mobile
   // number (some tenants store the phone in both fields).
   return (
     <div
+      ref={profileRef}
       style={{
         display: "flex",
         flexDirection: "column",
@@ -261,7 +348,7 @@ function Profile({ info }: { info: ProfileInfo }) {
         borderBottom: "1px solid rgba(255, 255, 255, 0.12)",
       }}
     >
-      <Avatar name={info?.name} />
+      <Avatar name={info?.name} photoUrl={photoUrl} />
       {info?.name && info?.name !== info?.mobileNumber ? (
         <div
           style={{
@@ -489,13 +576,24 @@ export function CitizenSidebar({
         // suffix so the row stays highlighted on any /<module>/* route
         // (file a complaint, complaints list, complaint detail, …).
         const prefix = entry.sidebarURL?.replace(/-home$/, "");
+        const moduleKey =
+          Digit?.Utils?.locale?.getTransformedLocale?.(key) ?? key;
+        // Label: prefer a CITIZEN-specific override, fall back to the shared
+        // ACTION_TEST_<MODULE> key. The employee sidebar renders that same
+        // ACTION_TEST_<MODULE> key, so relabelling the citizen row via
+        // localisation alone would also rename the module for staff (e.g.
+        // "Fala Cidadão" → "Início" over the employee's Create/Search
+        // Complaint group). The override keeps the two surfaces independent.
+        const overrideKey = `CS_CITIZEN_SIDEBAR_${moduleKey}`;
+        const overridden = t(overrideKey);
         return [
           {
             kind: isInternal ? ("link" as ItemKind) : ("external" as ItemKind),
             Icon: AlertOctagon,
-            text: t(
-              `ACTION_TEST_${Digit?.Utils?.locale?.getTransformedLocale?.(key) ?? key}`
-            ),
+            text:
+              overridden && overridden !== overrideKey
+                ? overridden
+                : t(`ACTION_TEST_${moduleKey}`),
             link: entry.sidebarURL,
             matchPrefixes: prefix ? [prefix] : undefined,
           },
@@ -508,17 +606,12 @@ export function CitizenSidebar({
   const items: NavItem[] = React.useMemo(() => {
     if (isLoggedInCitizen) {
       return [
-        {
-          kind: "link",
-          Icon: Home,
-          text: t("COMMON_BOTTOM_NAVIGATION_HOME"),
-          link: `/${contextPath}/citizen/all-services`,
-          // Only match the all-services surface itself; using the bare
-          // `/citizen` prefix would steal the active state from every
-          // module surface (e.g. /citizen/pgr-home would light Home up
-          // instead of Citizen Complaint).
-          matchPrefixes: [`/${contextPath}/citizen/all-services`],
-        },
+        // CCSD-2126 follow-up: the dedicated "Home" row (→ /citizen/all-services)
+        // is gone. With a single module the All Services page is just a page
+        // holding one card, so the row duplicated the module link and was the
+        // surface where two entries could appear highlighted at once. The
+        // /citizen/all-services route now redirects to the module home (see
+        // pages/citizen/index.js), so nothing is unreachable.
         ...moduleLinks,
         {
           kind: "link",

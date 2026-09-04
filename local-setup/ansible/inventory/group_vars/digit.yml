@@ -94,6 +94,24 @@ employee_module_denylist: []
 # globalConfigs.js (ansible/nightly) — no rebuild needed.
 dashboard_metrics_enabled: true
 
+# Analytics adapter registry (digit-ui-esbuild/public/analytics.js). Which
+# destinations run is DATA — one row per destination in the MDMS schema
+# common-masters.AnalyticsProvider, managed in the Configurator. With no rows
+# (the default everywhere) the SPA loads the shim and does nothing.
+#
+# These three are the ops-only knobs MDMS must not be able to set. Note the
+# polarity is the opposite of dashboard_metrics_enabled above: that one is
+# ON-by-default with an explicit off, this one is OFF-by-default because it can
+# load third-party scripts into citizen sessions.
+#   analytics_kill_switch  — true hard-disables everything, whatever MDMS says.
+#   analytics_script_hosts — extra hostnames a record's scriptUrl may use, on top
+#                            of the compile-time allowlist. MDMS cannot widen it.
+#   analytics_custom_enabled — true allows type:"CUSTOM" records (operator-named
+#                            script + data-only call templates) to initialise.
+analytics_kill_switch: false
+analytics_script_hosts: []
+analytics_custom_enabled: false
+
 # ──────────────────────────────────────────────────────────────────────
 # nginx vhost — feature flags + upstream ports
 # ──────────────────────────────────────────────────────────────────────
@@ -215,3 +233,15 @@ digit_ui_esbuild_branch: main
 # single tenant, set digit_ui_bundle_image in that host_vars file (as pg.test
 # does). Set to "" in host_vars to force an on-host build even if this is on.
 # digit_ui_bundle_image: "ghcr.io/subhashini-egov/digit-ui-esbuild:nightly-develop"
+
+# ── TESTING ENTRANCE (/digit-ui-test) — default OFF everywhere. ──
+# This renders the gated entrance ONLY (nginx + testing globalConfigs +
+# htpasswd). It does NOT create or seed the testing tenant — onboard that
+# through the configurator and flag it there ("Make this a testing tenant"),
+# which writes isTestingTenant on the tenant record; the UIs read the flag.
+# Opt in per box via host_vars:
+#   testing_ui_enabled: true
+#   testing_tenant: mz.igetesting          # login/allowlist tenant for the entrance
+#   testing_ui_htpasswd: "tester:$apr1$…"  # pre-hashed gate credential; keep in vault
+# Optional: testing_ui_path (URL prefix, default "digit-ui-test"), testing_ui_banner.
+testing_ui_enabled: false

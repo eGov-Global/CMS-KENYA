@@ -166,7 +166,7 @@ export const convertEpochFormateToDate = (dateEpoch) => {
 
 
 
-export const formPayloadToCreateComplaint = (formData, tenantId, user) => {
+export const formPayloadToCreateComplaint = (formData, tenantId, user, extOpts) => {
   const userInfo =  {
     "name": formData?.ComplainantName?.trim()?.length > 0 ? formData?.ComplainantName?.trim() : null,
     "mobileNumber": formData?.ComplainantContactNumber?.trim()?.length > 0 ? formData?.ComplainantContactNumber?.trim() : null,
@@ -183,7 +183,11 @@ export const formPayloadToCreateComplaint = (formData, tenantId, user) => {
       "serviceCode": getEffectiveServiceCode(formData?.SelectComplaintType,formData?.SelectSubComplaintType),
       "description": formData?.description,
       "applicationStatus": "CREATED",
-      "source": "web",
+      // QA #26 (product call): the Reception Officer's channel-of-receipt IS
+      // the complaint's source (was hardcoded "web"). Codes must exist in
+      // pgr-services' allowed.source list (email/inperson/letter/linhaverde
+      // added there). Employee flow only — the citizen wizard stays "web".
+      "source": formData?.ReceivedChannel?.code || "web",
       "citizen": userInfo,
       "isDeleted": false,
       "rowVersion": 1,
@@ -191,7 +195,6 @@ export const formPayloadToCreateComplaint = (formData, tenantId, user) => {
         "landmark": formData?.landmark,
         "buildingName": formData?.AddressOne,
         "street": formData?.AddressTwo,
-        "pincode": formData?.postalCode,
         // `SelectedBoundary` is the deepest node the operator picked
         // in the PGR boundary cascade (e.g. the Ward). Falls back to
         // the legacy `SelectLocality` key so any caller that still
@@ -199,7 +202,17 @@ export const formPayloadToCreateComplaint = (formData, tenantId, user) => {
         "locality": {
           "code": formData?.SelectedBoundary?.code || formData?.SelectLocality?.code,
         },
-        "geoLocation": {}
+        // CCSD-2131: the employee form's map pin (GeoLocationsPoint, added with
+        // the PGRComplaintLocationMap field) was silently DISCARDED here — this
+        // was hardcoded {} — so every technician-created complaint persisted
+        // with no coordinates and the details pages hid the location map.
+        // Citizen-parity semantics: send {latitude, longitude} when a pin
+        // exists, else keep the EMPTY OBJECT — the persister needs the object
+        // to be present even when the coords are not (see CCSD-1949/#1094).
+        "geoLocation":
+          typeof formData?.GeoLocationsPoint?.lat === "number" && typeof formData?.GeoLocationsPoint?.lng === "number"
+            ? { "latitude": formData.GeoLocationsPoint.lat, "longitude": formData.GeoLocationsPoint.lng }
+            : {}
       },
       "additionalDetail": JSON.stringify(additionalDetail),
       "auditDetails": {
@@ -215,6 +228,49 @@ export const formPayloadToCreateComplaint = (formData, tenantId, user) => {
       "hrmsAssignes": [],
       "comments": ""
     }
+  }
+
+  // Attachments (parity with the citizen create flow + the action-modal
+  // uploader): SelectedDocuments is already an array of
+  // {documentType, fileStoreId, ...} shaped by ActionUploadComponent, so
+  // forward it verbatim as workflow.verificationDocuments. Additive — absent
+  // when no file was attached, so existing behaviour is unchanged.
+  if (Array.isArray(formData?.SelectedDocuments) && formData.SelectedDocuments.length > 0) {
+    complaint.workflow.verificationDocuments = formData.SelectedDocuments;
+  }
+
+  // Additive: attach a FLAT top-level service.extendedAttributes when the
+  // employee's tenant mapped to a category (extOpts.caseRelatedTo). Backward
+  // compatible — existing 3-arg callers and non-mapped tenants are unchanged.
+  if (extOpts && extOpts.caseRelatedTo) {
+    const sct = formData?.SelectComplaintType;
+    const sst = formData?.SelectSubComplaintType;
+    const lvl1 = sct?.code ?? sct?.serviceCode ?? sct?.name;
+    const lvl2 = sst?.code ?? sst?.serviceCode ?? sst?.name;
+    const ext = {
+      caseRelatedTo: extOpts.caseRelatedTo,
+      isConfidential: !!formData?.isConfidential,
+      schemaVersion: "1.0",
+    };
+    if (lvl1) ext.hierarchyLevel1 = lvl1;
+    if (lvl2) ext.hierarchyLevel2 = lvl2;
+    (extOpts.fieldKeys || []).forEach((k) => {
+      const v = formData?.[k];
+      if (v !== undefined && v !== null && String(v).length > 0) ext[k] = v;
+    });
+    complaint.service.extendedAttributes = ext;
+  }
+
+  // Complainant address (citizen-flow parity — same extendedAttributes key the
+  // citizen "Your details" card writes). Attached even when the tenant has no
+  // category mapping so the field never silently drops its value; deliberately
+  // NOT citizen.correspondenceAddress, which would round-trip the user service.
+  const complainantAddress = formData?.ComplainantAddress?.trim();
+  if (complainantAddress) {
+    complaint.service.extendedAttributes = {
+      ...(complaint.service.extendedAttributes || {}),
+      complainantAddress,
+    };
   }
 
   return complaint;

@@ -19,6 +19,7 @@
 
 import React, { useEffect } from "react";
 import { complaintLabel } from "../../utils/complaintLabel";
+import { isVisibleOnEntrance } from "../../utils/testingTenant";
 import { useTranslation } from "react-i18next";
 import { useHistory, useRouteMatch } from "react-router-dom";
 
@@ -27,8 +28,10 @@ import { Button, Card } from "@egovernments/digit-ui-components-v2";
 import { ChevronRight, FilePlus2, Inbox } from "lucide-react";
 import { LOCALE, LOCALIZATION_KEY } from "../../constants/Localization";
 
-const CLOSED_STATUSES = ["RESOLVED", "REJECTED", "CLOSEDAFTERREJECTION", "CLOSEDAFTERRESOLUTION"];
-const REJECTED_STATUSES = ["REJECTED", "CLOSEDAFTERREJECTION"];
+// Terminal states across standard PGR + the mz.igsae CMS workflow (CANCELLED/CLOSEDAFTER*
+// are CMS terminals). Keyed by status name — see ComplaintDetails.js for the rationale.
+const CLOSED_STATUSES = ["RESOLVED", "REJECTED", "CLOSEDAFTERREJECTION", "CLOSEDAFTERRESOLUTION", "CANCELLED"];
+const REJECTED_STATUSES = ["REJECTED", "CLOSEDAFTERREJECTION", "CANCELLED"];
 
 function statusToTone(status) {
   if (REJECTED_STATUSES.includes(status)) return "rejected";
@@ -57,9 +60,20 @@ const TONE_STYLES = {
 function StatusPill({ status, t }) {
   const tone = statusToTone(status);
   const palette = TONE_STYLES[tone];
-  const labelKey = `CS_COMMON_${palette.label}`;
-  const translated = t(labelKey);
-  const label = translated === labelKey ? palette.label : translated.toUpperCase();
+  // QA #17: label with the FULL workflow status (same CS_COMMON_<status> key
+  // the details page header uses) so the card and the opened complaint always
+  // agree. The 3-way tone bucket now drives the pill COLOR only. Falls back to
+  // the bucket label when the status key isn't localized.
+  const statusKey = `CS_COMMON_${status}`;
+  const translatedStatus = t(statusKey);
+  let label;
+  if (translatedStatus !== statusKey) {
+    label = translatedStatus.toUpperCase();
+  } else {
+    const labelKey = `CS_COMMON_${palette.label}`;
+    const translated = t(labelKey);
+    label = translated === labelKey ? palette.label : translated.toUpperCase();
+  }
   return (
     <span
       style={{
@@ -80,19 +94,42 @@ function StatusPill({ status, t }) {
   );
 }
 
-function ComplaintRow({ data, onClick, t, typeCode, typeName }) {
+function ComplaintRow({ data, onClick, t, typeName }) {
   const { serviceRequestId, applicationStatus, auditDetails } = data;
-  // Complaint Type label = key-based (COMPLAINT_HIERARCHY.<code>) like every
-  // other service, falling back to the node name; OTHERS for no resolvable group.
-  const title = complaintLabel(t, typeCode, typeName) || t("CS_COMPLAINT_TYPE_OTHERS");
+  // The list aggregates complaints across authority tenants (mz.ige/mz.igsae/…)
+  // while the list-level serviceDefs are fetched at the CITIZEN's tenant — so
+  // foreign complaints missed the map and rendered the raw serviceCode. Fetch
+  // the hierarchy at THIS complaint's tenant (same read-at-complaint-tenant fix
+  // as the details page; react-query dedupes rows of the same tenant into one
+  // request, cached indefinitely). NOTE the useCustomMDMS v2 quirk: the tenant
+  // must ride inside the 5th (mdmsv2) arg — the positional one is ignored.
+  const { data: ownRows } = Digit.Hooks.useCustomMDMS(
+    data.tenantId,
+    "RAINMAKER-PGR",
+    [{ name: "ComplaintHierarchy" }],
+    {
+      cacheTime: Infinity,
+      enabled: !!data.tenantId,
+      select: (raw) => raw?.["RAINMAKER-PGR"]?.ComplaintHierarchy || [],
+    },
+    { schemaCode: "PGR_COMPLAINT_HIERARCHY_DETAILS", tenantId: data.tenantId }
+  );
+  const own = React.useMemo(() => {
+    const rows = Array.isArray(ownRows) ? ownRows : [];
+    const self = rows.find((n) => n?.code === data.serviceCode);
+    return self ? { code: self.code, name: self.name } : null;
+  }, [ownRows, data.serviceCode]);
+  // Card title = the LEAF complaint type (what the citizen actually filed —
+  // "Operating without a licence"), not a hierarchy ancestor: on a personal
+  // list the specific type is how people recognize their complaint, while the
+  // 1st level ("Business") would render near-identical cards. Key-based
+  // localization (COMPLAINT_HIERARCHY.<code>) with the node name as fallback;
+  // OTHERS when nothing resolves.
+  const title =
+    complaintLabel(t, own?.code || data.serviceCode, own?.name || typeName) || t("CS_COMPLAINT_TYPE_OTHERS");
   const dateStr = auditDetails?.createdTime
     ? Digit.DateUtils.ConvertTimestampToDate(auditDetails.createdTime)
     : "";
-  const stageKey = `${LOCALIZATION_KEY.CS_COMMON}_${applicationStatus}`;
-  const stage = (() => {
-    const v = t(stageKey);
-    return v === stageKey ? applicationStatus : v;
-  })();
   return (
     <Card
       role="button"
@@ -157,7 +194,9 @@ function ComplaintRow({ data, onClick, t, typeCode, typeName }) {
               {serviceRequestId}
             </span>
             {dateStr ? <span>{dateStr}</span> : null}
-            {stage && stage !== title ? <span>{stage}</span> : null}
+            {/* QA #17: bottom state line removed — the title pill now carries
+                the full workflow status, so this duplicate (and previously
+                contradictory) line is gone. */}
           </div>
         </div>
         <ChevronRight
@@ -229,16 +268,14 @@ export const ComplaintsList = () => {
     mobileNumber
   );
 
-  // Service defs give us serviceCode -> menuPath so each card can show the
-  // Complaint Type (category) rather than the sub-type. Cached via MDMS.
+  // serviceCode → the LEAF's own name, as a mount-time fallback while each
+  // row's own-tenant hierarchy fetch resolves (only helps complaints filed at
+  // the citizen's tenant; foreign-tenant rows resolve via the row fetch).
   const serviceDefs = Digit.Hooks.pgr.useServiceDefs(tenantId, "PGR");
-  // serviceCode → the complaint TYPE label (parent node name) straight from the
-  // hierarchy adapter (def.menuPathName); for an interior-node complaint not in
-  // the leaf set, fall back to the full code→name map cached by the adapter.
   const typeBySvcCode = React.useMemo(() => {
     const map = {};
     (serviceDefs || []).forEach((def) => {
-      if (def?.serviceCode) map[def.serviceCode] = { code: def.menuPath, name: def.menuPathName || def.name };
+      if (def?.serviceCode) map[def.serviceCode] = { name: def.name };
     });
     return map;
   }, [serviceDefs]);
@@ -254,6 +291,18 @@ export const ComplaintsList = () => {
     const v = t(key);
     return v === key ? fallback : v;
   };
+
+  // Entrance scoping for the testing tenant: the citizen "my complaints"
+  // search runs at the STATE tenant, which spans every child tenant — so a
+  // tester who used a personal mobile on the testing entrance would otherwise
+  // see TST- rows mixed into their real list here. The prod entrance drops
+  // testing-tenant rows; the testing entrance lists ONLY them. Which tenants
+  // are "testing" comes from the isTestingTenant flag (config fallback) —
+  // see utils/testingTenant. Deployments without a testing setup are untouched.
+  const visibleWrappers = React.useMemo(() => {
+    const all = data?.ServiceWrappers || [];
+    return all.filter(({ service }) => isVisibleOnEntrance(service?.tenantId));
+  }, [data]);
 
   return (
     <div
@@ -315,7 +364,7 @@ export const ComplaintsList = () => {
               </Button>
             }
           />
-        ) : !data?.ServiceWrappers?.length ? (
+        ) : !visibleWrappers.length ? (
           <EmptyState
             icon={<Inbox style={{ height: "1.5rem", width: "1.5rem" }} />}
             title={tr("CS_NO_COMPLAINTS_TITLE", "No complaints yet")}
@@ -334,12 +383,11 @@ export const ComplaintsList = () => {
               gap: "12px",
             }}
           >
-            {data.ServiceWrappers.map(({ service }) => (
+            {visibleWrappers.map(({ service }) => (
               <ComplaintRow
                 key={service.serviceRequestId}
                 data={service}
                 t={t}
-                typeCode={typeBySvcCode[service.serviceCode]?.code || service.serviceCode}
                 typeName={typeBySvcCode[service.serviceCode]?.name || (Digit.SessionStorage.get("complaintHierarchyNameByCode") || {})[service.serviceCode]}
                 onClick={() => history.push(`${path}/${service.serviceRequestId}`)}
               />

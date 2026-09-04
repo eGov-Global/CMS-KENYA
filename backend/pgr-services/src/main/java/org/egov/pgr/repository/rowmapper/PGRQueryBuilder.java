@@ -107,6 +107,13 @@ public class PGRQueryBuilder {
             addToPreparedStatement(preparedStmtList, ids);
         }
 
+        //department is stored under ser.additionaldetails (JSON), not a column - see PGRService#getDepartmentFromMDMS.
+        if (StringUtils.hasText(criteria.getDepartment())) {
+            addClauseIfRequired(preparedStmtList, builder);
+            builder.append(" ser.additionaldetails->>'department' = ? ");
+            preparedStmtList.add(criteria.getDepartment());
+        }
+
         //When UI tries to fetch "escalated" complaints count.
         if(criteria.getSlaDeltaMaxLimit() != null && criteria.getSlaDeltaMinLimit() == null){
             addClauseIfRequired(preparedStmtList, builder);
@@ -130,11 +137,29 @@ public class PGRQueryBuilder {
             addToPreparedStatement(preparedStmtList, userIds);
         }
 
+        Set<String> createdBy = criteria.getCreatedBy();
+        if (!CollectionUtils.isEmpty(createdBy)) {
+            addClauseIfRequired(preparedStmtList, builder);
+            builder.append(" ser.createdby IN (").append(createQuery(createdBy)).append(")");
+            addToPreparedStatement(preparedStmtList, createdBy);
+        }
+
         Set<String> serviceRequestIds = criteria.getServiceRequestIds();
         if (!CollectionUtils.isEmpty(serviceRequestIds)) {
             addClauseIfRequired(preparedStmtList, builder);
             builder.append(" ser.serviceRequestId IN (").append(createQuery(serviceRequestIds)).append(")");
             addToPreparedStatement(preparedStmtList, serviceRequestIds);
+        }
+
+        // Server-resolved department scope (see EmployeeDepartmentScopeService) — never bound
+        // from the request body. additionaldetails.department holds either the raw MDMS
+        // department code or its resolved name (see PGRService#getDepartmentFromMDMS), so
+        // EmployeeDepartmentScopeService populates departmentCodes with both forms.
+        Set<String> departmentCodes = criteria.getDepartmentCodes();
+        if (!CollectionUtils.isEmpty(departmentCodes)) {
+            addClauseIfRequired(preparedStmtList, builder);
+            builder.append(" ser.additionaldetails->>'department' IN (").append(createQuery(departmentCodes)).append(")");
+            addToPreparedStatement(preparedStmtList, departmentCodes);
         }
 
         // Visibility (reportee-scoped All): team-assigned complaints OR the
@@ -165,6 +190,17 @@ public class PGRQueryBuilder {
             addClauseIfRequired(preparedStmtList, builder);
             builder.append(" ads.locality IN (").append(createQuery(localities)).append(")");
             addToPreparedStatement(preparedStmtList, localities);
+        }
+
+        // Server-resolved jurisdiction scope (see EmployeeJurisdictionScopeService) — never bound
+        // from the request body. Exact match against ads.locality only; ANDs with the client-bound
+        // `locality` clause above rather than replacing it, so an employee's own explicit locality
+        // filter and their jurisdiction scope simply intersect.
+        Set<String> jurisdictionBoundaryCodes = criteria.getJurisdictionBoundaryCodes();
+        if (!CollectionUtils.isEmpty(jurisdictionBoundaryCodes)) {
+            addClauseIfRequired(preparedStmtList, builder);
+            builder.append(" ads.locality IN (").append(createQuery(jurisdictionBoundaryCodes)).append(")");
+            addToPreparedStatement(preparedStmtList, jurisdictionBoundaryCodes);
         }
 
         if (criteria.getFromDate() != null) {
@@ -221,6 +257,9 @@ public class PGRQueryBuilder {
 
         else if(criteria.getSortBy()== RequestSearchCriteria.SortBy.createdTime)
             builder.append(" ORDER BY ser.createdtime ");
+
+        else if(criteria.getSortBy()== RequestSearchCriteria.SortBy.lastModifiedTime)
+            builder.append(" ORDER BY ser.lastmodifiedtime ");
 
         // SLA-remaining ordering = (SLA budget for this complaint type) − (wall-clock
         // elapsed since creation). Done server-side so the order is consistent across

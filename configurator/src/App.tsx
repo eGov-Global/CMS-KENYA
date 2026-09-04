@@ -10,6 +10,7 @@ import CompletePage from './pages/CompletePage';
 import { CoreAdminContext, CoreAdminUI, Resource, CustomRoutes } from 'ra-core';
 import { QueryClient } from '@tanstack/react-query';
 import { DigitLayout, DigitDashboard, MdmsResourcePage, MdmsResourceShow, MdmsResourceEdit, MdmsResourceCreate } from '@/admin';
+import { LandingBuilder } from '@/admin/landingBuilder';
 import {
   DepartmentList, DepartmentShow, DepartmentEdit, DepartmentCreate, DepartmentBulkImport,
   DesignationList, DesignationShow, DesignationEdit, DesignationCreate, DesignationBulkImport,
@@ -36,6 +37,7 @@ import { NotificationLogList } from '@/resources/notification-logs/NotificationL
 import { NotificationProviderList } from '@/resources/notification-providers/NotificationProviderList';
 import { NotificationPreferenceList } from '@/resources/notification-preferences/NotificationPreferenceList';
 import { NotificationConfigure } from '@/resources/notification-configure/NotificationConfigure';
+import { AnalyticsProvidersEditor } from '@/admin/analytics/AnalyticsProvidersEditor';
 import PgrDashboard from './pages/PgrDashboard';
 import OrgChartPage from './pages/org-chart/OrgChartPage';
 import PublicDashboardConfigure from './resources/public-dashboard/PublicDashboardConfigure';
@@ -137,12 +139,21 @@ function ManagementAdmin() {
         {/* Read-only entities with List/Show */}
         <Resource name="access-roles" list={AccessRoleList} show={AccessRoleShow} />
         <Resource name="access-actions" list={AccessActionList} show={AccessActionShow} />
-        <Resource name="role-actions" list={RoleActionList} show={RoleActionShow} />
+        {/* CCSD-1996: role-actions had list/show only. Add the schema-driven
+            generic Edit/Create so a Role-Action mapping can be created/edited
+            from the UI (dedicated List/Show kept). */}
+        <Resource name="role-actions" list={RoleActionList} show={RoleActionShow} edit={MdmsResourceEdit} create={MdmsResourceCreate} />
         <Resource name="workflow-business-services" list={WorkflowServiceList} show={WorkflowServiceShow} />
         <Resource name="workflow-processes" list={WorkflowProcessList} show={WorkflowProcessShow} />
         <Resource name="mdms-schemas" list={MdmsSchemaList} show={MdmsSchemaShow} />
         <Resource name="boundary-hierarchies" list={BoundaryHierarchyList} show={BoundaryHierarchyShow} create={BoundaryHierarchyCreate} />
         <Resource name="complaint-hierarchies" list={ComplaintHierarchyList} show={ComplaintHierarchyShow} create={ComplaintHierarchyCreate} />
+        {/* CCSD-2008: config-driven landing masters — full generic CRUD (the
+            P4 Builder replaces only the edit surface via customEditor; same
+            resource, routes and MDMS APIs). dedicated:true keeps them out of
+            the auto-loop below, so routes are declared explicitly here. */}
+        <Resource name="landing-sections" list={MdmsResourcePage} show={MdmsResourceShow} edit={MdmsResourceEdit} create={MdmsResourceCreate} />
+        <Resource name="landing-page-config" list={MdmsResourcePage} show={MdmsResourceShow} edit={MdmsResourceEdit} create={MdmsResourceCreate} />
 
         {/* Novu-into-configurator: read-only notification surfaces served by the
             novu-bridge proxy (not egov-mdms). Names match the 'custom' registry
@@ -160,10 +171,18 @@ function ManagementAdmin() {
         {/* Custom routes */}
         <CustomRoutes>
           <Route path="/notification-configure" element={<NotificationConfigure />} />
+          {/* Analytics destinations. A CustomRoute rather than a <Resource>: the
+              screen deliberately does not use react-admin's list/edit/delete
+              machinery, because the generic MDMS mutation path is not scoped to
+              the session tenant and would rewrite or deactivate rows owned by
+              the parent tenant. */}
+          <Route path="/analytics-providers" element={<AnalyticsProvidersEditor />} />
           <Route path="/advanced" element={<AdvancedPage />} />
           <Route path="/pgr-dashboard" element={<PgrDashboard />} />
           <Route path="/public-dashboard" element={<PublicDashboardConfigure />} />
           <Route path="/org-chart" element={<OrgChartPage />} />
+          {/* CCSD-2009: visual Landing Page Builder over the P3 resources */}
+          <Route path="/landing-builder" element={<LandingBuilder />} />
           <Route path="/employees/bulk" element={<EmployeeBulkImport />} />
           <Route path="/departments/bulk" element={<DepartmentBulkImport />} />
           <Route path="/designations/bulk" element={<DesignationBulkImport />} />

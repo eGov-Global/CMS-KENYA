@@ -166,7 +166,14 @@ export const StoreService = {
               ?.sort((x, y) => x?.order - y?.order) || [],
           uiHomePage: uiHomePage,
         };
-    initData.selectedLanguage = Digit.SessionStorage.get("locale") || initData.languages[0].value;
+    // CCSD-2161: on a fresh session (no stored "locale") fall back to the
+    // CONFIGURED default locale, NOT languages[0]. i18next's active language
+    // already resolves to getDefaultLanguage() (e.g. pt_PT); using
+    // languages[0] here (English — first in the StateInfo seed) fetched the
+    // en_IN bundle instead, so the app rendered English while the locale read
+    // pt_PT. Aligning both makes a fresh session render the default locale.
+    initData.selectedLanguage =
+      Digit.SessionStorage.get("locale") || Digit.Utils.getDefaultLanguage() || initData.languages[0].value;
 
     ApiCacheService.saveSetting(MdmsRes["DIGIT-UI"]?.ApiCachingSettings);
 
@@ -187,6 +194,17 @@ export const StoreService = {
     }
     // .filter((item) => !!moduleTenants.find((mt) => mt.code === item.code))
     // .map((tenant) => ({ i18nKey: `TENANT_TENANTS_${tenant.code.replace(".", "_").toUpperCase()}`, ...tenant }));
+
+    // Testing-tenant codes — derived from the AUTHORITATIVE tenant.tenants
+    // master (GetCitiesWithi18nKeys drops arbitrary fields on the multi-root
+    // path, so initData.tenants can't be trusted to carry the flag). The
+    // configurator's "Make this a testing tenant" checkbox writes
+    // `isTestingTenant: true` onto the tenant record; the citizen/employee UIs
+    // read these codes to route the tenant to the /digit-ui-test entrance and
+    // hide it from production. Cached as a plain array for a synchronous read.
+    initData.testingTenantCodes = (MdmsRes?.tenant?.tenants || [])
+      .filter((t) => t?.isTestingTenant === true)
+      .map((t) => t.code);
 
     await LocalizationService.getLocale({
       modules: [`${modulePrefix}-common`, `digit-ui`, `digit-tenants`, `${modulePrefix}-${stateCode.toLowerCase()}`],

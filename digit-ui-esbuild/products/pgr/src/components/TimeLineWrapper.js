@@ -1,17 +1,171 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from "react-i18next";
 import { PopUp, Timeline, TimelineMolecule, Loader } from '@egovernments/digit-ui-components';
-import { useMyContext } from "../utils/context";
 import { convertEpochFormateToDate } from '../utils';
+import { parseFilestoreEntry } from '../utils/attachmentKind';
 
-const TimelineWrapper = ({ businessId, isWorkFlowLoading, workflowData, labelPrefix = "" }) => {
-    const { state } = useMyContext();
+// NOTE: no useMyContext() here — the citizen route tree has no MyContext
+// provider, and this wrapper renders on BOTH citizen and employee details.
+// CCSD-1971 (B4): when a complaint is marked confidential, the CITIZEN's
+// identity must not surface in the employee timeline. The complainant's name
+// and number are FULLY masked — no first letter, no last 4 digits — so nothing
+// (value or length) leaks; the backend's own mobile masking is a second layer.
+// Fully masked — the timeline reveals NO complainant PII: not the name's first
+// letter and not the number's last 4 digits. A single fixed token so neither the
+// value nor its length (nor word count) can leak. Clear identity lives only on
+// the complainant card, shown per the viewer's privilege.
+const MASKED = "******";
+const maskName = (name) => (name ? MASKED : name);
+const maskPhone = (phone) => (phone ? MASKED : phone);
+const isCitizenActor = (person) =>
+  Array.isArray(person?.roles) && person.roles.some((r) => (r?.code || r) === "CITIZEN");
+
+// QA #19: maskEmployeeContacts — set by the EMPLOYEE details page —
+// masks every non-citizen actor's name and mobile in the timeline (the
+// requirement is mask, not remove).
+// QA #19 part 1 (sheet v4): hideEmployeeContacts — set by the CITIZEN details
+// page — OMITS employee name and contact lines entirely (the citizen must not
+// see who handled the complaint). Citizen actors' own entries stay visible.
+const TimelineWrapper = ({ businessId, isWorkFlowLoading, workflowData, labelPrefix = "", currentStateChildren = null, maskConfidential = false, maskEmployeeContacts = false, hideEmployeeContacts = false }) => {
     const { t } = useTranslation();
 
     const tenantId = Digit.ULBService.getCurrentTenantId();
 
     // Manage timeline data
     const [timelineSteps, setTimelineSteps] = useState([]);
+    // CCSD-1965: fileStoreId -> viewable URL, resolved once per workflow load.
+    const [docUrls, setDocUrls] = useState({});
+
+    // Resolve viewable URLs for EVERY document across ALL workflow steps in one
+    // pass. Attachments live under the complaint's (city) tenant and Filefetch
+    // is tenant-scoped, so group by each instance's tenantId before fetching.
+    useEffect(() => {
+        const instances = workflowData?.ProcessInstances || [];
+        const byTenant = {};
+        instances.forEach((inst) => {
+            (inst?.documents || []).forEach((d) => {
+                if (!d?.fileStoreId) return;
+                const tid = inst?.tenantId || tenantId;
+                (byTenant[tid] = byTenant[tid] || []).push(d.fileStoreId);
+            });
+        });
+        const tenants = Object.keys(byTenant);
+        if (!tenants.length) { setDocUrls({}); return; }
+        let cancelled = false;
+        (async () => {
+            const map = {};
+            for (const tid of tenants) {
+                try {
+                    const res = await Digit.UploadServices.Filefetch(byTenant[tid], tid);
+                    const entries = Array.isArray(res?.data?.fileStoreIds) ? res.data.fileStoreIds : [];
+                    entries.forEach((e) => {
+                        // `url` is a comma-joined variant list. The filestore emits
+                        // several variants (full,large,medium,small,…) ONLY for
+                        // images; non-image files (PDF/doc/…) come back as a single
+                        // URL. So multiple variants ⟹ image, and we can pick a
+                        // "small" variant for the 44x44 thumbnail (mirrors
+                        // ComplaintPhotos.js). We deliberately do NOT trust the
+                        // document's `documentType` here — the generic action
+                        // uploader (ActionUploadComponent) stamps every file as
+                        // "PHOTO" regardless of its real type.
+                        // CCSD-2027: this classification moved to
+                        // utils/attachmentKind so the timeline, the details
+                        // panel and the uploader can't drift apart on what
+                        // counts as an image. It also now distinguishes
+                        // video/audio, which used to collapse into "not an
+                        // image" and render as a bare 📎 link.
+                        const parsed = parseFilestoreEntry(e?.url);
+                        if (!e?.id || !parsed) return;
+                        map[e.id] = { full: parsed.full, thumb: parsed.thumb, kind: parsed.kind, isImage: parsed.kind === "image" };
+                    });
+                } catch (e) {
+                    /* leave those ids unresolved — chip still renders as a plain link */
+                }
+            }
+            if (!cancelled) setDocUrls(map);
+        })();
+        return () => { cancelled = true; };
+    }, [workflowData, tenantId]);
+
+    // A compact per-step attachments row (thumbnails for images, a labelled
+    // chip otherwise). Returns null when the step has no documents.
+    const renderStepDocs = (documents) => {
+        if (!Array.isArray(documents) || documents.length === 0) return null;
+        return (
+            <div key="docs" style={{ display: "flex", flexWrap: "wrap", gap: "0.4rem", marginTop: "0.25rem" }}>
+                {/* CCSD-2153: release the inline size in fullscreen so the video
+                    fills the screen and the control bar pins to the bottom (the
+                    browser's fullscreen UA rule isn't !important, so the inline
+                    max-height would otherwise win and center a small box). */}
+                <style>
+                    {`
+                    video:fullscreen { width: 100% !important; height: 100% !important; max-width: none !important; max-height: none !important; object-fit: contain !important; }
+                    video:-webkit-full-screen { width: 100% !important; height: 100% !important; max-width: none !important; max-height: none !important; object-fit: contain !important; }
+                    video:-moz-full-screen { width: 100% !important; height: 100% !important; max-width: none !important; max-height: none !important; object-fit: contain !important; }
+                    /* CCSD-2153 defense-in-depth: the platform vendored CSS once shipped
+                   video::-webkit-media-controls-panel { top: 55%; position: absolute; }
+                   which pins the Chrome control bar mid-video (fullscreen) and half
+                   outside small timeline tiles. PR #1696 removed it, but it was
+                   re-introduced on a production box via a local commit to the
+                   vendored files. revert defers to the browser default, and as an
+                   !important author rule it beats any non-important vendored rule
+                   regardless of load order — so the panel renders normally even if
+                   the culprit ever ships again. */
+                    video::-webkit-media-controls-panel { position: revert !important; top: revert !important; width: revert !important; }
+                    `}
+                </style>
+                <span style={{ fontSize: "0.78rem", color: "var(--color-text-secondary, #64748b)", width: "100%" }}>
+                    {t("CS_TIMELINE_ATTACHMENTS")}
+                </span>
+                {documents.map((doc, i) => {
+                    const entry = docUrls[doc?.fileStoreId];
+                    const url = entry?.full;
+                    const label = `${t("CS_TIMELINE_ATTACHMENT")} ${i + 1}`;
+                    if (url && entry?.isImage) {
+                        return (
+                            <a key={i} href={url} target="_blank" rel="noopener noreferrer" title={label}>
+                                <img src={entry.thumb || url} alt={label}
+                                    style={{ width: 44, height: 44, objectFit: "cover", borderRadius: 6, border: "1px solid var(--color-border, #e2e8f0)" }} />
+                            </a>
+                        );
+                    }
+                    // Play video/audio in place. The timeline is a dense list,
+                    // so these stay small; preload="metadata" keeps a step with
+                    // several clips from pulling megabytes on render.
+                    if (url && entry?.kind === "video") {
+                        return (
+                            // CCSD-2153: `#t=0.1` makes the browser seek to 0.1s and paint
+                            // that frame as the thumbnail (a bare preload=metadata <video> on
+                            // a remote presigned src shows only the black background). The
+                            // fragment is safe after the S3 ?X-Amz-… query. object-fit:contain
+                            // letterboxes the frame instead of stretching it.
+                            <video key={i} src={`${url}#t=0.1`} controls playsInline preload="metadata" aria-label={label}
+                                // CCSD-2153: 280x180 (was 160x110) — the small tile cramped the
+                                // native controls and QA asked for a larger preview.
+                                style={{ width: 280, maxWidth: "100%", maxHeight: 180, objectFit: "contain", borderRadius: 6, background: "#000", border: "1px solid var(--color-border, #e2e8f0)" }} />
+                        );
+                    }
+                    if (url && entry?.kind === "audio") {
+                        return (
+                            <audio key={i} src={url} controls preload="metadata" aria-label={label}
+                                style={{ width: 280, maxWidth: "100%" }} />
+                        );
+                    }
+                    return (
+                        <a key={i} href={url || undefined} target="_blank" rel="noopener noreferrer"
+                            style={{
+                                display: "inline-flex", alignItems: "center", gap: "0.3rem",
+                                fontSize: "0.78rem", padding: "0.2rem 0.5rem", borderRadius: 6,
+                                border: "1px solid var(--color-border, #cbd5e1)", color: "var(--color-primary-1, #c84c0e)",
+                                pointerEvents: url ? "auto" : "none", opacity: url ? 1 : 0.6,
+                            }}>
+                            📎 {label}
+                        </a>
+                    );
+                })}
+            </div>
+        );
+    };
 
     useEffect(() => {
         if (workflowData && workflowData.ProcessInstances) {
@@ -65,12 +219,38 @@ const TimelineWrapper = ({ businessId, isWorkFlowLoading, workflowData, labelPre
             const steps = workflowData.ProcessInstances.map((instance, index) => {
                 const assignee = instance?.assignes?.[0];
                 const personRecord = isAssigningAction(instance?.action) ? assignee : instance?.assigner;
-                const personLine = formatPerson(personRecord);
+                // Product call (2026-07-23, follow-up on QA #19): the timeline
+                // ALWAYS masks the CITIZEN actor's name and number — even on
+                // non-confidential complaints. The complainant card is the one
+                // place that shows clear identity, per the viewer's privilege.
+                // (maskConfidential is kept as a prop for compatibility but the
+                // citizen actor no longer depends on it.)
+                const isEmployeeActor = personRecord && !isCitizenActor(personRecord);
+                const maskThis =
+                  isCitizenActor(personRecord) ||
+                  (maskEmployeeContacts && isEmployeeActor);
+                // QA #19 part 1: citizen view drops employee identity lines
+                // entirely (hide, not mask).
+                const hideThis = hideEmployeeContacts && isEmployeeActor;
                 const mobile = isAssigningAction(instance?.action) ? assignee?.mobileNumber : instance?.assigner?.mobileNumber;
-                const contactLine = mobile ? `${t("ES_COMMON_CONTACT_DETAILS")}: ${mobile}` : null;
+                // The backend already masks the mobile per viewer privilege
+                // ("Contact Details: *****0104"). Mirror that decision onto the
+                // NAME: a viewer the backend won't show the number to shouldn't
+                // see the person's identity either.
+                const backendMasked = typeof mobile === "string" && mobile.includes("*");
+                const personLine = hideThis
+                  ? null
+                  : maskThis || backendMasked ? maskName(formatPerson(personRecord)) : formatPerson(personRecord);
+                const shownMobile = hideThis ? null : maskThis ? maskPhone(mobile) : mobile;
+                const contactLine = shownMobile ? `${t("ES_COMMON_CONTACT_DETAILS")}: ${shownMobile}` : null;
 
+                // Workflow-driven label: try the localized key, else fall back to the
+                // raw action code so ANY workflow's actions (standard PGR + CMS) render
+                // legibly even before their WF_PGR_* keys are seeded.
+                const labelKey = `${labelPrefix}${instance?.action}`;
+                const localizedLabel = t(labelKey);
                 return {
-                    label: t(`${labelPrefix}${instance?.action}`),
+                    label: localizedLabel && localizedLabel !== labelKey ? localizedLabel : (instance?.action || ""),
                     variant: 'completed',
                     subElements: [
                         convertEpochFormateToDate(instance?.auditDetails?.lastModifiedTime),
@@ -78,6 +258,12 @@ const TimelineWrapper = ({ businessId, isWorkFlowLoading, workflowData, labelPre
                         contactLine,
                         formatComment(instance?.comment),
                     ].filter(Boolean),
+                    // CCSD-1965: the attachments uploaded AT this workflow step
+                    // (verificationDocuments persist per transition). Rendered
+                    // per-step below so the timeline keeps the FULL history, not
+                    // just the latest upload — same on citizen + employee UIs.
+                    documents: Array.isArray(instance?.documents) ? instance.documents : [],
+                    documentTenantId: instance?.tenantId || tenantId,
                     showConnector: true,
                 };
             });
@@ -88,15 +274,25 @@ const TimelineWrapper = ({ businessId, isWorkFlowLoading, workflowData, labelPre
     return (
         isWorkFlowLoading ? <Loader /> :
             <TimelineMolecule key="timeline" initialVisibleCount={4} hidePastLabel={timelineSteps.length < 5}>
-                {timelineSteps.map((step, index) => (
-                    <Timeline
-                        key={index}
-                        label={step.label}
-                        subElements={step.subElements}
-                        variant={step.variant}
-                        showConnector={step.showConnector}
-                    />
-                ))}
+                {timelineSteps.map((step, index) => {
+                    // Base sub-elements + this step's attachments (CCSD-1965) +
+                    // current-state children on the first row.
+                    const docsNode = renderStepDocs(step.documents);
+                    const subElements = [
+                        ...step.subElements,
+                        ...(docsNode ? [docsNode] : []),
+                        ...(index === 0 && currentStateChildren ? [currentStateChildren] : []),
+                    ];
+                    return (
+                        <Timeline
+                            key={index}
+                            label={step.label}
+                            subElements={subElements}
+                            variant={step.variant}
+                            showConnector={step.showConnector}
+                        />
+                    );
+                })}
             </TimelineMolecule>
     );
 };

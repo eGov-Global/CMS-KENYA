@@ -22,7 +22,7 @@ const codeOf = (s) => s?.applicationStatus || s?.state;
 const isActionable = (s) => !s?.isTerminateState && Array.isArray(s?.actions) && s.actions.length > 0;
 
 const useBusinessServiceStates = (tenantId, { enabled = true } = {}) => {
-  const fetchStates = async () => {
+  const fetchBusinessService = async () => {
     const wfBs = await Request({
       url: Urls.workflow.businessServiceSearch,
       method: "POST",
@@ -31,22 +31,28 @@ const useBusinessServiceStates = (tenantId, { enabled = true } = {}) => {
       useCache: true,
       params: { tenantId, businessServices: "PGR" },
     });
-    return wfBs?.BusinessServices?.[0]?.states || [];
+    return wfBs?.BusinessServices?.[0] || null;
   };
 
-  const { data: states = [], isLoading } = useQuery(
+  // Cache the whole BusinessService (not just states) under the one shared
+  // key so other consumers (useAutoAssignment's role derivation) don't issue
+  // a second identical request for the same tenant.
+  const { data: businessService = null, isLoading } = useQuery(
     ["pgrBusinessServiceStates", tenantId],
-    fetchStates,
+    fetchBusinessService,
     { staleTime: 5 * 60 * 1000, retry: false, refetchOnWindowFocus: false, enabled: !!tenantId && enabled }
   );
 
   // Every open/actionable state (any non-terminal state that has actions).
+  // Keyed on the query data (stable between renders), NOT a per-render
+  // `states` array — the reference stability of this return is load-bearing
+  // for PGRInbox's composer config (CCRS#558).
   const allActionableStates = useMemo(
-    () => states.filter(isActionable).map(codeOf).filter(Boolean),
-    [states]
+    () => (businessService?.states || []).filter(isActionable).map(codeOf).filter(Boolean),
+    [businessService]
   );
 
-  return { allActionableStates, isLoading };
+  return { allActionableStates, businessService, isLoading };
 };
 
 export default useBusinessServiceStates;

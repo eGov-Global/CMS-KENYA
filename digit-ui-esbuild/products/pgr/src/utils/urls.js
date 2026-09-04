@@ -12,11 +12,15 @@ const Urls = {
     // Visibility V1 step-2: server-resolved inbox tabs (pgr-services)
     visibilitySearch: `/pgr-services/v2/request/inbox/_search`,
     visibilityCount: `/pgr-services/v2/request/inbox/_count`,
+    // SUPERUSER cross-department search (backend PR #1260); returns ServiceWrappers + totalCount
+    adminSearch: `/pgr-services/v2/request/_admin/_search`,
     create: `/pgr-services/v2/request/_create`,
     update: `/pgr-services/v2/request/_update`,
   },
   workflow: {
-    processSearch: `egov-workflow-v2/egov-wf/process/_search`,
+    // Leading slash matters: Request() joins this onto the host, and the
+    // unslashed form produced a relative (broken) URL. (CCSD-2167)
+    processSearch: `/egov-workflow-v2/egov-wf/process/_search`,
     businessServiceSearch:  `/egov-workflow-v2/egov-wf/businessservice/_search`,
   }
 };

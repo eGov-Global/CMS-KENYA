@@ -14,6 +14,8 @@ import {
 } from "@egovernments/digit-ui-components-v2";
 
 import { updateComplaints } from "../../../redux/actions/index";
+import { mergeAdditionalDetail } from "../../../utils/additionalDetail";
+import { findLatestAssigneeUuidByRole } from "../../../utils/workflowAssignee";
 
 // i18n fallback — when a translation key is unavailable, surface the
 // English copy instead of leaving a raw constant on screen.
@@ -22,11 +24,13 @@ function tr(t, key, fallback) {
   return v === key ? fallback : v;
 }
 
-const FEEDBACK_KEYS = [
-  "CS_FEEDBACK_SERVICES",
-  "CS_FEEDBACK_RESOLUTION_TIME",
-  "CS_FEEDBACK_QUALITY_OF_WORK",
-  "CS_FEEDBACK_OTHERS",
+// CCSD-1961 option set. Keys → English fallback (used until the locale
+// bundle carries them; seeded at mz/en_IN).
+const FEEDBACK_OPTIONS = [
+  { key: "CS_FEEDBACK_EASY_SUBMIT", fallback: "Easy to submit the complaint" },
+  { key: "CS_FEEDBACK_COMMUNICATION", fallback: "Communication and updates" },
+  { key: "CS_FEEDBACK_RESOLUTION_TIME", fallback: "Resolution time" },
+  { key: "CS_FEEDBACK_OTHERS", fallback: "Other" },
 ];
 
 /**
@@ -162,23 +166,71 @@ const SelectRating = ({ parentRoute }) => {
     // CS_FEEDBACK_WHAT_WAS_GOOD historically shipped as undefined when
     // no boxes were ticked and `.join` blew up the page (CCRS#441).
     // Sticking to the same payload: csv of localised picks.
-    const selections = FEEDBACK_KEYS.filter((k) => picks[k]).map((k) => t(k));
+    const selections = FEEDBACK_OPTIONS.filter((o) => picks[o.key]).map((o) => tr(t, o.key, o.fallback));
 
     complaintDetails.service.rating = rating;
-    complaintDetails.service.additionalDetail = selections.join(",");
+    // CCSD-2012 (sibling of the reopen clobber): this used to REPLACE the
+    // whole additionalDetail object with the bare CSV string. The backend
+    // can't read a string there (extractAdditionalDetails → {}), so it (a)
+    // silently discarded the feedback AND (b) re-derived `department` from
+    // the serviceCode — "NA" for unmapped codes — hiding the complaint from
+    // department-scoped supervisors, and poisoning a later REOPEN with the
+    // wrong department. Merge the CSV under its own key instead: routing
+    // data survives and the feedback actually persists for the first time.
+    complaintDetails.service.additionalDetail = mergeAdditionalDetail(
+      complaintDetails.service.additionalDetail,
+      { ratingFeedback: selections.join(",") }
+    );
+    // CCSD-2167: RATE routes the complaint to the CASE MANAGER who last handled
+    // it — the FE's job is to PASS that user id. Found by walking the workflow
+    // history for CMS_CASE_MANAGER (utils/workflowAssignee); omitted when none
+    // is found (a complaint with no case manager, or the non-CMS workflow), so
+    // the payload matches pre-2167 in that case. hrmsAssignes mirrors assignes,
+    // as the employee ASSIGN payload does (PGRDetails.js).
+    //
+    // KNOWN BACKEND GAP (owned by the backend team, per product decision):
+    // RATE currently transitions to a TERMINAL state (CLOSEDAFTERRESOLUTION /
+    // CLOSEDAFTERREJECTION) and egov-workflow-v2 rejects an assignee on a
+    // terminal transition — verified: 400 INVALID_ASSIGNEE. The FE sends the id
+    // as required; the backend will be changed to accept the assignee on the
+    // RATE transition. Until that lands, rating a complaint that HAS a case
+    // manager in history will 400 on this env — expected and tracked.
+    // Search at the COMPLAINT's tenant (its process instances live where it
+    // was filed, e.g. mz.ige) — a state-tenant search silently finds nothing
+    // on city-tenanted complaints and the derivation becomes a no-op.
+    const wfTenant = complaintDetails?.service?.tenantId || Digit.ULBService.getStateId();
+    const businessId = complaintDetails?.service?.serviceRequestId || id;
+    const caseManagerUuid = await findLatestAssigneeUuidByRole(wfTenant, businessId, "CMS_CASE_MANAGER");
     complaintDetails.workflow = {
       action: "RATE",
       comments,
       verificationDocuments: [],
+      ...(caseManagerUuid ? { assignes: [caseManagerUuid], hrmsAssignes: [caseManagerUuid] } : {}),
     };
 
     try {
       // Await — Response.js reads the redux slice on mount and a race
       // here used to leave it blank (CCRS#473).
-      await updateComplaint({
-        service: complaintDetails.service,
-        workflow: complaintDetails.workflow,
-      });
+      try {
+        await updateComplaint({
+          service: complaintDetails.service,
+          workflow: complaintDetails.workflow,
+        });
+      } catch (err) {
+        // KNOWN BACKEND GAP fallback: the backend still rejects an assignee on
+        // the terminal RATE transition (400 INVALID_ASSIGNEE). Sending the
+        // case-manager id is the requirement — but a citizen must NEVER be
+        // unable to rate because of it. Retry once without the assignee; when
+        // the backend change lands this branch simply stops firing.
+        if (!caseManagerUuid) throw err;
+        console.warn("RATE with assignee rejected by backend (terminal-state gap) — retrying without assignee", err);
+        const { assignes, hrmsAssignes, ...workflowNoAssignee } = complaintDetails.workflow;
+        complaintDetails.workflow = workflowNoAssignee;
+        await updateComplaint({
+          service: complaintDetails.service,
+          workflow: workflowNoAssignee,
+        });
+      }
       // Invalidate the cached complaint-details + complaints-list
       // queries so when the citizen navigates back to /complaint-
       // details the page refetches with the freshly-saved rating.
@@ -211,7 +263,11 @@ const SelectRating = ({ parentRoute }) => {
       <div style={{ flex: "1 1 auto", padding: "1rem 1.25rem" }}>
         <Card className="p-6 space-y-6">
           <Field
-            label={tr(t, "CS_COMPLAINT_RATE_TEXT", "Rate your experience")}
+            label={tr(
+              t,
+              "CS_COMPLAINT_RATE_TEXT",
+              "Overall, how satisfied are you with the handling of your complaint?"
+            )}
             required
           >
             <StarRow value={rating} onChange={setRating} />
@@ -234,7 +290,11 @@ const SelectRating = ({ parentRoute }) => {
           </Field>
 
           <Field
-            label={tr(t, "CS_FEEDBACK_WHAT_WAS_GOOD", "What was good?")}
+            label={tr(
+              t,
+              "CS_FEEDBACK_WHAT_WAS_GOOD",
+              "What did we do well? (Select all that apply) (optional)"
+            )}
           >
             <div
               style={{
@@ -243,14 +303,14 @@ const SelectRating = ({ parentRoute }) => {
                 gap: "4px",
               }}
             >
-              {FEEDBACK_KEYS.map((k) => (
+              {FEEDBACK_OPTIONS.map((o) => (
                 <FeedbackCheckbox
-                  key={k}
-                  checked={!!picks[k]}
+                  key={o.key}
+                  checked={!!picks[o.key]}
                   onChange={(checked) =>
-                    setPicks((prev) => ({ ...prev, [k]: checked }))
+                    setPicks((prev) => ({ ...prev, [o.key]: checked }))
                   }
-                  label={t(k)}
+                  label={tr(t, o.key, o.fallback)}
                 />
               ))}
             </div>

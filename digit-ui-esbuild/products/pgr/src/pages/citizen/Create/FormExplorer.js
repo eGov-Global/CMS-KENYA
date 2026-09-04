@@ -192,7 +192,7 @@ const FormExplorer = () => {
           type: "CREATE_COMPLAINT",
           payload: { responseInfo: { status: "failed" } },
         });
-        history.push(`/digit-ui/citizen/pgr/response`);
+        history.push(`/${window?.contextPath || "digit-ui"}/citizen/pgr/response`);
       },
       onSuccess: async (responseData) => {
         dispatch({
@@ -203,10 +203,10 @@ const FormExplorer = () => {
           const id = responseData.ServiceWrappers[0].service.serviceRequestId;
 
           await client.refetchQueries(["complaintsList"]);
-          history.push(`/digit-ui/citizen/pgr/response`);
+          history.push(`/${window?.contextPath || "digit-ui"}/citizen/pgr/response`);
 
         } else {
-          history.push(`/digit-ui/citizen/pgr/response`);
+          history.push(`/${window?.contextPath || "digit-ui"}/citizen/pgr/response`);
         }
       },
     });

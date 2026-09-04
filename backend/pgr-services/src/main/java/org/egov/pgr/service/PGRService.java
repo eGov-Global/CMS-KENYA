@@ -27,6 +27,7 @@ import static org.egov.pgr.util.PGRConstants.MDMS_DEPARTMENT_NAME_SEARCH;
 import static org.egov.pgr.util.PGRConstants.MDMS_SERVICENAME_SEARCH;
 import static org.egov.pgr.util.PGRConstants.ROLE_CONFIDENTIAL_VIEWER;
 import static org.egov.pgr.util.PGRConstants.MASK_SENTINEL;
+import static org.egov.pgr.util.PGRConstants.USERTYPE_EMPLOYEE;
 
 import java.util.stream.Collectors;
 
@@ -62,13 +63,19 @@ public class PGRService {
 
     private EncryptionDecryptionService encryptionDecryptionService;
 
+    private EmployeeDepartmentScopeService employeeDepartmentScopeService;
+
+    private EmployeeJurisdictionScopeService employeeJurisdictionScopeService;
+
     @Autowired
     public PGRService(EnrichmentService enrichmentService, UserService userService, WorkflowService workflowService,
                       ServiceRequestValidator serviceRequestValidator, ServiceRequestValidator validator, Producer producer,
                       PGRConfiguration config, PGRRepository repository, MDMSUtils mdmsUtils,
                       ComplaintDomainEventService complaintDomainEventService, PGRUtils pgrUtils,
                       ExtendedAttributesValidationService extendedAttributesValidationService,
-                      EncryptionDecryptionService encryptionDecryptionService) {
+                      EncryptionDecryptionService encryptionDecryptionService,
+                      EmployeeDepartmentScopeService employeeDepartmentScopeService,
+                      EmployeeJurisdictionScopeService employeeJurisdictionScopeService) {
         this.enrichmentService = enrichmentService;
         this.userService = userService;
         this.workflowService = workflowService;
@@ -82,6 +89,8 @@ public class PGRService {
         this.pgrUtils = pgrUtils;
         this.extendedAttributesValidationService = extendedAttributesValidationService;
         this.encryptionDecryptionService = encryptionDecryptionService;
+        this.employeeDepartmentScopeService = employeeDepartmentScopeService;
+        this.employeeJurisdictionScopeService = employeeJurisdictionScopeService;
     }
 
 
@@ -147,6 +156,12 @@ public class PGRService {
         validator.validateSearch(requestInfo, criteria);
 
         enrichmentService.enrichSearchRequest(requestInfo, criteria);
+
+        if (!applyEmployeeDepartmentScope(requestInfo, criteria))
+            return new ArrayList<>();
+
+        if (!applyEmployeeJurisdictionScope(requestInfo, criteria))
+            return new ArrayList<>();
 
         if(criteria.isEmpty())
             return new ArrayList<>();
@@ -235,7 +250,7 @@ public class PGRService {
 			// A restored value may be real confidential data the caller isn't cleared to see —
 			// persist it correctly either way, but don't leak it back in this response.
 			if (updatedExt.getIsConfidentialSafe() && !isAuthorizedForConfidential(request.getRequestInfo(), updateService, cfg))
-				encryptionDecryptionService.maskAll(plainExt);
+				encryptionDecryptionService.maskAllPlaintext(plainExt, cfg);
 			updateService.setExtendedAttributes(
 					encryptionDecryptionService.encrypt(updatedExt, cfg, tenantId));
 			enrichmentService.enrichUserContactDetails(request);
@@ -296,13 +311,83 @@ public class PGRService {
         }
 
         criteria.setIsPlainSearch(false);
+
+        if (!applyEmployeeDepartmentScope(requestInfo, criteria))
+            return 0;
+
+        if (!applyEmployeeJurisdictionScope(requestInfo, criteria))
+            return 0;
+
         Integer count = repository.getCount(criteria);
         return count;
+    }
+
+    /**
+     * Employee-only, opt-in: restricts {@code criteria} to the searching employee's own
+     * department(s) only if they hold a role in {@code pgr.department.scope.roles}. Every other
+     * employee role, and citizen/system callers (including plainSearch calls with no userInfo at
+     * all), are untouched. Returns false when the caller must see nothing (search/count/plainSearch
+     * should short-circuit).
+     *
+     * Skipped entirely when {@code criteria.isSkipEmployeeDepartmentScope()} — set by
+     * AdminComplaintSearchService for the SUPERUSER cross-department admin search, whose
+     * explicitly chosen departmentCodes must not be overwritten by the caller's own HRMS
+     * department just because they also happen to hold a scoped role. Also skipped when
+     * {@code criteria.getCreatedBy()} is set — that filter already targets a specific filer,
+     * so forcing the caller's own department onto it would just drop unrelated results.
+     */
+    private boolean applyEmployeeDepartmentScope(RequestInfo requestInfo, RequestSearchCriteria criteria) {
+        if (criteria.isSkipEmployeeDepartmentScope())
+            return true;
+
+        // A createdBy search targets a specific complaint-filer, not the caller's own department —
+        // forcing the caller's department onto it would silently drop results filed under a
+        // different department, defeating the point of searching by createdBy at all.
+        if (!CollectionUtils.isEmpty(criteria.getCreatedBy()))
+            return true;
+
+        if (requestInfo.getUserInfo() == null
+                || !USERTYPE_EMPLOYEE.equalsIgnoreCase(requestInfo.getUserInfo().getType()))
+            return true;
+
+        String scopeTenantId = criteria.getTenantId() != null
+                ? criteria.getTenantId() : requestInfo.getUserInfo().getTenantId();
+        return employeeDepartmentScopeService.applyScope(requestInfo, scopeTenantId, criteria);
+    }
+
+    /**
+     * Employee-only, opt-in: restricts {@code criteria} to the searching employee's own
+     * jurisdiction (boundary) only if they hold a role in {@code pgr.jurisdiction.scope.roles}.
+     * Mirrors {@link #applyEmployeeDepartmentScope} exactly, including its skip conditions.
+     */
+    private boolean applyEmployeeJurisdictionScope(RequestInfo requestInfo, RequestSearchCriteria criteria) {
+        if (criteria.isSkipEmployeeJurisdictionScope())
+            return true;
+
+        // A createdBy search targets a specific complaint-filer, not the caller's own jurisdiction —
+        // forcing the caller's jurisdiction onto it would silently drop results filed under a
+        // different jurisdiction, defeating the point of searching by createdBy at all.
+        if (!CollectionUtils.isEmpty(criteria.getCreatedBy()))
+            return true;
+
+        if (requestInfo.getUserInfo() == null
+                || !USERTYPE_EMPLOYEE.equalsIgnoreCase(requestInfo.getUserInfo().getType()))
+            return true;
+
+        String scopeTenantId = criteria.getTenantId() != null
+                ? criteria.getTenantId() : requestInfo.getUserInfo().getTenantId();
+        return employeeJurisdictionScopeService.applyScope(requestInfo, scopeTenantId, criteria);
     }
 
 
     public List<ServiceWrapper> plainSearch(RequestInfo requestInfo, RequestSearchCriteria criteria) {
         validator.validatePlainSearch(criteria);
+
+        if (!applyEmployeeDepartmentScope(requestInfo, criteria))
+            return new ArrayList<>();
+
+        if (!applyEmployeeJurisdictionScope(requestInfo, criteria))
+            return new ArrayList<>();
 
         criteria.setIsPlainSearch(true);
 
@@ -441,11 +526,11 @@ public class PGRService {
             ComplaintTemplateTypeConfig cfg = configCache.get(svc.getExtendedAttributes().getCaseRelatedTo());
             if (cfg == null) {
                 if (svc.getExtendedAttributes().getIsConfidentialSafe())
-                    encryptionDecryptionService.maskAll(svc.getExtendedAttributes());
+                    encryptionDecryptionService.maskAll(svc.getExtendedAttributes(), null);
                 continue;
             }
             if (svc.getExtendedAttributes().getIsConfidentialSafe() && !isAuthorizedForConfidential(requestInfo, svc, cfg)) {
-                encryptionDecryptionService.maskAll(svc.getExtendedAttributes());
+                encryptionDecryptionService.maskAll(svc.getExtendedAttributes(), cfg);
             } else {
                 encryptionDecryptionService.decrypt(svc.getExtendedAttributes(), cfg);
             }

@@ -39,9 +39,37 @@ public class PGRConstants {
 
     public static final String MDMS_DEPARTMENT_NAME_SEARCH = "$.MdmsRes.common-masters.Department[?(@.code=='{CODE}')].name";
 
+    // Full Department master rows (code + name), used to resolve HRMS department CODES to their
+    // MDMS NAME counterpart — see EmployeeDepartmentScopeService, which must match complaints
+    // stored under either form (PGRService#getDepartmentFromMDMS stores the name when resolvable,
+    // falling back to the code only on lookup failure).
+    public static final String MDMS_ALL_DEPARTMENTS_JSONPATH = "$.MdmsRes.common-masters.Department[*]";
+
     public static final String MDMS_SERVICENAME_SEARCH = "$.MdmsRes.RAINMAKER-PGR.ComplaintHierarchy[?(@.code=='{SERVICEDEF}')].name";
 
     public static final String HRMS_DEPARTMENT_JSONPATH = "$.Employees.*.assignments.*.department";
+
+    // Only the ACTIVE assignment's department — used for department-scoped employee search
+    // (EmployeeDepartmentScopeService), where a past/ended assignment must not widen access.
+    public static final String HRMS_CURRENT_DEPARTMENT_JSONPATH =
+            "$.Employees[0].assignments[?(@.isCurrentAssignment==true)].department";
+
+    // ALL of the employee's jurisdiction ENTRIES (boundary code + the hierarchy it belongs to) —
+    // an employee can hold multiple jurisdiction entries (e.g. different roles at different
+    // boundary levels), so every one is collected, not just the first. The hierarchy travels
+    // alongside each boundary code (rather than being read separately/discarded) because
+    // BoundaryUtil must query boundary-service's subtree search on the SAME hierarchy the code was
+    // defined under — a row's hierarchy need not be the one PGR complaints are filed against on
+    // every tenant. Used for jurisdiction-scoped employee search (EmployeeJurisdictionScopeService).
+    // Jurisdictions live at the top level of the HRMS employee record (not nested under
+    // assignments), and unlike assignments carry no isCurrentAssignment-style flag, so there is no
+    // "current" one to filter on.
+    public static final String HRMS_CURRENT_JURISDICTIONS_JSONPATH = "$.Employees[0].jurisdictions[*]";
+
+    // Every root node boundary-service hands back for a boundary-relationships subtree search
+    // (codes=<code>&includeChildren=true) — each root's own `children[]` nests recursively. See
+    // BoundaryUtil#fetchDescendants.
+    public static final String BOUNDARY_RELATIONSHIP_ROOTS_JSONPATH = "$.TenantBoundary[0].boundary[*]";
 
     public static final String HRMS_DESIGNATION_JSONPATH = "$.Employees.*.assignments[?(@.department=='{department}')].designation";
 
