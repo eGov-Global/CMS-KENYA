@@ -15,6 +15,7 @@ import type { LandingRoutes } from "./routes";
 // esbuild's `file` loader emits the asset and returns its URL. An MDMS
 // `navigation` section with a media.imageId still overrides this.
 import bometLogo from "./assets/bomet-logo.jpg";
+import bometFooterLogo from "./assets/bomet-footer-logo.jpg";
 
 export function PGRLandingEntry() {
   const ctx = (typeof window !== "undefined" && (window as any)?.contextPath) || "digit-ui";
@@ -31,7 +32,7 @@ export function PGRLandingEntry() {
     [ctx]
   );
 
-  return <PGRLandingPage routes={routes} emblemUrl={bometLogo} />;
+  return <PGRLandingPage routes={routes} emblemUrl={bometLogo} footerLogoUrl={bometFooterLogo} />;
 }
 
 export default PGRLandingEntry;

@@ -36,6 +36,8 @@ export interface PGRLandingPageProps {
   heroImageUrl?: string;
   /** Government emblem for the masthead. */
   emblemUrl?: string;
+  /** Wide logo lockup shown beside the identity text in the footer. */
+  footerLogoUrl?: string;
   /** Language switcher options. */
   languages?: LanguageOption[];
   /** Custom language-change handler (defaults to i18n.changeLanguage). */

@@ -84,7 +84,7 @@ export const LANDING_COPY = {
   HERO_TITLE: { en: "Bomet Feedback Hub" },
   HERO_PILOT_NOTICE: {
     en:
-      "Pilot phase: complaints are handled for Health and Water & Sanitation across all five sub-counties — Sotik, Chepalungu, Bomet East, Bomet Central and Konoin.",
+      "Pilot phase: complaints are handled for Health and Water & Sanitation in all five sub-counties, Sotik, Chepalungu, Bomet East, Bomet Central and Konoin.",
   },
   HERO_LEDE: {
     en:
@@ -92,7 +92,7 @@ export const LANDING_COPY = {
   },
   HERO_CTA_SUBMIT: { en: "Report an Issue" },
   HERO_CTA_TRACK: { en: "Track a Complaint" },
-  HERO_TRUST_CONFIDENTIAL: { en: "No National ID needed — just your name and phone number" },
+  HERO_TRUST_CONFIDENTIAL: { en: "No National ID needed, just your name and phone number" },
   HERO_TRUST_CASE_NUMBER: { en: "Unique case number" },
   HERO_TRUST_NOTIFICATIONS: { en: "SMS acknowledgement with your case number" },
   HERO_CHANNELS_LABEL: { en: "Also available through:" },
@@ -104,12 +104,12 @@ export const LANDING_COPY = {
   TYPES_TITLE: { en: "What You Can Report" },
   TYPES_INTRO: {
     en:
-      "Pick the service your complaint is about. You then choose a category, a sub-category and your ward — that is what routes the case to the right officer and sets its deadline.",
+      "Pick the service your complaint is about. You then choose a category, a sub-category and your ward. That is what routes the case to the right officer and sets its deadline.",
   },
   TYPE_HEALTH_TITLE: { en: "Health Services" },
   TYPE_HEALTH_DESC: {
     en:
-      "Maternal and newborn emergencies, ambulance delays, drug stock-outs, oxygen and equipment failures, staff absence or conduct, long waiting times, facility sanitation, referral delays, SHA service denial, illegal charges. Emergency categories carry 1–5 day deadlines.",
+      "Maternal and newborn emergencies, ambulance delays, drug stock-outs, oxygen and equipment failures, staff absence or conduct, long waiting times, facility sanitation, referral delays, SHA service denial, illegal charges. Emergency categories carry deadlines of one to five days.",
   },
   TYPE_WATER_TITLE: { en: "Water & Sanitation" },
   TYPE_WATER_DESC: {
@@ -143,7 +143,7 @@ export const LANDING_COPY = {
   },
   HOW_NOTE_CHANNELS: {
     en:
-      "Deadlines are set per category — one day for unsafe water, two days for a sewer overflow, seven days for a water outage or absent staff, up to 30 days for corruption and procurement cases.",
+      "Deadlines are set per category: one day for unsafe water, two days for a sewer overflow, seven days for a water outage or absent staff, and up to 30 days for corruption and procurement cases.",
   },
 
   // Channels -----------------------------------------------------------—---
@@ -155,7 +155,7 @@ export const LANDING_COPY = {
   CHANNEL_WEB_TITLE: { en: "This Portal" },
   CHANNEL_WEB_DESC: {
     en:
-      "Register with your name and phone number — no National ID required. Submit, attach photos, and see the full history of your case.",
+      "Register with your name and phone number, no National ID required. Submit, attach photos, and see the full history of your case.",
   },
   CHANNEL_WEB_CTA: { en: "Report an issue" },
   CHANNEL_WEB_BADGE: { en: "You are here" },

@@ -1,19 +1,19 @@
-// Hero: headline, the two CTAs (report / track), trust markers and the other
-// ways to reach the service.
+// Hero: headline, the two CTAs (report / track) and trust markers. The full
+// list of channels lives in ChannelsSection.
 //
-// The background is a navy gradient with a dot grid. A deployment can layer a
-// photo through `imageUrl`; it sits under a fixed scrim so the text keeps its
-// contrast whatever the photo looks like.
+// The background is plain white; text uses the same soft
+// ink as the card headings. A deployment can layer a photo through `imageUrl`;
+// it sits under a fixed white scrim so the dark text keeps its contrast
+// whatever the photo looks like.
 
 import * as React from "react";
-import { Send, Search, Lock, Hash, Bell, MapPin, Phone, Info } from "lucide-react";
+import { Send, Search, Lock, Hash, Bell, Info } from "lucide-react";
 import { cn } from "@egovernments/digit-ui-components-v2";
 import { CtaLink } from "./CtaLink";
-import { DotGrid, DOT_GRID_CORNER } from "./DotGrid";
 import { useLandingCopy } from "../useLandingCopy";
 import { sectionDomId } from "../config/resolve";
 import { LandingRoutes } from "../routes";
-import { CONTAINER, FOCUS_RING_DARK } from "../tokens";
+import { CONTAINER } from "../tokens";
 import type { LandingSectionConfig } from "../config/types";
 
 export interface HeroSectionProps {
@@ -23,10 +23,6 @@ export interface HeroSectionProps {
   /** Config-driven overrides; absent => the built-in deck (unchanged). */
   section?: LandingSectionConfig;
 }
-
-const CHIP =
-  "inline-flex min-h-[40px] items-center justify-center gap-2 rounded-full " +
-  "border-[hsl(var(--pgrl-on-primary)/0.65)] px-4 text-sm font-medium normal-case ";
 
 export function HeroSection({ routes, imageUrl, section }: HeroSectionProps) {
   const { c } = useLandingCopy();
@@ -46,44 +42,34 @@ export function HeroSection({ routes, imageUrl, section }: HeroSectionProps) {
         { icon: Bell, label: c("HERO_TRUST_NOTIFICATIONS") },
       ];
 
-  // Other ways to reach the service. Counter desks and SMS are information, not
-  // places to click, so only the call centre carries a link.
-  const chips: Array<{ icon: typeof MapPin; label: string; to?: string }> = [
-    { icon: MapPin, label: c("HERO_CHANNEL_APP") },
-    { icon: Bell, label: c("HERO_CHANNEL_WA") },
-    { icon: Phone, label: c("HERO_CHANNEL_LINE"), to: routes.GREEN_LINE },
-  ];
-
   return (
     <section
       id={domId}
       data-pgrl-code={section?.code}
       aria-labelledby={`${domId}-title`}
-      className="relative isolate overflow-hidden bg-[linear-gradient(150deg,hsl(var(--pgrl-deep)),hsl(var(--pgrl-primary)))]"
+      className="relative isolate overflow-hidden bg-[hsl(var(--pgrl-surface))]"
     >
       {imageUrl && (
         <>
           <img src={imageUrl} alt="" className="absolute inset-0 -z-20 h-full w-full object-cover" />
-          <div aria-hidden className="absolute inset-0 -z-10 bg-[hsl(var(--pgrl-deep)/0.85)]" />
+          <div aria-hidden className="absolute inset-0 -z-10 bg-[hsl(var(--pgrl-surface)/0.85)]" />
         </>
       )}
-      <DotGrid id={`${domId}-dots`} className={DOT_GRID_CORNER} />
 
       <div className={cn(CONTAINER, "py-14 md:py-20")}>
         <div className="max-w-3xl">
-          <p className="m-0 inline-flex items-center rounded-full bg-[hsl(var(--pgrl-on-primary)/0.12)] px-3 py-1 text-xs font-semibold uppercase tracking-widest text-[hsl(var(--pgrl-accent))]">
+          <p className="m-0 text-xs font-bold uppercase tracking-widest text-[hsl(var(--pgrl-ink-soft))]">
             {c(section?.bodyKey, "HERO_EYEBROW")}
           </p>
 
           <h1
             id={`${domId}-title`}
-            className="mb-0 mt-4 text-3xl font-bold leading-tight text-[hsl(var(--pgrl-on-primary))] sm:text-4xl lg:text-5xl"
+            className="mb-0 mt-4 text-3xl font-bold leading-tight text-[hsl(var(--pgrl-ink-soft))] sm:text-4xl lg:text-5xl"
           >
             {c(section?.titleKey, "HERO_TITLE")}
           </h1>
 
-          {/* Solid white: /0.9 dims below 4.5:1 over the gradient's light end. */}
-          <p className="mb-0 mt-4 max-w-2xl text-base leading-relaxed text-[hsl(var(--pgrl-on-primary))] sm:text-lg">
+          <p className="mb-0 mt-4 max-w-2xl text-base leading-relaxed text-[hsl(var(--pgrl-ink-soft))] sm:text-lg">
             {c(section?.subtitleKey, "HERO_LEDE")}
           </p>
 
@@ -109,7 +95,7 @@ export function HeroSection({ routes, imageUrl, section }: HeroSectionProps) {
             </CtaLink>
             <CtaLink
               to={routes.TRACK_COMPLAINT}
-              variant="inverse"
+              variant="outline"
               size="lg"
               leading={<Search aria-hidden className="h-5 w-5" />}
               className="w-full sm:w-auto"
@@ -123,40 +109,13 @@ export function HeroSection({ routes, imageUrl, section }: HeroSectionProps) {
             {trust.map(({ icon: Icon, label }) => (
               <li
                 key={label}
-                className="m-0 flex items-center gap-2 p-0 text-sm text-[hsl(var(--pgrl-on-primary))]"
+                className="m-0 flex items-center gap-2 p-0 text-sm text-[hsl(var(--pgrl-ink-soft))]"
               >
-                <Icon aria-hidden className="h-4 w-4 text-[hsl(var(--pgrl-accent))]" />
+                <Icon aria-hidden className="h-4 w-4 text-[hsl(var(--pgrl-primary))]" />
                 {label}
               </li>
             ))}
           </ul>
-
-          {/* Secondary channels */}
-          <div className="mt-8 border-0 border-t border-solid border-[hsl(var(--pgrl-on-primary)/0.15)] pt-5">
-            <p className="m-0 text-xs font-semibold uppercase tracking-wide text-[hsl(var(--pgrl-on-primary))]">
-              {c("HERO_CHANNELS_LABEL")}
-            </p>
-            <div className="mt-3 flex flex-wrap gap-2">
-              {chips.map(({ icon: Icon, label, to }) =>
-                to && to !== "#" ? (
-                  <CtaLink
-                    key={label}
-                    to={to}
-                    variant="inverse"
-                    className={CHIP + FOCUS_RING_DARK}
-                    leading={<Icon aria-hidden className="h-4 w-4" />}
-                  >
-                    {label}
-                  </CtaLink>
-                ) : (
-                  <span key={label} className={`${CHIP} border border-solid text-[hsl(var(--pgrl-on-primary))]`}>
-                    <Icon aria-hidden className="h-4 w-4" />
-                    {label}
-                  </span>
-                )
-              )}
-            </div>
-          </div>
         </div>
       </div>
     </section>

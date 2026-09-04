@@ -1,7 +1,11 @@
 // Closing conversion band — last chance to act before the footer.
+//
+// Not in the default page order any more: the same headline, text and button
+// render at the bottom of ChannelsSection. Still registered so an MDMS config
+// can re-enable it as a standalone band.
 
 import * as React from "react";
-import { Megaphone, Send, MessageCircle } from "lucide-react";
+import { Megaphone, Send } from "lucide-react";
 import { cn } from "@egovernments/digit-ui-components-v2";
 import { CtaLink } from "./CtaLink";
 import { useLandingCopy } from "../useLandingCopy";
@@ -54,16 +58,6 @@ export function FinalCtaSection({ routes, section }: FinalCtaSectionProps) {
             className="w-full sm:w-auto"
           >
             {c("FINAL_CTA")}
-          </CtaLink>
-          <CtaLink
-            to={routes.WHATSAPP}
-            target="_blank"
-            variant="outline"
-            size="lg"
-            leading={<MessageCircle aria-hidden className="h-5 w-5" />}
-            className="w-full sm:w-auto"
-          >
-            {c("CHANNEL_WA_CTA")}
           </CtaLink>
         </div>
       </div>

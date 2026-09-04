@@ -32,6 +32,7 @@ export interface LandingRendererProps {
   news?: NewsItem[];
   heroImageUrl?: string;
   emblemUrl?: string;
+  footerLogoUrl?: string;
   languages?: LanguageOption[];
   onLanguageChange?: (code: string) => void;
   tokens?: Partial<LandingTokens>;
@@ -47,6 +48,7 @@ export function LandingRenderer({
   news = DEFAULT_NEWS,
   heroImageUrl,
   emblemUrl,
+  footerLogoUrl,
   languages = DEFAULT_LANGUAGES,
   onLanguageChange,
   tokens,
@@ -80,8 +82,8 @@ export function LandingRenderer({
   const fabOn = hasSections && (showWhatsAppFab ?? page.showWhatsAppFab ?? true);
 
   const ctx: RenderCtx = React.useMemo(
-    () => ({ routes, news, heroImageUrl, emblemUrl }),
-    [routes, news, heroImageUrl, emblemUrl]
+    () => ({ routes, news, heroImageUrl, emblemUrl, footerLogoUrl }),
+    [routes, news, heroImageUrl, emblemUrl, footerLogoUrl]
   );
 
   // Group the ordered, visible sections into DOM slots; unknown types (no
@@ -106,7 +108,9 @@ export function LandingRenderer({
     <div className="v2-scope" style={tokenStyle}>
       <div
         className={cn(
-          "pgr-landing flex min-h-screen flex-col bg-[hsl(var(--pgrl-page))] text-[hsl(var(--pgrl-ink))]",
+          "pgr-landing flex min-h-screen flex-col bg-[hsl(var(--pgrl-page))] font-condensed text-[hsl(var(--pgrl-ink))]",
+          // Preflight is off, so form controls keep the UA font unless told to inherit.
+          "[&_button]:font-[family-name:inherit] [&_input]:font-[family-name:inherit] [&_select]:font-[family-name:inherit] [&_textarea]:font-[family-name:inherit]",
           NO_HOVER_UNDERLINE,
           className
         )}
