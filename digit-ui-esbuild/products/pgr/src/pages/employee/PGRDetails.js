@@ -18,6 +18,7 @@ import { selectServiceDefsFromComplaintHierarchy } from "../../utils";
 import { isPiiMaskingEnabled } from "../../utils/piiMasking";
 import useReopenWindow from "../../hooks/pgr/useReopenWindow";
 import { findLatestAssigneeUuidByRole } from "../../utils/workflowAssignee";
+import { EV, trackE } from "../../utils/analytics";
 
 // CCSD-2167 (employee side) — route-back / terminal actions derive their
 // assignee from the complaint's OWN workflow history, exactly like the citizen
@@ -428,13 +429,21 @@ const PGRDetails = () => {
   // Handle response after updating complaint
   const handleResponseForUpdateComplaint = async (payload) => {
     setOpenModal(false);
+    // Analytics label: the workflow ACTION code only (ASSIGN/RESOLVE/…) — a
+    // bounded vocabulary, never the comment, assignee or complaint id.
+    const actionCode = payload?.workflow?.action || "";
     await UpdateComplaintMutation(payload, {
-      onError: () => setToast({ show: true, label: t("FAILED_TO_UPDATE_COMPLAINT"), type: "error" }),
+      onError: () => {
+        trackE(EV.WORKFLOW_FAILED, actionCode);
+        setToast({ show: true, label: t("FAILED_TO_UPDATE_COMPLAINT"), type: "error" });
+      },
       onSuccess: async (responseData) => {
         const msg = payload.workflow.action || "RESOLVE";
         if (responseData?.ResponseInfo?.Errors) {
+          trackE(EV.WORKFLOW_FAILED, actionCode);
           setToast({ show: true, label: t("FAILED_TO_UPDATE_COMPLAINT"), type: "error" });
         } else {
+          trackE(EV.WORKFLOW_COMPLETED, actionCode);
           setToast({ show: true, label: t(`${msg}_SUCCESSFULLY`), type: "success" });
           await refreshData();
           clearSessionFormData();
@@ -867,7 +876,6 @@ const PGRDetails = () => {
               key="action-button"
               label={t("ES_COMMON_TAKE_ACTION")}
               onOptionSelect={(selected) => {
-                console.log("*** Log ===> selected", selected);
                 if (selected.action === "REOPEN") {
                   const lastModifiedTime = pgrData?.ServiceWrappers?.[0]?.service?.auditDetails?.lastModifiedTime;
                   if (reopenWindowMs && lastModifiedTime && Date.now() - lastModifiedTime > reopenWindowMs) {
@@ -881,6 +889,7 @@ const PGRDetails = () => {
                 }
                 setSelectedAction(selected);
                 setOpenModal(true);
+                trackE(EV.WORKFLOW_OPENED, selected?.action || "");
               }}
               options={getNextActionOptions(workflowData, businessServiceData?.BusinessServices?.[0])}
               optionsKey="name"
