@@ -116,6 +116,14 @@ boundary_type: "Ward"          # what the smallest selectable boundary is called
 # (HIERARCHY_DEFINITION_DOES_NOT_EXIST_ERR). Defaults to 'ADMIN' when unset.
 hierarchy_type: "ADMIN"
 
+# Complainant/employee PII masking in the PGR UI (timeline actor identity,
+# employee contacts, confidential-complaint card). Kenya/Bomet runs no
+# confidentiality programme, so this fork's deploys default it OFF (see
+# templates/globalConfigs.js.j2). Set true to restore Moz-style masking.
+# NOTE: display-side only — values the backend masks per its enc security
+# policy still arrive masked regardless of this flag.
+pgr_pii_masking: false
+
 # Mobile-number validation rules used by the citizen-side UI on signup.
 # Kenya: +254 prefix, 9-10 digits starting with 7 (Safaricom) or 1 (Airtel/Telkom).
 # Length + allowed leading digits are derived from mobileNumberRegex (see

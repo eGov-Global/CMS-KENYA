@@ -15,6 +15,7 @@ import ComplaintPhotos from "../../components/ComplaintPhotos";
 import { buildExtendedAttributeRows, useExtendedAttributeOrder } from "../../components/PgrExtendedAttributesView";
 import { buildComplaintPath } from "../../utils/complaintHierarchyPath";
 import { selectServiceDefsFromComplaintHierarchy } from "../../utils";
+import { isPiiMaskingEnabled } from "../../utils/piiMasking";
 import useReopenWindow from "../../hooks/pgr/useReopenWindow";
 import { findLatestAssigneeUuidByRole } from "../../utils/workflowAssignee";
 
@@ -599,7 +600,10 @@ const PGRDetails = () => {
   // durable fix is backend masking gated on CONFIDENTIAL_COMPLAINT_VIEWER (the
   // role ComplaintTemplateType.allowedViewerRoles already names but which does
   // not yet exist). Tracked separately — do not treat this as enforcement.
-  const isConfidentialComplaint = complaintService?.extendedAttributes?.isConfidential === true;
+  // Gated on the PGR_PII_MASKING deploy switch (utils/piiMasking.js): Kenya/
+  // Bomet runs no confidentiality programme and shows the complainant in clear.
+  const isConfidentialComplaint =
+    isPiiMaskingEnabled() && complaintService?.extendedAttributes?.isConfidential === true;
   // Same sentinel the backend emits, so masked rows look identical whichever
   // side did the masking.
   const CONFIDENTIAL_MASK = "****";
