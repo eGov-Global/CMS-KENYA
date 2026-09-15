@@ -4,7 +4,16 @@ import { useTranslation } from "react-i18next";
 
 const ROLES = {
   // CMS_* roles (mz.igsae multi-tier workflow) added alongside the standard PGR roles — additive.
-  PGR: ["GRO", "PGR_LME", "CSR", "SUPERUSER", "CMS_ADMIN", "CMS_RECEPTION_OFFICER", "CMS_SCREENING_OFFICER", "CMS_SUPERVISOR", "CMS_CASE_MANAGER", "CMS_VIEWER"],
+  // <DEPT>_{DIRECTOR,CHIEF_OFFICER,CECM} are the Bomet 3-tier department roles
+  // (DIRECTOR is the last-mile actor, CHIEF_OFFICER/CECM the escalation tiers);
+  // they work the inbox exactly like PGR_LME, so they get the same card.
+  PGR: [
+    "GRO", "PGR_LME", "CSR", "SUPERUSER",
+    "CMS_ADMIN", "CMS_RECEPTION_OFFICER", "CMS_SCREENING_OFFICER", "CMS_SUPERVISOR", "CMS_CASE_MANAGER", "CMS_VIEWER",
+    "HEALTH_DIRECTOR", "HEALTH_CHIEF_OFFICER", "HEALTH_CECM",
+    "WATER_DIRECTOR", "WATER_CHIEF_OFFICER", "WATER_CECM",
+    "ADMIN_DIRECTOR", "ADMIN_CHIEF_OFFICER", "ADMIN_CECM",
+  ],
 };
 
 const PGRCard = () => {
