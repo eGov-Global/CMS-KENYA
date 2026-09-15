@@ -79,9 +79,14 @@ const PGRSearchInbox = () => {
   // Both tabs share the same status scope (all open/actionable states); they
   // differ on the assignee axis — My = assigned to me, All = everyone's
   // (PO decision 2026-07-15; the tabs replaced the assigned-to-me radio).
-  const { allActionableStates: allStates, isLoading: bsLoading } = useBusinessServiceStates(tenantId, {
-    enabled: visibilityEnabled,
-  });
+  //
+  // Always fetched, not just in visibility mode: this list is what preProcess
+  // sends as the default applicationStatus. Gating it on the visibility flag
+  // left allStates empty on non-visibility tenants, so the search fell back to
+  // the static OPEN_STATES list — which predates the escalation-tier states
+  // (Bomet's chief-officer/CECM hops), making escalated complaints invisible
+  // until the operator manually ticked that state's checkbox in the filter.
+  const { allActionableStates: allStates, isLoading: bsLoading } = useBusinessServiceStates(tenantId);
 
   // Tab notification numbers DISABLED (product call — see the NOTE in
   // PGRInboxTabs.js). Restoring the two commented blocks below re-enables the
@@ -226,9 +231,14 @@ const PGRSearchInbox = () => {
   }, [location, visLoading, visibilityEnabled]);
 
   /**
-   * Show loader until necessary data is available
+   * Show loader until necessary data is available.
+   * bsLoading is included so the composer's FIRST search already carries the
+   * workflow-derived status list — otherwise it fires with the static
+   * OPEN_STATES fallback and escalated-state complaints are missing until a
+   * re-render re-fires it (or never, if the config reference stayed stable).
+   * On fetch failure bsLoading settles false and the fallback still applies.
    */
-  if (isLoading || isValidationLoading || visLoading || !pageConfig || serviceDefs == null) {
+  if (isLoading || isValidationLoading || visLoading || bsLoading || !pageConfig || serviceDefs == null) {
     return <Loader />;
   }
 
