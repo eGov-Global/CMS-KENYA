@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { PopUp, Timeline, TimelineMolecule, Loader } from '@egovernments/digit-ui-components';
 import { convertEpochFormateToDate } from '../utils';
 import { parseFilestoreEntry } from '../utils/attachmentKind';
+import { isPiiMaskingEnabled } from '../utils/piiMasking';
 
 // NOTE: no useMyContext() here — the citizen route tree has no MyContext
 // provider, and this wrapper renders on BOTH citizen and employee details.
@@ -225,19 +226,28 @@ const TimelineWrapper = ({ businessId, isWorkFlowLoading, workflowData, labelPre
                 // place that shows clear identity, per the viewer's privilege.
                 // (maskConfidential is kept as a prop for compatibility but the
                 // citizen actor no longer depends on it.)
+                //
+                // All of it sits behind the PGR_PII_MASKING deploy switch —
+                // Kenya/Bomet runs no confidentiality programme and shows
+                // identities in clear (see utils/piiMasking.js). This is the
+                // single enforcement point, so callers' props need no gating.
+                const piiMasking = isPiiMaskingEnabled();
                 const isEmployeeActor = personRecord && !isCitizenActor(personRecord);
                 const maskThis =
-                  isCitizenActor(personRecord) ||
-                  (maskEmployeeContacts && isEmployeeActor);
+                  piiMasking &&
+                  (isCitizenActor(personRecord) ||
+                    (maskEmployeeContacts && isEmployeeActor));
                 // QA #19 part 1: citizen view drops employee identity lines
                 // entirely (hide, not mask).
-                const hideThis = hideEmployeeContacts && isEmployeeActor;
+                const hideThis = piiMasking && hideEmployeeContacts && isEmployeeActor;
                 const mobile = isAssigningAction(instance?.action) ? assignee?.mobileNumber : instance?.assigner?.mobileNumber;
                 // The backend already masks the mobile per viewer privilege
                 // ("Contact Details: *****0104"). Mirror that decision onto the
                 // NAME: a viewer the backend won't show the number to shouldn't
-                // see the person's identity either.
-                const backendMasked = typeof mobile === "string" && mobile.includes("*");
+                // see the person's identity either. (With masking disabled the
+                // mirror is off too — the name shows even if the backend still
+                // masks the number; the FE cannot recover that value anyway.)
+                const backendMasked = piiMasking && typeof mobile === "string" && mobile.includes("*");
                 const personLine = hideThis
                   ? null
                   : maskThis || backendMasked ? maskName(formatPerson(personRecord)) : formatPerson(personRecord);

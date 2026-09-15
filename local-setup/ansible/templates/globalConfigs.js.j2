@@ -53,6 +53,12 @@ var globalConfigs = (function () {
   // it. Set `complaint_hierarchy_type: PGR` in host_vars when the tenant
   // carries multiple definitions (e.g. a live tree plus a test one).
   var complaintHierarchyType = {{ complaint_hierarchy_type | default('') | to_json }};
+  // Complainant/employee PII masking in the PGR UI (timeline actor identity,
+  // employee contacts, confidential-complaint card). Kenya/Bomet runs no
+  // confidentiality programme, so THIS fork's deploys default it OFF; the SPA
+  // itself defaults ON when the key is absent (Moz-safe on code sync). Set
+  // `pgr_pii_masking: true` in host_vars to restore Moz-style masking.
+  var pgrPiiMasking = {{ pgr_pii_masking | default(false) | to_json }};
   var mapCenter = {{ map_center | to_json }};
   // Tenant whose boundary tree the SPA's map/boundary code resolves
   // against (Turbopass/OSM boundary resolution). Mirrors the build-time
@@ -176,6 +182,8 @@ var globalConfigs = (function () {
       return hierarchyType;
     } else if (key === "COMPLAINT_HIERARCHY_TYPE") {
       return complaintHierarchyType;
+    } else if (key === "PGR_PII_MASKING") {
+      return pgrPiiMasking;
     } else if (key === "CORE_MOBILE_CONFIGS") {
       return coreMobileConfigs;
     } else if (key === "CORE_POSTAL_CONFIGS") {
