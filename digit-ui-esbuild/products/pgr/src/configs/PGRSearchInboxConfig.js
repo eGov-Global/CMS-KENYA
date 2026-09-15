@@ -241,11 +241,39 @@ const PGRSearchInboxConfig = (visibilityEnabled = true) => {
                                   },
                               ]
                             : []),
-                        // QA #18: the assigned-to-me / assigned-to-all radio is
-                        // gone from the left panel. The defaultValues block above
-                        // keeps assignedToMe=ASSIGNED_TO_ALL, and preProcess only
-                        // narrows to the logged-in user on ASSIGNED_TO_ME — so
-                        // with no control the inbox always searches ALL.
+                        // Assigned-to-me / assigned-to-all radio. Removed by
+                        // QA #18 when the visibility tabs replaced it; restored
+                        // for LEGACY (tabs-off) mode on Bomet ops request
+                        // (2026-09-15) — without tabs there was no way to narrow
+                        // the inbox to "mine". Tabs mode keeps it hidden: the
+                        // My/All tabs carry the same semantics. preProcess still
+                        // handles it (UICustomizations "Legacy assigned-to-me
+                        // radio"), and defaultValues above seeds ASSIGNED_TO_ALL.
+                        ...(visibilityEnabled
+                            ? []
+                            : [
+                                  {
+                                      label: "",
+                                      type: "radio",
+                                      isMandatory: false,
+                                      disable: false,
+                                      populators: {
+                                          name: "assignedToMe",
+                                          options: [
+                                              { code: "ASSIGNED_TO_ME", name: "ASSIGNED_TO_ME" },
+                                              { code: "ASSIGNED_TO_ALL", name: "ASSIGNED_TO_ALL" },
+                                          ],
+                                          optionsKey: "name",
+                                          styles: {
+                                              "gap": "1rem",
+                                              "flexDirection": "column"
+                                          },
+                                          innerStyles: {
+                                              "display": "flex"
+                                          }
+                                      },
+                                  },
+                              ]),
                         {
 
                             label: "CS_COMPLAINT_DETAILS_COMPLAINT_SUBTYPE",
