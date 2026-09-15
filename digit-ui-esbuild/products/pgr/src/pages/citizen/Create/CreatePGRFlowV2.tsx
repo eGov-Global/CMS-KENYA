@@ -1929,12 +1929,27 @@ const CreatePGRFlowV2: React.FC = () => {
 
 
   function handleContinue() {
+    // Guard the handler as well as the button: a fast double-tap can fire
+    // twice before React re-renders the disabled state, and Enter on the
+    // form would bypass the button entirely.
+    if (submitting) return;
     if (!stepIsValid) {
       setError(t("CORE_COMMON_REQUIRED_ERRMSG"));
       trackE(EV.VALIDATION_ERROR, stepBlocker || curId || "");
       return;
     }
     if (isLast) {
+      // The whole form runs on auth-optional endpoints, so a session that
+      // expired while the citizen typed goes unnoticed until this submit —
+      // previously surfacing as a hung create and a dead end. Check first:
+      // the draft (answers + step) is already persisted, so after re-login
+      // the citizen returns here and continues. Only a KNOWN-expired session
+      // redirects; sessions without expiry info submit as before.
+      if (Digit.UserService.isSessionExpired?.()) {
+        const from = encodeURIComponent(window.location.pathname + window.location.search);
+        history.push(`/${window?.contextPath || "digit-ui"}/citizen/login?from=${from}`);
+        return;
+      }
       setSubmitting(true);
       trackE(EV.COMPLAINT_SUBMITTED);
       const user = Digit.UserService.getUser();
@@ -2066,7 +2081,9 @@ const CreatePGRFlowV2: React.FC = () => {
             variant="primary"
             onClick={handleContinue}
             loading={submitting}
-            disabled={!stepIsValid}
+            // Also disabled while the create is in flight: a second tap on a
+            // slow connection would file a duplicate complaint.
+            disabled={!stepIsValid || submitting}
             type="button"
           >
             {isLast ? (

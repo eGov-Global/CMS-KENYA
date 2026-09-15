@@ -3,6 +3,7 @@ import { Request, ServiceRequest } from "../../atoms/Utils/Request";
 import { Storage } from "../../atoms/Utils/Storage";
 import { getAuthAdapter } from "../../auth/index";
 import { isKeycloakAuth } from "../../auth/authSurface";
+import { rememberSessionExpiry, isSessionExpired } from "../../atoms/Utils/authSession";
 
 export const UserService = {
   authenticate: async (details) => {
@@ -116,8 +117,15 @@ export const UserService = {
       params: { tenantId: stateCode },
     }),
   setUser: (data) => {
+    // Record when this session's token dies (oauth expires_in was previously
+    // discarded), so long flows can check BEFORE an expensive submit instead
+    // of discovering the expiry via a failed call.
+    rememberSessionExpiry(data);
     return Digit.SessionStorage.set("User", data);
   },
+  // false when unknown (pre-existing sessions / responses without expires_in) —
+  // callers must treat "expired" as certain and "not expired" as best-effort.
+  isSessionExpired: () => isSessionExpired(),
   setExtraRoleDetails: (data) => {
     const userDetails = Digit.SessionStorage.get("User");
     return Digit.SessionStorage.set("User", { ...userDetails, extraRoleInfo: data });
@@ -159,6 +167,23 @@ export const UserService = {
         ...details,
       },
       auth: true,
+      params: { tenantId: stateCode },
+    }),
+  // Forgot-password reset. The OTP-based endpoint is the only one that fits a
+  // user who cannot log in, so it must not depend on session state: a browser
+  // that held an earlier (often expired) employee session still carries a
+  // `User.info` after boot recovery, which made `changePassword` above pick
+  // the logged-in `/user/password/_update` and fail with 400 on UAT. No auth
+  // token is attached — the route is on the gateway's open whitelist and the
+  // service authenticates the caller with the OTP.
+  changePasswordNoLogin: (details, stateCode) =>
+    ServiceRequest({
+      serviceName: "changePasswordNoLogin",
+      url: Urls.ChangePassword,
+      data: {
+        ...details,
+      },
+      auth: false,
       params: { tenantId: stateCode },
     }),
 
