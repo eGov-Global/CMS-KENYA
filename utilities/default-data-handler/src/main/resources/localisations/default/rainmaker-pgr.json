@@ -1158,6 +1158,24 @@
         "locale": "default"
     },
     {
+        "code": "CS_COMMON_ESCALATEDLEVEL1",
+        "message": "Escalated (level 1)",
+        "module": "rainmaker-pgr",
+        "locale": "default"
+    },
+    {
+        "code": "CS_COMMON_ESCALATEDLEVEL2",
+        "message": "Escalated (level 2)",
+        "module": "rainmaker-pgr",
+        "locale": "default"
+    },
+    {
+        "code": "CS_COMMON_ESCALATEDLEVEL3",
+        "message": "Escalated (level 3)",
+        "module": "rainmaker-pgr",
+        "locale": "default"
+    },
+    {
         "code": "CS_COMMON_PGR_STATE_ESCALATEDLEVEL1",
         "message": "Escalated (level 1)",
         "module": "rainmaker-pgr",

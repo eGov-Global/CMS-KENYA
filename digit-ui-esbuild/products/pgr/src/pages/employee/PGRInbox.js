@@ -200,10 +200,15 @@ const PGRSearchInbox = () => {
     [pageConfig, serviceDefs]
   );
 
-  // Per-tab config: carry the active tab + its state-set into preProcess via
-  // additionalDetails (read as the 2nd arg in PGRInboxConfig.preProcess).
+  // Composer config for BOTH modes: carries the workflow-derived state set
+  // (and, in tabs mode, the active tab) into preProcess via additionalDetails
+  // (read as the 2nd arg in PGRInboxConfig.preProcess). Previously only the
+  // tabs branch used this object — legacy mode passed updatedConfig, which has
+  // no additionalDetails.allStates, so tabs-off tenants (Bomet) always fell
+  // back to the static OPEN_STATES and escalated-state complaints stayed
+  // hidden until their checkbox was ticked.
   // NOTE: declared before the early Loader return to keep hook order stable.
-  const tabConfig = useMemo(() => {
+  const composerConfig = useMemo(() => {
     const c = _.cloneDeep(updatedConfig || {});
     c.additionalDetails = {
       ...(c.additionalDetails || {}),
@@ -325,11 +330,15 @@ const PGRSearchInbox = () => {
         {visibilityEnabled ? (
           <InboxSearchComposer
             key={activeTab}
-            configs={tabConfig}
+            configs={composerConfig}
             resultsHeader={<PGRInboxTabs activeTab={activeTab} onChange={setActiveTab} /* counts={counts} */ />}
           />
         ) : (
-          <InboxSearchComposer configs={updatedConfig} />
+          // Legacy mode uses the same config object: it needs
+          // additionalDetails.allStates for the default status scope. The
+          // tab-specific bits are inert here (activeTab stays "ALL", the
+          // endpoint swap is gated on serverSide).
+          <InboxSearchComposer configs={composerConfig} />
         )}
       </div>
     </div>
