@@ -8,6 +8,7 @@ import org.egov.pgr.config.PGRConfiguration;
 import org.egov.pgr.repository.PGRRepository;
 import org.egov.pgr.repository.ServiceRequestRepository;
 import org.egov.pgr.util.HRMSUtil;
+import org.egov.pgr.util.MDMSUtils;
 import org.egov.pgr.web.models.*;
 import org.egov.pgr.web.models.boundary.Boundary;
 import org.egov.pgr.web.models.boundary.BoundaryResponse;
@@ -35,14 +36,18 @@ public class ServiceRequestValidator {
 
     private ObjectMapper objectMapper;
 
+    private MDMSUtils mdmsUtils;
+
     @Autowired
     public ServiceRequestValidator(PGRConfiguration config, PGRRepository repository, HRMSUtil hrmsUtil,
-                                   ServiceRequestRepository serviceRequestRepository, ObjectMapper objectMapper) {
+                                   ServiceRequestRepository serviceRequestRepository, ObjectMapper objectMapper,
+                                   MDMSUtils mdmsUtils) {
         this.config = config;
         this.repository = repository;
         this.hrmsUtil = hrmsUtil;
         this.serviceRequestRepository = serviceRequestRepository;
         this.objectMapper = objectMapper;
+        this.mdmsUtils = mdmsUtils;
     }
 
 
@@ -68,14 +73,20 @@ public class ServiceRequestValidator {
      * @param request The request to update complaint
      * @param mdmsData The master data for pgr
      */
-    public void validateUpdate(ServiceRequest request, Object mdmsData){
+    public Service validateUpdate(ServiceRequest request, Object mdmsData){
 
         String id = request.getService().getId();
         String tenantId = request.getService().getTenantId();
         validateSource(request.getService().getSource());
         validateMDMS(request, mdmsData);
-        validateDepartment(request, mdmsData);
-        validateReOpen(request);
+        // ESCALATE is server-targeted after validation. Validating an optional
+        // caller-supplied UUID here can reject the correct cross-department
+        // reportingTo, while omitting the UUID succeeds. EscalationService owns
+        // and validates that target; department validation remains for assignment.
+        if (request.getWorkflow() == null
+                || !ESCALATE.equalsIgnoreCase(request.getWorkflow().getAction())) {
+            validateDepartment(request, mdmsData);
+        }
         RequestSearchCriteria criteria = RequestSearchCriteria.builder().ids(Collections.singleton(id)).tenantId(tenantId).build();
         criteria.setIsPlainSearch(false);
         List<ServiceWrapper> serviceWrappers = repository.getServiceWrappers(criteria);
@@ -83,7 +94,19 @@ public class ServiceRequestValidator {
         if(CollectionUtils.isEmpty(serviceWrappers))
             throw new CustomException("INVALID_UPDATE","The record that you are trying to update does not exists");
 
+        // Re-open eligibility (authorization + deadline) must be checked against the
+        // persisted record, so fetch it first and pass it in — never trust the request body.
+        Service persistedService = serviceWrappers.get(0).getService();
+        if (!Objects.equals(persistedService.getServiceRequestId(),
+                request.getService().getServiceRequestId())) {
+            throw new CustomException("INVALID_SERVICE_REQUEST_ID",
+                    "serviceRequestId does not match the complaint id");
+        }
+        validateReOpen(request, persistedService);
+
         // TO DO
+
+        return persistedService;
 
     }
 
@@ -199,25 +222,38 @@ public class ServiceRequestValidator {
 
 
     /**
+     * Validates that a re-open action is permitted. Both the owner check and the
+     * time-window check are evaluated against the persisted record (fetched from the
+     * repository) rather than the incoming request body, because the request payload is
+     * fully client-controlled — a caller could otherwise forge the accountId or a fresh
+     * lastModifiedTime and bypass the reopen deadline via a direct API call.
      *
-     * @param request
+     * The window itself comes from MDMS (RAINMAKER-PGR.UIConstants.REOPENSLA) — the same
+     * knob the UI gates on — so the window is configurable per tenant and the UI guard and
+     * this server-side check can never drift apart (issue #925).
+     *
+     * @param request        the update request (used only for action + logged-in user)
+     * @param persistedService the current record as stored in the DB (source of truth)
      */
-    private void validateReOpen(ServiceRequest request){
+    private void validateReOpen(ServiceRequest request, Service persistedService){
 
         if(!request.getWorkflow().getAction().equalsIgnoreCase(PGR_WF_REOPEN))
             return;
 
-
-        Service service = request.getService();
         RequestInfo requestInfo = request.getRequestInfo();
-        Long lastModifiedTime = service.getAuditDetails().getLastModifiedTime();
 
         if(requestInfo.getUserInfo().getType().equalsIgnoreCase(USERTYPE_CITIZEN)){
-            if(!requestInfo.getUserInfo().getUuid().equalsIgnoreCase(service.getAccountId()))
+            if(!requestInfo.getUserInfo().getUuid().equalsIgnoreCase(persistedService.getAccountId()))
                 throw new CustomException("INVALID_ACTION","Not authorized to re-open the complain");
         }
 
-        if(System.currentTimeMillis()-lastModifiedTime > config.getComplainMaxIdleTime())
+        if(persistedService.getAuditDetails() == null || persistedService.getAuditDetails().getLastModifiedTime() == null)
+            throw new CustomException("INVALID_ACTION","Complaint is closed");
+
+        Long lastModifiedTime = persistedService.getAuditDetails().getLastModifiedTime();
+        long reopenWindow = mdmsUtils.getReopenWindowMillis(requestInfo, persistedService.getTenantId());
+
+        if(System.currentTimeMillis()-lastModifiedTime > reopenWindow)
             throw new CustomException("INVALID_ACTION","Complaint is closed");
 
     }
@@ -249,6 +285,11 @@ public class ServiceRequestValidator {
      * @param criteria
      */
     private void validateSearchParam(RequestInfo requestInfo, RequestSearchCriteria criteria){
+
+        if(requestInfo == null || requestInfo.getUserInfo() == null
+                || requestInfo.getUserInfo().getType() == null
+                || requestInfo.getUserInfo().getType().trim().isEmpty())
+            throw new CustomException("INVALID_REQUESTINFO","RequestInfo.userInfo is required to search complaints");
 
         if(requestInfo.getUserInfo().getType().equalsIgnoreCase("EMPLOYEE" ) && criteria.isEmpty())
             throw new CustomException("INVALID_SEARCH","Search without params is not allowed");
