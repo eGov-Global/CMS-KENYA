@@ -4,6 +4,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.egov.common.contract.request.RequestInfo;
 import org.egov.common.contract.request.User;
+import org.egov.pgr.config.PGRConfiguration;
+import org.egov.pgr.producer.Producer;
 import org.egov.pgr.repository.ServiceRequestRepository;
 import org.egov.pgr.util.HRMSUtil;
 import org.egov.pgr.web.models.RequestInfoWrapper;
@@ -19,6 +21,7 @@ import org.springframework.util.CollectionUtils;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
@@ -61,18 +64,24 @@ public class EscalationService {
     private final ServiceRequestRepository serviceRequestRepository;
     private final EscalationConfigurationService configurationService;
     private final ObjectMapper mapper;
+    private final Producer producer;
+    private final PGRConfiguration config;
 
     @Autowired
     public EscalationService(HRMSUtil hrmsUtil,
                              WorkflowService workflowService,
                              ServiceRequestRepository serviceRequestRepository,
                              EscalationConfigurationService configurationService,
-                             ObjectMapper mapper) {
+                             ObjectMapper mapper,
+                             Producer producer,
+                             PGRConfiguration config) {
         this.hrmsUtil = hrmsUtil;
         this.workflowService = workflowService;
         this.serviceRequestRepository = serviceRequestRepository;
         this.configurationService = configurationService;
         this.mapper = mapper;
+        this.producer = producer;
+        this.config = config;
     }
 
     /** Removes metadata that only the service may originate. */
@@ -261,6 +270,96 @@ public class EscalationService {
             log.error("Failed to read workflow assignees for complaint {}", serviceRequestId, e);
             return Collections.emptyList();
         }
+    }
+
+    /**
+     * Kenya's scheduler-driven automatic escalation ([KENYA-FEATURE], carried through the
+     * 2026-09-16 product sync): advances one complaint a single escalation rung by assigning
+     * it to the first reachable supervisor. The unified {@link #prepareUpdate} flow above
+     * handles employee-driven ESCALATE actions coming through PGRService; this path is called
+     * by EscalationScheduler only, transitions the workflow directly, and persists its own
+     * metadata via the update topic.
+     */
+    public boolean escalateComplaint(Service complaint, Workflow currentWorkflow, RequestInfo requestInfo) {
+
+        String serviceRequestId = complaint.getServiceRequestId();
+        String tenantId = complaint.getTenantId();
+
+        // 1. Get current escalation level from additionalDetails
+        int currentLevel = escalationLevel(complaint);
+
+        // 2. Check max depth
+        if (currentLevel >= config.getEscalationMaxDepth()) {
+            log.info("Complaint {} already at max escalation depth {}, skipping", serviceRequestId, currentLevel);
+            return false;
+        }
+
+        // 3. Get current assignee UUIDs from workflow
+        List<String> currentAssignees = currentWorkflow.getAssignes();
+        if (CollectionUtils.isEmpty(currentAssignees)) {
+            log.warn("Complaint {} has no current assignees, skipping escalation", serviceRequestId);
+            return false;
+        }
+
+        // 4. Find supervisor for the first assignee
+        String supervisorUuid = null;
+        for (String assigneeUuid : currentAssignees) {
+            supervisorUuid = hrmsUtil.getSupervisorUuid(assigneeUuid, requestInfo, tenantId);
+            if (supervisorUuid != null) {
+                break;
+            }
+        }
+
+        if (supervisorUuid == null) {
+            log.warn("No supervisor found for any assignee of complaint {}, skipping escalation", serviceRequestId);
+            return false;
+        }
+
+        // 5. Build the escalation workflow
+        Workflow escalationWorkflow = Workflow.builder()
+                .action(ESCALATE)
+                .assignes(Collections.singletonList(supervisorUuid))
+                .comments("Auto-escalated: SLA breach at level " + currentLevel)
+                .build();
+
+        // 6. Update additionalDetails with escalation metadata
+        Map<String, Object> additionalDetails = details(complaint);
+        additionalDetails.put(ESCALATION_LEVEL, currentLevel + 1);
+        additionalDetails.put(LAST_ESCALATED_AT, System.currentTimeMillis());
+        additionalDetails.put(ESCALATED_FROM, currentAssignees);
+        complaint.setAdditionalDetail(additionalDetails);
+
+        // 7. Build ServiceRequest and transition workflow
+        ServiceRequest serviceRequest = ServiceRequest.builder()
+                .requestInfo(requestInfo)
+                .service(complaint)
+                .workflow(escalationWorkflow)
+                .build();
+
+        try {
+            workflowService.updateWorkflowStatus(serviceRequest);
+        } catch (Exception e) {
+            log.error("Failed to transition workflow for complaint {} during escalation", serviceRequestId, e);
+            return false;
+        }
+
+        // 8. Publish to update topic so persister saves the updated additionalDetails
+        producer.push(tenantId, config.getUpdateTopic(), serviceRequest);
+
+        // 9. Publish escalation event for future notification listeners
+        Map<String, Object> escalationEvent = new HashMap<>();
+        escalationEvent.put("serviceRequestId", serviceRequestId);
+        escalationEvent.put("tenantId", tenantId);
+        escalationEvent.put(ESCALATION_LEVEL, currentLevel + 1);
+        escalationEvent.put("previousAssignees", currentAssignees);
+        escalationEvent.put("newAssignee", supervisorUuid);
+        escalationEvent.put("timestamp", System.currentTimeMillis());
+        producer.push(tenantId, config.getEscalationKafkaTopic(), escalationEvent);
+
+        log.info("Escalated complaint {} from level {} to {} (assignee: {} -> {})",
+                serviceRequestId, currentLevel, currentLevel + 1, currentAssignees, supervisorUuid);
+
+        return true;
     }
 
     /** Cheap scheduler preflight; the locked update repeats this authoritative check. */

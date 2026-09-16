@@ -81,7 +81,7 @@ public class AdminComplaintSearchService {
                 .skipEmployeeJurisdictionScope(true);
 
         if (!CollectionUtils.isEmpty(adminCriteria.getDepartmentCode()))
-            builder.departmentCodes(resolveDepartmentCodes(adminCriteria.getTenantId(), adminCriteria.getDepartmentCode()));
+            builder.departmentCodes(resolveDepartmentCodes(requestInfo, adminCriteria.getTenantId(), adminCriteria.getDepartmentCode()));
 
         return builder.build();
     }
@@ -98,9 +98,9 @@ public class AdminComplaintSearchService {
      * (mirroring EmployeeDepartmentScopeService's handling of the same code/name ambiguity), and
      * multiple departments are OR'd together via the existing IN (...) clause.
      */
-    private Set<String> resolveDepartmentCodes(String tenantId, Set<String> departments) {
+    private Set<String> resolveDepartmentCodes(RequestInfo requestInfo, String tenantId, Set<String> departments) {
         Set<String> departmentCodes = new LinkedHashSet<>();
-        Map<String, String> codeToName = mdmsUtils.getDepartmentCodeToNameMap(tenantId);
+        Map<String, String> codeToName = mdmsUtils.getDepartmentCodeToNameMap(requestInfo, tenantId);
 
         for (String department : departments) {
             departmentCodes.add(department);
