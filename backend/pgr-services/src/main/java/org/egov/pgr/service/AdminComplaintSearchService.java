@@ -46,13 +46,13 @@ public class AdminComplaintSearchService {
         if (adminCriteria.getTenantId() == null)
             throw new CustomException("INVALID_SEARCH", "tenantId is mandatory search param");
 
-        RequestSearchCriteria criteria = toRequestSearchCriteria(adminCriteria);
+        RequestSearchCriteria criteria = toRequestSearchCriteria(requestInfo, adminCriteria);
         List<ServiceWrapper> serviceWrappers = pgrService.search(requestInfo, criteria);
         Integer totalCount = pgrService.count(requestInfo, criteria);
         return new Result(serviceWrappers, totalCount);
     }
 
-    private RequestSearchCriteria toRequestSearchCriteria(AdminSearchCriteria adminCriteria) {
+    private RequestSearchCriteria toRequestSearchCriteria(RequestInfo requestInfo, AdminSearchCriteria adminCriteria) {
         int limit = adminCriteria.getLimit() == null
                 ? DEFAULT_LIMIT : Math.min(adminCriteria.getLimit(), MAX_LIMIT);
         int offset = adminCriteria.getOffset() == null ? 0 : adminCriteria.getOffset();
