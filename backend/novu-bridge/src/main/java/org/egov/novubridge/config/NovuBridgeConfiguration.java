@@ -139,7 +139,9 @@ public class NovuBridgeConfiguration {
     // providers.twilio override (buildProviderTemplateOverrides), which is keyed to a
     // different provider id (twilio, not generic-sms) and returns before this flag is
     // ever checked. Reuses smsIntegrationIdentifier above — same integration serves
-    // both OTP and PGR complaint SMS.
+    // both OTP and PGR complaint SMS. "smscountry" is also accepted: it makes
+    // isSmsCountryDirect() true, so the SMS leg bypasses Novu entirely and goes
+    // straight to SMSCountry's legacy bulk API (see the SMSCountry section below).
     @Value("${novu.bridge.sms.provider:}")
     private String smsProvider;
 
@@ -210,29 +212,6 @@ public class NovuBridgeConfiguration {
     // see no behavior change.
     @Value("${novu.bridge.integration.id.whatsapp:}")
     private String whatsappIntegrationId;
-
-    // ---- Ordinary SMS through a non-Twilio gateway -------------------------
-    // Twilio is not usable everywhere: some deployments cannot clear the SMS
-    // compliance registration it requires, even where WhatsApp is fine. Novu has
-    // no built-in provider for most regional gateways either — setting an
-    // integration's providerId to the gateway's own name fails at trigger time
-    // ("Sms handler for provider <name> is not found"). The supported route is
-    // Novu's built-in "generic-sms" provider plus a _passthrough body shaped for
-    // that gateway's API, which is what SmsCountryClient does.
-    //
-    // Blank (the default) = no overrides are sent and SMS delivers through
-    // whatever is primary on Novu's sms channel, i.e. today's behaviour.
-    // "ozeki" or "smscountry" = attach that gateway's envelope to SMS-channel
-    // triggers only.
-    // WhatsApp is unaffected: it is keyed to a different integration and returns
-    // before this is ever consulted.
-    @Value("${novu.bridge.sms.provider:}")
-    private String smsProvider;
-
-
-    // Registered sender id / header the gateway sends from.
-    @Value("${novu.bridge.sms.sender.id:}")
-    private String smsSenderId;
 
     // ---- SMSCountry legacy bulk API (direct, not via Novu) ----
     // Its form-encoded request and plain-text response cannot ride Novu's

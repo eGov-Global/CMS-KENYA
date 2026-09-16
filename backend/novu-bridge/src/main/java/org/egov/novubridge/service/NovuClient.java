@@ -99,10 +99,10 @@ public class NovuClient {
         // Pins this trigger to that integration instead of falling through to
         // whatever's primary.
         if ("SMS".equalsIgnoreCase(channel)) {
-            Map<String, Object> overrides = SmsProviderOverridesFactory.build(
+            Map<String, Object> smsOverrides = SmsProviderOverridesFactory.build(
                     config, config.getSmsProvider(), transactionId, phone, renderedBody);
-            if (overrides != null) {
-                return trigger(workflowId, scopedSubscriberId, phone, payload, transactionId, overrides, null);
+            if (smsOverrides != null) {
+                return trigger(workflowId, scopedSubscriberId, phone, payload, transactionId, smsOverrides, null);
             }
         }
 
