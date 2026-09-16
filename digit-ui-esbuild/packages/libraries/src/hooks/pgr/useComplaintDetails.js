@@ -37,6 +37,36 @@ const fetchBoundaryAncestors = async (tenantId, localityCode) => {
       if (node.code === localityCode) break;
       node = node.children && node.children[0];
     }
+    // Resolve display NAMES here rather than relying on t(code): the
+    // rainmaker-boundary-<hierarchy> localization module is only loaded into
+    // i18next by screens that mount the boundary cascade (create form, inbox
+    // filter) — the details page can render before/without any of them, and
+    // then t(code) misses even though the message is seeded. Best-effort: on
+    // failure the entries keep code-derived fallbacks only.
+    try {
+      const locale = Digit.StoreData?.getCurrentLanguage?.() || "en_IN";
+      const loc = await Digit.CustomService.getResponse({
+        url: "/localization/messages/v1/_search",
+        useCache: true,
+        method: "POST",
+        userService: false,
+        params: {
+          tenantId,
+          locale,
+          module: `rainmaker-boundary-${String(hierarchyType).toLowerCase()}`,
+          codes: chain.map((c) => c.code).join(","),
+        },
+      });
+      const byCode = {};
+      (loc?.messages || []).forEach((m) => {
+        byCode[m.code] = m.message;
+      });
+      chain.forEach((c) => {
+        if (byCode[c.code]) c.name = byCode[c.code];
+      });
+    } catch (e) {
+      /* names stay code-derived */
+    }
     return chain;
   } catch (e) {
     return [];
@@ -89,7 +119,15 @@ const getDetailsRow = ({ id, service, complaintType, boundaryAncestors }) => ({
       service.address.buildingName,
       service.address.street,
     ].filter((v) => v && String(v).trim());
-    const chain = [...(boundaryAncestors || [])].reverse().map((b) => readableBoundary(b?.code)).filter(Boolean);
+    // Chain entries carry the raw CODE plus a humanized fallback: the display
+    // t()s each element, so a seeded boundary localization ("018" → "Silibwet
+    // Township" on Bomet, where codes are numeric) wins; readableBoundary is
+    // only the fallback for unseeded codes. Humanizing FIRST defeated the
+    // lookup and rendered Bomet addresses as bare numbers ("018, 004").
+    const chain = [...(boundaryAncestors || [])]
+      .reverse()
+      .map((b) => (b?.code ? { code: b.code, name: b.name, fallback: readableBoundary(b.code) } : null))
+      .filter(Boolean);
     const parts = [...typed, ...chain];
     // "NA" (landmark-row parity) rather than a blank labelled row when the
     // complaint predates boundaries or the chain lookup fails.
@@ -107,6 +145,10 @@ const transformDetails = ({ id, service, workflow, thumbnails, complaintType, bo
     : {};
   return {
     details: !isEmptyOrNull(customDetails) ? customDetails : getDetailsRow({ id, service, complaintType, boundaryAncestors }),
+    // Root→leaf administrative chain ({boundaryType, code, hierarchyType} per
+    // level) so detail pages can render one labelled row per level (County /
+    // Sub-County / Ward) — employee-page parity (CCRS#927).
+    boundaryAncestors: boundaryAncestors || [],
     thumbnails: thumbnails?.thumbs,
     images: thumbnails?.images,
     workflow: workflow,

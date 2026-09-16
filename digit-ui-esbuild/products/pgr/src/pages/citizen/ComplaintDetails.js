@@ -117,15 +117,30 @@ function DetailRow({ label, value }) {
   );
 }
 
+// Localization-first with graceful fallbacks, in order: a `name` the hook
+// already resolved from the boundary localization module (deterministic — no
+// dependence on which screen loaded labels into i18next first), then t(code)
+// (the seeding convention), then the humanized fallback — never a raw code.
+function localizedOrFallback(t, code, fallback, name) {
+  if (name) return name;
+  if (!code) return fallback || "";
+  const translated = t(String(code));
+  return translated && translated !== String(code) ? translated : fallback || String(code);
+}
+
 function renderRowValue(val, t) {
   if (Array.isArray(val)) {
     return val
-      .map((item) => (typeof item === "object" && item ? t(item?.code) : t(String(item ?? ""))))
+      .map((item) =>
+        typeof item === "object" && item
+          ? localizedOrFallback(t, item?.code, item?.fallback, item?.name)
+          : t(String(item ?? ""))
+      )
       .filter(Boolean)
       .join(", ");
   }
   if (val == null || val === "") return "N/A";
-  if (typeof val === "object") return t(val?.code ?? "") || "N/A";
+  if (typeof val === "object") return localizedOrFallback(t, val?.code, val?.fallback) || "N/A";
   return t(String(val)) || "N/A";
 }
 
@@ -445,6 +460,33 @@ const ComplaintDetailsPage = () => {
                       value={renderRowValue(complaintDetails.details[flag], t)}
                     />
                   ))}
+                {/* One labelled row per administrative level (County / Sub-
+                    County / Ward), root → leaf — employee-page parity
+                    (CCRS#927). Labels follow the create-cascade convention
+                    (t(`${hierarchyType}_${TYPE}`)) with a humanized fallback;
+                    values are t(code) with a humanized-code fallback, so
+                    neither ever renders a raw key or a bare numeric code. */}
+                {(complaintDetails.boundaryAncestors || []).map((b) => {
+                  const levelKey = Digit.Utils.locale.getTransformedLocale(
+                    `${b.hierarchyType || "ADMIN"}_${b.boundaryType || ""}`
+                  );
+                  const humanizedType = String(b.boundaryType || "")
+                    .replace(/[_-]+/g, " ")
+                    .trim()
+                    .replace(/(^|\s)\S/g, (c) => c.toUpperCase());
+                  const label = t(levelKey) !== levelKey ? t(levelKey) : humanizedType;
+                  const humanizedCode = String(b.code || "")
+                    .replace(/^(?:[A-Z0-9]+_)+(?=[^A-Z])/, "")
+                    .replace(/[_-]+/g, " ")
+                    .replace(/\b\w/g, (c) => c.toUpperCase());
+                  return (
+                    <DetailRow
+                      key={`boundary-${b.boundaryType}-${b.code}`}
+                      label={label}
+                      value={localizedOrFallback(t, b.code, humanizedCode, b.name)}
+                    />
+                  );
+                })}
               </div>
               {complaintDetails?.workflow?.verificationDocuments?.length > 0 ? (
                 <div style={{ marginTop: "12px" }}>
@@ -472,7 +514,15 @@ const ComplaintDetailsPage = () => {
               ) : null;
             })()}
 
-            {Number.isFinite(geoLocation?.latitude) && Number.isFinite(geoLocation?.longitude) ? (
+            {/* Hide the section entirely when there is no REAL pin (issue #26,
+                employee-page parity). A complaint saved without coordinates
+                comes back as latitude/longitude 0 — JDBC getDouble() turns the
+                NULL columns into 0.0 — and Number.isFinite(0) let that sentinel
+                render a header pointing at null island. Exact (0,0) is not a
+                plausible complaint location for any tenant. */}
+            {Number.isFinite(geoLocation?.latitude) &&
+            Number.isFinite(geoLocation?.longitude) &&
+            !(geoLocation.latitude === 0 && geoLocation.longitude === 0) ? (
               <Card style={{ padding: "20px 24px", display: "flex", flexDirection: "column", gap: "12px" }}>
                 <SectionTitle>{t("CS_COMPLAINT_LOCATION")}</SectionTitle>
                 <ComplaintLocationMap
