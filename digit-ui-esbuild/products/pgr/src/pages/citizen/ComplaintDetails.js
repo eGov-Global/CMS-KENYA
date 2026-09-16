@@ -117,15 +117,27 @@ function DetailRow({ label, value }) {
   );
 }
 
+// Localization-first with a graceful fallback: boundary/code entries resolve
+// via t(code) (the seeding convention — "018" → "Silibwet Township"); when the
+// code isn't seeded, the item's own humanized `fallback` (or the code) shows
+// instead of a raw identifier.
+function localizedOrFallback(t, code, fallback) {
+  if (!code) return fallback || "";
+  const translated = t(String(code));
+  return translated && translated !== String(code) ? translated : fallback || String(code);
+}
+
 function renderRowValue(val, t) {
   if (Array.isArray(val)) {
     return val
-      .map((item) => (typeof item === "object" && item ? t(item?.code) : t(String(item ?? ""))))
+      .map((item) =>
+        typeof item === "object" && item ? localizedOrFallback(t, item?.code, item?.fallback) : t(String(item ?? ""))
+      )
       .filter(Boolean)
       .join(", ");
   }
   if (val == null || val === "") return "N/A";
-  if (typeof val === "object") return t(val?.code ?? "") || "N/A";
+  if (typeof val === "object") return localizedOrFallback(t, val?.code, val?.fallback) || "N/A";
   return t(String(val)) || "N/A";
 }
 
@@ -445,6 +457,33 @@ const ComplaintDetailsPage = () => {
                       value={renderRowValue(complaintDetails.details[flag], t)}
                     />
                   ))}
+                {/* One labelled row per administrative level (County / Sub-
+                    County / Ward), root → leaf — employee-page parity
+                    (CCRS#927). Labels follow the create-cascade convention
+                    (t(`${hierarchyType}_${TYPE}`)) with a humanized fallback;
+                    values are t(code) with a humanized-code fallback, so
+                    neither ever renders a raw key or a bare numeric code. */}
+                {(complaintDetails.boundaryAncestors || []).map((b) => {
+                  const levelKey = Digit.Utils.locale.getTransformedLocale(
+                    `${b.hierarchyType || "ADMIN"}_${b.boundaryType || ""}`
+                  );
+                  const humanizedType = String(b.boundaryType || "")
+                    .replace(/[_-]+/g, " ")
+                    .trim()
+                    .replace(/(^|\s)\S/g, (c) => c.toUpperCase());
+                  const label = t(levelKey) !== levelKey ? t(levelKey) : humanizedType;
+                  const humanizedCode = String(b.code || "")
+                    .replace(/^(?:[A-Z0-9]+_)+(?=[^A-Z])/, "")
+                    .replace(/[_-]+/g, " ")
+                    .replace(/\b\w/g, (c) => c.toUpperCase());
+                  return (
+                    <DetailRow
+                      key={`boundary-${b.boundaryType}-${b.code}`}
+                      label={label}
+                      value={localizedOrFallback(t, b.code, humanizedCode)}
+                    />
+                  );
+                })}
               </div>
               {complaintDetails?.workflow?.verificationDocuments?.length > 0 ? (
                 <div style={{ marginTop: "12px" }}>

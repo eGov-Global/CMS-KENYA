@@ -89,7 +89,15 @@ const getDetailsRow = ({ id, service, complaintType, boundaryAncestors }) => ({
       service.address.buildingName,
       service.address.street,
     ].filter((v) => v && String(v).trim());
-    const chain = [...(boundaryAncestors || [])].reverse().map((b) => readableBoundary(b?.code)).filter(Boolean);
+    // Chain entries carry the raw CODE plus a humanized fallback: the display
+    // t()s each element, so a seeded boundary localization ("018" → "Silibwet
+    // Township" on Bomet, where codes are numeric) wins; readableBoundary is
+    // only the fallback for unseeded codes. Humanizing FIRST defeated the
+    // lookup and rendered Bomet addresses as bare numbers ("018, 004").
+    const chain = [...(boundaryAncestors || [])]
+      .reverse()
+      .map((b) => (b?.code ? { code: b.code, fallback: readableBoundary(b.code) } : null))
+      .filter(Boolean);
     const parts = [...typed, ...chain];
     // "NA" (landmark-row parity) rather than a blank labelled row when the
     // complaint predates boundaries or the chain lookup fails.
@@ -107,6 +115,10 @@ const transformDetails = ({ id, service, workflow, thumbnails, complaintType, bo
     : {};
   return {
     details: !isEmptyOrNull(customDetails) ? customDetails : getDetailsRow({ id, service, complaintType, boundaryAncestors }),
+    // Root→leaf administrative chain ({boundaryType, code, hierarchyType} per
+    // level) so detail pages can render one labelled row per level (County /
+    // Sub-County / Ward) — employee-page parity (CCRS#927).
+    boundaryAncestors: boundaryAncestors || [],
     thumbnails: thumbnails?.thumbs,
     images: thumbnails?.images,
     workflow: workflow,
