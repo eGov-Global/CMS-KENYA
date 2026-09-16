@@ -48,6 +48,7 @@ function loadShim(opts) {
   const xhrCalls = [];
   const scripts = [];
   const timers = [];
+  const documentListeners = {};
 
   const sandbox = {};
   sandbox.window = sandbox;
@@ -89,7 +90,9 @@ function loadShim(opts) {
     },
     documentElement: { appendChild(el) { scripts.push(el); } },
     createElement: makeEl,
-    addEventListener(type, fn) { if (type === "click") this._clickListener = fn; },
+    // Union harness: product tests dispatch via documentListeners, the Kenya
+    // behaviour-analytics tests reach the click listener directly.
+    addEventListener(name, handler) { documentListeners[name] = handler; if (name === "click") this._clickListener = handler; },
     referrer: "",
   };
   // The real bundle captures the history OBJECT, so the shim's later patch still
@@ -132,6 +135,9 @@ function loadShim(opts) {
     xhrCalls, scripts, sandbox, session, local,
     flush: () => { while (timers.length) timers.shift()(); },
     loadScripts: () => { while (deferred.length) deferred.shift().onload(); },
+    dispatchDocument: (name, event) => {
+      if (documentListeners[name]) documentListeners[name](event);
+    },
   };
 }
 
@@ -450,6 +456,60 @@ test("an enabled Matomo record initialises exactly one allowlisted script", () =
   assert.ok(paq.indexOf("setSiteId") !== -1 && paq.indexOf("trackPageView") !== -1);
 });
 
+test("a vendor queue that is no longer an array is never replaced", () => {
+  /* Regression. matomo.js swaps window._paq for a TrackerProxy once it loads:
+     not an array, but it has push(), and pushing executes the command. The
+     queue helper used to test isArray, so the first push after the vendor
+     script landed threw the live proxy away and installed a fresh []. Nothing
+     drains that, so every SPA route change, every trackEvent and every tagged
+     click was silently lost — only the first pageview of a full page load
+     survived. Verified against the Bomet deployment before fixing: the tracker
+     was healthy and correctly configured, with four events stranded in a dead
+     array. */
+  const t = loadShim({ respond: (tenant) => (tenant === "mz" ? [row("mz", MATOMO_OK)] : []) });
+
+  const executed = [];
+  const proxy = { push: (args) => executed.push(args) };
+  t.sandbox._paq = proxy;
+
+  t.sandbox.DigitAnalytics.trackEvent("pgr.test.event", { category: "pgr" });
+
+  assert.strictEqual(t.sandbox._paq, proxy, "the live tracker proxy must survive");
+  assert.ok(
+    executed.some((c) => c[0] === "trackEvent"),
+    "the event must reach the live tracker rather than a dead queue"
+  );
+});
+
+// Product-sync 2026-09-16: adapted from product's "keeps its event name as the
+// Matomo action" — Kenya's behaviour-analytics catalogue names tagged clicks
+// Navigation/Clicked and carries the declared id (and label) in the Name field,
+// which preserves this test's real concern: the declared id must reach Matomo
+// distinguishably, never as a generic anonymous click.
+test("a tagged click keeps its declared event id distinguishable in Matomo", () => {
+  const enabled = Object.assign({}, MATOMO_OK, { trackClicks: true });
+  const t = loadShim({ respond: (tenant) => (tenant === "mz" ? [row("mz", enabled)] : []) });
+  const attrs = {
+    "data-analytics-event": "pgr.file-complaint.submit",
+    "data-analytics-label": "final-step",
+  };
+  const target = {
+    getAttribute: (name) => attrs[name] || null,
+    parentNode: null,
+  };
+
+  t.dispatchDocument("click", { target });
+
+  assert.ok(
+    t.sandbox._paq.some((command) =>
+      command[0] === "trackEvent"
+      && command[1] === "Navigation"
+      && command[2] === "Clicked"
+      && command[3] === "pgr.file-complaint.submit:final-step"),
+    "Matomo must receive the stable declared event id (in the Name field), not a generic anonymous click"
+  );
+});
+
 test("a record whose script host is not allowlisted loads nothing", () => {
   const bad = Object.assign({}, MATOMO_OK, { code: "evil", scriptUrl: "https://evil.example.com/m.js" });
   const t = loadShim({ respond: (tenant) => (tenant === "mz" ? [row("mz", bad)] : []) });
@@ -585,6 +645,35 @@ test("PostHog init forces every restraint, and no record can loosen them", () =>
   assert.equal(cfg.person_profiles, "identified_only");
   assert.equal(cfg.respect_dnt, true);
   assert.equal(typeof cfg.sanitize_properties, "function");
+});
+
+test("sanitize_properties scrubs content but not PostHog's own identity keys", () => {
+  /* Regression. PostHog's distinct_id, $device_id and $session_id are UUIDs it
+     generates itself. scrub() redacts anything UUID-shaped, so sanitising them
+     rewrote every visitor to the literal ":uuid": one person for the whole
+     audience, sessions collapsed with it, person_mode stuck at propertyless.
+     Observed on the Bomet deployment before fixing. They are opaque ids from
+     the vendor, not anything from our app, so they pass through while real
+     content is still scrubbed. */
+  const t = loadShim({
+    deferScriptLoad: true,
+    respond: (tenant) => (tenant === "mz" ? [row("mz", POSTHOG_OK)] : []),
+  });
+  t.sandbox.posthog = { init: (key, cfg) => { t.sandbox.__cfg = cfg; }, capture: () => {} };
+  t.loadScripts();
+  const sanitize = t.sandbox.__cfg.sanitize_properties;
+
+  const out = sanitize({
+    distinct_id: "01a08c48-1198-79a0-b276-5f84fa6ddd7a",
+    $device_id: "01a08c48-1198-79a0-b276-5f84fa6ddd7b",
+    $session_id: "01a08c48-1198-79a0-b276-5f84fa6ddd7c",
+    page_title: "Complaint 01a08c48-1198-79a0-b276-5f84fa6ddd7a",
+  });
+
+  assert.equal(out.distinct_id, "01a08c48-1198-79a0-b276-5f84fa6ddd7a", "identity must survive");
+  assert.equal(out.$device_id, "01a08c48-1198-79a0-b276-5f84fa6ddd7b");
+  assert.equal(out.$session_id, "01a08c48-1198-79a0-b276-5f84fa6ddd7c");
+  assert.ok(out.page_title.indexOf(":uuid") !== -1, "real content is still scrubbed");
 });
 
 test("the pending queue is bounded so a script that never loads cannot grow it", () => {
