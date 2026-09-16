@@ -145,7 +145,11 @@ const GeoLocations = ({ t, config, onSelect, formData, tenantId }) => {
   // citizen zooms in from. Clamped so it can't sit outside the tenant's bounds.
   const OVERVIEW_ZOOM = Math.max(minZoom, Math.min(5, maxZoom));
   const [coords, setCoords] = useState(DEFAULT_CENTER);
-  const [markerPos, setMarkerPos] = useState([DEFAULT_CENTER.lat, DEFAULT_CENTER.lng]);
+  // No pin until the citizen (or a restore path) actually places one — a
+  // default marker read as "location already chosen" and complaints shipped
+  // with the tenant-centre coordinates untouched (issue #26). The render is
+  // already null-tolerant (marker + zoom both branch on markerPos).
+  const [markerPos, setMarkerPos] = useState(null);
   // One-shot initial framing, applied by MapCamera once the map instance
   // exists (see that component for why a mapRef.setView from the init
   // effect can fire before the map does).
@@ -238,12 +242,13 @@ const GeoLocations = ({ t, config, onSelect, formData, tenantId }) => {
         onSelect(config.key, savedLocation);
       } else {
         hasInitialized.current = true;
+        // Fresh start: frame the tenant centre WITHOUT placing a pin or
+        // seeding lat/lng (issue #26). The step's mandatory GeoLocationsPoint
+        // check keeps Next disabled until the citizen actually taps the map —
+        // the old auto-seed made every quick Next ship the tenant-centre
+        // coordinates as if the citizen had chosen them.
         setCoords(DEFAULT_CENTER);
-        setMarkerPos([DEFAULT_CENTER.lat, DEFAULT_CENTER.lng]);
-        setCameraTarget({ lat: DEFAULT_CENTER.lat, lng: DEFAULT_CENTER.lng, zoom: DEFAULT_ZOOM });
-        // Seed lat/lng immediately so a quick Next click still captures something.
-        onSelect(config.key, { lat: DEFAULT_CENTER.lat, lng: DEFAULT_CENTER.lng });
-        fetchAddress(DEFAULT_CENTER.lat, DEFAULT_CENTER.lng);
+        setCameraTarget({ lat: DEFAULT_CENTER.lat, lng: DEFAULT_CENTER.lng, zoom: OVERVIEW_ZOOM });
       }
     }
   }, [isReady, DEFAULT_CENTER.lat, DEFAULT_CENTER.lng]);

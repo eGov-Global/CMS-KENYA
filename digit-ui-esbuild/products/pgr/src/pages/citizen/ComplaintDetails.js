@@ -514,7 +514,15 @@ const ComplaintDetailsPage = () => {
               ) : null;
             })()}
 
-            {Number.isFinite(geoLocation?.latitude) && Number.isFinite(geoLocation?.longitude) ? (
+            {/* Hide the section entirely when there is no REAL pin (issue #26,
+                employee-page parity). A complaint saved without coordinates
+                comes back as latitude/longitude 0 — JDBC getDouble() turns the
+                NULL columns into 0.0 — and Number.isFinite(0) let that sentinel
+                render a header pointing at null island. Exact (0,0) is not a
+                plausible complaint location for any tenant. */}
+            {Number.isFinite(geoLocation?.latitude) &&
+            Number.isFinite(geoLocation?.longitude) &&
+            !(geoLocation.latitude === 0 && geoLocation.longitude === 0) ? (
               <Card style={{ padding: "20px 24px", display: "flex", flexDirection: "column", gap: "12px" }}>
                 <SectionTitle>{t("CS_COMPLAINT_LOCATION")}</SectionTitle>
                 <ComplaintLocationMap
