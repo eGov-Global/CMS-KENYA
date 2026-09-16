@@ -1,0 +1,116 @@
+# Product → Kenya synchronization automation.
+#
+# Weekly (and on demand): fast-forwards the `upstream-product` mirror from
+# egovernments/Citizen-Complaint-Resolution-System, and opens/updates ONE sync PR
+# (upstream-product → integration branch) with a conflict/change report.
+#
+# It PREPARES the sync; humans classify, resolve, and merge. It never deploys.
+# Runbook: docs/synchronization/PRODUCT-KENYA-SYNC.md
+#
+# NOTE: pushing `upstream-product` can add/modify .github/workflows files coming
+# from product, which the default GITHUB_TOKEN is not allowed to push. Provide a
+# classic PAT with `repo` + `workflow` scopes as the SYNC_PAT secret; without it
+# the mirror push is skipped and the job still reports what is pending.
+name: product-sync
+on:
+  schedule:
+    - cron: "0 5 * * 1" # Mondays 05:00 UTC
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+  pull-requests: write
+
+env:
+  UPSTREAM_URL: https://github.com/egovernments/Citizen-Complaint-Resolution-System.git
+  # Kenya integration branch. Change to `main` after branch consolidation.
+  INTEGRATION_BRANCH: syncwithmoz
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.SYNC_PAT || github.token }}
+
+      - name: Fetch upstream and fast-forward the mirror
+        id: mirror
+        run: |
+          set -euo pipefail
+          git remote add upstream "$UPSTREAM_URL"
+          git fetch upstream master --no-tags
+          git fetch origin upstream-product --no-tags || true
+          BASE=$(git rev-parse origin/upstream-product 2>/dev/null || echo "")
+          TIP=$(git rev-parse upstream/master)
+          echo "tip=$TIP" >> "$GITHUB_OUTPUT"
+          if [ "$BASE" = "$TIP" ]; then
+            echo "mirror already current at $TIP"
+            echo "new=0" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          # ff-only by construction: the mirror must always be an ancestor of upstream.
+          if [ -n "$BASE" ] && ! git merge-base --is-ancestor "$BASE" "$TIP"; then
+            echo "::error::upstream-product is not an ancestor of upstream/master — mirror was tampered with; refusing to move it"
+            exit 1
+          fi
+          if git push origin "$TIP:refs/heads/upstream-product"; then
+            echo "mirror pushed to $TIP"
+          else
+            echo "::warning::mirror push rejected (likely missing SYNC_PAT with workflow scope) — continuing with report only"
+          fi
+          echo "new=$(git rev-list --count ${BASE:-$TIP~1}..$TIP)" >> "$GITHUB_OUTPUT"
+
+      - name: Build conflict/change report (dry-run merge, nothing pushed)
+        id: report
+        if: steps.mirror.outputs.new != '0'
+        run: |
+          set -euo pipefail
+          TIP="${{ steps.mirror.outputs.tip }}"
+          git fetch origin "$INTEGRATION_BRANCH" --no-tags
+          LAST=$(python3 -c "import json;print(json.load(open('product-sync.json'))['commit'])" 2>/dev/null || echo "")
+          git config user.email sync-bot@local && git config user.name product-sync-bot
+          git checkout -q -B _dryrun "origin/$INTEGRATION_BRANCH"
+          set +e
+          git merge --no-commit --no-ff "$TIP" >/dev/null 2>&1
+          set -e
+          git diff --name-only --diff-filter=U | sort > /tmp/conflicts.txt
+          git merge --abort 2>/dev/null || true
+          {
+            echo "## Product sync report ($(date -u +%F))"
+            echo ""
+            echo "- Product tip: \`$TIP\`"
+            echo "- Last synced base (product-sync.json): \`${LAST:-unknown}\`"
+            echo "- New product commits: **${{ steps.mirror.outputs.new }}**"
+            echo "- Files changed by product since base: $(git diff --name-only ${LAST:-$TIP~1}..$TIP | wc -l)"
+            echo "- **Conflicting files: $(wc -l < /tmp/conflicts.txt)**"
+            echo ""
+            echo "<details><summary>Conflict list</summary>"
+            echo ""; sed 's/^/- /' /tmp/conflicts.txt; echo ""
+            echo "</details>"
+            echo ""
+            echo "Watchlist hits (see docs/synchronization/CONFLICT-MANAGEMENT.md):"
+            grep -E 'CreatePGRFlowV2|PGRDetails\.js|GeoLocations\.js|Login/login\.js|UICustomizations\.js|overrides\.css' /tmp/conflicts.txt | sed 's/^/- ⚠️ /' || echo "- none"
+            echo ""
+            echo "Next: classify per docs/synchronization/PRODUCT-CHANGE-ADOPTION.md, resolve on a local product-sync/<date> branch, record decisions in docs/synchronization/decisions/."
+          } > /tmp/report.md
+          cat /tmp/report.md
+
+      - name: Open or update the sync PR
+        if: steps.mirror.outputs.new != '0'
+        env:
+          GH_TOKEN: ${{ secrets.SYNC_PAT || github.token }}
+        run: |
+          set -euo pipefail
+          TIP_SHORT=$(git rev-parse --short "${{ steps.mirror.outputs.tip }}")
+          EXISTING=$(gh pr list --head upstream-product --base "$INTEGRATION_BRANCH" --state open --json number --jq '.[0].number' || echo "")
+          if [ -n "$EXISTING" ] && [ "$EXISTING" != "null" ]; then
+            gh pr comment "$EXISTING" --body-file /tmp/report.md
+            echo "updated PR #$EXISTING"
+          else
+            gh pr create --draft --head upstream-product --base "$INTEGRATION_BRANCH" \
+              --title "[PRODUCT-SYNC] Sync product $TIP_SHORT ($(date -u +%F))" \
+              --body-file /tmp/report.md || \
+              echo "::warning::could not open PR (upstream-product missing on origin?) — see mirror step"
+          fi

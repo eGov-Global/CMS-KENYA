@@ -1,0 +1,51 @@
+# Guardrails against architectural drift (docs/synchronization/KENYA-CUSTOMIZATION.md).
+#
+# 1) Subtree guard — digit-ui-esbuild/packages/modules/** is upstream product code.
+#    Kenya edits there require an `UPSTREAM-PR:` reference (the generic fix was
+#    submitted to product) or an explicit `SUBTREE-WAIVER:` line in the PR body.
+#    Product-sync PRs (head: upstream-product) are exempt.
+# 2) Dead-tree warning — packages/modules/pgr/** is aliased away by esbuild
+#    (products/pgr overrides it); changes there have NO runtime effect and must be
+#    ported to products/pgr instead. Warning only, non-blocking.
+name: sync-guardrails
+on:
+  pull_request:
+    paths:
+      - "digit-ui-esbuild/packages/modules/**"
+
+permissions:
+  contents: read
+
+jobs:
+  subtree-guard:
+    runs-on: ubuntu-latest
+    if: github.head_ref != 'upstream-product'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check subtree modifications
+        env:
+          PR_BODY: ${{ github.event.pull_request.body }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          set -euo pipefail
+          CHANGED=$(git diff --name-only "$BASE_SHA"...HEAD -- 'digit-ui-esbuild/packages/modules/' || true)
+          [ -z "$CHANGED" ] && { echo "no subtree changes after merge-base diff"; exit 0; }
+          echo "Subtree files modified:"; echo "$CHANGED" | sed 's/^/  /'
+
+          DEAD=$(echo "$CHANGED" | grep '^digit-ui-esbuild/packages/modules/pgr/' || true)
+          if [ -n "$DEAD" ]; then
+            echo "::warning::packages/modules/pgr/** is a DEAD tree (aliased away by esbuild.build.js — products/pgr overrides it). These changes have no runtime effect; port them to products/pgr instead:"
+            echo "$DEAD" | sed 's/^/  /'
+          fi
+
+          if echo "$PR_BODY" | grep -qE 'UPSTREAM-PR:|SUBTREE-WAIVER:'; then
+            echo "marker found in PR body — subtree modification acknowledged"
+            exit 0
+          fi
+          echo "::error::This PR modifies upstream product code (digit-ui-esbuild/packages/modules/**) without acknowledgement."
+          echo "::error::Add to the PR body either 'UPSTREAM-PR: <link to the product PR carrying the generic fix>' or 'SUBTREE-WAIVER: <reason this must stay Kenya-only>'."
+          echo "::error::Background: docs/synchronization/KENYA-CUSTOMIZATION.md"
+          exit 1
