@@ -18,6 +18,7 @@ import org.egov.pgr.web.models.ServiceWrapper;
 import org.egov.pgr.web.models.ServiceRequest;
 import org.egov.pgr.web.models.Workflow;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -47,6 +48,12 @@ import static org.mockito.Mockito.when;
  */
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
+// Product-sync 2026-09-16: this upstream suite verifies product's PGRService wiring —
+// SearchAccessPolicyService scope resolution in search()/count() and the unified escalation
+// pipeline — neither of which Kenya's PGRService adopts yet (kept Kenya's role/property scoping
+// and scheduler-driven escalation; see docs/synchronization/decisions/2026-09-16-first-sync.md).
+// Re-enable together with adopting product's PGRService model.
+@Disabled("Verifies product's ABAC-scoped search + unified escalation in PGRService; deferred in sync #1 — see docs/synchronization/decisions/2026-09-16-first-sync.md")
 class PGRServiceTest {
 
     @Mock private EnrichmentService enrichmentService;
@@ -65,16 +72,21 @@ class PGRServiceTest {
     @Mock private FieldVisibilityService fieldVisibilityService;
     @Mock private EscalationService escalationService;
     @Mock private EscalationLockManager escalationLockManager;
+    @Mock private EmployeeDepartmentScopeService employeeDepartmentScopeService;
+    @Mock private EmployeeJurisdictionScopeService employeeJurisdictionScopeService;
 
     private PGRService pgrService;
 
     @BeforeEach
     void setup() {
         when(config.getStateLevelTenantIdLength()).thenReturn(2);
-        pgrService = new PGRService(enrichmentService, userService, workflowService, validator, producer,
-                config, repository, mdmsUtils, complaintDomainEventService, pgrUtils,
-                extendedAttributesValidationService, encryptionDecryptionService, searchAccessPolicyService,
-                fieldVisibilityService, escalationService, escalationLockManager);
+        // Kenya's PGRService constructor (suite is @Disabled — kept compiling for the future
+        // adoption of product's PGRService, whose constructor takes the policy/escalation mocks
+        // declared above instead of the two employee scope services).
+        pgrService = new PGRService(enrichmentService, userService, workflowService, validator, validator,
+                producer, config, repository, mdmsUtils, complaintDomainEventService, pgrUtils,
+                extendedAttributesValidationService, encryptionDecryptionService,
+                employeeDepartmentScopeService, employeeJurisdictionScopeService);
     }
 
     @Test
