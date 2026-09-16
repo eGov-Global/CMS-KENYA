@@ -117,11 +117,12 @@ function DetailRow({ label, value }) {
   );
 }
 
-// Localization-first with a graceful fallback: boundary/code entries resolve
-// via t(code) (the seeding convention — "018" → "Silibwet Township"); when the
-// code isn't seeded, the item's own humanized `fallback` (or the code) shows
-// instead of a raw identifier.
-function localizedOrFallback(t, code, fallback) {
+// Localization-first with graceful fallbacks, in order: a `name` the hook
+// already resolved from the boundary localization module (deterministic — no
+// dependence on which screen loaded labels into i18next first), then t(code)
+// (the seeding convention), then the humanized fallback — never a raw code.
+function localizedOrFallback(t, code, fallback, name) {
+  if (name) return name;
   if (!code) return fallback || "";
   const translated = t(String(code));
   return translated && translated !== String(code) ? translated : fallback || String(code);
@@ -131,7 +132,9 @@ function renderRowValue(val, t) {
   if (Array.isArray(val)) {
     return val
       .map((item) =>
-        typeof item === "object" && item ? localizedOrFallback(t, item?.code, item?.fallback) : t(String(item ?? ""))
+        typeof item === "object" && item
+          ? localizedOrFallback(t, item?.code, item?.fallback, item?.name)
+          : t(String(item ?? ""))
       )
       .filter(Boolean)
       .join(", ");
@@ -480,7 +483,7 @@ const ComplaintDetailsPage = () => {
                     <DetailRow
                       key={`boundary-${b.boundaryType}-${b.code}`}
                       label={label}
-                      value={localizedOrFallback(t, b.code, humanizedCode)}
+                      value={localizedOrFallback(t, b.code, humanizedCode, b.name)}
                     />
                   );
                 })}
