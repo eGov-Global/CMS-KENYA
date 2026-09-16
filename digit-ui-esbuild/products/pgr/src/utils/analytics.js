@@ -121,3 +121,6 @@ export function trackEvent(name, props) {
     /* analytics must never break the page */
   }
 }
+
+// Product-parity default export (product's shim wrapper exposes one).
+export default trackEvent;
