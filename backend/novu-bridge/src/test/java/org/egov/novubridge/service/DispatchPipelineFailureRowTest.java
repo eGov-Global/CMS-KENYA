@@ -73,7 +73,7 @@ class DispatchPipelineFailureRowTest {
                 .thenReturn(true);
 
         service = new DispatchPipelineService(envelopeValidator, preferenceServiceClient, novuClient,
-                dispatchLogRepository, config, mdmsServiceClient, directDeliveryService);
+                null, dispatchLogRepository, config, mdmsServiceClient);
     }
 
     private ComplaintsDomainEvent smsEvent() {

@@ -14,6 +14,7 @@ import VectorBaseLayer from "./VectorBaseLayer";
 import MapCamera, { MapZoomBounds } from "./MapCamera";
 import { brandPin } from "./mapPin";
 import useTenantBoundaries from "../hooks/pgr/useTenantBoundaries";
+import { hasUsableGeoLocation } from "../utils/geoLocation";
 
 // Fix default icon issue in React builds
 delete L.Icon.Default.prototype._getIconUrl;
@@ -65,6 +66,8 @@ const MapRefSetter = ({ mapRef }) => {
   useEffect(() => { mapRef.current = map; }, [map, mapRef]);
   return null;
 };
+
+const REVERSE_GEOCODE_TIMEOUT_MS = 10000;
 
 // Resolve a pin to a ward polygon. Returns {code, name, parent_subcounty} or null.
 const resolveWard = (lat, lng, wardCollection) => {
@@ -175,6 +178,11 @@ const GeoLocations = ({ t, config, onSelect, formData, tenantId }) => {
   // would re-fetch → fail → re-write → loop forever (thousands of nominatim
   // hits, self-inflicted rate-limiting). One attempt per unique coordinate.
   const geocodeAttemptRef = useRef(null);
+  // A Clear or a newer selection invalidates earlier reverse-geocoding
+  // responses, so a slow reply cannot restore a location the citizen has
+  // already removed or replaced.
+  const locationRequestId = useRef(0);
+  const reverseGeocodeController = useRef(null);
 
   // Leaflet writes the stroke as an SVG DOM attribute, which doesn't resolve
   // CSS `var()`. Read the runtime accent at mount so the user-drawn polygon
@@ -226,37 +234,28 @@ const GeoLocations = ({ t, config, onSelect, formData, tenantId }) => {
         setCameraTarget({ lat, lng, zoom: DEFAULT_ZOOM });
       }
     } else {
-      const savedLocation = Digit.SessionStorage.get("PGR_MAP_LOCATION");
-      if (savedLocation) {
-        hasInitialized.current = true;
-        const { lat, lng, address: savedAddress } = savedLocation;
-        setCoords({ lat, lng });
-        setMarkerPos([lat, lng]);
-        setAddress(savedAddress);
-        setSearchQuery(savedAddress);
-        // Frame the camera on the restored pin. MapContainer's center/zoom are
-        // mount-only in react-leaflet v3, so the state updates above move the
-        // MARKER but leave the CAMERA at the mount frame — the pin came back
-        // off-screen or continent-small.
-        setCameraTarget({ lat, lng, zoom: DEFAULT_ZOOM });
-        onSelect(config.key, savedLocation);
-      } else {
-        hasInitialized.current = true;
-        // Fresh start: frame the tenant centre WITHOUT placing a pin or
-        // seeding lat/lng (issue #26). The step's mandatory GeoLocationsPoint
-        // check keeps Next disabled until the citizen actually taps the map —
-        // the old auto-seed made every quick Next ship the tenant-centre
-        // coordinates as if the citizen had chosen them.
-        setCoords(DEFAULT_CENTER);
-        setCameraTarget({ lat: DEFAULT_CENTER.lat, lng: DEFAULT_CENTER.lng, zoom: OVERVIEW_ZOOM });
-      }
+      hasInitialized.current = true;
+      // PGR_MAP_LOCATION was historically global to the browser session, so it
+      // could leak a pin from a previous complaint (and between the citizen
+      // and employee flows). Wizard-local formData is the sole restoration
+      // source now; drop any value an older build left behind.
+      Digit.SessionStorage.del("PGR_MAP_LOCATION");
+      // Fresh start: frame the tenant centre WITHOUT placing a pin or
+      // seeding lat/lng (issue #26). The step's GeoLocationsPoint check keeps
+      // the citizen in control until they actually tap the map — the old
+      // auto-seed made every quick Next ship the tenant-centre coordinates
+      // as if the citizen had chosen them.
+      setCoords(DEFAULT_CENTER);
+      setCameraTarget({ lat: DEFAULT_CENTER.lat, lng: DEFAULT_CENTER.lng, zoom: OVERVIEW_ZOOM });
     }
   }, [isReady, DEFAULT_CENTER.lat, DEFAULT_CENTER.lng]);
+
+  useEffect(() => () => reverseGeocodeController.current?.abort(), []);
 
   useEffect(() => {
     if (formData?.[config.key]) {
       const { lat, lng, address: savedAddress } = formData[config.key];
-      if (lat && lng) {
+      if (hasUsableGeoLocation({ lat, lng })) {
         setCoords({ lat, lng });
         setMarkerPos([lat, lng]);
         // Restore saved address if available
@@ -277,7 +276,7 @@ const GeoLocations = ({ t, config, onSelect, formData, tenantId }) => {
     }
   }, [formData, config.key]);
 
-  const fetchAddress = async (lat, lng) => {
+  const fetchAddress = async (lat, lng, requestId = ++locationRequestId.current) => {
     // Record the attempt so the formData-driven effect won't re-fire this for
     // the same coordinate after a failure (loop guard).
     geocodeAttemptRef.current = `${lat},${lng}`;
@@ -292,15 +291,29 @@ const GeoLocations = ({ t, config, onSelect, formData, tenantId }) => {
       console.error("Ward resolution failed:", e);
     }
     setSelectedWard(ward?.code || null);
+    // One in-flight reverse lookup at a time, and never an unbounded one:
+    // nominatim can hang, and the citizen is looking at a blocking overlay.
+    reverseGeocodeController.current?.abort();
+    const controller = new AbortController();
+    reverseGeocodeController.current = controller;
+    const timeoutId = setTimeout(() => controller.abort(), REVERSE_GEOCODE_TIMEOUT_MS);
+    setIsSearching(true);
     try {
       const response = await fetch(
         `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1${nominatimCountry}`,
-        { headers: { "Accept-Language": nominatimLang } }
+        {
+          headers: { "Accept-Language": nominatimLang },
+          signal: controller.signal,
+        }
       );
       // Rate-limited/blocked responses (429/403) return non-JSON bodies —
       // bail to the coords-only fallback instead of throwing in json().
       if (!response.ok) throw new Error(`reverse geocode HTTP ${response.status}`);
       const data = await response.json();
+      // A newer pin (or a Clear) superseded this lookup while it was in
+      // flight — its answer describes a location the citizen has moved on
+      // from, so it must not be written back.
+      if (requestId !== locationRequestId.current) return;
       if (data && data.display_name) {
         setAddress(data.display_name);
         setSearchQuery(data.display_name); // Update search bar with fetched address
@@ -313,26 +326,47 @@ const GeoLocations = ({ t, config, onSelect, formData, tenantId }) => {
             pincode = pincodeMatch[0];
           }
         }
-        const locationData = { lat, lng, pincode, address: data.display_name, ward };
-        Digit.SessionStorage.set("PGR_MAP_LOCATION", locationData);
-        onSelect(config.key, locationData);
+        onSelect(config.key, { lat, lng, pincode, address: data.display_name, ward });
       } else {
-        const locationData = { lat, lng, ward };
-        Digit.SessionStorage.set("PGR_MAP_LOCATION", locationData);
-        onSelect(config.key, locationData);
+        onSelect(config.key, { lat, lng, ward });
       }
     } catch (error) {
+      if (requestId !== locationRequestId.current) return;
+      // Replacements, Clear, unmounts and the timeout all abort deliberately.
+      // The coordinate-only selection was already persisted by updateLocation
+      // before this enrichment request, so an abort must not write it again.
+      if (error?.name === "AbortError") return;
       console.error("Error fetching address:", error);
       onSelect(config.key, { lat, lng, ward });
+    } finally {
+      clearTimeout(timeoutId);
+      if (reverseGeocodeController.current === controller) {
+        reverseGeocodeController.current = null;
+      }
+      if (requestId === locationRequestId.current) setIsSearching(false);
     }
   };
 
   const updateLocation = async (lat, lng) => {
+    if (!hasUsableGeoLocation({ lat, lng })) return;
+    const requestId = ++locationRequestId.current;
+    let ward = null;
+    try {
+      ward = resolveWard(lat, lng, tenantBoundaries);
+    } catch (e) {
+      console.error("Ward resolution failed:", e);
+    }
     setCoords({ lat, lng });
     setMarkerPos([lat, lng]);
-    setIsSearching(true);
-    await fetchAddress(lat, lng);
-    setIsSearching(false);
+    setSelectedWard(ward?.code || null);
+    // Close the form-sync race before writing the coordinate-only value: the
+    // write can re-render this component immediately, and without this marker
+    // the restore effect starts a second lookup that supersedes this one.
+    geocodeAttemptRef.current = `${lat},${lng}`;
+    // Persist the explicit selection before reverse geocoding so a quick Next
+    // cannot lose the pin. Address/pincode enrichment follows.
+    onSelect(config.key, { lat, lng, ward });
+    await fetchAddress(lat, lng, requestId);
   };
 
   // Glide the camera onto a freshly-placed pin. Placing a pin only sets
@@ -506,12 +540,23 @@ const GeoLocations = ({ t, config, onSelect, formData, tenantId }) => {
   };
 
   const clearSearch = () => {
+    // Invalidate everything in flight FIRST: a reverse lookup or a debounced
+    // suggestion fetch that lands after this would otherwise write the pin
+    // straight back into formData.
+    locationRequestId.current += 1;
+    reverseGeocodeController.current?.abort();
+    reverseGeocodeController.current = null;
+    geocodeAttemptRef.current = null;
+    debouncedFetchSuggestions.cancel();
+    Digit.SessionStorage.del("PGR_MAP_LOCATION");
     setSearchQuery("");
     setAddress("");
     setMarkerPos(null);
     setSuggestions([]);
     setPolygonPoints([]);
     setCoords(DEFAULT_CENTER);
+    setSelectedWard(null);
+    setIsSearching(false);
     if (mapRef.current) {
       mapRef.current.setView([DEFAULT_CENTER.lat, DEFAULT_CENTER.lng], OVERVIEW_ZOOM);
     }
@@ -602,6 +647,7 @@ const GeoLocations = ({ t, config, onSelect, formData, tenantId }) => {
               bottom: 0,
               backgroundColor: "rgba(255,255,255,0.7)",
               zIndex: 1000,
+              pointerEvents: "none",
               display: "flex",
               justifyContent: "center",
               alignItems: "center"

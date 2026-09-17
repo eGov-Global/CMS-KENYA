@@ -22,6 +22,7 @@ import { buildComplaintPath } from "../../utils/complaintHierarchyPath";
 import TimelineWrapper from "../../components/TimeLineWrapper";
 import ComplaintPhotos from "../../components/ComplaintPhotos";
 import ComplaintLocationMap from "../../components/ComplaintLocationMap";
+import { hasUsableGeoLocation } from "../../utils/geoLocation";
 import { buildExtendedAttributeRows, useExtendedAttributeOrder } from "../../components/PgrExtendedAttributesView";
 import StarRated from "../../components/timelineInstances/StarRated";
 
@@ -520,9 +521,7 @@ const ComplaintDetailsPage = () => {
                 NULL columns into 0.0 — and Number.isFinite(0) let that sentinel
                 render a header pointing at null island. Exact (0,0) is not a
                 plausible complaint location for any tenant. */}
-            {Number.isFinite(geoLocation?.latitude) &&
-            Number.isFinite(geoLocation?.longitude) &&
-            !(geoLocation.latitude === 0 && geoLocation.longitude === 0) ? (
+            {hasUsableGeoLocation(geoLocation) ? (
               <Card style={{ padding: "20px 24px", display: "flex", flexDirection: "column", gap: "12px" }}>
                 <SectionTitle>{t("CS_COMPLAINT_LOCATION")}</SectionTitle>
                 <ComplaintLocationMap
