@@ -46,13 +46,13 @@ public class AdminComplaintSearchService {
         if (adminCriteria.getTenantId() == null)
             throw new CustomException("INVALID_SEARCH", "tenantId is mandatory search param");
 
-        RequestSearchCriteria criteria = toRequestSearchCriteria(adminCriteria);
+        RequestSearchCriteria criteria = toRequestSearchCriteria(requestInfo, adminCriteria);
         List<ServiceWrapper> serviceWrappers = pgrService.search(requestInfo, criteria);
         Integer totalCount = pgrService.count(requestInfo, criteria);
         return new Result(serviceWrappers, totalCount);
     }
 
-    private RequestSearchCriteria toRequestSearchCriteria(AdminSearchCriteria adminCriteria) {
+    private RequestSearchCriteria toRequestSearchCriteria(RequestInfo requestInfo, AdminSearchCriteria adminCriteria) {
         int limit = adminCriteria.getLimit() == null
                 ? DEFAULT_LIMIT : Math.min(adminCriteria.getLimit(), MAX_LIMIT);
         int offset = adminCriteria.getOffset() == null ? 0 : adminCriteria.getOffset();
@@ -81,7 +81,7 @@ public class AdminComplaintSearchService {
                 .skipEmployeeJurisdictionScope(true);
 
         if (!CollectionUtils.isEmpty(adminCriteria.getDepartmentCode()))
-            builder.departmentCodes(resolveDepartmentCodes(adminCriteria.getTenantId(), adminCriteria.getDepartmentCode()));
+            builder.departmentCodes(resolveDepartmentCodes(requestInfo, adminCriteria.getTenantId(), adminCriteria.getDepartmentCode()));
 
         return builder.build();
     }
@@ -98,9 +98,9 @@ public class AdminComplaintSearchService {
      * (mirroring EmployeeDepartmentScopeService's handling of the same code/name ambiguity), and
      * multiple departments are OR'd together via the existing IN (...) clause.
      */
-    private Set<String> resolveDepartmentCodes(String tenantId, Set<String> departments) {
+    private Set<String> resolveDepartmentCodes(RequestInfo requestInfo, String tenantId, Set<String> departments) {
         Set<String> departmentCodes = new LinkedHashSet<>();
-        Map<String, String> codeToName = mdmsUtils.getDepartmentCodeToNameMap(tenantId);
+        Map<String, String> codeToName = mdmsUtils.getDepartmentCodeToNameMap(requestInfo, tenantId);
 
         for (String department : departments) {
             departmentCodes.add(department);

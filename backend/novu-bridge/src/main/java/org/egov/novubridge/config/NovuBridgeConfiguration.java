@@ -139,7 +139,9 @@ public class NovuBridgeConfiguration {
     // providers.twilio override (buildProviderTemplateOverrides), which is keyed to a
     // different provider id (twilio, not generic-sms) and returns before this flag is
     // ever checked. Reuses smsIntegrationIdentifier above — same integration serves
-    // both OTP and PGR complaint SMS.
+    // both OTP and PGR complaint SMS. "smscountry" is also accepted: it makes
+    // isSmsCountryDirect() true, so the SMS leg bypasses Novu entirely and goes
+    // straight to SMSCountry's legacy bulk API (see the SMSCountry section below).
     @Value("${novu.bridge.sms.provider:}")
     private String smsProvider;
 
@@ -195,6 +197,41 @@ public class NovuBridgeConfiguration {
     @Value("${novu.bridge.direct.email.from:}")
     private String directEmailFrom;
 
+    // ---- WhatsApp needs its own Twilio integration, explicitly targeted ----
+    // Novu resolves which integration to use per channel by picking the PRIMARY
+    // one for that channel UNLESS the trigger names an explicit
+    // overrides.<channel>.integrationIdentifier. Twilio WhatsApp delivery is
+    // modeled in Novu as an "sms"-channel step (see TwilioProviderStrategy), so
+    // a second, WhatsApp-registered Twilio integration living alongside the
+    // primary (plain SMS) one on that same "sms" channel is otherwise never
+    // picked — every trigger, SMS or WhatsApp, would keep resolving to the
+    // primary SMS integration's (non-WhatsApp) sender number. Set this to the
+    // identifier of that distinct WhatsApp integration to route WHATSAPP
+    // triggers there. Left blank (the default), no override is sent — existing
+    // deployments that haven't onboarded a separate WhatsApp integration yet
+    // see no behavior change.
+    @Value("${novu.bridge.integration.id.whatsapp:}")
+    private String whatsappIntegrationId;
+
+    // ---- SMSCountry legacy bulk API (direct, not via Novu) ----
+    // Its form-encoded request and plain-text response cannot ride Novu's
+    // generic-sms provider, which injects a JSON _passthrough body, so
+    // SmsCountryClient talks to the gateway directly. Credentials are the
+    // SMSCountry panel login; that account type issues no API key.
+    @Value("${novu.bridge.smscountry.url:http://api.smscountry.com/SMSCwebservice_bulk.aspx}")
+    private String smsCountryUrl;
+
+    @Value("${novu.bridge.smscountry.user:}")
+    private String smsCountryUser;
+
+    @Value("${novu.bridge.smscountry.password:}")
+    private String smsCountryPassword;
+
+    /** True when the SMS leg should bypass Novu and go straight to SMSCountry. */
+    public boolean isSmsCountryDirect() {
+        return "smscountry".equalsIgnoreCase(smsProvider == null ? "" : smsProvider.trim());
+    }
+
     // ---- Subscriber identify (upsert) TTL cache ----
     @Value("${novu.bridge.identify.cache.ttl.ms:300000}")
     private Long identifyCacheTtlMs;
@@ -204,7 +241,12 @@ public class NovuBridgeConfiguration {
     // (e.g. WHATSAPP until a legitimate provider is onboarded as a Novu
     // integration) is persisted as SKIPPED / NB_NO_PROVIDER — an honest,
     // debuggable outcome, never a fallback to another channel.
-    @Value("#{'${novu.bridge.channels.enabled:SMS,EMAIL}'.split(',')}")
+    // No default channel. An empty list matches nothing in isChannelEnabled, so
+    // every event is SKIPPED/NB_NO_PROVIDER until an operator names the channels
+    // they have actually configured a provider for. Defaulting to SMS,EMAIL meant
+    // a deployment that never set this attempted email dispatch with no SMTP
+    // provider onboarded, and failed silently on every complaint.
+    @Value("#{'${novu.bridge.channels.enabled:}'.split(',')}")
     private java.util.List<String> channelsEnabled;
 
     public boolean isChannelEnabled(String channel) {

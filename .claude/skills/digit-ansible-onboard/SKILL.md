@@ -154,8 +154,13 @@ in from their answers and the actual probe results. Mark each line with
 
   MCP REST shim         <scheme>://<host>/v1/healthz
                         <scheme>://<host>/v1/version
-                        <scheme>://<host>/v1/tools           (no auth)
+                        <scheme>://<host>/v1/tools           (bearer token)
                         <scheme>://<host>/v1/tenant/bootstrap (POST + auth)
+                        — /v1/* all require auth: an Authorization: Bearer
+                          <DIGIT access token> header, or for POST bodies an
+                          "auth": {username, password, tenant_id} envelope.
+                          Tenant tools are admin-tier; a 403 names the roles
+                          required and the roles held.
 
   Status dashboard      <scheme>://<host>/status/
 
@@ -187,7 +192,6 @@ in from their answers and the actual probe results. Mark each line with
               fully idempotent — re-runnable any time
 
   Tunnel UIs  ssh -L 18200:127.0.0.1:18200 <ssh-target>   # OpenBao UI
-              ssh -L 18888:127.0.0.1:18888 <ssh-target>   # Jupyter
 
 ▼ CI verification (if Q8 included ci_tests)
 
