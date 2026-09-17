@@ -1,6 +1,7 @@
 package org.egov.pgr.repository.rowmapper;
 
 import org.egov.pgr.config.PGRConfiguration;
+import org.egov.pgr.policy.PgrSearchScope;
 import org.egov.pgr.web.models.RequestSearchCriteria;
 import org.egov.tracer.model.CustomException;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -48,10 +49,22 @@ public class PGRQueryBuilder {
 
 
     public String getPGRSearchQuery(RequestSearchCriteria criteria, List<Object> preparedStmtList) {
-        return getPGRSearchQuery(criteria, preparedStmtList, null);
+        return getPGRSearchQuery(criteria, preparedStmtList, null, PgrSearchScope.UNRESTRICTED);
     }
 
     public String getPGRSearchQuery(RequestSearchCriteria criteria, List<Object> preparedStmtList, Map<String, Long> serviceCodeToSla) {
+        return getPGRSearchQuery(criteria, preparedStmtList, serviceCodeToSla, PgrSearchScope.UNRESTRICTED);
+    }
+
+    /**
+     * @param scope server-derived RBAC restriction (citizen-self / employee-department), or
+     *              {@link PgrSearchScope#UNRESTRICTED} for an explicitly-approved unrestricted
+     *              caller. Kenya's own role/property scoping is applied by the callers through
+     *              {@code criteria} before this method runs; the scope predicates here stack on
+     *              top of it (both restrictions apply), so an UNRESTRICTED scope leaves Kenya
+     *              behaviour exactly as before. Never {@code null}: see {@link #applyScope}.
+     */
+    public String getPGRSearchQuery(RequestSearchCriteria criteria, List<Object> preparedStmtList, Map<String, Long> serviceCodeToSla, PgrSearchScope scope) {
 
         StringBuilder builder = new StringBuilder(QUERY);
 
@@ -223,6 +236,8 @@ public class PGRQueryBuilder {
         }
 
 
+        applyScope(scope, builder, preparedStmtList);
+
         addOrderByClause(builder, criteria, preparedStmtList, serviceCodeToSla);
 
         addLimitAndOffset(builder, criteria, preparedStmtList);
@@ -230,13 +245,86 @@ public class PGRQueryBuilder {
         return builder.toString();
     }
 
+    /**
+     * Injects the RBAC scope's WHERE predicates. Mirrors the same axes/pattern as
+     * {@code AnalyticsPlanner.applyScope} in the analytics module (citizen self-scope, employee
+     * department-scope, and — per {@link PgrSearchScope}'s own Javadoc — the tenant axis itself).
+     * {@code PgrSearchScope#jurisdictionCodes} already carries every DESCENDANT of each
+     * HRMS-assigned boundary (see {@code PolicyDrivenScopeResolver}).
+     *
+     * <p>{@code scope == null} is fail-closed, not "unrestricted": a missing scope on this path is
+     * a caller bug, and silently widening the result set is the one failure mode this must never
+     * have. Approved unrestricted callers pass {@link PgrSearchScope#UNRESTRICTED} explicitly.
+     */
+    private void applyScope(PgrSearchScope scope, StringBuilder builder, List<Object> preparedStmtList) {
+        if (scope == null)
+            throw new IllegalStateException("PGRQueryBuilder: scope must not be null on a scoped search/count "
+                    + "path — pass PgrSearchScope.UNRESTRICTED explicitly for an approved unrestricted caller.");
+
+        if (scope == PgrSearchScope.UNRESTRICTED)
+            return;
+
+        // The tenant this scope was authorized against (see PolicyDrivenScopeResolver, which
+        // validates the requested tenant against the caller's own tenant/subtree before ever
+        // producing a non-deny scope) — applied here rather than trusted solely from
+        // criteria.getTenantId() above, so an authorization decision always reaches SQL as data,
+        // never just as an unchecked echo of client input.
+        if (scope.tenantId != null) {
+            addClauseIfRequired(preparedStmtList, builder);
+            if (scope.tenantStateLevel) {
+                builder.append(" ser.tenantId LIKE ? ");
+                preparedStmtList.add(scope.tenantId + '%');
+            } else {
+                builder.append(" ser.tenantId = ? ");
+                preparedStmtList.add(scope.tenantId);
+            }
+        }
+
+        if (scope.citizenUuid != null) {
+            addClauseIfRequired(preparedStmtList, builder);
+            builder.append(" ser.accountId = ? ");
+            preparedStmtList.add(scope.citizenUuid);
+        }
+
+        // null vs empty is deliberately NOT collapsed via CollectionUtils.isEmpty here: null means
+        // "axis not restricted" (skip the clause, matching every other axis's null/no-restriction
+        // semantic), but a non-null EMPTY list means "this axis IS restricted and resolved to zero
+        // allowed values" — ScopePolicyEngine.resolve always hands back a non-empty sentinel list
+        // instead of a true empty one for that case today, but this must independently enforce
+        // deny-all (not silently drop the axis and return unrestricted rows) if that contract ever
+        // regresses upstream (#1441 review).
+        if (scope.departmentCodes != null) {
+            addClauseIfRequired(preparedStmtList, builder);
+            if (scope.departmentCodes.isEmpty()) {
+                builder.append(" 1 = 0 ");
+            } else {
+                builder.append(" ser.additionaldetails->>'department' IN (").append(createQuery(scope.departmentCodes)).append(")");
+                addToPreparedStatement(preparedStmtList, scope.departmentCodes);
+            }
+        }
+
+        if (scope.jurisdictionCodes != null) {
+            addClauseIfRequired(preparedStmtList, builder);
+            if (scope.jurisdictionCodes.isEmpty()) {
+                builder.append(" 1 = 0 ");
+            } else {
+                builder.append(" ads.locality IN (").append(createQuery(scope.jurisdictionCodes)).append(")");
+                addToPreparedStatement(preparedStmtList, scope.jurisdictionCodes);
+            }
+        }
+    }
+
 
     public String getCountQuery(RequestSearchCriteria criteria, List<Object> preparedStmtList){
-        return getCountQuery(criteria, preparedStmtList, null);
+        return getCountQuery(criteria, preparedStmtList, null, PgrSearchScope.UNRESTRICTED);
     }
 
     public String getCountQuery(RequestSearchCriteria criteria, List<Object> preparedStmtList, Map<String, Long> serviceCodeToSla){
-        String query = getPGRSearchQuery(criteria, preparedStmtList, serviceCodeToSla);
+        return getCountQuery(criteria, preparedStmtList, serviceCodeToSla, PgrSearchScope.UNRESTRICTED);
+    }
+
+    public String getCountQuery(RequestSearchCriteria criteria, List<Object> preparedStmtList, Map<String, Long> serviceCodeToSla, PgrSearchScope scope){
+        String query = getPGRSearchQuery(criteria, preparedStmtList, serviceCodeToSla, scope);
         String countQuery = COUNT_WRAPPER.replace("{INTERNAL_QUERY}", query);
         return countQuery;
     }

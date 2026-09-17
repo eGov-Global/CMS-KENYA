@@ -1,0 +1,9 @@
+{
+  "repository": "https://github.com/egovernments/Citizen-Complaint-Resolution-System",
+  "branch": "master",
+  "commit": "7ee88f839ec22609d527928df967c19f40b2ab88",
+  "tag": null,
+  "syncedAt": "2026-09-16",
+  "note": "First product sync (merge commit on product-sync/2026-09-16). Escalation + row-scoping kept Kenya-side per recorded decisions.",
+  "decisionsLog": "docs/synchronization/decisions/2026-09-16-first-sync.md"
+}

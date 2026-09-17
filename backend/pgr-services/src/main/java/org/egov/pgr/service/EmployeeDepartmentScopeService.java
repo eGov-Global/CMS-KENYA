@@ -68,13 +68,13 @@ public class EmployeeDepartmentScopeService {
 
         // (3) restrict criteria to complaints stored under that department's code OR its
         // MDMS-resolved name (see class javadoc for why both forms can appear).
-        criteria.setDepartmentCodes(withResolvedNames(departments, tenantId));
+        criteria.setDepartmentCodes(withResolvedNames(departments, tenantId, requestInfo));
         return true;
     }
 
     /** Adds each code's MDMS department NAME alongside it, when resolvable. */
-    private Set<String> withResolvedNames(Set<String> departmentCodes, String tenantId) {
-        Map<String, String> codeToName = mdmsUtils.getDepartmentCodeToNameMap(tenantId);
+    private Set<String> withResolvedNames(Set<String> departmentCodes, String tenantId, RequestInfo requestInfo) {
+        Map<String, String> codeToName = mdmsUtils.getDepartmentCodeToNameMap(requestInfo, tenantId);
         Set<String> resolved = new LinkedHashSet<>(departmentCodes);
         for (String code : departmentCodes) {
             String name = codeToName.get(code);

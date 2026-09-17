@@ -131,7 +131,8 @@ public class PGRService {
 			plainExt = ext.copy(); // snapshot before encrypt — avoids decrypt round-trip for response
 			service.setExtendedAttributes(
 					encryptionDecryptionService.encrypt(ext, cfg, tenantId));
-			enrichmentService.enrichUserContactDetails(request);
+			EnrichmentService.UserContactDetails pendingContact = enrichmentService.detachUserContactDetails(request);
+			enrichmentService.syncUserContactDetails(request, pendingContact);
 		}
 
 		complaintDomainEventService.publishWorkflowTransitionEvent(request, fromState);
@@ -253,7 +254,8 @@ public class PGRService {
 				encryptionDecryptionService.maskAllPlaintext(plainExt, cfg);
 			updateService.setExtendedAttributes(
 					encryptionDecryptionService.encrypt(updatedExt, cfg, tenantId));
-			enrichmentService.enrichUserContactDetails(request);
+			EnrichmentService.UserContactDetails pendingContact = enrichmentService.detachUserContactDetails(request);
+			enrichmentService.syncUserContactDetails(request, pendingContact);
 		}
 
         complaintDomainEventService.publishWorkflowTransitionEvent(request, fromState);
