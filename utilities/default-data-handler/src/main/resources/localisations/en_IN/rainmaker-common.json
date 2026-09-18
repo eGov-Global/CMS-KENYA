@@ -9862,5 +9862,17 @@
         "message": "Administrator",
         "module": "rainmaker-common",
         "locale": "en_IN"
+    },
+    {
+        "code": "DASHBOARD_CARD_HEADER",
+        "message": "Dashboard",
+        "module": "rainmaker-common",
+        "locale": "en_IN"
+    },
+    {
+        "code": "ULBGRADE_STATE",
+        "message": "County Government",
+        "module": "rainmaker-common",
+        "locale": "en_IN"
     }
 ]
