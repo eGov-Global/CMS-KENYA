@@ -9904,5 +9904,65 @@
         "message": "Last Login",
         "module": "rainmaker-common",
         "locale": "en_IN"
+    },
+    {
+        "code": "CORE_SESSION_COLLISION_YOU",
+        "message": "You",
+        "module": "rainmaker-common",
+        "locale": "en_IN"
+    },
+    {
+        "code": "CORE_SESSION_COLLISION_HEADING",
+        "message": "Another account signed in",
+        "module": "rainmaker-common",
+        "locale": "en_IN"
+    },
+    {
+        "code": "CORE_SESSION_COLLISION_LEAD",
+        "message": "A different account was signed in to this browser.",
+        "module": "rainmaker-common",
+        "locale": "en_IN"
+    },
+    {
+        "code": "CORE_SESSION_COLLISION_THIS_TAB",
+        "message": "This tab — your current work",
+        "module": "rainmaker-common",
+        "locale": "en_IN"
+    },
+    {
+        "code": "CORE_SESSION_COLLISION_OTHER_TAB",
+        "message": "Signed in from another tab",
+        "module": "rainmaker-common",
+        "locale": "en_IN"
+    },
+    {
+        "code": "CORE_SESSION_COLLISION_WHAT_TO_DO",
+        "message": "What to do",
+        "module": "rainmaker-common",
+        "locale": "en_IN"
+    },
+    {
+        "code": "CORE_SESSION_COLLISION_TIP_FINISH",
+        "message": "Finish and submit what you are working on in this tab.",
+        "module": "rainmaker-common",
+        "locale": "en_IN"
+    },
+    {
+        "code": "CORE_SESSION_COLLISION_TIP_STAYS",
+        "message": "Refreshing normally keeps your current account. To use the other account here, log out and sign in again.",
+        "module": "rainmaker-common",
+        "locale": "en_IN"
+    },
+    {
+        "code": "CORE_SESSION_COLLISION_TIP_SEPARATE",
+        "message": "To use both accounts at once, open one in a private window.",
+        "module": "rainmaker-common",
+        "locale": "en_IN"
+    },
+    {
+        "code": "CORE_SESSION_COLLISION_ACK",
+        "message": "Continue working",
+        "module": "rainmaker-common",
+        "locale": "en_IN"
     }
 ]
