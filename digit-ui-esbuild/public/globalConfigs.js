@@ -61,8 +61,16 @@ var globalConfigs = (function () {
   var analyticsScriptHosts = [];     // extra allowed script hostnames (ops only)
   var analyticsCustomEnabled = false; // true => allow type:"CUSTOM" records
 
+  // Kenya/Bomet has no confidentiality requirement: complainant identity is
+  // open to employees and citizens alike. The consumer (products/pgr/src/utils/
+  // piiMasking.js) is default-SAFE — an ABSENT key means masking ON, so Moz
+  // needs no config — which means Kenya must say `false` EXPLICITLY. Leaving
+  // this out is what masked every environment built from this repo.
+  var pgrPiiMasking = false;
+
   var getConfig = function (key) {
     if (key === "STATE_LEVEL_TENANT_ID") return stateTenantId;
+    else if (key === "PGR_PII_MASKING") return pgrPiiMasking;
     else if (key === "GMAPS_API_KEY") return gmaps_api_key;
     else if (key === "FIN_ENV") return finEnv;
     else if (key === "ENABLE_SINGLEINSTANCE") return centralInstanceEnabled;
