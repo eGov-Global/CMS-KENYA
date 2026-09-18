@@ -13,6 +13,9 @@ const ROLES = {
     "HEALTH_DIRECTOR", "HEALTH_CHIEF_OFFICER", "HEALTH_CECM",
     "WATER_DIRECTOR", "WATER_CHIEF_OFFICER", "WATER_CECM",
     "ADMIN_DIRECTOR", "ADMIN_CHIEF_OFFICER", "ADMIN_CECM",
+    // Bomet ombudsman office — works the inbox/search like PGR_LME (2026-09-18
+    // request). Code as provisioned in HRMS, mixed case included.
+    "Ombudsman_Officer", "OMBUDSMAN_OFFICER",
   ],
 };
 

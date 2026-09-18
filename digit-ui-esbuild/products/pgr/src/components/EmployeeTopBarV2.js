@@ -230,22 +230,27 @@ const ProfileMenu = ({ t, userDetails, cityDetails, workingContext, userOptions,
               <ProfileRow icon="history" label={t("CORE_TOPBAR_LAST_LOGIN")} value={lastLogin} />
             </div>
 
-            <div style={{ paddingTop: "0.875rem", display: "flex", flexDirection: "column", gap: "0.625rem" }}>
+            <div style={{ paddingTop: "0.5rem", display: "flex", flexDirection: "column" }}>
               {editOption && (
                 <button
                   type="button"
                   role="menuitem"
                   onClick={() => pick(editOption)}
-                  style={{ ...detailRowStyle, background: "none", border: "none", cursor: "pointer", color: "#111827", width: "100%", gap: "0.625rem" }}
+                  onMouseEnter={(e) => (e.currentTarget.style.background = "#f3f4f6")}
+                  onMouseLeave={(e) => (e.currentTarget.style.background = "none")}
+                  style={{ display: "flex", alignItems: "center", gap: "0.625rem", background: "none", border: "none", cursor: "pointer", color: "#111827", width: "100%", fontSize: "0.875rem", padding: "0.75rem 0.5rem", borderRadius: "0.5rem", textAlign: "left" }}
                 >
                   <Glyph d={ICONS.edit} style={{ stroke: "#111827" }} /> {editOption.name}
                 </button>
               )}
+              <div style={{ height: "1px", background: "#f3f4f6", margin: "0.25rem 0" }} />
               <button
                 type="button"
                 role="menuitem"
                 onClick={() => pick(logoutOption || { func: () => {} })}
-                style={{ ...detailRowStyle, background: "none", border: "none", cursor: "pointer", color: "#e11d48", width: "100%", gap: "0.625rem" }}
+                onMouseEnter={(e) => (e.currentTarget.style.background = "#fef2f2")}
+                onMouseLeave={(e) => (e.currentTarget.style.background = "none")}
+                style={{ display: "flex", alignItems: "center", gap: "0.625rem", background: "none", border: "none", cursor: "pointer", color: "#e11d48", width: "100%", fontSize: "0.875rem", padding: "0.75rem 0.5rem", borderRadius: "0.5rem", textAlign: "left" }}
               >
                 <Glyph d={ICONS.logout} style={{ stroke: "#e11d48" }} /> {logoutOption?.name || t("CORE_COMMON_LOGOUT")}
               </button>
@@ -275,30 +280,92 @@ const ProfileMenu = ({ t, userDetails, cityDetails, workingContext, userOptions,
   );
 };
 
-/** Minimal language switcher (core's ChangeLanguage is module-internal, so the
- *  same Digit APIs are used directly; languages come from MDMS StoreData). */
+/** Hover-opening language menu (same portal pattern as the profile card;
+ *  core's ChangeLanguage is module-internal, so the Digit APIs are used
+ *  directly; languages come from MDMS StoreData). */
 const LanguageSelect = () => {
   const { data: storeData, isLoading } = Digit.Hooks.useStore.getInitData();
   const { languages, stateInfo } = storeData || {};
   const selectedLanguage = Digit.StoreData.getCurrentLanguage();
   const [selected, setSelected] = useState(selectedLanguage);
+  const [open, setOpen] = useState(false);
+  const [anchor, setAnchor] = useState(null);
+  const btnRef = useRef(null);
+  const panelRef = useRef(null);
+  const closeTimer = useRef(null);
+  useEffect(() => () => clearTimeout(closeTimer.current), []);
   if (isLoading || !languages?.length) return null;
-  const current = languages.find((l) => l?.value === selected) || languages[0];
-  // MDMS stores language labels shouted ("ENGLISH"); the design reads "English".
+
   const pretty = (l) => (l ? l.charAt(0).toUpperCase() + l.slice(1).toLowerCase() : l);
+  const current = languages.find((l) => l?.value === selected) || languages[0];
+  const show = () => {
+    clearTimeout(closeTimer.current);
+    if (btnRef.current) {
+      const r = btnRef.current.getBoundingClientRect();
+      setAnchor({ top: r.bottom + 12, right: Math.max(window.innerWidth - r.right, 8) });
+    }
+    setOpen(true);
+  };
+  const hideSoon = () => {
+    clearTimeout(closeTimer.current);
+    closeTimer.current = setTimeout(() => setOpen(false), 300);
+  };
+  const choose = (language) => {
+    setOpen(false);
+    setSelected(language.value);
+    Digit.LocalizationService.changeLanguage(language.value, stateInfo?.code);
+  };
+
+  const panel =
+    open && anchor
+      ? ReactDOM.createPortal(
+          <div
+            ref={panelRef}
+            role="menu"
+            onMouseEnter={() => clearTimeout(closeTimer.current)}
+            onMouseLeave={hideSoon}
+            style={{ position: "fixed", top: anchor.top, right: anchor.right, minWidth: "11rem", background: "#fff", color: "#111827", borderRadius: "0.75rem", boxShadow: "0 12px 32px rgba(16,24,40,0.18)", padding: "0.5rem", zIndex: 10000, textTransform: "none" }}
+          >
+            {languages.map((language) => {
+              const active = language.value === selected;
+              return (
+                <button
+                  key={language.value}
+                  type="button"
+                  role="menuitemradio"
+                  aria-checked={active}
+                  onClick={() => choose(language)}
+                  onMouseEnter={(e) => (e.currentTarget.style.background = "#f3f4f6")}
+                  onMouseLeave={(e) => (e.currentTarget.style.background = active ? "#eff6ff" : "none")}
+                  style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%", background: active ? "#eff6ff" : "none", border: "none", cursor: "pointer", color: "#111827", fontSize: "0.875rem", fontWeight: active ? 600 : 400, padding: "0.625rem 0.75rem", borderRadius: "0.5rem", textAlign: "left" }}
+                >
+                  {pretty(language.label)}
+                  {active && <Glyph d={["M5 13l4 4 10-10"]} size={14} style={{ stroke: "#2563eb" }} />}
+                </button>
+              );
+            })}
+          </div>,
+          document.body
+        )
+      : null;
+
   return (
-    <Dropdown
-      className="language-dropdown"
-      option={languages}
-      selected={current}
-      optionKey="label"
-      freeze={true}
-      customSelector={<label className="cp" style={{ textTransform: "none", fontSize: "0.875rem", cursor: "pointer" }}>{pretty(current?.label)}</label>}
-      select={(language) => {
-        setSelected(language.value);
-        Digit.LocalizationService.changeLanguage(language.value, stateInfo?.code);
-      }}
-    />
+    <span style={itemStyle}>
+      <button
+        ref={btnRef}
+        type="button"
+        onClick={() => (open ? setOpen(false) : show())}
+        onMouseEnter={show}
+        onMouseLeave={hideSoon}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        style={{ display: "inline-flex", alignItems: "center", gap: "0.375rem", background: "none", border: "none", cursor: "pointer", color: "inherit", padding: 0, font: "inherit", textTransform: "none" }}
+      >
+        {pretty(current?.label)}
+        <Glyph d={ICONS.caret} size={14} />
+      </button>
+      {panel}
+    </span>
   );
 };
 
