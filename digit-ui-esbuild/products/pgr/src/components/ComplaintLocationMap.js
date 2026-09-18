@@ -12,7 +12,6 @@ import VectorBaseLayer from "./VectorBaseLayer";
 import MapCamera from "./MapCamera";
 import { brandPin } from "./mapPin";
 import useTenantBoundaries from "../hooks/pgr/useTenantBoundaries";
-import { hasUsableGeoLocation } from "../utils/geoLocation";
 
 // Fix default icon issue in React builds (still needed by other maps)
 delete L.Icon.Default.prototype._getIconUrl;
@@ -68,7 +67,6 @@ const ComplaintLocationMap = ({ latitude, longitude, address }) => {
   // Null while the fetch is in flight; empty collection when the tenant has
   // no usable geometry (no overlay — never another tenant's static wards).
   const tenantBoundaries = useTenantBoundaries();
-  const hasLocation = hasUsableGeoLocation({ latitude, longitude });
 
   // MapContainer latches centre and zoom at mount. DETAIL_ZOOM only settles
   // once MapConfig resolves from MDMS, and the complaint's coordinates can
@@ -82,12 +80,12 @@ const ComplaintLocationMap = ({ latitude, longitude, address }) => {
 
   const matchedWard = useMemo(() => {
     const wardCollection = tenantBoundaries;
-    if (!hasLocation || !wardCollection?.features?.length) return null;
+    if (!latitude || !longitude || !wardCollection?.features?.length) return null;
     const pt = turfPoint([longitude, latitude]);
     return wardCollection.features.find((f) => {
       try { return booleanPointInPolygon(pt, f); } catch { return false; }
     }) || null;
-  }, [hasLocation, latitude, longitude, tenantBoundaries]);
+  }, [latitude, longitude, tenantBoundaries]);
 
   const wardLayerStyle = (feature) => {
     const isMatch = matchedWard && feature?.properties?.code === matchedWard.properties.code;
@@ -100,7 +98,7 @@ const ComplaintLocationMap = ({ latitude, longitude, address }) => {
 
   // Fetch address details based on lat/lng using reverse geocoding
   useEffect(() => {
-    if (!hasLocation) return;
+    if (!latitude || !longitude) return;
 
     const fetchAddressFromCoordinates = async () => {
       setIsLoadingAddress(true);
@@ -167,13 +165,13 @@ const ComplaintLocationMap = ({ latitude, longitude, address }) => {
     };
 
     fetchAddressFromCoordinates();
-  }, [hasLocation, latitude, longitude]);
+  }, [latitude, longitude]);
 
   // Nothing to show without coordinates. Also hold until MapConfig resolves:
   // MapContainer latches zoom/minZoom/maxZoom at mount, so mounting first and
   // letting MDMS answer later leaves the map on the built-in bounds and
   // silently ignores the ones the tenant configured.
-  if (!hasLocation || !isReady) {
+  if (!latitude || !longitude || !isReady) {
     return null;
   }
 

@@ -17,7 +17,6 @@ import { buildComplaintPath } from "../../utils/complaintHierarchyPath";
 import { selectServiceDefsFromComplaintHierarchy } from "../../utils";
 import { isPiiMaskingEnabled } from "../../utils/piiMasking";
 import useReopenWindow from "../../hooks/pgr/useReopenWindow";
-import { hasUsableGeoLocation } from "../../utils/geoLocation";
 import { findLatestAssigneeUuidByRole } from "../../utils/workflowAssignee";
 import { EV, trackE } from "../../utils/analytics";
 
@@ -792,7 +791,8 @@ const PGRDetails = () => {
                 : []
               ),
               // Conditionally include location section only if coordinates exist
-              ...(hasUsableGeoLocation(pgrData?.ServiceWrappers[0]?.service?.address?.geoLocation)
+              ...(pgrData?.ServiceWrappers[0]?.service?.address?.geoLocation?.latitude &&
+                pgrData?.ServiceWrappers[0]?.service?.address?.geoLocation?.longitude
                 ? [{
                   cardType: "primary",
                   fieldPairs: [

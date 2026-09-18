@@ -21,7 +21,6 @@
 import * as React from "react";
 import { useTranslation } from "react-i18next";
 import { complaintLabel } from "../../../utils/complaintLabel";
-import { serializeGeoLocation } from "../../../utils/geoLocation";
 import { isVisibleOnEntrance } from "../../../utils/testingTenant";
 import { EV, trackE, failureName } from "../../../utils/analytics";
 import PGRDatePicker from "../../../components/PGRDatePicker";
@@ -318,6 +317,17 @@ function isDescriptionValid(v: unknown): boolean {
   return s.length >= DESC_MIN && descriptionLetters(s) >= 3;
 }
 
+function validateGeoLocation(v: { latitude?: number | null; longitude?: number | null }) {
+  if (
+    v &&
+    typeof v.latitude === "number" &&
+    typeof v.longitude === "number"
+  ) {
+    return { latitude: v.latitude, longitude: v.longitude };
+  }
+  return {};
+}
+
 function getEffectiveServiceCode(
   mainType: ServiceDef | null | undefined,
   subType: ServiceDef | null | undefined
@@ -396,7 +406,10 @@ function mapFormDataToRequest(formData: FormData, tenantId: string, user: any, d
             formData?.GeoLocationsPoint?.ward?.code ||
             "",
         },
-        geoLocation: serializeGeoLocation(geoLocation),
+        geoLocation: validateGeoLocation({
+          latitude: geoLocation.lat ?? null,
+          longitude: geoLocation.lng ?? null,
+        }),
       },
       // Top-level service.extendedAttributes (doc jsonPath $.service.extendedAttributes).
       // Attached only when a category resolved; legacy/no-category flow is unchanged.
@@ -1852,7 +1865,7 @@ const CreatePGRFlowV2: React.FC = () => {
         // it (auto-cascade) but NOT mandatory — clearing the pin (the map's ✕)
         // and picking the cascade manually is a supported flow, and requiring
         // the pin left NEXT disabled with every dropdown filled. Payload-safe:
-        // serializeGeoLocation falls back to {} exactly like the employee flow.
+        // validateGeoLocation falls back to {} exactly like the employee flow.
         return isFieldValid(formData, "SelectedBoundary") ? null : "LocationRequired";
       case "details": {
         if (!isFieldValid(formData, "description")) return "DescriptionRequired";

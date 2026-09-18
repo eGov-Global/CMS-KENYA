@@ -2,7 +2,6 @@ import _ from "lodash";
 import axios from "axios";
 import { CustomisedHooks } from "../hooks";
 import { UICustomizations } from "../configs/UICustomizations";
-import { serializeGeoLocation } from "./geoLocation";
 
 export const overrideHooks = () => {
   Object.keys(CustomisedHooks).map((ele) => {
@@ -210,7 +209,10 @@ export const formPayloadToCreateComplaint = (formData, tenantId, user, extOpts) 
         // Citizen-parity semantics: send {latitude, longitude} when a pin
         // exists, else keep the EMPTY OBJECT — the persister needs the object
         // to be present even when the coords are not (see CCSD-1949/#1094).
-        "geoLocation": serializeGeoLocation(formData?.GeoLocationsPoint)
+        "geoLocation":
+          typeof formData?.GeoLocationsPoint?.lat === "number" && typeof formData?.GeoLocationsPoint?.lng === "number"
+            ? { "latitude": formData.GeoLocationsPoint.lat, "longitude": formData.GeoLocationsPoint.lng }
+            : {}
       },
       "additionalDetail": JSON.stringify(additionalDetail),
       "auditDetails": {

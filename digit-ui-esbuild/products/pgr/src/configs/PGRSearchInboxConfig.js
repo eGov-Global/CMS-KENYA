@@ -241,14 +241,8 @@ const PGRSearchInboxConfig = (visibilityEnabled = true) => {
                                   },
                               ]
                             : []),
-                        // Assigned-to-me / assigned-to-all radio. Removed by
-                        // QA #18 when the visibility tabs replaced it; restored
-                        // for LEGACY (tabs-off) mode on Bomet ops request
-                        // (2026-09-15) — without tabs there was no way to narrow
-                        // the inbox to "mine". Tabs mode keeps it hidden: the
-                        // My/All tabs carry the same semantics. preProcess still
-                        // handles it (UICustomizations "Legacy assigned-to-me
-                        // radio"), and defaultValues above seeds ASSIGNED_TO_ALL.
+                        // Legacy assigned-to-me / assigned-to-all radio,
+                        // restored only when the visibility tabs are OFF.
                         ...(visibilityEnabled
                             ? []
                             : [
