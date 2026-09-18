@@ -1,0 +1,23 @@
+[
+  {
+    "code": "matomo-bomet",
+    "type": "MATOMO",
+    "enabled": true,
+    "siteId": "1",
+    "scriptUrl": "/matomo/matomo.js",
+    "endpointUrl": "/matomo/matomo.php",
+    "trackClicks": true,
+    "settings": {
+      "goals": {
+        "Complaint.Created": 1,
+        "Complaint.Rated": 2
+      },
+      "customDimensions": {
+        "1": "tenant",
+        "2": "locale",
+        "3": "surface",
+        "4": "module"
+      }
+    }
+  }
+]
