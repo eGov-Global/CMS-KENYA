@@ -7688,7 +7688,7 @@ html .employee .digit-logout-popup-wrapper [class*="popup-footer"] {
   margin-left: auto !important;
   margin-right: auto !important;
 }
-=======
+
 /* ===========================================================================
  * Legacy select/date-range vertical alignment (CCRS#921)
  *
@@ -7712,4 +7712,266 @@ html .employee .digit-logout-popup-wrapper [class*="popup-footer"] {
   min-height: 44px !important;
 }
 
-/* ====================================================================
+/* ===========================================================================
+ * Bomet login backdrop — citizen + employee pre-auth surfaces
+ *
+ * Both login screens shipped as flat fields: employee got the teal/brand
+ * wash from the `.banner` rule further up, citizen got bare page white.
+ * This puts the county's own landscape behind both.
+ *
+ * The artwork is an aerial of the Bomet highlands supplied by the county,
+ * carrying the county crest watermarked into the sky. The 2MB PNG source is
+ * 1376x768; it ships as WebP renders at 2560/1920/1280/640 chosen by media
+ * query, each LANCZOS-resampled then mildly unsharp-masked (radius 1.1,
+ * 55%).
+ *
+ * Why upscale past the source width, when that adds bytes without adding
+ * detail? Because the alternative is worse. Capping at the native 1376px
+ * (the first attempt here) means a 1920px window upscales it 1.40x in the
+ * browser — and browser upscaling is bilinear with no sharpening, which
+ * read as visibly soft and grainy. Resampling up offline with a good kernel
+ * plus a sharpening pass gives the browser a file at or above the display
+ * size, so it downsamples (sharp) instead of upsampling (soft).
+ *
+ * Budget is 250KB per fetch; every WebP variant is under it (2560 is 237KB
+ * at q68, 1920 is 242KB at q80 — the smaller render affords more quality per
+ * pixel, which is why q differs per size). The JPEG fallback cannot reach
+ * 250KB at 1920 without visible loss, so it renders at 1600px instead; it
+ * only serves browsers with no WebP support, of which Bomet has effectively
+ * none.
+ *
+ * The per-breakpoint split matters most on the citizen side, where users are
+ * on low-end Android over poor networks and this is the app's FIRST paint —
+ * a phone fetches 62KB, not 242KB.
+ * Re-encode with scripts/encode-login-bg.py if the county supplies new art.
+ *
+ * Bundled as a static asset under public/brand/ rather than driven from
+ * MDMS StateInfo.bannerUrl (the mechanism the `.employee .banner` rule above
+ * uses for Maputo). Reasons: the pre-MDMS login paints BEFORE tenant config
+ * resolves, so a bannerUrl-driven image pops in late; and it would need a
+ * filestore upload plus an MDMS edit per environment to deploy. A bundled
+ * asset ships with the FE build, so pilot and prod cannot drift.
+ *
+ * The source has white framing artwork (a dotted panel left, a swept curve
+ * right) intended for a header strip. `cover` crops those off at login
+ * viewport ratios, which is the intent — the framing would fight the login
+ * card. `background-position` is biased off-centre for the same reason.
+ * ======================================================================== */
+
+/* Painted on `body::before`, NOT on the login containers themselves.
+ *
+ * The obvious version — `.citizen-form-wrapper::before { z-index: -1 }` —
+ * renders nothing, and the reason is worth recording. A negative z-index puts
+ * the pseudo-element behind its own parent's background, but still in FRONT of
+ * ancestor backgrounds. Both `body` and `.body-container` paint an opaque
+ * #EEEEEE here, so the backdrop was drawn and then covered. Measured, not
+ * guessed: the ancestor walk showed no stacking context anywhere in the chain,
+ * which rules out the usual suspects and leaves the ancestor fills.
+ *
+ * Attaching to `body::before` puts it below every app background, and the two
+ * greys are cleared explicitly below. `position: fixed` keeps it put while a
+ * short mobile form scrolls.
+ *
+ * Route scoping uses `:has()` on the login containers rather than a route
+ * class, because these pre-auth surfaces render before the tenant/route
+ * classes settle, and `body.citizen` is also present once signed in. */
+body:has(.citizen-form-wrapper)::before,
+body:has(.banner)::before,
+body:has([class*="banner-container"])::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+
+  /* Overlay first (paints on top), image second. Kept very light (3-12%):
+   * it only needs to stop the photo's brightest band from fighting the
+   * topbar. Earlier passes at 42-58% and then 16-34% both read as "faded" —
+   * the card carries its own shadow and hairline for separation, so the wash
+   * does not have to do that job. */
+  background-image:
+    linear-gradient(
+      180deg,
+      rgba(8, 42, 66, 0.10) 0%,
+      rgba(8, 42, 66, 0.03) 38%,
+      rgba(10, 48, 38, 0.12) 100%
+    ),
+    image-set(
+      url("/digit-ui/brand/bomet-login-bg.webp") type("image/webp"),
+      url("/digit-ui/brand/bomet-login-bg.jpg") type("image/jpeg")
+    );
+  background-repeat: no-repeat, no-repeat;
+  /* Bias off-centre so `cover` trims the source's white dotted panel (left
+   * edge) and swept curve (right edge) rather than the landscape, and so the
+   * crest watermark in the sky lands clear of the centred card. */
+  background-position: center center, 38% 42%;
+  background-size: cover, cover;
+  background-color: var(--color-digitv2-header-sidenav, #0B4B66);
+}
+
+/* Older WebKit only understands the prefixed image-set(). Declared after so
+ * engines that support it take this instead. */
+@supports (background-image: -webkit-image-set(url("/x.webp") type("image/webp"))) {
+  body:has(.citizen-form-wrapper)::before,
+  body:has(.banner)::before,
+  body:has([class*="banner-container"])::before {
+    background-image:
+      linear-gradient(
+        180deg,
+        rgba(8, 42, 66, 0.10) 0%,
+        rgba(8, 42, 66, 0.03) 38%,
+        rgba(10, 48, 38, 0.12) 100%
+      ),
+      -webkit-image-set(
+        url("/digit-ui/brand/bomet-login-bg.webp") type("image/webp"),
+        url("/digit-ui/brand/bomet-login-bg.jpg") type("image/jpeg")
+      );
+  }
+}
+
+/* Serve smaller renders to smaller viewports. The 640px file is 46KB against
+ * the full 172KB — on a 3G citizen handset that is the difference between the
+ * backdrop arriving with the form and arriving after it. */
+@media (max-width: 480px) {
+  body:has(.citizen-form-wrapper)::before,
+  body:has(.banner)::before,
+  body:has([class*="banner-container"])::before {
+    background-image:
+      linear-gradient(
+        180deg,
+        rgba(8, 42, 66, 0.10) 0%,
+        rgba(8, 42, 66, 0.03) 38%,
+        rgba(10, 48, 38, 0.12) 100%
+      ),
+      url("/digit-ui/brand/bomet-login-bg-640.webp");
+  }
+}
+@media (min-width: 481px) and (max-width: 1280px) {
+  body:has(.citizen-form-wrapper)::before,
+  body:has(.banner)::before,
+  body:has([class*="banner-container"])::before {
+    background-image:
+      linear-gradient(
+        180deg,
+        rgba(8, 42, 66, 0.10) 0%,
+        rgba(8, 42, 66, 0.03) 38%,
+        rgba(10, 48, 38, 0.12) 100%
+      ),
+      url("/digit-ui/brand/bomet-login-bg-1280.webp");
+  }
+}
+
+/* Above 1920 CSS px, or on a HiDPI desktop, the 1920 render is itself being
+ * upscaled — serve the 2560 file there. `min-resolution` catches the retina
+ * case, which looked worst: a 2x 1440 laptop asks for 2880 device px.
+ *
+ * The HiDPI arm is floored at 1281px on purpose. Without it, a retina PHONE
+ * matches both this and the `max-width: 480px` rule above; this one is later
+ * in the cascade, so it would win and hand a 237KB file to the device least
+ * able to afford it (the 640px render is 62KB). Retina phones stay on the
+ * small file — they are already downscaling it, which is sharp anyway. */
+@media (min-width: 1921px), (min-width: 1281px) and (min-resolution: 1.5dppx) {
+  body:has(.citizen-form-wrapper)::before,
+  body:has(.banner)::before,
+  body:has([class*="banner-container"])::before {
+    background-image:
+      linear-gradient(
+        180deg,
+        rgba(8, 42, 66, 0.10) 0%,
+        rgba(8, 42, 66, 0.03) 38%,
+        rgba(10, 48, 38, 0.12) 100%
+      ),
+      url("/digit-ui/brand/bomet-login-bg-2560.webp");
+  }
+}
+
+/* Clear the opaque fills that would cover the backdrop. These are the two
+ * that measured as #EEEEEE; `html` is white but sits below body::before so it
+ * does not need clearing. Scoped to the login routes only — the signed-in app
+ * keeps its normal grey ground. */
+body:has(.citizen-form-wrapper),
+body:has(.banner),
+body:has([class*="banner-container"]) {
+  background-color: transparent !important;
+}
+body:has(.citizen-form-wrapper) .body-container,
+body:has(.banner) .body-container,
+body:has([class*="banner-container"]) .body-container,
+body:has(.citizen-form-wrapper) .citizen-form-wrapper,
+body:has(.citizen-form-wrapper) .citizen-home-container {
+  background-color: transparent !important;
+}
+
+/* The app content must sit ABOVE the fixed backdrop. body::before is at
+ * z-index 0 in body's stacking context, so give the app root a positive one.
+ * (#root is the mount point in public/index.html.) */
+body:has(.citizen-form-wrapper) > #root,
+body:has(.banner) > #root,
+body:has([class*="banner-container"]) > #root {
+  position: relative;
+  z-index: 1;
+}
+
+/* The employee `.banner` rule earlier in this file (CCSD-1995) paints the
+ * teal wash + StateInfo bannerUrl as a real `background` on the element,
+ * which would sit on top of the backdrop. Clear it so the ::before shows;
+ * the ::before's own background-color keeps an equivalent fallback if the
+ * image ever 404s. */
+.employee .banner,
+.employee .banner-container {
+  background: none !important;
+}
+
+/* Citizen login card — over a photograph, the vendor's flat white card with
+ * no elevation reads as a paper cut-out. A soft shadow and hairline give it
+ * the seated look the employee card already has. */
+.citizen-form-wrapper .digit-app-container > .digit-card-component {
+  box-shadow: 0 10px 28px -8px rgba(8, 28, 44, 0.28),
+              0 4px 10px -4px rgba(8, 28, 44, 0.18);
+  border: 1px solid rgba(255, 255, 255, 0.55);
+}
+
+/* Citizen pre-auth footer sits outside the form wrapper, so left as-is it
+ * reads as a grey bar cutting off the image. Make it transparent and lift
+ * its text/marks to read against the photo. */
+body:has(.citizen-form-wrapper) .citizen-home-footer {
+  background-color: transparent !important;
+  border-top: 1px solid rgba(255, 255, 255, 0.22);
+}
+body:has(.citizen-form-wrapper) .citizen-home-footer,
+body:has(.citizen-form-wrapper) .citizen-home-footer * {
+  color: #FFFFFF;
+}
+/* "Powered by DIGIT" is dark-on-light artwork; invert it to read on the photo. */
+body:has(.citizen-form-wrapper) .citizen-home-footer img {
+  filter: brightness(0) invert(1);
+  opacity: 0.9;
+}
+
+/* Citizen pre-auth topbar — a translucent scrim keeps the county emblem and
+ * the language selector legible over whatever part of the photo is behind. */
+body:has(.citizen-form-wrapper) .navbar,
+body:has(.citizen-form-wrapper) .topbar {
+  background-color: rgba(8, 40, 64, 0.55) !important;
+  backdrop-filter: blur(2px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.18);
+}
+body:has(.citizen-form-wrapper) .navbar,
+body:has(.citizen-form-wrapper) .navbar *,
+body:has(.citizen-form-wrapper) .topbar,
+body:has(.citizen-form-wrapper) .topbar * {
+  color: #FFFFFF;
+}
+body:has(.citizen-form-wrapper) .navbar svg path,
+body:has(.citizen-form-wrapper) .topbar svg path {
+  fill: #FFFFFF;
+}
+
+/* Honour a reduced-data preference: skip the photo, keep the brand wash. */
+@media (prefers-reduced-data: reduce) {
+  body:has(.citizen-form-wrapper)::before,
+  body:has(.banner)::before,
+  body:has([class*="banner-container"])::before {
+    background-image: none;
+  }
+}
