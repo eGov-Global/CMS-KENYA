@@ -99,6 +99,29 @@ const Avatar = ({ name, size = 30 }) => (
   </span>
 );
 
+// Profile-menu action rows. minHeight + lineHeight are explicit: the employee
+// header stylesheet applies a tight line-height to buttons, which collapsed
+// these rows even with padding, and read as "congested".
+const menuItemStyle = (color) => ({
+  display: "flex",
+  alignItems: "center",
+  gap: "0.75rem",
+  width: "100%",
+  minHeight: "2.75rem",
+  lineHeight: "1.5",
+  padding: "0.625rem 0.75rem",
+  background: "transparent",
+  border: "none",
+  borderRadius: "0.5rem",
+  cursor: "pointer",
+  color: color,
+  fontSize: "0.9375rem",
+  fontWeight: 500,
+  textAlign: "left",
+  textTransform: "none",
+  transition: "background 120ms ease",
+});
+
 const detailRowStyle = { display: "flex", alignItems: "center", gap: "0.625rem", padding: "0.4375rem 0", fontSize: "0.875rem", textTransform: "none" };
 
 const ProfileRow = ({ icon, label, value }) =>
@@ -230,29 +253,33 @@ const ProfileMenu = ({ t, userDetails, cityDetails, workingContext, userOptions,
               <ProfileRow icon="history" label={t("CORE_TOPBAR_LAST_LOGIN")} value={lastLogin} />
             </div>
 
-            <div style={{ paddingTop: "0.5rem", display: "flex", flexDirection: "column" }}>
+            {/* Menu rows: explicit minHeight + lineHeight because the employee
+              * header stylesheet sets a tight line-height on buttons, which
+              * collapsed these rows even with padding applied. */}
+            <div style={{ paddingTop: "0.75rem", display: "flex", flexDirection: "column", gap: "0.5rem" }}>
               {editOption && (
                 <button
                   type="button"
                   role="menuitem"
                   onClick={() => pick(editOption)}
                   onMouseEnter={(e) => (e.currentTarget.style.background = "#f3f4f6")}
-                  onMouseLeave={(e) => (e.currentTarget.style.background = "none")}
-                  style={{ display: "flex", alignItems: "center", gap: "0.625rem", background: "none", border: "none", cursor: "pointer", color: "#111827", width: "100%", fontSize: "0.875rem", padding: "0.75rem 0.5rem", borderRadius: "0.5rem", textAlign: "left" }}
+                  onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+                  style={menuItemStyle("#111827")}
                 >
-                  <Glyph d={ICONS.edit} style={{ stroke: "#111827" }} /> {editOption.name}
+                  <Glyph d={ICONS.edit} size={18} style={{ stroke: "#111827" }} />
+                  <span>{editOption.name}</span>
                 </button>
               )}
-              <div style={{ height: "1px", background: "#f3f4f6", margin: "0.25rem 0" }} />
               <button
                 type="button"
                 role="menuitem"
                 onClick={() => pick(logoutOption || { func: () => {} })}
                 onMouseEnter={(e) => (e.currentTarget.style.background = "#fef2f2")}
-                onMouseLeave={(e) => (e.currentTarget.style.background = "none")}
-                style={{ display: "flex", alignItems: "center", gap: "0.625rem", background: "none", border: "none", cursor: "pointer", color: "#e11d48", width: "100%", fontSize: "0.875rem", padding: "0.75rem 0.5rem", borderRadius: "0.5rem", textAlign: "left" }}
+                onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+                style={menuItemStyle("#e11d48")}
               >
-                <Glyph d={ICONS.logout} style={{ stroke: "#e11d48" }} /> {logoutOption?.name || t("CORE_COMMON_LOGOUT")}
+                <Glyph d={ICONS.logout} size={18} style={{ stroke: "#e11d48" }} />
+                <span>{logoutOption?.name || t("CORE_COMMON_LOGOUT")}</span>
               </button>
             </div>
           </div>,
