@@ -3,6 +3,7 @@ import React, { useState } from "react";
 import { useRouteMatch } from "react-router-dom";
 import { default as EmployeeApp } from "./pages/employee";
 import PGRCard from "./components/PGRCard";
+import EmployeeTopBarV2 from "./components/EmployeeTopBarV2";
 import PGRAdminSearch from "./pages/employee/AdminSearch";
 import { overrideHooks, updateCustomConfigs } from "./utils";
 import { ProviderContext } from "./utils/context";
@@ -106,6 +107,8 @@ const PGRLinks = ({ matchPath }) => {
 
 const componentsToRegister = {
   PGRModule,
+  // Core TopBar checks the registry for this slot before rendering its default.
+  CustomEmployeeTopBar: EmployeeTopBarV2,
   PGRLinks,
   PGRCard,
   PGRBoundaryComponent: BoundaryComponent,

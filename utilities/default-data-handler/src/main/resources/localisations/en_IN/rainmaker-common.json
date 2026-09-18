@@ -9874,5 +9874,35 @@
         "message": "County Government",
         "module": "rainmaker-common",
         "locale": "en_IN"
+    },
+    {
+        "code": "CORE_TOPBAR_HELLO",
+        "message": "Hello",
+        "module": "rainmaker-common",
+        "locale": "en_IN"
+    },
+    {
+        "code": "CORE_TOPBAR_DEPARTMENT",
+        "message": "Department",
+        "module": "rainmaker-common",
+        "locale": "en_IN"
+    },
+    {
+        "code": "CORE_TOPBAR_ROLE",
+        "message": "Role",
+        "module": "rainmaker-common",
+        "locale": "en_IN"
+    },
+    {
+        "code": "CORE_TOPBAR_LOCATION",
+        "message": "Location",
+        "module": "rainmaker-common",
+        "locale": "en_IN"
+    },
+    {
+        "code": "CORE_TOPBAR_LAST_LOGIN",
+        "message": "Last Login",
+        "module": "rainmaker-common",
+        "locale": "en_IN"
     }
 ]
