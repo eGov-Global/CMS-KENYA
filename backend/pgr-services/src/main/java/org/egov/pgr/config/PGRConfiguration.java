@@ -233,6 +233,14 @@ public class PGRConfiguration {
     @Value("${pgr.jurisdiction.scope.roles:}")
     private List<String> jurisdictionScopeRoles;
 
+    // TTL for BoundaryUtil's boundary-subtree cache. A jurisdiction-scoped employee's search
+    // expands their HRMS boundary to its descendants; the hierarchy changes rarely, so this is
+    // longer than the MDMS master TTL. Only non-empty subtrees are cached, and a stale entry is
+    // served in preference to an empty one, so a boundary-service blip never silently narrows
+    // an employee's scope. See BoundaryUtil#expandToDescendants.
+    @Value("${pgr.jurisdiction.subtree.cache.ttl.ms:300000}")
+    private Long jurisdictionSubtreeCacheTtlMs;
+
     //Sources
     @Value("${allowed.source}")
     private String allowedSource;

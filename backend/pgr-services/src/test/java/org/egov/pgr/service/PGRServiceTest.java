@@ -59,6 +59,8 @@ class PGRServiceTest {
     @Mock private EncryptionDecryptionService encryptionDecryptionService;
     @Mock private SearchAccessPolicyService searchAccessPolicyService;
     @Mock private FieldVisibilityService fieldVisibilityService;
+    @Mock private EmployeeDepartmentScopeService employeeDepartmentScopeService;
+    @Mock private EmployeeJurisdictionScopeService employeeJurisdictionScopeService;
 
     private PGRService pgrService;
 
@@ -68,7 +70,7 @@ class PGRServiceTest {
         pgrService = new PGRService(enrichmentService, userService, workflowService, validator, validator, producer,
                 config, repository, mdmsUtils, complaintDomainEventService, pgrUtils,
                 extendedAttributesValidationService, encryptionDecryptionService, searchAccessPolicyService,
-                fieldVisibilityService);
+                fieldVisibilityService, employeeDepartmentScopeService, employeeJurisdictionScopeService);
     }
 
     @Test

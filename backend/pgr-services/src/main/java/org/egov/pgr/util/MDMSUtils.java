@@ -27,6 +27,7 @@ import static org.egov.pgr.util.PGRConstants.MDMS_MODULE_NAME;
 import static org.egov.pgr.util.PGRConstants.MDMS_SERVICEDEF;
 import static org.egov.pgr.util.PGRConstants.MDMS_COMMON_MASTERS_MODULE_NAME;
 import static org.egov.pgr.util.PGRConstants.MDMS_DEPT_MASTER;
+import static org.egov.pgr.util.PGRConstants.MDMS_ALL_DEPARTMENTS_JSONPATH;
 import static org.egov.pgr.util.PGRConstants.MDMS_DATA_JSONPATH;
 import static org.egov.pgr.util.PGRConstants.MDMS_DATA_SLA_KEYWORD;
 import static org.egov.pgr.util.PGRConstants.MDMS_DATA_SERVICE_CODE_KEYWORD;
@@ -76,15 +77,6 @@ public class MDMSUtils {
     }
     private final Map<String, TimedSlaMap> serviceCodeToSlaCache = new ConcurrentHashMap<>();
 
-    // Department CODE -> NAME, cached per CITY tenant (see getDepartmentCodeToNameMap javadoc for
-    // why state-level keying would be wrong here). Backs EmployeeDepartmentScopeService, which
-    // must filter on both forms since PGRService#getDepartmentFromMDMS stores the NAME whenever
-    // resolvable, only falling back to the CODE on lookup failure. Same restart-to-refresh
-    // staleness window as serviceCodeToSlaCache above — but ONLY for non-empty results (see
-    // getDepartmentCodeToNameMap): an empty map is never cached, so a transient MDMS failure or
-    // not-yet-seeded tenant is retried on the next call instead of being stuck empty until restart.
-    private final Map<String, Map<String, String>> departmentCodeToNameCache = new ConcurrentHashMap<>();
-
     // Config-driven notification masters, cached per state-level tenant with a short TTL
     // (pgr.notification.mdms.cache.ttl.ms, default 60s). Configurator edits to
     // NotificationRouting/NotificationTemplate become visible within that window without a
@@ -117,11 +109,14 @@ public class MDMSUtils {
         boolean fresh(long ttlMs) { return System.currentTimeMillis() - fetchedAt < ttlMs; }
     }
 
-    // Department code->name map, cached per tenant with the same TTL/never-cache-empty/
-    // serve-stale-on-failure semantics as the notification masters above — a transient MDMS
-    // hiccup during department-scoped search (see getDepartmentCodeToNameMap) would otherwise
-    // silently drop dual-read matches for every request until the NEXT successful fetch, not just
-    // the one that hit the hiccup.
+    // Department CODE -> NAME, cached per CITY tenant (see getDepartmentCodeToNameMap javadoc for
+    // why state-level keying would be wrong here) with the same TTL/never-cache-empty/
+    // serve-stale-on-failure semantics as the notification masters above. Backs
+    // EmployeeDepartmentScopeService, which must filter on both forms since
+    // PGRService#getDepartmentFromMDMS stores the NAME whenever resolvable, only falling back to
+    // the CODE on lookup failure — so a transient MDMS hiccup during department-scoped search
+    // would otherwise silently drop dual-read matches for every request until the NEXT successful
+    // fetch, not just the one that hit the hiccup.
     private static final class TimedMap {
         final Map<String, String> value;
         final long fetchedAt;
@@ -177,20 +172,25 @@ public class MDMSUtils {
     /**
      * Department CODE -> NAME for every row in the common-masters Department master, cached per
      * CITY tenant (not state-level — a city's master can override the state's, so two cities
-     * under the same state must never share a cache entry). Returns an empty map (never null) on
-     * MDMS failure — that result is deliberately NOT cached (unlike a populated map), so a
-     * transient MDMS blip or not-yet-seeded tenant is retried on the next call instead of being
-     * stuck empty for the rest of the process lifetime.
+     * under the same state must never share a cache entry) with the same short TTL as the
+     * notification masters, so a configurator edit takes effect without a pgr-services restart.
+     * Returns an empty map (never null) on MDMS failure — that result is deliberately NOT cached
+     * (unlike a populated map), so a transient MDMS blip or not-yet-seeded tenant is retried on
+     * the next call instead of being stuck empty for the rest of the process lifetime; a
+     * last-known non-empty entry is served stale (past its TTL) in preference to an empty one.
      */
     public Map<String, String> getDepartmentCodeToNameMap(String tenantId) {
-        Map<String, String> cached = departmentCodeToNameCache.get(tenantId);
-        if (cached != null)
-            return cached;
+        long ttl = config.getNotificationMdmsCacheTtlMs();
+        TimedMap cached = departmentCodeToNameCache.get(tenantId);
+        if (cached != null && cached.fresh(ttl))
+            return cached.value;
 
         Map<String, String> fetched = fetchDepartmentCodeToNameMap(tenantId);
-        if (!fetched.isEmpty())
-            departmentCodeToNameCache.put(tenantId, fetched);
-        return fetched;
+        if (!fetched.isEmpty()) {
+            departmentCodeToNameCache.put(tenantId, new TimedMap(fetched));
+            return fetched;
+        }
+        return cached != null ? cached.value : fetched;
     }
 
     /** City tenant first (masters can be overridden per-city); state tenant as fallback. */

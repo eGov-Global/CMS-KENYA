@@ -70,6 +70,10 @@ public class PGRService {
 
     private FieldVisibilityService fieldVisibilityService;
 
+    private EmployeeDepartmentScopeService employeeDepartmentScopeService;
+
+    private EmployeeJurisdictionScopeService employeeJurisdictionScopeService;
+
     @Autowired
     public PGRService(EnrichmentService enrichmentService, UserService userService, WorkflowService workflowService,
                       ServiceRequestValidator serviceRequestValidator, ServiceRequestValidator validator, Producer producer,
@@ -78,7 +82,9 @@ public class PGRService {
                       ExtendedAttributesValidationService extendedAttributesValidationService,
                       EncryptionDecryptionService encryptionDecryptionService,
                       SearchAccessPolicyService searchAccessPolicyService,
-                      FieldVisibilityService fieldVisibilityService) {
+                      FieldVisibilityService fieldVisibilityService,
+                      EmployeeDepartmentScopeService employeeDepartmentScopeService,
+                      EmployeeJurisdictionScopeService employeeJurisdictionScopeService) {
         this.enrichmentService = enrichmentService;
         this.userService = userService;
         this.workflowService = workflowService;
@@ -94,6 +100,8 @@ public class PGRService {
         this.encryptionDecryptionService = encryptionDecryptionService;
         this.searchAccessPolicyService = searchAccessPolicyService;
         this.fieldVisibilityService = fieldVisibilityService;
+        this.employeeDepartmentScopeService = employeeDepartmentScopeService;
+        this.employeeJurisdictionScopeService = employeeJurisdictionScopeService;
     }
 
 
