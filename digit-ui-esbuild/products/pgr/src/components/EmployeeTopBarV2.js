@@ -68,7 +68,7 @@ const itemStyle = {
   display: "inline-flex",
   alignItems: "center",
   gap: "0.5rem",
-  height: "2.5rem",
+  height: "auto",
   whiteSpace: "nowrap",
   textTransform: "none",
   fontSize: "0.875rem",
@@ -77,7 +77,7 @@ const itemStyle = {
 };
 const dividerStyle = { width: "1px", height: "1.25rem", background: "currentColor", opacity: 0.35, alignSelf: "center" };
 
-const Avatar = ({ name, size = 34 }) => (
+const Avatar = ({ name, size = 30 }) => (
   <span
     style={{
       width: size,
@@ -123,14 +123,31 @@ const ProfileMenu = ({ t, userDetails, cityDetails, workingContext, userOptions,
   const [anchor, setAnchor] = useState(null);
   const btnRef = useRef(null);
   const panelRef = useRef(null);
+  const closeTimer = useRef(null);
 
-  const toggle = () => {
-    if (!open && btnRef.current) {
+  const place = () => {
+    if (btnRef.current) {
       const r = btnRef.current.getBoundingClientRect();
       setAnchor({ top: r.bottom + 12, right: Math.max(window.innerWidth - r.right, 8) });
     }
+  };
+  const show = () => {
+    clearTimeout(closeTimer.current);
+    place();
+    setOpen(true);
+  };
+  // The card is a portal, so the pointer "leaves" the button before it can
+  // "enter" the card — the delay bridges that gap instead of flickering shut.
+  const hideSoon = () => {
+    clearTimeout(closeTimer.current);
+    closeTimer.current = setTimeout(() => setOpen(false), 300);
+  };
+  const toggle = () => {
+    clearTimeout(closeTimer.current);
+    if (!open) place();
     setOpen((v) => !v);
   };
+  useEffect(() => () => clearTimeout(closeTimer.current), []);
 
   useEffect(() => {
     if (!open) return;
@@ -178,6 +195,8 @@ const ProfileMenu = ({ t, userDetails, cityDetails, workingContext, userOptions,
           <div
             ref={panelRef}
             role="menu"
+            onMouseEnter={() => clearTimeout(closeTimer.current)}
+            onMouseLeave={hideSoon}
             style={{
               position: "fixed",
               top: anchor.top,
@@ -211,7 +230,7 @@ const ProfileMenu = ({ t, userDetails, cityDetails, workingContext, userOptions,
               <ProfileRow icon="history" label={t("CORE_TOPBAR_LAST_LOGIN")} value={lastLogin} />
             </div>
 
-            <div style={{ paddingTop: "0.75rem", display: "flex", flexDirection: "column", gap: "0.125rem" }}>
+            <div style={{ paddingTop: "0.875rem", display: "flex", flexDirection: "column", gap: "0.625rem" }}>
               {editOption && (
                 <button
                   type="button"
@@ -242,6 +261,8 @@ const ProfileMenu = ({ t, userDetails, cityDetails, workingContext, userOptions,
         ref={btnRef}
         type="button"
         onClick={toggle}
+        onMouseEnter={show}
+        onMouseLeave={hideSoon}
         aria-haspopup="menu"
         aria-expanded={open}
         style={{ display: "inline-flex", alignItems: "center", gap: "0.375rem", background: "none", border: "none", cursor: "pointer", color: "inherit", padding: 0 }}
@@ -337,8 +358,8 @@ const EmployeeTopBarV2 = (props) => {
       onHamburgerClick={() => toggleSidebar()}
       className="digit-employee-header pgr-topbar-v2"
       img={logoUrl}
-      logoWidth={"64px"}
-      logoHeight={"48px"}
+      logoWidth={"40px"}
+      logoHeight={"40px"}
       logo={(loggedin ? cityDetails?.logoId : stateInfo?.statelogo) || (headerTone === "dark" ? DEFAULT_EGOV_LOGO_ON_DARK : DEFAULT_EGOV_LOGO)}
       onImageClick={() => {}}
       onLogoClick={() => {}}
