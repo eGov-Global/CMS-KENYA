@@ -163,9 +163,10 @@ public class NovuBridgeConfiguration {
     }
 
     // Which gateway DirectDeliveryService.sendSms actually calls for a direct-mode
-    // SMS send. Default (unset, or anything other than "bongatech") preserves
-    // existing deployments' Ozeki behavior untouched — same provider-name-switch
-    // idea as smsProvider/otpSmsProvider above, just for the direct-bypass path.
+    // SMS send: "ozeki" (default), "bongatech" or "jasmin". Default (unset, or
+    // anything unrecognized) preserves existing deployments' Ozeki behavior
+    // untouched — same provider-name-switch idea as smsProvider/otpSmsProvider
+    // above, just for the direct-bypass path.
     @Value("${novu.bridge.direct.sms.provider:ozeki}")
     private String directSmsProvider;
 
@@ -173,13 +174,20 @@ public class NovuBridgeConfiguration {
         return directSmsProvider != null && "bongatech".equalsIgnoreCase(directSmsProvider.trim());
     }
 
+    public boolean isDirectSmsProviderJasmin() {
+        return directSmsProvider != null && "jasmin".equalsIgnoreCase(directSmsProvider.trim());
+    }
+
     // Generic direct-mode SMS gateway config — ONE shared set of names for
     // whichever gateway directSmsProvider above selects, instead of a dedicated
     // field block per provider (only one gateway is ever active in direct mode).
     // Ozeki reads baseUrl/username/password (query-param auth); Bongatech reads
     // baseUrl/token (Bearer auth) + smsSenderId above — see
-    // https://bulk.bongatech.co.ke/docs/1.0/send-sms. Each provider simply
-    // ignores the field(s) it doesn't need.
+    // https://bulk.bongatech.co.ke/docs/1.0/send-sms; Jasmin reads
+    // baseUrl/username/password (query-param auth on its classic HTTP API, see
+    // https://docs.jasminsms.com/en/latest/apis/http/index.html) + smsSenderId
+    // as the `from` address. Each provider simply ignores the field(s) it
+    // doesn't need.
     @Value("${novu.bridge.direct.sms.base.url:}")
     private String directSmsBaseUrl;
 

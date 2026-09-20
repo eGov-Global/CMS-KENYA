@@ -88,6 +88,7 @@ Added a dedicated delivery path for one-time-password/login-code messages, separ
 | `novu.bridge.ozeki.integration.identifier` | Which configured Ozeki integration to use |
 | `novu.bridge.direct.channels` | Which channels (SMS/Email) bypass Novu entirely |
 | `novu.bridge.direct.ozeki.*` | Ozeki gateway URL/credentials for direct SMS |
+| `novu.bridge.direct.sms.provider` + `novu.bridge.direct.sms.*` | Which gateway direct SMS calls — `ozeki` (default), `bongatech`, or `jasmin` (Jasmin SMS Gateway classic HTTP API, `GET <base.url>?username&password&to&from&content`; `base.url` e.g. `http://jasmin-host:1401/send`, `from` = `novu.bridge.sms.sender.id`) — and its shared URL/credential block |
 | `novu.bridge.direct.email.from` + `spring.mail.*` | SMTP sender configuration for direct email |
 
 All additions are opt-in with empty/off defaults — no behavior change for existing deployments unless explicitly configured.

@@ -2308,6 +2308,20 @@ services:
       OZEKI_BASE_URL: ${OZEKI_BASE_URL:-}
       OZEKI_USERNAME: ${OZEKI_USERNAME:-}
       OZEKI_PASSWORD: ${OZEKI_PASSWORD:-}
+      # Direct-mode SMS gateway (the names novu-bridge's application.properties
+      # actually binds — see novu.bridge.direct.sms.*). PROVIDER selects the
+      # gateway: ozeki (default) | bongatech | jasmin. BASE_URL is the COMPLETE
+      # send endpoint (Ozeki http://host:9501/api, Bongatech
+      # https://bulk.bongatech.co.ke/api/v1/send-sms, Jasmin
+      # http://host:1401/send). Ozeki + Jasmin authenticate with USERNAME/
+      # PASSWORD; Bongatech with TOKEN. SENDER_ID is Bongatech's sender /
+      # Jasmin's `from`; Ozeki ignores it.
+      NOVU_BRIDGE_DIRECT_SMS_PROVIDER: ${NOVU_BRIDGE_DIRECT_SMS_PROVIDER:-ozeki}
+      NOVU_BRIDGE_DIRECT_SMS_BASE_URL: ${NOVU_BRIDGE_DIRECT_SMS_BASE_URL:-}
+      NOVU_BRIDGE_DIRECT_SMS_USERNAME: ${NOVU_BRIDGE_DIRECT_SMS_USERNAME:-}
+      NOVU_BRIDGE_DIRECT_SMS_PASSWORD: ${NOVU_BRIDGE_DIRECT_SMS_PASSWORD:-}
+      NOVU_BRIDGE_DIRECT_SMS_TOKEN: ${NOVU_BRIDGE_DIRECT_SMS_TOKEN:-}
+      NOVU_BRIDGE_SMS_SENDER_ID: ${NOVU_BRIDGE_SMS_SENDER_ID:-}
       NOVU_BRIDGE_DIRECT_EMAIL_FROM: ${NOVU_BRIDGE_DIRECT_EMAIL_FROM:-}
       SPRING_MAIL_HOST: ${SPRING_MAIL_HOST:-}
       SPRING_MAIL_PORT: ${SPRING_MAIL_PORT:-587}

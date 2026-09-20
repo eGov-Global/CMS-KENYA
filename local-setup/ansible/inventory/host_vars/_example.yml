@@ -349,6 +349,15 @@ enable_overpass: false
 # Novu still comes up, operator can configure it via the UI later.
 enable_novu: false
 
+# Direct-delivery alternative for boxes where novu-api can't run: starts the
+# `notifications-direct` compose profile (digit-config-service +
+# digit-user-preferences-service + novu-bridge only — no Novu containers).
+# Ignored when enable_novu is true (the full `notifications` profile already
+# includes novu-bridge). Pair it with novu_bridge_direct_channels and the
+# novu_bridge_direct_sms_* keys further down, or novu-bridge starts but has
+# nowhere to send.
+enable_novu_direct: false
+
 # Build a subpath-rebased Novu dashboard image locally so the SPA serves cleanly
 # under /novu (backend/novu-dashboard/Dockerfile, tagged novu-dashboard:local).
 # Strongly recommended — REQUIRED when Keycloak shares this domain (enable_keycloak),
@@ -415,6 +424,33 @@ novu_bridge_channel: "sms"
 # novu_bridge_workflow_id_email:    "complaints-email"
 # Subscriber-identify TTL cache (ms) — skip redundant POST /v1/subscribers.
 # novu_bridge_identify_cache_ttl_ms: 300000
+
+# ── novu-bridge DIRECT delivery (bypass Novu for SMS and/or EMAIL) ──
+# For boxes where novu-api can't run. Channels listed here are delivered by
+# novu-bridge itself — SMS straight to the gateway's HTTP API, EMAIL over
+# SMTP — and never touch Novu. Empty (default) = everything goes via Novu.
+# WHATSAPP always stays on Novu. Rendered into the compose .env as the
+# NOVU_BRIDGE_DIRECT_* / SPRING_MAIL_* variables novu-bridge binds.
+# novu_bridge_direct_channels: "SMS"            # or "SMS,EMAIL"
+#
+# Direct SMS gateway: ozeki (default) | bongatech | jasmin.
+# base_url is the COMPLETE send endpoint — nothing is appended in code:
+#   ozeki      http://ozeki-host:9501/api                  (username/password)
+#   bongatech  https://bulk.bongatech.co.ke/api/v1/send-sms (token + sender_id)
+#   jasmin     http://jasmin-host:1401/send                 (username/password + sender_id as `from`)
+# novu_bridge_direct_sms_provider: "jasmin"
+# novu_bridge_direct_sms_base_url: "http://jasmin-host:1401/send"
+# novu_bridge_direct_sms_username: ""
+# novu_bridge_direct_sms_password: ""
+# novu_bridge_direct_sms_token: ""
+# novu_bridge_sms_sender_id: ""
+#
+# Direct EMAIL (SMTP) — only read when EMAIL is in novu_bridge_direct_channels.
+# novu_bridge_direct_email_from: "noreply@example.org"
+# spring_mail_host: "smtp.example.org"
+# spring_mail_port: 587
+# spring_mail_username: ""
+# spring_mail_password: ""
 
 # Browser-facing origin for the Novu dashboard SPA (scheme + host, no trailing
 # slash). The dashboard runs in the OPERATOR's browser, so these URLs must name

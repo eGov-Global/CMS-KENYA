@@ -173,6 +173,113 @@ class DirectDeliveryServiceTest {
         assertEquals(401, response.getStatusCode());
     }
 
+    // ---- Jasmin (classic HTTP API: GET + query params, plain-text reply) ----
+
+    private void configureJasmin() {
+        config.setDirectSmsProvider("jasmin");
+        config.setDirectSmsBaseUrl("http://jasmin:1401/send");
+        config.setDirectSmsUsername("jasmin-user");
+        config.setDirectSmsPassword("jasmin-pass");
+        config.setSmsSenderId("CMS-KE");
+    }
+
+    private URI capturedJasminUri() {
+        ArgumentCaptor<URI> uriCaptor = ArgumentCaptor.forClass(URI.class);
+        verify(restTemplate).getForObject(uriCaptor.capture(), eq(String.class));
+        return uriCaptor.getValue();
+    }
+
+    @Test
+    void sendSms_jasminSuccess_buildsSendUrl_andParsesMessageId() {
+        configureJasmin();
+        when(restTemplate.getForObject(any(URI.class), eq(String.class)))
+                .thenReturn("Success \"07033084-5cfd-4812-90a4-e4d24ffb6e3d\"");
+
+        NovuClient.NovuResponse response = service.sendSms("+254712345678", "Hello there", "txn-10");
+
+        assertEquals(200, response.getStatusCode());
+        assertEquals("07033084-5cfd-4812-90a4-e4d24ffb6e3d", response.getResponse().get("messageid"));
+
+        URI uri = capturedJasminUri();
+        var params = UriComponentsBuilder.fromUri(uri).build().getQueryParams();
+        assertEquals("/send", uri.getPath());
+        assertEquals("jasmin-user", params.getFirst("username"));
+        assertEquals("jasmin-pass", params.getFirst("password"));
+        assertEquals("254712345678", params.getFirst("to"), "Jasmin wants bare digits, no '+'");
+        assertEquals("CMS-KE", params.getFirst("from"));
+        assertEquals("Hello there", java.net.URLDecoder.decode(params.getFirst("content"), java.nio.charset.StandardCharsets.UTF_8));
+        assertEquals(null, params.getFirst("coding"), "plain ASCII must not be flagged UCS2");
+    }
+
+    @Test
+    void sendSms_jasminNonGsmText_flagsUcs2Coding() {
+        configureJasmin();
+        when(restTemplate.getForObject(any(URI.class), eq(String.class))).thenReturn("Success \"id-1\"");
+
+        service.sendSms("+254712345678", "Olá — água já disponível", "txn-11");
+
+        var params = UriComponentsBuilder.fromUri(capturedJasminUri()).build().getQueryParams();
+        assertEquals("8", params.getFirst("coding"));
+    }
+
+    @Test
+    void sendSms_jasminNoSenderId_omitsFromParam() {
+        configureJasmin();
+        config.setSmsSenderId("");
+        when(restTemplate.getForObject(any(URI.class), eq(String.class))).thenReturn("Success \"id-2\"");
+
+        service.sendSms("+254712345678", "Hello", "txn-12");
+
+        var params = UriComponentsBuilder.fromUri(capturedJasminUri()).build().getQueryParams();
+        assertEquals(null, params.getFirst("from"));
+    }
+
+    @Test
+    void sendSms_jasminErrorBodyOn2xx_mapsToFailureResponse_withoutThrowing() {
+        configureJasmin();
+        when(restTemplate.getForObject(any(URI.class), eq(String.class))).thenReturn("Error \"No route found\"");
+
+        NovuClient.NovuResponse response = service.sendSms("+254712345678", "Hello", "txn-13");
+
+        assertEquals(502, response.getStatusCode());
+        assertEquals("Error \"No route found\"", response.getResponse().get("error"));
+    }
+
+    @Test
+    void sendSms_jasminHttpError_mapsStatusAndBody_withoutThrowing() {
+        configureJasmin();
+        when(restTemplate.getForObject(any(URI.class), eq(String.class)))
+                .thenThrow(HttpClientErrorException.create(HttpStatus.FORBIDDEN, "Forbidden",
+                        HttpHeaders.EMPTY, "Error \"Authentication failure for username:jasmin-user\"".getBytes(), null));
+
+        NovuClient.NovuResponse response = service.sendSms("+254712345678", "Hello", "txn-14");
+
+        assertEquals(403, response.getStatusCode());
+        assertEquals(403, response.getResponse().get("httpStatus"));
+        assertEquals("Error \"Authentication failure for username:jasmin-user\"", response.getResponse().get("error"));
+    }
+
+    @Test
+    void sendSms_jasminEmptyResponseBody_throwsCustomException() {
+        configureJasmin();
+        when(restTemplate.getForObject(any(URI.class), eq(String.class))).thenReturn("  ");
+
+        CustomException ex = assertThrows(CustomException.class,
+                () -> service.sendSms("+254712345678", "Hello", "txn-15"));
+        assertEquals("NB_DIRECT_SMS_FAILED", ex.getCode());
+    }
+
+    @Test
+    void sendSms_jasminTransportFailure_throwsCustomException() {
+        configureJasmin();
+        when(restTemplate.getForObject(any(URI.class), eq(String.class)))
+                .thenThrow(new org.springframework.web.client.ResourceAccessException("connection refused"));
+
+        CustomException ex = assertThrows(CustomException.class,
+                () -> service.sendSms("+254712345678", "Hello", "txn-16"));
+        assertEquals("NB_DIRECT_SMS_FAILED", ex.getCode());
+    }
+
     @Test
     void sendEmail_success_sendsSimpleMailMessage() {
         NovuClient.NovuResponse response = service.sendEmail("jane@example.com", "Update", "Body text", "txn-5");

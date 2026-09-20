@@ -45,6 +45,10 @@ import java.util.Map;
  *   <li>Bongatech's Bulk SMS API: a POST with a JSON body and a Bearer token,
  *       JSON response — see {@code BongatechOverridesBuilder} for the
  *       Novu-routed equivalent.</li>
+ *   <li>Jasmin SMS Gateway's classic HTTP API: a GET with recipient/content/
+ *       credentials as query params, plain-text {@code Success "<id>"} /
+ *       {@code Error "<reason>"} response. Direct-only — there is no
+ *       Novu-routed equivalent for Jasmin.</li>
  * </ul>
  * {@code novu.bridge.direct.sms.base.url} is the COMPLETE endpoint URL
  * (e.g. {@code http://ozeki-host:9501/api} or
@@ -80,6 +84,9 @@ public class DirectDeliveryService {
      * {@code SmsProviderOverridesFactory} on the Novu-routed side.
      */
     public NovuClient.NovuResponse sendSms(String phone, String body, String transactionId) {
+        if (config.isDirectSmsProviderJasmin()) {
+            return sendSmsViaJasmin(phone, body, transactionId);
+        }
         return config.isDirectSmsProviderBongatech()
                 ? sendSmsViaBongatech(phone, body, transactionId)
                 : sendSmsViaOzeki(phone, body, transactionId);
@@ -197,6 +204,92 @@ public class DirectDeliveryService {
             log.error("Bongatech direct SMS failed: txn={}", transactionId, e);
             throw new CustomException("NB_DIRECT_SMS_FAILED", "Failed sending direct SMS via Bongatech: " + e.getMessage());
         }
+    }
+
+    /**
+     * Send an SMS straight to a <a href="https://docs.jasminsms.com/en/latest/apis/http/index.html">Jasmin
+     * SMS Gateway</a>'s classic HTTP API ({@code GET <directSmsBaseUrl>?username=...
+     * &password=...&to=...&from=...&content=...} — directSmsBaseUrl is expected to
+     * already include the {@code /send} path, e.g. {@code http://jasmin-host:1401/send}),
+     * parsing its plain-text reply: {@code Success "<message-id>"} on acceptance,
+     * {@code Error "<reason>"} (usually with a 4xx HTTP status — 403 auth failure,
+     * 412 no route, 400 bad params) on rejection. Jasmin wants the recipient as bare
+     * digits (no {@code +}), and non-GSM text must be flagged {@code coding=8} (UCS2)
+     * or it arrives garbled. Never logs the request URL (carries the password) — only
+     * the parsed outcome, masked where it carries the recipient.
+     */
+    private NovuClient.NovuResponse sendSmsViaJasmin(String phone, String body, String transactionId) {
+        try {
+            UriComponentsBuilder uriBuilder = UriComponentsBuilder.fromHttpUrl(config.getDirectSmsBaseUrl())
+                    .queryParam("username", config.getDirectSmsUsername())
+                    .queryParam("password", config.getDirectSmsPassword())
+                    .queryParam("to", digitsOnly(phone))
+                    .queryParam("content", body);
+            if (StringUtils.hasText(config.getSmsSenderId())) {
+                uriBuilder.queryParam("from", config.getSmsSenderId());
+            }
+            if (!isGsmSafe(body)) {
+                uriBuilder.queryParam("coding", "8");
+            }
+            URI uri = uriBuilder.build().encode(StandardCharsets.UTF_8).toUri();
+
+            log.info("Jasmin direct SMS send: recipient={} txn={}", PiiMask.mask(phone), transactionId);
+            String raw = restTemplate.getForObject(uri, String.class);
+            if (!StringUtils.hasText(raw)) {
+                throw new CustomException("NB_DIRECT_SMS_FAILED", "Jasmin returned an empty response");
+            }
+
+            String reply = raw.trim();
+            Map<String, Object> response = new HashMap<>();
+            if (reply.startsWith(JASMIN_SUCCESS_PREFIX)) {
+                String messageId = unquote(reply.substring(JASMIN_SUCCESS_PREFIX.length()));
+                response.put("messageid", messageId);
+                log.info("Jasmin direct SMS accepted: txn={} messageId={}", transactionId, messageId);
+                return NovuClient.NovuResponse.builder().statusCode(200).response(response).build();
+            }
+
+            // Anything else on a 2xx (e.g. Error "..." without an error status) is a rejection.
+            response.put("error", reply);
+            log.warn("Jasmin direct SMS rejected: txn={} reply={}", transactionId, reply);
+            return NovuClient.NovuResponse.builder().statusCode(502).response(response).build();
+        } catch (HttpStatusCodeException e) {
+            // Jasmin signals auth / routing / parameter errors as a 4xx whose body is
+            // Error "<reason>" — surface it as a structured failure (like Bongatech
+            // above) so the pipeline persists FAILED with the gateway's real reason.
+            String errorBody = e.getResponseBodyAsString();
+            log.warn("Jasmin direct SMS failed: txn={} httpStatus={} reply={}",
+                    transactionId, e.getStatusCode().value(), errorBody);
+            Map<String, Object> response = new HashMap<>();
+            response.put("httpStatus", e.getStatusCode().value());
+            response.put("error", errorBody);
+            return NovuClient.NovuResponse.builder().statusCode(e.getStatusCode().value()).response(response).build();
+        } catch (CustomException ce) {
+            throw ce;
+        } catch (Exception e) {
+            log.error("Jasmin direct SMS failed: txn={}", transactionId, e);
+            throw new CustomException("NB_DIRECT_SMS_FAILED", "Failed sending direct SMS via Jasmin: " + e.getMessage());
+        }
+    }
+
+    private static final String JASMIN_SUCCESS_PREFIX = "Success";
+
+    /** Jasmin's HTTP API wants the destination as bare digits, no leading {@code +} or separators. */
+    private static String digitsOnly(String phone) {
+        return phone == null ? "" : phone.replaceAll("[^0-9]", "");
+    }
+
+    /** Conservative GSM-7 check: pure printable ASCII is always safe; anything else is sent as UCS2 (coding=8). */
+    private static boolean isGsmSafe(String text) {
+        return text != null && text.chars().allMatch(c -> c >= 0x20 && c < 0x7F);
+    }
+
+    /** {@code  "abc"} → {@code abc}: strips surrounding whitespace and one pair of double quotes. */
+    private static String unquote(String value) {
+        String v = value == null ? "" : value.trim();
+        if (v.length() >= 2 && v.startsWith("\"") && v.endsWith("\"")) {
+            v = v.substring(1, v.length() - 1);
+        }
+        return v;
     }
 
     @SuppressWarnings("unchecked")
