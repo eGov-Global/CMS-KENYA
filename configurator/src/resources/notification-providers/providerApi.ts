@@ -211,6 +211,26 @@ export function credFields(channel: Channel, providerId: string): CredField[] {
       { key: 'secure', labelKey: 'app.providers.cred.secure', labelDefault: 'Use TLS (secure)', type: 'checkbox' },
     ];
   }
+  // Novu's built-in generic-sms provider — the shell behind any plain-HTTP SMS
+  // gateway novu-bridge knows how to shape a body for (Ozeki, Bongatech, Jasmin —
+  // see SmsProviderOverridesFactory). The operator types `generic-sms` as the
+  // Provider ID. Field keys are Novu's own credential keys for this provider.
+  // For Jasmin's REST API: baseUrl http://jasmin-host:8080/secure/send,
+  // apiKeyRequestHeader `Authorization`, apiKey `Basic <base64 user:pass>`,
+  // idPath `data`. Then set NOVU_BRIDGE_SMS_PROVIDER / _OTP_SMS_PROVIDER=jasmin
+  // and NOVU_BRIDGE_SMS_INTEGRATION_IDENTIFIER to this integration's identifier.
+  if (providerId === 'generic-sms') {
+    return [
+      { key: 'baseUrl', labelKey: 'app.providers.cred.base_url', labelDefault: 'Send endpoint URL', type: 'text', placeholder: 'http://jasmin-host:8080/secure/send', required: true },
+      { key: 'apiKeyRequestHeader', labelKey: 'app.providers.cred.api_key_header', labelDefault: 'Auth header name', type: 'text', placeholder: 'Authorization', required: true },
+      { key: 'apiKey', labelKey: 'app.providers.cred.api_key', labelDefault: 'Auth header value', type: 'password', placeholder: 'Basic <base64 username:password>', required: true },
+      { key: 'secretKeyRequestHeader', labelKey: 'app.providers.cred.secret_key_header', labelDefault: 'Second header name (optional)', type: 'text' },
+      { key: 'secretKey', labelKey: 'app.providers.cred.secret_key', labelDefault: 'Second header value (optional)', type: 'password' },
+      { key: 'from', labelKey: 'app.providers.cred.from', labelDefault: 'From', type: 'text', placeholder: 'sender id / source address' },
+      { key: 'idPath', labelKey: 'app.providers.cred.id_path', labelDefault: 'Message-id JSON path in reply', type: 'text', placeholder: 'data', required: true },
+      { key: 'datePath', labelKey: 'app.providers.cred.date_path', labelDefault: 'Date JSON path in reply (optional)', type: 'text' },
+    ];
+  }
   // Twilio (SMS + WhatsApp share the same integration).
   const fromPlaceholder = channel === 'WHATSAPP' ? 'whatsapp:+15551234567' : '+15551234567';
   return [

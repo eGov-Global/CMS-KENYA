@@ -85,6 +85,7 @@ Added a dedicated delivery path for one-time-password/login-code messages, separ
 |---|---|
 | `novu.bridge.sms.provider` | Route complaint SMS through Ozeki instead of the default provider |
 | `novu.bridge.otp.sms.provider` | Route OTP SMS through Ozeki instead of the default provider |
+| `novu.bridge.sms.provider` / `novu.bridge.otp.sms.provider` = `jasmin` | Route complaint / OTP SMS through a Jasmin SMS Gateway behind Novu's `generic-sms` provider (`JasminOverridesBuilder`; integration must target Jasmin's REST API `POST /secure/send`, Basic-auth header, `idPath` `data`) |
 | `novu.bridge.ozeki.integration.identifier` | Which configured Ozeki integration to use |
 | `novu.bridge.direct.channels` | Which channels (SMS/Email) bypass Novu entirely |
 | `novu.bridge.direct.ozeki.*` | Ozeki gateway URL/credentials for direct SMS |

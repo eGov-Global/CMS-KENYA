@@ -57,6 +57,44 @@ masked or otherwise, ever leaves** (`IntegrationController.java:23-30`,
 Novu over TLS and live only there; only credential *key names* (never values) are logged
 (`NovuClient.createIntegration :295-331`).
 
+### Plain-HTTP gateways behind `generic-sms` (Ozeki, Bongatech, Jasmin)
+
+Novu has no provider for these gateways. They ride Novu's built-in **`generic-sms`**
+provider: the integration holds the gateway URL + auth header, and novu-bridge injects
+the gateway's exact request body per trigger via `overrides.providers.generic-sms._passthrough.body`
+(`SmsProviderOverridesFactory` → `OzekiOverridesBuilder` / `BongatechOverridesBuilder` /
+`JasminOverridesBuilder`). Two env switches pick the gateway independently for complaint
+SMS (`NOVU_BRIDGE_SMS_PROVIDER`) and login OTP (`NOVU_BRIDGE_OTP_SMS_PROVIDER`);
+`NOVU_BRIDGE_SMS_INTEGRATION_IDENTIFIER` pins the integration so the gateway can coexist
+with a primary Twilio one. Empty = plain trigger, primary integration delivers.
+
+**Jasmin SMS Gateway**, concretely. Use Jasmin's **REST API** (`jasmin-restapi`, default
+port 8080), not its classic HTTP API on 1401 — generic-sms POSTs JSON and reads the
+message id from a JSON path, and only the REST API answers JSON
+(`{"data": "Success \"<id>\""}`). Create the integration on the Notification Providers
+screen with Provider ID `generic-sms` (or in the Novu dashboard):
+
+| generic-sms field | value for Jasmin |
+|---|---|
+| `baseUrl` | `http://jasmin-host:8080/secure/send` |
+| `apiKeyRequestHeader` | `Authorization` |
+| `apiKey` | `Basic <base64 of username:password>` (the Jasmin HTTP user) |
+| `idPath` | `data` |
+| `from` | optional; novu-bridge sends its own `from` = `NOVU_BRIDGE_SMS_SENDER_ID` in the body |
+
+The injected body is `{to, from, content[, coding]}` — `to` as bare digits (Jasmin rejects
+a leading `+`), `coding: "8"` added automatically for non-GSM text. Credentials can never
+travel in the body (passthrough is deep-merged into it), hence the header. Then set
+`NOVU_BRIDGE_SMS_PROVIDER=jasmin` and/or `NOVU_BRIDGE_OTP_SMS_PROVIDER=jasmin` plus
+`NOVU_BRIDGE_SMS_INTEGRATION_IDENTIFIER=<that identifier>`.
+
+Caveat shared by every generic-sms gateway: Novu marks the step **SENT on any 2xx**, so a
+gateway rejection carried inside a 200 body (Jasmin's `Error "No route found"` is normally
+a 4xx, but check) shows as delivered in the activity feed. The Novu-less
+**direct** leg (`NOVU_BRIDGE_DIRECT_CHANNELS=SMS`, `NOVU_BRIDGE_DIRECT_SMS_PROVIDER=jasmin`,
+`DirectDeliveryService#sendSmsViaJasmin`) talks to the classic 1401 API and parses the
+reply itself, so it does not have that blind spot.
+
 ## 3.3 Provider self-service (the Notification Providers screen)
 
 `configurator/src/resources/notification-providers/` (`providerApi.ts`,

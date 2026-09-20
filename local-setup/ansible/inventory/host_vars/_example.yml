@@ -445,6 +445,22 @@ novu_bridge_channel: "sms"
 # novu_bridge_direct_sms_token: ""
 # novu_bridge_sms_sender_id: ""
 #
+# ── Novu-ROUTED SMS via a generic-sms gateway (needs enable_novu: true) ──
+# The opposite of direct mode: Novu still delivers, novu-bridge just pins the
+# trigger to a generic-sms integration and injects that gateway's exact request
+# body. Empty (default) = plain trigger, Novu's primary SMS integration (Twilio)
+# delivers. Complaint SMS and login OTP are switched independently; the
+# integration identifier and sender id are shared by both.
+#   provider values: ozeki | bongatech | jasmin
+#   jasmin: create a generic-sms integration (Notification Providers screen,
+#   provider id `generic-sms`, or the Novu dashboard) pointing at Jasmin's
+#   REST API: baseUrl http://jasmin-host:8080/secure/send, apiKeyRequestHeader
+#   Authorization, apiKey "Basic <base64 username:password>", idPath data.
+# novu_bridge_sms_provider: "jasmin"
+# novu_bridge_otp_sms_provider: "jasmin"
+# novu_bridge_sms_integration_identifier: "jasmin-sms"
+# (novu_bridge_sms_sender_id above doubles as Jasmin's `from`.)
+#
 # Direct EMAIL (SMTP) — only read when EMAIL is in novu_bridge_direct_channels.
 # novu_bridge_direct_email_from: "noreply@example.org"
 # spring_mail_host: "smtp.example.org"

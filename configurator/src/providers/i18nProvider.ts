@@ -243,6 +243,14 @@ const customEnglishMessages: TranslationMessages = {
         user: 'SMTP User',
         password: 'SMTP Password',
         secure: 'Use TLS (secure)',
+        // generic-sms (Novu's plain-HTTP SMS shell — Ozeki / Bongatech / Jasmin).
+        base_url: 'Send endpoint URL',
+        api_key_header: 'Auth header name',
+        api_key: 'Auth header value',
+        secret_key_header: 'Second header name (optional)',
+        secret_key: 'Second header value (optional)',
+        id_path: 'Message-id JSON path in reply',
+        date_path: 'Date JSON path in reply (optional)',
       },
       // Row actions.
       verify: 'Verify',

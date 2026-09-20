@@ -2322,6 +2322,19 @@ services:
       NOVU_BRIDGE_DIRECT_SMS_PASSWORD: ${NOVU_BRIDGE_DIRECT_SMS_PASSWORD:-}
       NOVU_BRIDGE_DIRECT_SMS_TOKEN: ${NOVU_BRIDGE_DIRECT_SMS_TOKEN:-}
       NOVU_BRIDGE_SMS_SENDER_ID: ${NOVU_BRIDGE_SMS_SENDER_ID:-}
+      # Novu-ROUTED SMS via a generic-sms gateway (the opposite of direct mode:
+      # Novu still delivers, novu-bridge just pins the trigger to a generic-sms
+      # integration and injects that gateway's exact request body). Empty
+      # (default) = plain trigger, Novu's primary SMS integration delivers.
+      # PROVIDER / OTP_SMS_PROVIDER: ozeki | bongatech | jasmin (independent
+      # switches for complaint SMS vs login OTP). INTEGRATION_IDENTIFIER is the
+      # identifier of the generic-sms integration created for that gateway
+      # (Notification Providers screen or Novu dashboard). Jasmin's generic-sms
+      # integration must point at its REST API (http://jasmin:8080/secure/send,
+      # header Authorization: Basic <base64 user:pass>, idPath data).
+      NOVU_BRIDGE_SMS_PROVIDER: ${NOVU_BRIDGE_SMS_PROVIDER:-}
+      NOVU_BRIDGE_OTP_SMS_PROVIDER: ${NOVU_BRIDGE_OTP_SMS_PROVIDER:-}
+      NOVU_BRIDGE_SMS_INTEGRATION_IDENTIFIER: ${NOVU_BRIDGE_SMS_INTEGRATION_IDENTIFIER:-}
       NOVU_BRIDGE_DIRECT_EMAIL_FROM: ${NOVU_BRIDGE_DIRECT_EMAIL_FROM:-}
       SPRING_MAIL_HOST: ${SPRING_MAIL_HOST:-}
       SPRING_MAIL_PORT: ${SPRING_MAIL_PORT:-587}
