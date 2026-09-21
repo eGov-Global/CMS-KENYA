@@ -72,7 +72,7 @@ class DispatchPipelineWhatsappNoProviderTest {
                 .thenReturn(NovuClient.NovuResponse.builder().statusCode(201).response(Map.of("acknowledged", true)).build());
 
         service = new DispatchPipelineService(envelopeValidator, preferenceServiceClient, novuClient,
-                null, dispatchLogRepository, config, mdmsServiceClient);
+                dispatchLogRepository, config, mdmsServiceClient, directDeliveryService);
     }
 
     private ComplaintsDomainEvent whatsappEvent() {
