@@ -1,5 +1,5 @@
 var globalConfigs = (function () {
-  var stateTenantId = "ke";
+  var stateTenantId = "bo";
   var contextPath = "digit-ui";
   var gmaps_api_key = "";
   var finEnv = "dev";
@@ -12,6 +12,7 @@ var globalConfigs = (function () {
   var localeRegion = "PT";
   var localeDefault = "pt";
   var mdmsContext = "mdms-v2";
+  var hierarchyType = "BOMET-Hierarchy";
   var hrmsContext = "egov-hrms";
   var invalidEmployeeRoles = ["SYSTEM"];
   var authProvider = "digit";
@@ -106,6 +107,8 @@ var globalConfigs = (function () {
       return mdmsContext;
     } else if (key === "MDMS_V1_CONTEXT_PATH") {
       return mdmsContext;
+    } else if (key === "HIERARCHY_TYPE") {
+      return hierarchyType;
     } else if (key === "HRMS_CONTEXT_PATH") {
       return hrmsContext;
     } else if (key === "AUTH_PROVIDER") {
