@@ -1060,7 +1060,12 @@ async function phaseMatomo() {
   }
 
   /* ---- 1. compose stack ---- */
-  const running = () => { try { return sh("sudo docker ps --filter name='^matomo$' --format '{{.Names}}'").trim() === 'matomo'; } catch { return false; } };
+  // Container is `digit-matomo` (see local-setup/docker-compose.matomo.yml
+  // container_name). Anchor on that exact name — a bare `matomo` filter
+  // matched nothing, so the tool believed the stack was down even when it was
+  // running, and every `docker exec matomo` below failed the same way.
+  const MATOMO_CTR = process.env.MATOMO_CONTAINER || 'digit-matomo';
+  const running = () => { try { return sh(`sudo docker ps --filter name='^${MATOMO_CTR}$' --format '{{.Names}}'`).trim() === MATOMO_CTR; } catch { return false; } };
   if (!running()) {
     if (CFG.dryRun) { info('dry-run: would install /opt/digit/docker-compose.matomo.yml and docker compose up -d'); }
     else {
@@ -1071,10 +1076,14 @@ async function phaseMatomo() {
         try { sh(`sudo cp ${q(SEED.matomoCompose)} /opt/digit/docker-compose.matomo.yml`); notes.push('compose file installed'); }
         catch (e) { return record('matomo', OUTCOME.FAILED, `cannot install compose file: ${truncate(e.message, 100)}`, 'MATOMO_COMPOSE_COPY', 'Check /opt/digit exists and sudo works.'); }
       }
-      try { sh('cd /opt/digit && sudo docker compose -f docker-compose.matomo.yml up -d', { timeout: 300000 }); }
+      // --profile matomo is REQUIRED: all three services declare
+      // `profiles: [matomo]` so that a tenant without analytics never starts
+      // them. Without the flag compose selects nothing and exits non-zero with
+      // "no service selected", which reads like an infrastructure fault.
+      try { sh('cd /opt/digit && sudo docker compose -f docker-compose.matomo.yml --profile matomo up -d', { timeout: 300000 }); }
       catch (e) {
         return record('matomo', OUTCOME.FAILED, `docker compose up failed: ${truncate(e.message, 140)}`, 'MATOMO_COMPOSE_UP',
-          'Common cause: the digit_egov-network external network does not exist — is the DIGIT stack deployed on this box?');
+          'Check the egov-network external network exists (docker network ls) and that /opt/digit/.env is readable.');
       }
     }
   } else { notes.push('containers already running'); }
@@ -1089,12 +1098,12 @@ async function phaseMatomo() {
     for (let i = 0; i < 40 && !up; i++) {
       try { const r = await fetch(origin + '/', { redirect: 'manual' }); up = r.status > 0; } catch { await new Promise((r) => setTimeout(r, 3000)); }
     }
-    if (!up) return record('matomo', OUTCOME.FAILED, `matomo did not answer on ${origin} within 120s`, 'MATOMO_NOT_UP', 'sudo docker logs matomo');
+    if (!up) return record('matomo', OUTCOME.FAILED, `matomo did not answer on ${origin} within 120s`, 'MATOMO_NOT_UP', `sudo docker logs ${MATOMO_CTR}`);
     notes.push(`admin ui on ${origin} (box-local only; reach it via: ssh -L 8080:${origin.replace('http://', '')} <box>)`);
   }
 
   /* ---- 2. unattended install ---- */
-  const installed = () => { try { return sh("sudo docker exec matomo sh -c 'test -s /var/www/html/config/config.ini.php && grep -c trusted_hosts /var/www/html/config/config.ini.php'").trim() !== '0'; } catch { return false; } };
+  const installed = () => { try { return sh(`sudo docker exec ${MATOMO_CTR} sh -c 'test -s /var/www/html/config/config.ini.php && grep -c trusted_hosts /var/www/html/config/config.ini.php'`).trim() !== '0'; } catch { return false; } };
   if (CFG.dryRun) { info('dry-run: would run the unattended web-wizard install if config.ini.php is absent'); }
   else if (installed()) { notes.push('already installed — wizard skipped'); }
   else {
@@ -1127,15 +1136,15 @@ async function phaseMatomo() {
    *         on a real box: login + 21 dashboard widgets + Visits Log, zero
    *         failed requests, nothing escaping the prefix. ---- */
   if (!CFG.dryRun) {
-    try { sh(`sudo docker exec matomo php /var/www/html/console config:set 'General.proxy_client_headers=["HTTP_X_FORWARDED_FOR"]'`); }
+    try { sh(`sudo docker exec ${MATOMO_CTR} php /var/www/html/console config:set 'General.proxy_client_headers=["HTTP_X_FORWARDED_FOR"]'`); }
     catch (e) { failures.push(`config:set proxy_client_headers: ${truncate(e.message, 80)}`); }
     if (CFG.matomoDashboard) {
       // portal host (from --host) + the box-local origins the installer needs.
       const portalHost = U.host; // host[:port] of --host
       const hosts = JSON.stringify([portalHost, origin.replace('http://', ''), 'localhost', '127.0.0.1']);
       try {
-        sh(`sudo docker exec matomo php /var/www/html/console config:set 'General.proxy_uri_header=1'`);
-        sh(`sudo docker exec matomo php /var/www/html/console config:set 'General.trusted_hosts=${hosts.replace(/'/g, "'\\''")}'`);
+        sh(`sudo docker exec ${MATOMO_CTR} php /var/www/html/console config:set 'General.proxy_uri_header=1'`);
+        sh(`sudo docker exec ${MATOMO_CTR} php /var/www/html/console config:set 'General.trusted_hosts=${hosts.replace(/'/g, "'\\''")}'`);
         notes.push(`dashboard proxy config set (trusted_hosts include ${portalHost})`);
       } catch (e) { failures.push(`dashboard config:set: ${truncate(e.message, 80)}`); }
     }
