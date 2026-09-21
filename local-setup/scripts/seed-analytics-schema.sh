@@ -198,7 +198,13 @@ fi
 # ---------- 4. ACCESSCONTROL rows for the two MDMS write paths ----------
 ACTIONS_FILE="$SCRIPT_DIR/../../utilities/default-data-handler/src/main/resources/mdmsData/ACCESSCONTROL-ACTIONS-TEST/ACCESSCONTROL-ACTIONS-TEST.actions-test.json"
 GRANTS_FILE="$SCRIPT_DIR/../../utilities/default-data-handler/src/main/resources/mdmsData/ACCESSCONTROL-ROLEACTIONS/ACCESSCONTROL-ROLEACTIONS.roleactions.json"
-ACTION_IDS='[30,31]'
+# The ids of the two AnalyticsProvider write actions in ACTIONS_FILE. These
+# were [30,31], which exist in neither that file nor any environment — so the
+# loop below iterated over nothing and the script reported "0 created, 0
+# already present" and exited OK while granting nothing at all. The symptom is
+# AccessDeniedException on the Configurator's Analytics Providers screen, a
+# long way from this line. Keep in sync with ACTIONS_FILE.
+ACTION_IDS='[2650,2651]'
 GRANT_ROLES='["SUPERUSER","MDMS_ADMIN"]'
 
 mdms_data_create() {   # $1 schemaCode  $2 uniqueIdentifier  $3 data-json
