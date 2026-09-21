@@ -1082,8 +1082,14 @@ async function phaseMatomo() {
       // "no service selected", which reads like an infrastructure fault.
       try { sh('cd /opt/digit && sudo docker compose -f docker-compose.matomo.yml --profile matomo up -d', { timeout: 300000 }); }
       catch (e) {
+        // Print the FULL stderr before truncating into the summary table: the
+        // useful part of a compose failure (e.g. "refers to undefined network
+        // egov-network: invalid compose project") sits past the 140-char cut,
+        // so the table alone sent two debugging rounds after the wrong cause.
+        const raw = (e.stderr || e.stdout || e.message || '').toString().trim();
+        if (raw) { console.error('\n   docker compose said:\n' + raw.split('\n').map((l) => '     ' + l).join('\n') + '\n'); }
         return record('matomo', OUTCOME.FAILED, `docker compose up failed: ${truncate(e.message, 140)}`, 'MATOMO_COMPOSE_UP',
-          'Check the egov-network external network exists (docker network ls) and that /opt/digit/.env is readable.');
+          'Full stderr above. If it names an undefined network, set EGOV_NETWORK_NAME to the value from: docker network ls | grep egov-network');
       }
     }
   } else { notes.push('containers already running'); }

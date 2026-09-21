@@ -168,6 +168,27 @@ services:
     networks:
       - egov-network
 
+# The three services above attach to the network the MAIN stack creates
+# (docker-compose.yml declares `egov-network`), so Matomo can reach the rest of
+# DIGIT and the host nginx can reach Matomo. It must be declared here as
+# external or compose rejects the whole file with "refers to undefined network
+# egov-network: invalid compose project" — which is a parse-time failure, so it
+# happens in about a second and looks nothing like a networking problem.
+#
+# `name:` pins the REAL network name, which is project-prefixed: compose names
+# a network it creates "<project>_<network>", so the main stack's
+# `egov-network` exists on the box as e.g. `digit_egov-network`. Defaulting to
+# the unprefixed name would fail on every box. Override when the compose
+# project is not `digit`:
+#
+#     docker network ls | grep egov-network      # find the real name
+#     EGOV_NETWORK_NAME=<name> docker compose -f docker-compose.matomo.yml \
+#       --profile matomo up -d
+networks:
+  egov-network:
+    external: true
+    name: ${EGOV_NETWORK_NAME:-digit_egov-network}
+
 volumes:
   matomo_data: null
   matomo_db_data: null
