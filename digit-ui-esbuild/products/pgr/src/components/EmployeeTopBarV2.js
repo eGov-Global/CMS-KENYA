@@ -106,10 +106,17 @@ const menuItemStyle = (color) => ({
   display: "flex",
   alignItems: "center",
   gap: "0.75rem",
-  width: "100%",
   minHeight: "2.75rem",
   lineHeight: "1.5",
-  padding: "0.625rem 0.75rem",
+  // Horizontal padding is 1rem so the hover highlight has visible breathing
+  // room either side of the icon and label rather than hugging them. The
+  // negative margin + matching width bleed the row out to the panel's inner
+  // edge, so the highlight reads as a full-width band aligned with the
+  // panel's 1.25rem gutter instead of a narrow pill floating inside it.
+  padding: "0.625rem 1rem",
+  marginLeft: "-0.5rem",
+  marginRight: "-0.5rem",
+  width: "calc(100% + 1rem)",
   background: "transparent",
   border: "none",
   borderRadius: "0.5rem",
@@ -261,6 +268,10 @@ const ProfileMenu = ({ t, userDetails, cityDetails, workingContext, userOptions,
                 <button
                   type="button"
                   role="menuitem"
+                  // Class is load-bearing, not cosmetic: overrides.css resets
+                  // `button:not([class]):has(> svg)` padding to 0 !important for
+                  // bare icon-only buttons, which beat this row's inline padding.
+                  className="pgr-topbar-menu-item"
                   onClick={() => pick(editOption)}
                   onMouseEnter={(e) => (e.currentTarget.style.background = "#f3f4f6")}
                   onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
@@ -273,6 +284,7 @@ const ProfileMenu = ({ t, userDetails, cityDetails, workingContext, userOptions,
               <button
                 type="button"
                 role="menuitem"
+                className="pgr-topbar-menu-item"
                 onClick={() => pick(logoutOption || { func: () => {} })}
                 onMouseEnter={(e) => (e.currentTarget.style.background = "#fef2f2")}
                 onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
@@ -292,6 +304,7 @@ const ProfileMenu = ({ t, userDetails, cityDetails, workingContext, userOptions,
       <button
         ref={btnRef}
         type="button"
+        className="pgr-topbar-profile-trigger"
         onClick={toggle}
         onMouseEnter={show}
         onMouseLeave={hideSoon}
@@ -361,6 +374,13 @@ const LanguageSelect = () => {
                   type="button"
                   role="menuitemradio"
                   aria-checked={active}
+                  // Class is load-bearing: overrides.css paints
+                  // `button:not([class]):not(:has(> svg))` with the primary
+                  // yellow fill at !important. The SELECTED row carries a
+                  // checkmark svg so it escaped that rule, while unselected
+                  // rows did not — which is exactly why the two states looked
+                  // like different components. A class opts both out.
+                  className="pgr-topbar-lang-item"
                   onClick={() => choose(language)}
                   onMouseEnter={(e) => (e.currentTarget.style.background = "#f3f4f6")}
                   onMouseLeave={(e) => (e.currentTarget.style.background = active ? "#eff6ff" : "none")}
@@ -381,6 +401,7 @@ const LanguageSelect = () => {
       <button
         ref={btnRef}
         type="button"
+        className="pgr-topbar-lang-trigger"
         onClick={() => (open ? setOpen(false) : show())}
         onMouseEnter={show}
         onMouseLeave={hideSoon}

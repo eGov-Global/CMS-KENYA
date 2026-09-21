@@ -2067,10 +2067,22 @@ button[class*="toast-close"] svg,
  * topbar a properly weighted brand strip while still fitting inside
  * the 56px topbar height. */
 .employee .digit-topbar .digit-header-logo-img {
-  height: 44px !important;
+  /* 2026-09-21: was 44px and measured flush against the topbar's bottom edge
+   * (top:12 bottom:56, zero clearance) while carrying 12px of slack above.
+   *
+   * The constraint is NOT the 56px bar — it is the direct parent
+   * `.digit-logo-ulb-wrapper`, a 32px-tall centred flex box (measured at
+   * top:12 bottom:44). Anything taller than 32px overflows it and hangs
+   * below, which is what read as "touching the bottom". An intermediate 36px
+   * still overflowed by 4px. 32px fits the wrapper exactly, so the mark sits
+   * centred in the bar with 12px above and 12px below, and the bar height is
+   * untouched. */
+  height: 32px !important;
   width: auto !important;
-  max-height: 44px !important;
+  max-height: 32px !important;
   max-width: 180px !important;
+  align-self: center !important;
+  display: block !important;
 }
 .employee .digit-topbar img.state,
 .employee .digit-topbar .digit-topbar-ulb img,
