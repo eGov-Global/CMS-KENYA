@@ -21,6 +21,7 @@ import { AlertCircle } from "lucide-react";
 import { LOCALIZATION_KEY } from "../../constants/Localization";
 import { buildComplaintPath } from "../../utils/complaintHierarchyPath";
 import TimelineWrapper from "../../components/TimeLineWrapper";
+import useReopenWindow from "../../hooks/pgr/useReopenWindow";
 import ComplaintPhotos from "../../components/ComplaintPhotos";
 import ComplaintLocationMap from "../../components/ComplaintLocationMap";
 import { buildExtendedAttributeRows, useExtendedAttributeOrder } from "../../components/PgrExtendedAttributesView";
@@ -166,15 +167,18 @@ function WorkflowComponent({ complaintDetails, id }) {
     changeQueryName: id,
   });
 
-  // Reopen window (RAINMAKER-PGR.ComplainClosingTime → cct): REOPEN is offered
-  // to the citizen only within this many ms of the last workflow update —
-  // same rule the legacy status-ordered <TimeLine> applied.
-  const { data: complainMaxIdleTime } = Digit.Hooks.useCustomMDMS(
-    tenantId,
-    "RAINMAKER-PGR",
-    [{ name: "ComplainClosingTime" }],
-    { cacheTime: Infinity, select: (data) => data?.["RAINMAKER-PGR"]?.cct }
-  );
+  // Reopen window, from RAINMAKER-PGR.UIConstants.REOPENSLA via useReopenWindow
+  // — the same master pgr-services reads in validateReOpen(), so the UI guard
+  // and server enforcement cannot drift.
+  //
+  // This used to query RAINMAKER-PGR.ComplainClosingTime and read `.cct` off
+  // the response. That could never resolve: mdms v1 keys its response by
+  // MASTER NAME, so the value would have had to live under
+  // `["RAINMAKER-PGR"].ComplainClosingTime`, and no environment defines that
+  // master at all. The lookup therefore always returned undefined and the
+  // 1-hour fallback below won everywhere — which is exactly the #925 bug that
+  // useReopenWindow was written to fix, reintroduced on this page.
+  const complainMaxIdleTime = useReopenWindow(tenantId);
 
   useEffect(() => {
     revalidate();
@@ -187,9 +191,18 @@ function WorkflowComponent({ complaintDetails, id }) {
   // COMMENT is excluded (no citizen page for it); REOPEN honors the idle-window.
   const current = workflowData?.ProcessInstances?.[0];
   const lastModifiedTime = complaintDetails?.service?.auditDetails?.lastModifiedTime;
-  const maxIdle = typeof complainMaxIdleTime === "number" ? complainMaxIdleTime : 3600000;
+  // useReopenWindow returns undefined while MDMS loads and on tenants with no
+  // usable REOPENSLA. Treat that as "window unknown" and let REOPEN through
+  // rather than hiding it: pgr-services applies its own pgr.complain.idle.time
+  // backstop and rejects a genuinely late reopen, so deferring is safe, while
+  // falling back to a local 1-hour default enforces a deadline nobody
+  // configured — the #925 bug. Same rule the hook documents for its callers.
   const reopenWindowOpen =
-    typeof lastModifiedTime === "number" && Number.isFinite(lastModifiedTime) && Date.now() - lastModifiedTime < maxIdle;
+    typeof complainMaxIdleTime !== "number"
+      ? true
+      : typeof lastModifiedTime === "number" &&
+        Number.isFinite(lastModifiedTime) &&
+        Date.now() - lastModifiedTime < complainMaxIdleTime;
   const citizenActions = (current?.nextActions || [])
     .filter((a) => Array.isArray(a?.roles) && a.roles.includes("CITIZEN"))
     .map((a) => a?.action)
