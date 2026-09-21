@@ -10,6 +10,7 @@
 // the rest of the modernized citizen surface.
 
 import React, { useEffect } from "react";
+import { statusLabel } from "../../utils/statusLabel";
 import { useParams, Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 
@@ -57,10 +58,14 @@ const TONE_STYLES = {
 function StatusPill({ status, t }) {
   const tone = statusToTone(status);
   const palette = TONE_STYLES[tone];
-  const labelKey = `${LOCALIZATION_KEY.CS_COMMON}_${status}`;
-  const translated = t(labelKey);
-  const fallback = tone.toUpperCase();
-  const label = translated === labelKey ? fallback : translated.toUpperCase();
+  // Seeded key is CS_COMMON_PGR_STATE_<STATUS>; the bare form resolves only for
+  // a few legacy statuses, so escalated complaints fell through to the
+  // tone-bucket word and this pill read "OPEN" on a thrice-escalated complaint.
+  // Sentinel fallback keeps the bucket word as the last resort for a status
+  // that genuinely has no seeded label.
+  const NOT_SEEDED = "\u0000";
+  const resolved = statusLabel(t, status, NOT_SEEDED);
+  const label = resolved !== NOT_SEEDED ? resolved.toUpperCase() : tone.toUpperCase();
   return (
     <span
       style={{

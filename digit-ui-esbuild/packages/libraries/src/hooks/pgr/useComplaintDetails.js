@@ -87,7 +87,13 @@ const readableBoundary = (code) => {
 
 const getDetailsRow = ({ id, service, complaintType, boundaryAncestors }) => ({
   CS_COMPLAINT_DETAILS_COMPLAINT_NO: id,
-  CS_COMPLAINT_DETAILS_APPLICATION_STATUS: `CS_COMMON_${service.applicationStatus}`,
+  // The seeded key is CS_COMMON_PGR_STATE_<STATUS>; the bare CS_COMMON_<STATUS>
+  // this used to emit exists only for a few legacy statuses, so escalated
+  // complaints rendered the raw key (CS_COMMON_ESCALATEDLEVEL3) on the citizen
+  // details page. This row is a KEY that the view t()s, so pick the spelling
+  // that is actually seeded. Consumers that need a graceful fallback for an
+  // unseeded status use products/pgr/src/utils/statusLabel.js instead.
+  CS_COMPLAINT_DETAILS_APPLICATION_STATUS: `CS_COMMON_PGR_STATE_${service.applicationStatus}`,
   // Key-based (COMPLAINT_HIERARCHY.<code>) — the display t()s these values, so
   // they resolve per-locale like every other service. complaintType is the
   // parent node code (already upper-cased); serviceCode is the leaf.
