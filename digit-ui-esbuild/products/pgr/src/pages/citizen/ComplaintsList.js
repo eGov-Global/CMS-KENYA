@@ -19,6 +19,7 @@
 
 import React, { useEffect } from "react";
 import { complaintLabel } from "../../utils/complaintLabel";
+import { statusLabel } from "../../utils/statusLabel";
 import { isVisibleOnEntrance } from "../../utils/testingTenant";
 import { useTranslation } from "react-i18next";
 import { useHistory, useRouteMatch } from "react-router-dom";
@@ -60,15 +61,20 @@ const TONE_STYLES = {
 function StatusPill({ status, t }) {
   const tone = statusToTone(status);
   const palette = TONE_STYLES[tone];
-  // QA #17: label with the FULL workflow status (same CS_COMMON_<status> key
-  // the details page header uses) so the card and the opened complaint always
-  // agree. The 3-way tone bucket now drives the pill COLOR only. Falls back to
-  // the bucket label when the status key isn't localized.
-  const statusKey = `CS_COMMON_${status}`;
-  const translatedStatus = t(statusKey);
+  // QA #17: label with the FULL workflow status so the card and the opened
+  // complaint always agree; the 3-way tone bucket drives the pill COLOR only.
+  //
+  // Resolve through statusLabel: the seeded key is CS_COMMON_PGR_STATE_<STATUS>,
+  // and the bare CS_COMMON_<STATUS> this used to ask for only exists for a few
+  // legacy statuses. Escalated complaints fell through to the tone-bucket word
+  // below and displayed as "OPEN" despite having escalated three times.
+  // Sentinel fallback (not the raw status) so we can still tell "not seeded"
+  // apart from a real label and keep the bucket word as the last resort.
+  const NOT_SEEDED = "\u0000";
+  const resolved = statusLabel(t, status, NOT_SEEDED);
   let label;
-  if (translatedStatus !== statusKey) {
-    label = translatedStatus.toUpperCase();
+  if (resolved !== NOT_SEEDED) {
+    label = resolved.toUpperCase();
   } else {
     const labelKey = `CS_COMMON_${palette.label}`;
     const translated = t(labelKey);

@@ -8,6 +8,7 @@ import { DateRange as RangeCalendar } from "react-date-range"; // same lib the i
 import { pt as dfnsPt, enGB as dfnsEnGB } from "date-fns/locale";
 import Urls from "../../utils/urls";
 import { complaintLabel } from "../../utils/complaintLabel";
+import { statusLabel } from "../../utils/statusLabel";
 
 /**
  * PGRAdminSearch — cross-department complaint search (SUPERUSER + CMS_ADMIN)
@@ -487,7 +488,7 @@ const PGRAdminSearch = () => {
           [H.cno]: s.serviceRequestId,
           [H.dept]: deptCell(deptOf(s)).label,
           [H.type]: complaintLabel(t, s.serviceCode),
-          [H.status]: tr(`CS_COMMON_${s.applicationStatus}`, s.applicationStatus),
+          [H.status]: statusLabel(tr, s.applicationStatus, s.applicationStatus),
           [H.created]: `${cd.d}, ${cd.t}`,
           [H.modified]: `${md.d}, ${md.t}`,
         };
@@ -753,7 +754,7 @@ const PGRAdminSearch = () => {
                   const s = w.service || {};
                   const dept = deptCell(deptOf(s));
                   const tint = deptTint(dept.code);
-                  const statusLabel = tr(`CS_COMMON_${s.applicationStatus}`, s.applicationStatus);
+                  const statusText = statusLabel(tr, s.applicationStatus, s.applicationStatus);
                   // Mark the origin: admin search is cross-department, the plain
                   // /v2/request/_search the details page uses by default is scoped to
                   // the viewer. Without this a result outside their own scope opens to
@@ -773,7 +774,7 @@ const PGRAdminSearch = () => {
                         </span>
                       </td>
                       <td>{complaintLabel(t, s.serviceCode)}</td>
-                      <td><span className={`pgr-adm-pill pgr-adm-pill--${bucketOf(s.applicationStatus)}`}>{statusLabel}</span></td>
+                      <td><span className={`pgr-adm-pill pgr-adm-pill--${bucketOf(s.applicationStatus)}`}>{statusText}</span></td>
                       <td>{dtCell(s?.auditDetails?.createdTime)}</td>
                       <td>{dtCell(s?.auditDetails?.lastModifiedTime)}</td>
                     </tr>

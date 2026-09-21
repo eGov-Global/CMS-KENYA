@@ -1,6 +1,7 @@
 import _ from "lodash";
 import Urls from "../utils/urls";
 import { complaintLabel } from "../utils/complaintLabel";
+import { statusLabel } from "../utils/statusLabel";
 import { useLocation, useHistory, Link, useParams } from "react-router-dom";
 import React, { useState, Fragment } from "react";
 import { DeleteIconv2, DownloadIcon, FileIcon, Button, Card, CardSubHeader, EditIcon, ArrowForward, Modal, CloseSvg, Close, } from "@egovernments/digit-ui-react-components";
@@ -1815,7 +1816,10 @@ export const UICustomizations = {
           return value ? <span>{t(`${value}`)}</span> : <span>{t("NA")}</span>;
 
         case "CS_COMPLAINT_DETAILS_CURRENT_STATUS":
-          return <span>{t(`CS_COMMON_${value}`)}</span>;
+          // Seeded key is CS_COMMON_PGR_STATE_<STATUS>; the bare form this
+          // used to ask for exists only for a few legacy statuses, so every
+          // escalated status rendered as the raw key on screen.
+          return <span>{statusLabel(t, value, value)}</span>;
 
         case "WF_INBOX_HEADER_CURRENT_OWNER":
           return value ? <span>{value?.[0]?.name}</span> : <span>{t("NA")}</span>;
