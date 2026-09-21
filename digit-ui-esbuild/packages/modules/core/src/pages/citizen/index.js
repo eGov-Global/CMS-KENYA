@@ -19,6 +19,7 @@ import Login from "./Login";
 import Search from "./SearchApp";
 import StaticDynamicCard from "./StaticDynamicComponent/StaticDynamicCard";
 import ImageComponent from "../../components/ImageComponent";
+import { DIGIT_FOOTER_FALLBACK } from "../../components/digitFooterFallback";
 
 /**
  * v2 module-home page (rendered for /citizen/<module>-home routes, e.g.
@@ -86,9 +87,28 @@ function V2ModuleHomePage({ code, bannerImage, mdmsDataObj, stateInfoBannerUrl, 
               style={{
                 display: "block",
                 width: "100%",
-                height: "auto",
-                maxHeight: "260px",
+                // Design review iterations (CCSD-1959): cover@260 cropped the
+                // emblem/title; contain letterboxed; natural aspect was ~610px
+                // tall and dominated the page. Final: full width with a
+                // responsive height cap, cover-cropped toward the UPPER band
+                // (30%) where banner assets carry their emblem + title, so the
+                // key content always stays in frame at a sane strip height.
+                // Trimmed after review on mctd: the banner is sized to line up
+                // with the sidebar's profile divider, so both columns start
+                // their content on the same line.
+                //
+                // The sidebar publishes its measured height as
+                // --v2-citizen-profile-height (see citizen-sidebar Profile).
+                // It has to be measured, not assumed: the block grows a line
+                // per optional field, so a citizen WITH an email is ~20px
+                // taller than one without — a constant aligned for one and
+                // visibly missed the other.
+                // Both start at the topbar; this card sits 11px lower, hence
+                // the offset. Fallback covers the no-sidebar cases (mobile
+                // drawer, logged out), where nothing is there to align to.
+                height: "calc(var(--v2-citizen-profile-height, 176px) - 11px)",
                 objectFit: "cover",
+                objectPosition: "center 30%",
               }}
             />
           </V2Card>
@@ -252,6 +272,22 @@ const Home = ({
       },
     }
   );
+  // CCSD-2126 follow-up: the sole citizen module's home, when there is exactly
+  // one. Derived from the SAME MDMS rows the sidebar renders (grouped by
+  // parentModule above), so it follows the configured sidebarURL rather than
+  // hardcoding a module path — a tenant that renames or re-points its module
+  // keeps working, and multi-module tenants resolve to null (no redirect).
+  const soleCitizenModuleHome = React.useMemo(() => {
+    const entries = Object.values(linkData || {})
+      .map((rows) => rows?.[0])
+      .filter((entry) => entry?.sidebar === `${window.contextPath}-links` && entry?.sidebarURL);
+    if (entries.length !== 1) return null;
+    const url = entries[0].sidebarURL;
+    // Only ever redirect to an internal path, and never back to this route.
+    if (!url.startsWith("/") || url.includes("/all-services")) return null;
+    return url;
+  }, [linkData]);
+
   const classname = Digit.Hooks.useRouteSubscription(pathname);
   const { t } = useTranslation();
   const { path } = useRouteMatch();
@@ -344,13 +380,24 @@ const Home = ({
             />
           </Route>
           <Route path={`${path}/all-services`}>
-            <AppHome
-              userType="citizen"
-              modules={modules}
-              getCitizenMenu={linkData}
-              fetchedCitizen={isLinkDataFetched}
-              isLoading={islinkDataLoading}
-            />
+            {/* CCSD-2126 follow-up: when the deployment exposes exactly ONE
+                citizen module (the Moz/CCRS case), All Services is a page
+                holding a single card, and the sidebar row that pointed here
+                duplicated the module link. Send the citizen straight to that
+                module's home instead. Multi-module deployments are untouched
+                and still get the picker. Wait for the MDMS link data before
+                deciding, otherwise we'd render the page and then bounce. */}
+            {isLinkDataFetched && soleCitizenModuleHome ? (
+              <Redirect to={soleCitizenModuleHome} />
+            ) : (
+              <AppHome
+                userType="citizen"
+                modules={modules}
+                getCitizenMenu={linkData}
+                fetchedCitizen={isLinkDataFetched}
+                isLoading={islinkDataLoading}
+              />
+            )}
           </Route>
 
           <Route path={`${path}/login`}>
@@ -400,6 +447,7 @@ const Home = ({
           alt="Powered by DIGIT"
           style={{ height: "1.2em", cursor: "pointer" }}
           src={window?.globalConfigs?.getConfig?.("DIGIT_FOOTER")}
+          fallbackSrc={DIGIT_FOOTER_FALLBACK}
           onClick={() => {
             window.open(window?.globalConfigs?.getConfig?.("DIGIT_HOME_URL"), "_blank").focus();
           }}

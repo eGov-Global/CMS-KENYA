@@ -65,6 +65,7 @@ const config: Config = {
       },
       fontFamily: {
         sans: ["Roboto", "system-ui", "-apple-system", "sans-serif"],
+        condensed: ["Roboto Condensed", "Roboto", "system-ui", "-apple-system", "sans-serif"],
       },
       fontSize: {
         xs: ["0.75rem", { lineHeight: "1rem" }],

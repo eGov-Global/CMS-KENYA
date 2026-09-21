@@ -15,6 +15,13 @@ const AssigneeComponent = ({ config, onSelect, formState, defaultValues }) => {
   const { roles = [], department, allDepartments } = config?.populators || {};
 
   // Fetch employee data based on roles
+  // Staff lists change on the scale of HRMS edits, not seconds. The hook's
+  // defaults (cacheTime 1s / staleTime 5s) drop the entry almost as soon as the
+  // action modal closes, so every re-open refetched the FULL employee list —
+  // measured: three modal opens produced three identical ~220KB fetches. Each
+  // in-flight copy sits in egov-hrms's heap, so the redundant calls inflated
+  // its peak memory for no user-visible benefit. Minutes-long windows collapse
+  // an open/close/re-open cycle to a single request.
   const { 
     isLoading: isEmployeeDataLoading, 
     data: employeeData, 
@@ -24,6 +31,11 @@ const AssigneeComponent = ({ config, onSelect, formState, defaultValues }) => {
     params: {
       tenantId: tenantId,
       roles: roles.join(","),
+    },
+    changeQueryName: `hrms-assignees-${tenantId}-${roles.join(",")}`,
+    options: {
+      staleTime: 5 * 60 * 1000,
+      cacheTime: 10 * 60 * 1000,
     },
     config: {
       enabled: roles.length > 0,
@@ -73,10 +85,14 @@ const AssigneeComponent = ({ config, onSelect, formState, defaultValues }) => {
       // Screening officer (allDepartments): NO department filter — list every
       // department's assignable employees (transformData groups them by
       // department). Every other actor stays scoped to the single primary dept.
+      // Unmapped complaint type (department "NA" or absent in the hierarchy):
+      // pgr-services skips its department validation for these, so the actor may
+      // route to ANY department — filtering by "NA" would empty the dropdown.
+      const unscoped = allDepartments || !department || department === "NA";
       const filtered = employeeData.Employees.filter((e) => {
         const d = e?.assignments?.[0]?.department;
         if (!d || !e?.user?.uuid) return false;
-        return allDepartments ? true : d === department;
+        return unscoped ? true : d === department;
       });
       setAssignees(transformData(filtered));
     }
@@ -93,6 +109,24 @@ const AssigneeComponent = ({ config, onSelect, formState, defaultValues }) => {
 
   if (error) return <div>{t("CS_COMMON_EMPLOYEE_FETCH_ERROR")}</div>;
   if (isEmployeeDataLoading) return <Loader />;
+
+  // CCSD-2124: the assignee is mandatory on ASSIGN, so an EMPTY list would
+  // leave the operator stuck behind a generic "required field" toast with no
+  // way to see why. Say it plainly: nobody with the required role exists in
+  // the scoped department (or tenant) — a staffing/onboarding gap, not a UI
+  // failure. The submit stays blocked (mandatory + no value).
+  if (!assignees || assignees.length === 0) {
+    const K = "CS_COMMON_NO_ASSIGNABLE_EMPLOYEES";
+    const msg =
+      t(K) === K
+        ? "No eligible employee found for this department. An employee with the required role must be onboarded before this complaint can be assigned."
+        : t(K);
+    return (
+      <div className="assignee-dropdown-container">
+        <div style={{ color: "var(--color-error, #d4351c)", fontSize: "0.875rem", fontWeight: 500 }}>{msg}</div>
+      </div>
+    );
+  }
 
   return (
     <div className="assignee-dropdown-container">

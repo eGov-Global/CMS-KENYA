@@ -205,7 +205,7 @@
     },
     {
         "code": "ACTION_TEST_COMPLAINTS",
-        "message": "Citizen Complaint Resolution System",
+        "message": "Fala Cidadão",
         "module": "rainmaker-common",
         "locale": "default"
     },
@@ -391,7 +391,7 @@
     },
     {
         "code": "ACTION_TEST_PGR",
-        "message": "Citizen Complaint Resolution System",
+        "message": "Fala Cidadão",
         "module": "rainmaker-common",
         "locale": "default"
     },
@@ -6499,7 +6499,7 @@
     },
     {
         "code": "CS_COMMON_HOME_COMPLAINTS",
-        "message": "Citizen Complaint Resolution System",
+        "message": "Fala Cidadão",
         "module": "rainmaker-common",
         "locale": "default"
     },
@@ -6661,7 +6661,7 @@
     },
     {
         "code": "CS_COMMON_INBOX_PGR",
-        "message": "Citizen Complaint Resolution System",
+        "message": "Fala Cidadão",
         "module": "rainmaker-common",
         "locale": "default"
     },
@@ -8119,7 +8119,7 @@
     },
     {
         "code": "PGR",
-        "message": "Citizen Complaint Resolution System",
+        "message": "Fala Cidadão",
         "module": "rainmaker-common",
         "locale": "default"
     },
@@ -8846,6 +8846,60 @@
     {
         "code": "WHATSAPP_SEARCH_LOCALITY",
         "message": "Search locality",
+        "module": "rainmaker-common",
+        "locale": "default"
+    },
+    {
+        "code": "CS_WORKING_CONTEXT",
+        "message": "Working context",
+        "module": "rainmaker-common",
+        "locale": "default"
+    },
+    {
+        "code": "CS_WORKING_CONTEXT_CITY",
+        "message": "City",
+        "module": "rainmaker-common",
+        "locale": "default"
+    },
+    {
+        "code": "CS_WORKING_CONTEXT_DEPARTMENT",
+        "message": "Department",
+        "module": "rainmaker-common",
+        "locale": "default"
+    },
+    {
+        "code": "CS_WORKING_CONTEXT_ROLE",
+        "message": "Role",
+        "module": "rainmaker-common",
+        "locale": "default"
+    },
+    {
+        "code": "CS_WORKING_CONTEXT_JURISDICTION",
+        "message": "Jurisdiction",
+        "module": "rainmaker-common",
+        "locale": "default"
+    },
+    {
+        "code": "CS_WORKING_CONTEXT_UNAVAILABLE",
+        "message": "Working context unavailable",
+        "module": "rainmaker-common",
+        "locale": "default"
+    },
+    {
+        "code": "CS_ROLE_CONTEXT_RESOLVER",
+        "message": "Resolver",
+        "module": "rainmaker-common",
+        "locale": "default"
+    },
+    {
+        "code": "CS_ROLE_CONTEXT_CITIZEN",
+        "message": "Citizen",
+        "module": "rainmaker-common",
+        "locale": "default"
+    },
+    {
+        "code": "CS_ROLE_CONTEXT_ADMIN",
+        "message": "Administrator",
         "module": "rainmaker-common",
         "locale": "default"
     }

@@ -1,17 +1,18 @@
 var globalConfigs = (function () {
-  var stateTenantId = "ke";
+  var stateTenantId = "bo";
   var contextPath = "digit-ui";
   var gmaps_api_key = "";
   var finEnv = "dev";
   var centralInstanceEnabled = false;
-  var footerBWLogoURL = "https://s3.ap-south-1.amazonaws.com/egov-uat-assets/digit-footer-bw.png";
-  var footerLogoURL = "https://s3.ap-south-1.amazonaws.com/egov-uat-assets/digit-footer.png";
+  var footerBWLogoURL = "/digit-ui/brand/digit-footer-bw.png";
+  var footerLogoURL = "/digit-ui/brand/digit-footer.png";
   var digitHomeURL = "https://www.digit.org/";
   var assetS3Bucket = "pg-egov-assets";
   var configModuleName = "commonMDMSConfig";
-  var localeRegion = "IN";
-  var localeDefault = "en";
+  var localeRegion = "PT";
+  var localeDefault = "pt";
   var mdmsContext = "mdms-v2";
+  var hierarchyType = "BOMET-Hierarchy";
   var hrmsContext = "egov-hrms";
   var invalidEmployeeRoles = ["SYSTEM"];
   var authProvider = "digit";
@@ -64,9 +65,18 @@ var globalConfigs = (function () {
     }
   } catch (e) {}
 
+  // Kenya/Bomet has no confidentiality requirement: complainant identity is
+  // open to employees and citizens alike. The consumer (products/pgr/src/utils/
+  // piiMasking.js) is default-SAFE — an ABSENT key means masking ON, so Moz
+  // needs no config — which means Kenya must say `false` EXPLICITLY. Leaving
+  // this out is what masked every environment built from this repo.
+  var pgrPiiMasking = false;
+
   var getConfig = function (key) {
     if (key === "STATE_LEVEL_TENANT_ID") {
       return stateTenantId;
+    } else if (key === "PGR_PII_MASKING") {
+      return pgrPiiMasking;
     } else if (key === "GMAPS_API_KEY") {
       return gmaps_api_key;
     } else if (key === "FIN_ENV") {
@@ -97,6 +107,8 @@ var globalConfigs = (function () {
       return mdmsContext;
     } else if (key === "MDMS_V1_CONTEXT_PATH") {
       return mdmsContext;
+    } else if (key === "HIERARCHY_TYPE") {
+      return hierarchyType;
     } else if (key === "HRMS_CONTEXT_PATH") {
       return hrmsContext;
     } else if (key === "AUTH_PROVIDER") {

@@ -6,6 +6,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.egov.novubridge.config.NovuBridgeConfiguration;
+import org.egov.novubridge.service.provider.SmsProviderOverridesFactory;
 import org.egov.novubridge.util.PiiMask;
 import org.egov.tracer.model.CustomException;
 import org.springframework.http.*;
@@ -84,6 +85,19 @@ public class NovuClient {
         if (StringUtils.hasText(templateId)) {
             Map<String, Object> overrides = buildProviderTemplateOverrides(templateId, contentVariables);
             return trigger(workflowId, scopedSubscriberId, phone, payload, transactionId, overrides, null);
+        }
+
+        // Plain complaint SMS via a configured generic-sms gateway (Ozeki/Bongatech):
+        // only reached when channel is SMS (WhatsApp always has a templateId and
+        // returns above) and novu.bridge.sms.provider names a supported gateway.
+        // Pins this trigger to that integration instead of falling through to
+        // whatever's primary.
+        if ("SMS".equalsIgnoreCase(channel)) {
+            Map<String, Object> overrides = SmsProviderOverridesFactory.build(
+                    config, config.getSmsProvider(), transactionId, phone, renderedBody);
+            if (overrides != null) {
+                return trigger(workflowId, scopedSubscriberId, phone, payload, transactionId, overrides, null);
+            }
         }
 
         return trigger(workflowId, scopedSubscriberId, phone, email, payload, transactionId);

@@ -1,5 +1,35 @@
 [
     {
+        "code": "Home",
+        "message": "Home",
+        "module": "rainmaker-common",
+        "locale": "en_IN"
+    },
+    {
+        "code": "Create Complaint",
+        "message": "Create Complaint",
+        "module": "rainmaker-common",
+        "locale": "en_IN"
+    },
+    {
+        "code": "Search Complaint",
+        "message": "Search Complaint",
+        "module": "rainmaker-common",
+        "locale": "en_IN"
+    },
+    {
+        "code": "Dashboard viewer",
+        "message": "Dashboard viewer",
+        "module": "rainmaker-common",
+        "locale": "en_IN"
+    },
+    {
+        "code": "Search",
+        "message": "Search",
+        "module": "rainmaker-common",
+        "locale": "en_IN"
+    },
+    {
         "code": "AADHAAR_IS_REQUIRED",
         "message": "Aadhaar number is required",
         "module": "rainmaker-common",
@@ -205,7 +235,7 @@
     },
     {
         "code": "ACTION_TEST_COMPLAINTS",
-        "message": "Citizen Complaint Resolution System",
+        "message": "Fala Cidadão",
         "module": "rainmaker-common",
         "locale": "en_IN"
     },
@@ -385,7 +415,7 @@
     },
     {
         "code": "ACTION_TEST_PGR",
-        "message": "Citizen Complaint Resolution System",
+        "message": "Fala Cidadão",
         "module": "rainmaker-common",
         "locale": "en_IN"
     },
@@ -6493,7 +6523,7 @@
     },
     {
         "code": "CS_COMMON_HOME_COMPLAINTS",
-        "message": "Citizen Complaint Resolution System",
+        "message": "Fala Cidadão",
         "module": "rainmaker-common",
         "locale": "en_IN"
     },
@@ -6655,7 +6685,7 @@
     },
     {
         "code": "CS_COMMON_INBOX_PGR",
-        "message": "Citizen Complaint Resolution System",
+        "message": "Fala Cidadão",
         "module": "rainmaker-common",
         "locale": "en_IN"
     },
@@ -8113,7 +8143,7 @@
     },
     {
         "code": "PGR",
-        "message": "Citizen Complaint Resolution System",
+        "message": "Fala Cidadão",
         "module": "rainmaker-common",
         "locale": "en_IN"
     },
@@ -8933,7 +8963,7 @@
         "module": "rainmaker-common",
         "locale": "en_IN"
     },
-        {
+    {
         "code": "HR_COMMON_CREATE_EMPLOYEE_HEADER",
         "message": "Create Employee",
         "module": "rainmaker-common",
@@ -9013,7 +9043,7 @@
     },
     {
         "code": "ES_PGR_HEADER_COMPLAINT",
-        "message": "Citizen Complaint Resolution System",
+        "message": "Fala Cidadão",
         "module": "rainmaker-common",
         "locale": "en_IN"
     },
@@ -9133,13 +9163,13 @@
     },
     {
         "code": "ACTION_TEST_NATIONAL_PGR",
-        "message": "Citizen Complaint Resolution System",
+        "message": "Fala Cidadão",
         "module": "rainmaker-common",
         "locale": "en_IN"
     },
     {
         "code": "MODULE_PGR",
-        "message": "Citizen Complaint Resolution System",
+        "message": "Fala Cidadão",
         "module": "rainmaker-common",
         "locale": "en_IN"
     },
@@ -9776,6 +9806,162 @@
     {
         "code": "WF_COMMON_COMMENTS",
         "message": "Comments",
+        "module": "rainmaker-common",
+        "locale": "en_IN"
+    },
+    {
+        "code": "CS_WORKING_CONTEXT",
+        "message": "Working context",
+        "module": "rainmaker-common",
+        "locale": "en_IN"
+    },
+    {
+        "code": "CS_WORKING_CONTEXT_CITY",
+        "message": "City",
+        "module": "rainmaker-common",
+        "locale": "en_IN"
+    },
+    {
+        "code": "CS_WORKING_CONTEXT_DEPARTMENT",
+        "message": "Department",
+        "module": "rainmaker-common",
+        "locale": "en_IN"
+    },
+    {
+        "code": "CS_WORKING_CONTEXT_ROLE",
+        "message": "Role",
+        "module": "rainmaker-common",
+        "locale": "en_IN"
+    },
+    {
+        "code": "CS_WORKING_CONTEXT_JURISDICTION",
+        "message": "Jurisdiction",
+        "module": "rainmaker-common",
+        "locale": "en_IN"
+    },
+    {
+        "code": "CS_WORKING_CONTEXT_UNAVAILABLE",
+        "message": "Working context unavailable",
+        "module": "rainmaker-common",
+        "locale": "en_IN"
+    },
+    {
+        "code": "CS_ROLE_CONTEXT_RESOLVER",
+        "message": "Resolver",
+        "module": "rainmaker-common",
+        "locale": "en_IN"
+    },
+    {
+        "code": "CS_ROLE_CONTEXT_CITIZEN",
+        "message": "Citizen",
+        "module": "rainmaker-common",
+        "locale": "en_IN"
+    },
+    {
+        "code": "CS_ROLE_CONTEXT_ADMIN",
+        "message": "Administrator",
+        "module": "rainmaker-common",
+        "locale": "en_IN"
+    },
+    {
+        "code": "DASHBOARD_CARD_HEADER",
+        "message": "Dashboard",
+        "module": "rainmaker-common",
+        "locale": "en_IN"
+    },
+    {
+        "code": "ULBGRADE_STATE",
+        "message": "County Government",
+        "module": "rainmaker-common",
+        "locale": "en_IN"
+    },
+    {
+        "code": "CORE_TOPBAR_HELLO",
+        "message": "Hello",
+        "module": "rainmaker-common",
+        "locale": "en_IN"
+    },
+    {
+        "code": "CORE_TOPBAR_DEPARTMENT",
+        "message": "Department",
+        "module": "rainmaker-common",
+        "locale": "en_IN"
+    },
+    {
+        "code": "CORE_TOPBAR_ROLE",
+        "message": "Role",
+        "module": "rainmaker-common",
+        "locale": "en_IN"
+    },
+    {
+        "code": "CORE_TOPBAR_LOCATION",
+        "message": "Location",
+        "module": "rainmaker-common",
+        "locale": "en_IN"
+    },
+    {
+        "code": "CORE_TOPBAR_LAST_LOGIN",
+        "message": "Last Login",
+        "module": "rainmaker-common",
+        "locale": "en_IN"
+    },
+    {
+        "code": "CORE_SESSION_COLLISION_YOU",
+        "message": "You",
+        "module": "rainmaker-common",
+        "locale": "en_IN"
+    },
+    {
+        "code": "CORE_SESSION_COLLISION_HEADING",
+        "message": "Another account signed in",
+        "module": "rainmaker-common",
+        "locale": "en_IN"
+    },
+    {
+        "code": "CORE_SESSION_COLLISION_LEAD",
+        "message": "A different account was signed in to this browser.",
+        "module": "rainmaker-common",
+        "locale": "en_IN"
+    },
+    {
+        "code": "CORE_SESSION_COLLISION_THIS_TAB",
+        "message": "This tab — your current work",
+        "module": "rainmaker-common",
+        "locale": "en_IN"
+    },
+    {
+        "code": "CORE_SESSION_COLLISION_OTHER_TAB",
+        "message": "Signed in from another tab",
+        "module": "rainmaker-common",
+        "locale": "en_IN"
+    },
+    {
+        "code": "CORE_SESSION_COLLISION_WHAT_TO_DO",
+        "message": "What to do",
+        "module": "rainmaker-common",
+        "locale": "en_IN"
+    },
+    {
+        "code": "CORE_SESSION_COLLISION_TIP_FINISH",
+        "message": "Finish and submit what you are working on in this tab.",
+        "module": "rainmaker-common",
+        "locale": "en_IN"
+    },
+    {
+        "code": "CORE_SESSION_COLLISION_TIP_STAYS",
+        "message": "Refreshing normally keeps your current account. To use the other account here, log out and sign in again.",
+        "module": "rainmaker-common",
+        "locale": "en_IN"
+    },
+    {
+        "code": "CORE_SESSION_COLLISION_TIP_SEPARATE",
+        "message": "To use both accounts at once, open one in a private window.",
+        "module": "rainmaker-common",
+        "locale": "en_IN"
+    },
+    {
+        "code": "CORE_SESSION_COLLISION_ACK",
+        "message": "Continue working",
         "module": "rainmaker-common",
         "locale": "en_IN"
     }

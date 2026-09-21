@@ -1,13 +1,18 @@
 import React, { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { MapContainer, TileLayer, Marker, Tooltip, Polygon, GeoJSON, useMapEvents, useMap } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
+import { injectGlassTooltipStyle } from "../utils/mapTooltipStyle";
 import L from "leaflet";
-import { CardLabel, Loader, Toast } from "@egovernments/digit-ui-react-components";
+import { CardLabel, Loader } from "@egovernments/digit-ui-react-components";
+import { Toast } from "@egovernments/digit-ui-components";
 import { useTranslation } from "react-i18next";
 import _ from "lodash";
 import booleanPointInPolygon from "@turf/boolean-point-in-polygon";
 import { point as turfPoint } from "@turf/helpers";
 import useMapConfig from "../hooks/pgr/useMapConfig";
+import VectorBaseLayer from "./VectorBaseLayer";
+import MapCamera, { MapZoomBounds } from "./MapCamera";
+import { brandPin } from "./mapPin";
 import useTenantBoundaries from "../hooks/pgr/useTenantBoundaries";
 
 // Fix default icon issue in React builds
@@ -17,6 +22,9 @@ L.Icon.Default.mergeOptions({
   iconUrl: "https://unpkg.com/leaflet@1.6.0/dist/images/marker-icon.png",
   shadowUrl: "https://unpkg.com/leaflet@1.6.0/dist/images/marker-shadow.png",
 });
+
+// Frosted-glass styling for the address tooltip so it no longer covers the map.
+injectGlassTooltipStyle();
 
 // Inline-SVG accent fills follow the runtime theme via `--color-primary-accent`.
 // `currentColor` reads the host element's `color`, which we drive from the CSS var.
@@ -80,7 +88,14 @@ const wardStyleFor = (WARD_COLOR, selectedCode, hoveredCode) => (feature) => {
   return                          { color: WARD_COLOR, weight: 1,   opacity: 0.6, fillColor: WARD_COLOR, fillOpacity: 0    };
 };
 
-const GeoLocations = ({ t, config, onSelect, formData }) => {
+const GeoLocations = ({ t, config, onSelect, formData, tenantId }) => {
+  // Acting tenant for the MAP (MapConfig record + ward-boundary tree). The
+  // citizen wizard passes the authority-resolved sub-tenant (mz.ige/mz.igsae)
+  // once the first dropdown is picked — before this, the MapConfig fetch ran
+  // at the logged-in tenant (state root "mz" for citizens), whose boundary
+  // tree is empty on multi-authority envs, so the ward overlay never drew.
+  // Employee create passes nothing and keeps resolving at the acting city.
+  const mapTenantId = tenantId || config?.tenantId || formData?.resolvedTenantId;
   const { t: trans, i18n } = useTranslation();
   // Nominatim Accept-Language is ISO 639-1 — derive from the active i18n
   // locale (e.g. `sw_KE` → `sw`) so place names come back in the user's
@@ -96,6 +111,8 @@ const GeoLocations = ({ t, config, onSelect, formData }) => {
     isReady,
     tileUrl,
     tileAttribution,
+    tileClassName,
+    vectorStyleUrl,
     wardHighlightColor: wardColor,
     center,
     defaultZoom,
@@ -103,7 +120,7 @@ const GeoLocations = ({ t, config, onSelect, formData }) => {
     maxZoom,
     geocodeCountryCodes,
     searchViewbox,
-  } = useMapConfig();
+  } = useMapConfig(mapTenantId);
 
   const nominatimCountry = useMemo(
     () => (geocodeCountryCodes ? `&countrycodes=${encodeURIComponent(geocodeCountryCodes)}` : ""),
@@ -129,6 +146,10 @@ const GeoLocations = ({ t, config, onSelect, formData }) => {
   const OVERVIEW_ZOOM = Math.max(minZoom, Math.min(5, maxZoom));
   const [coords, setCoords] = useState(DEFAULT_CENTER);
   const [markerPos, setMarkerPos] = useState([DEFAULT_CENTER.lat, DEFAULT_CENTER.lng]);
+  // One-shot initial framing, applied by MapCamera once the map instance
+  // exists (see that component for why a mapRef.setView from the init
+  // effect can fire before the map does).
+  const [cameraTarget, setCameraTarget] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [suggestions, setSuggestions] = useState([]);
   const [isSearching, setIsSearching] = useState(false);
@@ -140,16 +161,16 @@ const GeoLocations = ({ t, config, onSelect, formData }) => {
   const [selectedWard, setSelectedWard] = useState(null);
   // Tenant ward polygons (boundary-service when MAP_TENANT is set, else
   // the bundled static Nairobi wards). Null while the fetch is in flight.
-  const tenantBoundaries = useTenantBoundaries();
+  const tenantBoundaries = useTenantBoundaries(mapTenantId);
   const mapRef = useRef(null);
   const searchInputRef = useRef(null);
   const hasInitialized = useRef(false);
-  // Coords of the last reverse-geocode ATTEMPT (not success). The formData
-  // sync effect below must never re-request coords that were already tried:
-  // a failed / rate-limited Nominatim call writes {lat, lng} without an
-  // address back into formData via onSelect, and re-fetching on that write
-  // turns one failure into an infinite request loop (CCRS#1380 symptom 4).
-  const lastReverseAttempt = useRef(null);
+  // Coordinate we've already attempted a reverse-geocode for. Guards the
+  // formData-driven effect below: a FAILED reverse call re-writes formData
+  // (lat/lng, no address), which re-fires the effect; without this guard it
+  // would re-fetch → fail → re-write → loop forever (thousands of nominatim
+  // hits, self-inflicted rate-limiting). One attempt per unique coordinate.
+  const geocodeAttemptRef = useRef(null);
 
   // Leaflet writes the stroke as an SVG DOM attribute, which doesn't resolve
   // CSS `var()`. Read the runtime accent at mount so the user-drawn polygon
@@ -190,6 +211,16 @@ const GeoLocations = ({ t, config, onSelect, formData }) => {
     if (!isReady || hasInitialized.current) return;
     if (formData?.[config.key]) {
       hasInitialized.current = true;
+      // Reopening the step with a saved location: the formData effect below
+      // restores the pin, but the camera still needs one-time framing here
+      // (same mount-only center/zoom limitation as the session restore).
+      // Guarded by hasInitialized so later formData echoes from fetchAddress
+      // don't yank the camera away from wherever the citizen panned.
+      const lat = Number(formData[config.key]?.lat);
+      const lng = Number(formData[config.key]?.lng);
+      if (Number.isFinite(lat) && Number.isFinite(lng)) {
+        setCameraTarget({ lat, lng, zoom: DEFAULT_ZOOM });
+      }
     } else {
       const savedLocation = Digit.SessionStorage.get("PGR_MAP_LOCATION");
       if (savedLocation) {
@@ -199,12 +230,17 @@ const GeoLocations = ({ t, config, onSelect, formData }) => {
         setMarkerPos([lat, lng]);
         setAddress(savedAddress);
         setSearchQuery(savedAddress);
+        // Frame the camera on the restored pin. MapContainer's center/zoom are
+        // mount-only in react-leaflet v3, so the state updates above move the
+        // MARKER but leave the CAMERA at the mount frame — the pin came back
+        // off-screen or continent-small.
+        setCameraTarget({ lat, lng, zoom: DEFAULT_ZOOM });
         onSelect(config.key, savedLocation);
       } else {
         hasInitialized.current = true;
         setCoords(DEFAULT_CENTER);
         setMarkerPos([DEFAULT_CENTER.lat, DEFAULT_CENTER.lng]);
-        mapRef.current?.setView([DEFAULT_CENTER.lat, DEFAULT_CENTER.lng], DEFAULT_ZOOM);
+        setCameraTarget({ lat: DEFAULT_CENTER.lat, lng: DEFAULT_CENTER.lng, zoom: DEFAULT_ZOOM });
         // Seed lat/lng immediately so a quick Next click still captures something.
         onSelect(config.key, { lat: DEFAULT_CENTER.lat, lng: DEFAULT_CENTER.lng });
         fetchAddress(DEFAULT_CENTER.lat, DEFAULT_CENTER.lng);
@@ -212,53 +248,53 @@ const GeoLocations = ({ t, config, onSelect, formData }) => {
     }
   }, [isReady, DEFAULT_CENTER.lat, DEFAULT_CENTER.lng]);
 
-  // Sync FROM formData (wizard restore / re-entering the map step).
-  //
-  // Depend on the field's VALUES, not the formData object. The wizard
-  // rebuilds formData on every patch — including the patch our own
-  // fetchAddress issues through onSelect — so keying this effect on object
-  // identity made it re-run after every fetch. When the reverse geocode came
-  // back without an address (Nominatim error, rate limit, or a response with
-  // no display_name), the re-run called fetchAddress again, whose onSelect
-  // patched formData again: an infinite request loop that hammered Nominatim
-  // (guaranteeing further rate-limit failures that sustained it) and kept the
-  // map churning. Reported as CCRS#1380 symptom 4.
-  const savedPoint = formData?.[config.key];
-  const savedLat = savedPoint?.lat;
-  const savedLng = savedPoint?.lng;
-  const savedAddress = savedPoint?.address;
   useEffect(() => {
-    if (!savedLat || !savedLng) return;
-    setCoords({ lat: savedLat, lng: savedLng });
-    setMarkerPos([savedLat, savedLng]);
-    // Restore saved address if available
-    if (savedAddress) {
-      setAddress(savedAddress);
-      setSearchQuery(savedAddress);
-    } else if (!address && lastReverseAttempt.current !== `${savedLat},${savedLng}`) {
-      // Only reverse-geocode coords that were never attempted (a genuine
-      // restore, e.g. Back into the map step with a pin but no address). A
-      // failed attempt must not re-trigger itself through the formData
-      // round-trip; user actions (pin drop, search, locate-me) always go
-      // through fetchAddress directly and are unaffected by this guard.
-      fetchAddress(savedLat, savedLng);
+    if (formData?.[config.key]) {
+      const { lat, lng, address: savedAddress } = formData[config.key];
+      if (lat && lng) {
+        setCoords({ lat, lng });
+        setMarkerPos([lat, lng]);
+        // Restore saved address if available
+        if (savedAddress) {
+          setAddress(savedAddress);
+          setSearchQuery(savedAddress);
+        } else if (!address) {
+          // Only reverse-geocode a coordinate once. A failed lookup re-writes
+          // formData with no address, which re-enters this effect — without the
+          // guard that becomes an infinite fetch loop.
+          const key = `${lat},${lng}`;
+          if (geocodeAttemptRef.current !== key) {
+            geocodeAttemptRef.current = key;
+            fetchAddress(lat, lng);
+          }
+        }
+      }
     }
-    // `address` is deliberately not a dep: it only gates the one-shot restore
-    // fetch, and re-running on address changes would undo manual edits.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [savedLat, savedLng, savedAddress]);
+  }, [formData, config.key]);
 
   const fetchAddress = async (lat, lng) => {
-    // Record the attempt BEFORE the request so even a throwing fetch marks
-    // these coords as tried — the sync effect keys off this to avoid looping.
-    lastReverseAttempt.current = `${lat},${lng}`;
-    const ward = resolveWard(lat, lng, tenantBoundaries);
+    // Record the attempt so the formData-driven effect won't re-fire this for
+    // the same coordinate after a failure (loop guard).
+    geocodeAttemptRef.current = `${lat},${lng}`;
+    // QA #12: resolveWard ran OUTSIDE the try below — a bad point (turf throws
+    // on non-finite coordinates) aborted fetchAddress before any onSelect, so
+    // the click errored in the console and the location was never captured.
+    // A ward-resolution failure must never lose the location.
+    let ward = null;
+    try {
+      ward = resolveWard(lat, lng, tenantBoundaries);
+    } catch (e) {
+      console.error("Ward resolution failed:", e);
+    }
     setSelectedWard(ward?.code || null);
     try {
       const response = await fetch(
         `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1${nominatimCountry}`,
         { headers: { "Accept-Language": nominatimLang } }
       );
+      // Rate-limited/blocked responses (429/403) return non-JSON bodies —
+      // bail to the coords-only fallback instead of throwing in json().
+      if (!response.ok) throw new Error(`reverse geocode HTTP ${response.status}`);
       const data = await response.json();
       if (data && data.display_name) {
         setAddress(data.display_name);
@@ -294,6 +330,28 @@ const GeoLocations = ({ t, config, onSelect, formData }) => {
     setIsSearching(false);
   };
 
+  // Glide the camera onto a freshly-placed pin. Placing a pin only sets
+  // marker STATE — MapContainer ignores center/zoom updates after mount — so
+  // without this a click from the wide overview frame (e.g. right after
+  // Clear) left the pin correct but the camera at continent level.
+  //
+  // Deliberately only re-frames when the citizen is zoomed OUT past the
+  // working zoom, which is the case that is actually broken. At or above it
+  // the pin is already well framed on the spot they picked, and moving the
+  // map under them would both disorient and cost them their next tap:
+  // Leaflet drops a click that lands mid-animation, so animating on every
+  // click makes nudging the pin twice in a row silently fail.
+  //
+  // setView rather than flyTo: flyTo drives a requestAnimationFrame loop that
+  // a drag cancels without ever firing `zoomend`, and the MapLibre basemap
+  // layer stops syncing its camera until it sees one — an interrupted fly
+  // leaves the citizen dragging a frozen basemap.
+  const focusPin = (lat, lng) => {
+    const map = mapRef.current;
+    if (!map || map.getZoom() >= DEFAULT_ZOOM) return;
+    map.setView([lat, lng], DEFAULT_ZOOM);
+  };
+
   const handleMapClick = (e) => {
     const { lat, lng } = e.latlng;
 
@@ -301,6 +359,7 @@ const GeoLocations = ({ t, config, onSelect, formData }) => {
       setPolygonPoints([...polygonPoints, [lat, lng]]);
     } else {
       updateLocation(lat, lng);
+      focusPin(lat, lng);
       setSuggestions([]); // Clear suggestions on map click
     }
   };
@@ -404,14 +463,32 @@ const GeoLocations = ({ t, config, onSelect, formData }) => {
           setIsSearching(false);
         },
         (error) => {
-          console.error("Error getting location:", error);
-          setShowToast({ key: "error", label: t("CS_GEOLOCATION_ERROR") });
+          // Surface the specific GeolocationPositionError instead of one opaque
+          // toast — a permission denial, an insecure-origin block (code 1,
+          // "Only secure origins are allowed"), a missing GPS fix and a timeout
+          // are otherwise indistinguishable. code: 1=PERMISSION_DENIED,
+          // 2=POSITION_UNAVAILABLE, 3=TIMEOUT.
+          console.error("Error getting location:", error?.code, error?.message, error);
+          const KEY_BY_CODE = {
+            1: "CS_GEOLOCATION_PERMISSION_DENIED",
+            2: "CS_GEOLOCATION_UNAVAILABLE",
+            3: "CS_GEOLOCATION_TIMEOUT",
+          };
+          const specificKey = KEY_BY_CODE[error?.code];
+          const specific = specificKey ? t(specificKey) : null;
+          // Only ever show localized text — the raw browser message stays in the
+          // console (QA: no technical detail in the toast).
+          const label = specific && specific !== specificKey ? specific : t("CS_GEOLOCATION_ERROR");
+          setShowToast({ key: "error", label });
           setIsSearching(false);
         },
         {
-          enableHighAccuracy: true,
-          timeout: 10000,
-          maximumAge: 0,
+          // Coarse (network) positioning with a recent cached fix accepted:
+          // high-accuracy + maximumAge 0 guarantees a timeout on GPS-less
+          // desktops. 15s cap for slow network lookups.
+          enableHighAccuracy: false,
+          timeout: 15000,
+          maximumAge: 30000,
         }
       );
     } else {
@@ -444,9 +521,9 @@ const GeoLocations = ({ t, config, onSelect, formData }) => {
 
   return (
     <div style={{ marginBottom: "24px" }}>
-      <CardLabel>{t("CS_ADDCOMPLAINT_SELECT_GEOLOCATION_TEXT")}</CardLabel>
+      {!config?.withoutLabel && <CardLabel>{t("CS_ADDCOMPLAINT_SELECT_GEOLOCATION_TEXT")}</CardLabel>}
 
-      <div style={{ position: "relative", height: "calc(100vh - 400px)", minHeight: "390px", width: "100%" }}>
+      <div style={{ position: "relative", height: config?.mapHeight || "calc(100vh - 400px)", minHeight: config?.mapHeight || "390px", width: "100%" }}>
 
         {/* Map Container - Responsible for the curved look */}
         <div style={{
@@ -470,8 +547,14 @@ const GeoLocations = ({ t, config, onSelect, formData }) => {
             zoomControl={false}
           >
             <MapRefSetter mapRef={mapRef} />
+            <MapCamera target={cameraTarget} />
+            <MapZoomBounds minZoom={minZoom} maxZoom={maxZoom} />
             <MapClickHandler onClick={handleMapClick} />
-            <TileLayer key={tileUrl} attribution={tileAttribution} url={tileUrl} />
+            {vectorStyleUrl ? (
+              <VectorBaseLayer styleUrl={vectorStyleUrl} attribution={tileAttribution} />
+            ) : (
+              <TileLayer key={tileUrl} attribution={tileAttribution} url={tileUrl} className={tileClassName} />
+            )}
             {tenantBoundaries?.features?.length > 0 && (
               <GeoJSON
                 key={`${selectedWard || "_"}-${hoveredWard || "_"}-${tenantBoundaries.features.length}-${i18n.language}`}
@@ -481,7 +564,7 @@ const GeoLocations = ({ t, config, onSelect, formData }) => {
               />
             )}
             {!isPolygonMode && markerPos && (
-              <Marker position={markerPos}>
+              <Marker position={markerPos} icon={brandPin}>
                 {address && (
                   <Tooltip permanent direction="top" offset={[0, -30]} opacity={1} className="custom-leaflet-tooltip">
                     <div style={{
@@ -765,7 +848,7 @@ const GeoLocations = ({ t, config, onSelect, formData }) => {
 
       {showToast && (
         <Toast
-          error={showToast.key === "error"}
+          type={showToast.key === "error" ? "error" : "success"}
           label={showToast.label}
           onClose={closeToast}
           isDleteBtn={true}

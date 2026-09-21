@@ -16,56 +16,22 @@ const humanizeBoundaryType = (raw) =>
 
 const BoundaryComponent = ({ t, config, onSelect, userType, formData, readOnly }) => {
 
-  // Callers that know which tenant the record belongs to pass it explicitly.
-  // The fallback is only a default, and a poor one for citizens:
-  // ULBService.getCurrentTenantId() returns the user's own tenant for EMPLOYEE
-  // but STATE_LEVEL_TENANT_ID for everyone else, so a citizen always lands on
-  // the state root regardless of the city they are filing in. A state root
-  // commonly carries no boundary tree of its own, which renders the cascade
-  // empty; worse, where it does, the citizen picks boundaries from one tenant
-  // and the complaint is created in another.
+  // Boundaries are tenant-scoped. Callers that resolve a tenant at runtime
+  // (e.g. the citizen authority→tenant flow) pass it via `config.tenantId`;
+  // everyone else falls back to the logged-in tenant (unchanged behaviour).
   const tenantId = config?.tenantId || Digit.ULBService.getCurrentTenantId();
 
-  // Employee jurisdiction gate (egovernments/CCRS#496).
-  //
-  // A CSR scoped to e.g. NAIROBI_CITY_HARAMBEE could file complaints at
-  // any of the 9 Nairobi wards today — the cascade always rendered the
-  // full boundary tree without consulting the operator's HRMS
-  // jurisdictions. Backend doesn't independently enforce CSR creation
-  // jurisdiction, so the UI is the primary defense.
-  //
-  // For employees we look up the HRMS record and collect each
-  // `jurisdictions[].boundary` as an "allowed root". The boundary tree
-  // is then pruned to subtrees that either match an allowed root or
-  // contain one. City-level jurisdictions (NAIROBI_CITY) match the
-  // tree root, so the full city stays visible — no functional change
-  // for the 89% of employees with city-wide scope. Ward / sub-county
-  // scoped employees get a meaningfully narrower picker.
-  //
-  // Citizens have no HRMS record / jurisdictions, so the filter is
-  // dormant on the citizen path.
-  const user = Digit.UserService.getUser();
-  const isEmployee = user?.info?.type === "EMPLOYEE";
-  const employeeCode = user?.info?.userName;
-
-  const { data: hrmsData } = Digit.Hooks.useEmployeeSearch(
-    tenantId,
-    { codes: employeeCode },
-    { enabled: isEmployee && !!employeeCode, staleTime: 10 * 60 * 1000 }
-  );
-
-  const allowedRoots = useMemo(() => {
-    if (!isEmployee) return null;
-    const juris = hrmsData?.Employees?.[0]?.jurisdictions || [];
-    // Defensive: one observed seed record has `boundary: "ke.nairobi"`
-    // (the tenant code, not a real boundary code). Drop entries that
-    // can't appear in the boundary tree so they don't accidentally
-    // null-filter the cascade.
-    const roots = juris
-      .map((j) => j?.boundary)
-      .filter((b) => typeof b === "string" && b.length > 0 && b !== tenantId && !b.includes("."));
-    return roots.length > 0 ? new Set(roots) : null;
-  }, [isEmployee, hrmsData, tenantId]);
+  // Employee jurisdiction gate (egovernments/CCRS#496) — DISABLED on this
+  // deployment (Moz product call, 2026-07-23): the employee boundary picker
+  // renders the SAME full tree the citizen picker does. A reception officer
+  // takes complaints for any location in the country, so pruning the cascade
+  // to the operator's HRMS jurisdiction (which the onboarding seeded as
+  // maputo_provincia for 418/419 IGE staff, and a single childless Distrito
+  // for EMP001) collapsed the picker to one province and read as a bug.
+  // The prune machinery below (filterTree) is kept dormant behind
+  // `allowedRoots = null` so a future deployment can re-enable scoping by
+  // restoring the HRMS lookup here.
+  const allowedRoots = null;
 
   const { data: rawChildrenData, isLoading: isBoundaryLoading } = Digit.Hooks.pgr.useFetchBoundaries(tenantId);
 
@@ -121,16 +87,20 @@ const BoundaryComponent = ({ t, config, onSelect, userType, formData, readOnly }
     return hasAny ? filtered : rawChildrenData;
   }, [rawChildrenData, allowedRoots]);
 
-  // boundaryHierarchyOrder is populated by usePGRInitialization at
-  // module mount and changes when the operator switches city. Reading
-  // it once at render meant a city switch left the cascade pointing at
-  // the previous tenant's hierarchy — a 2-level tenant after coming
-  // from a 3-level tenant would still try to render a Sub-County
-  // dropdown that the new tenant doesn't have.
+  // boundaryHierarchyOrder is written by fetchBoundaries just before its data
+  // resolves (lazy loading — no more module-mount prefetch). The memo must be
+  // keyed on the fetched DATA, not just tenantId: on first visit the order
+  // lands AFTER mount, and a tenantId-only memo cached [] for the tenant's
+  // lifetime — blank cascade until a full page refresh remounted with the
+  // storage already seeded. Re-keying on rawChildrenData recomputes exactly
+  // when the tree (and therefore the freshly written order) arrives; the
+  // tenantId key still handles operator city switches.
   const boundaryHierarchy = useMemo(() => {
     const order = Digit.SessionStorage.get("boundaryHierarchyOrder");
     return Array.isArray(order) ? order.map((item) => item.code) : [];
-  }, [tenantId]);
+    // moz: re-key on rawChildrenData so the cascade recomputes once the
+    // boundary tree loads (childless-leaf fallback below depends on it).
+  }, [tenantId, rawChildrenData]);
   const hierarchyType =
     hierarchySchema?.hierarchy || window?.globalConfigs?.getConfig("HIERARCHY_TYPE") || "ADMIN";
 
@@ -244,9 +214,25 @@ useEffect(() => {
   // pick manually.
   const wardHintCode = formData?.GeoLocationsPoint?.ward?.code;
   const wardHintName = formData?.GeoLocationsPoint?.ward?.name;
+  // The hint key this mount has already handled. Guards two replays:
+  // (1) a session-restored draft replays the OLD pin's hint on remount — if
+  //     the draft also carries a SelectedBoundary (possibly a manual
+  //     correction of that very hint), the saved boundary is the user's final
+  //     intent and wins; only a hint CHANGE (fresh pin drop) re-derives;
+  // (2) childrenData is recreated when the HRMS jurisdiction filter settles —
+  //     without the key guard that re-ran the effect and re-applied the same
+  //     hint over a manual correction mid-session.
+  const processedHintRef = React.useRef(null);
   useEffect(() => {
     if (!wardHintCode && !wardHintName) return;
     if (!childrenData || childrenData.length === 0) return;
+    const hintKey = (wardHintCode || "") + "|" + (wardHintName || "");
+    if (processedHintRef.current === hintKey) return;
+    if (processedHintRef.current === null && formData?.SelectedBoundary?.code) {
+      // First hint of this mount with a saved boundary — the draft wins.
+      processedHintRef.current = hintKey;
+      return;
+    }
     // boundaryHierarchyOrder may not be seeded yet (usePGRInitialization
     // still in flight / city just switched). Without it the deepest-level
     // targetType is undefined and findWardPath would match the hint at
@@ -299,20 +285,63 @@ useEffect(() => {
     // locality validation was firing only when children happened to
     // be attached, so County-level selections silently passed).
     const deepest = path[path.length - 1];
-    // Use the *effective* (capped) hierarchy's deepest level, not the raw
-    // `hierarchy` — otherwise a map-pin that auto-fills only to the configured
-    // lowest level (e.g. Bairro, when the tree has no Quarteirão below it) is
-    // tagged isLeaf:false and the citizen can never advance past Location.
-    // Mirrors handleSelection's leaf logic so both paths agree.
+    // Leaf detection uses the EFFECTIVE (capped) hierarchy deepest level
+    // (develop) so a map-pin that auto-fills only to the configured lowest
+    // level is still tagged a leaf; AND a childless node counts as a leaf
+    // unconditionally (moz — prod Tete→Tsangano branches end above the
+    // declared depth). Safe vs CCRS#478: `deepest` is the live tree node.
     const lastLevel = effectiveHierarchy[effectiveHierarchy.length - 1];
-    // Childless-node-is-leaf only when a lowest level was configured AND capped
-    // this tree — otherwise strict deepest-level-only (preserves CCRS#478).
     const isDeepestLevel =
       deepest?.boundaryType === lastLevel ||
-      (lowestLevelCapped && !(deepest?.children && deepest.children.length > 0));
+      !(Array.isArray(deepest?.children) && deepest.children.length > 0);
+    processedHintRef.current = hintKey;
     onSelect(config.key, { ...deepest, isLeaf: isDeepestLevel }, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [wardHintCode, wardHintName, childrenData]);
+
+  // Draft-restore repaint: a session-restored form holds a valid
+  // SelectedBoundary while selectedValues (private state) starts empty, so the
+  // cascade rendered blank after a refresh even though the value was set.
+  // While the picker is untouched, rebuild the visible chain by locating the
+  // saved node in the tree. Runs regardless of any ward hint — the hint effect
+  // above yields its mount round to the saved boundary (which may be a manual
+  // correction of that very hint, and repaints anyway when they agree). No
+  // onSelect emit — the value is already in the form.
+  const savedBoundaryCode = formData?.SelectedBoundary?.code;
+  useEffect(() => {
+    if (!savedBoundaryCode) return;
+    if (Object.keys(selectedValues).length > 0) return;
+    if (!childrenData || childrenData.length === 0) return;
+    const findPathByCode = (nodes, code, path = []) => {
+      for (const n of nodes || []) {
+        const p = [...path, n];
+        if (n.code === code) return p;
+        const found = findPathByCode(n.children, code, p);
+        if (found) return found;
+      }
+      return null;
+    };
+    const path = findPathByCode(childrenData[0]?.boundary, savedBoundaryCode);
+    if (!path || path.length === 0) return;
+    const newSelectedValues = {};
+    const newValue = {};
+    let levelOptions = childrenData[0]?.boundary || [];
+    for (const node of path) {
+      newSelectedValues[node.boundaryType] = node;
+      newValue[node.boundaryType] = levelOptions;
+      levelOptions = node.children || [];
+    }
+    // A mid-cascade draft (SelectedBoundary saved at every level pick) restores
+    // a NON-leaf node: its children are the next level's options. Without this,
+    // the init effect's first-chain walk leaks another parent's children into
+    // the next dropdown (pick County B, refresh -> Sub-Counties of county A).
+    if (levelOptions.length > 0 && levelOptions[0]?.boundaryType) {
+      newValue[levelOptions[0].boundaryType] = levelOptions;
+    }
+    setSelectedValues(newSelectedValues);
+    setValue((prev) => ({ ...prev, ...newValue }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [savedBoundaryCode, childrenData]);
 
   /**
    * Handle dropdown selection.
@@ -351,20 +380,17 @@ useEffect(() => {
     // `isLeaf` so validators can trust hierarchy depth instead of the
     // `.children` array (which isn't reliably preserved on the picked
     // node and let County-level selections pass — egovernments/CCRS#478).
-    // A selection is a leaf when it's the configured deepest level OR the
-    // node has no children (the branch stops early — common on tenants whose
-    // boundary tree is shallower than the declared hierarchy). Either way the
-    // submit pipeline treats it as the fileable leaf so the citizen isn't
-    // blocked waiting on a deeper level that doesn't exist for this branch.
+    // Leaf when it is the configured deepest level OR the node has no
+    // children. The childless case is UNCONDITIONAL (moz): a branch ending
+    // above the declared depth — prod Tete→Tsangano has no Municípios — must
+    // still be fileable. Safe vs CCRS#478 because `selectedBoundary` is the
+    // live tree node (children intact); downstream form-state copies drop
+    // .children but never reach this emit.
     const lastLevel = effectiveHierarchy[effectiveHierarchy.length - 1];
     const nodeHasChildren = selectedBoundary.children && selectedBoundary.children.length > 0;
-    // Childless-node-is-leaf only when a lowest level was configured AND capped
-    // this tree — otherwise strict deepest-level-only (preserves CCRS#478 on
-    // unconfigured deployments; a County missing children stays non-fileable).
-    const isDeepestLevel = boundaryType === lastLevel || (lowestLevelCapped && !nodeHasChildren);
-    // onSelect is RHF's setValue (FieldV1 wires component onSelect -> setValue).
-    // Pass shouldValidate so the `required` rule re-runs and formState.isValid
-    // (which gates the disabled NEXT/SubmitBar) flips true on selection.
+    const isDeepestLevel = boundaryType === lastLevel || !nodeHasChildren;
+    // onSelect is RHF setValue; shouldValidate re-runs `required` so the
+    // NEXT/SubmitBar disabled-gate flips true on selection.
     onSelect(config.key, { ...selectedBoundary, isLeaf: isDeepestLevel }, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
 
     // Load child boundaries
@@ -414,7 +440,23 @@ useEffect(() => {
               <BoundaryDropdown
                 key={key}
                 fieldKey={key}
-                label={levelLabel}
+                // Level-heading localization: onboarding seeds several key shapes
+                // (accents KEPT): "divisao_administrativa_PROVÍNCIA",
+                // "DIVISAO_ADMINISTRATIVA_PROVÍNCIA", "divisao_administrativa_Província".
+                // Try each; if none is loaded, show the human boundaryType
+                // ("Província") — never the raw composite key.
+                label={(() => {
+                  const candidates = [
+                    `${hierarchyType}_${key?.toUpperCase()}`,
+                    `${String(hierarchyType).toUpperCase()}_${key?.toUpperCase()}`,
+                    `${hierarchyType}_${key}`,
+                  ];
+                  for (const c of candidates) {
+                    const l = t(c);
+                    if (l !== c) return l;
+                  }
+                  return key;
+                })()}
                 data={value[key]}
                 onChange={(selectedValue) => handleSelection(selectedValue)}
                 selected={selectedAtLevel}

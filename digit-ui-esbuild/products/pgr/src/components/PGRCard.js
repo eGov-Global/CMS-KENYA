@@ -3,7 +3,20 @@ import React, { useEffect } from "react";
 import { useTranslation } from "react-i18next";
 
 const ROLES = {
-  PGR: ["GRO", "PGR_LME", "CSR"],
+  // CMS_* roles (mz.igsae multi-tier workflow) added alongside the standard PGR roles — additive.
+  // <DEPT>_{DIRECTOR,CHIEF_OFFICER,CECM} are the Bomet 3-tier department roles
+  // (DIRECTOR is the last-mile actor, CHIEF_OFFICER/CECM the escalation tiers);
+  // they work the inbox exactly like PGR_LME, so they get the same card.
+  PGR: [
+    "GRO", "PGR_LME", "CSR", "SUPERUSER",
+    "CMS_ADMIN", "CMS_RECEPTION_OFFICER", "CMS_SCREENING_OFFICER", "CMS_SUPERVISOR", "CMS_CASE_MANAGER", "CMS_VIEWER",
+    "HEALTH_DIRECTOR", "HEALTH_CHIEF_OFFICER", "HEALTH_CECM",
+    "WATER_DIRECTOR", "WATER_CHIEF_OFFICER", "WATER_CECM",
+    "ADMIN_DIRECTOR", "ADMIN_CHIEF_OFFICER", "ADMIN_CECM",
+    // Bomet ombudsman office — works the inbox/search like PGR_LME (2026-09-18
+    // request). Code as provisioned in HRMS, mixed case included.
+    "Ombudsman_Officer", "OMBUDSMAN_OFFICER",
+  ],
 };
 
 const PGRCard = () => {
@@ -34,8 +47,10 @@ const PGRCard = () => {
   }
 
   let links = [
-    generateLink("ACTION_TEST_CREATE_COMPLAINT", "create-complaint", ["CSR"]),
+    generateLink("ACTION_TEST_CREATE_COMPLAINT", "create-complaint", ["CSR", "CMS_RECEPTION_OFFICER"]),
     generateLink("ACTION_TEST_SEARCH_COMPLAINT", "inbox-v2"),
+    // Cross-department admin search (backend: _admin/_search) — SUPERUSER + CMS_ADMIN
+    generateLink("ES_PGR_ADMIN_SEARCH", "admin-search", ["SUPERUSER", "CMS_ADMIN"]),
   ];
   const hasRequiredRoles = (link) => { 
     if (!link?.roles?.length) return true;
@@ -44,7 +59,12 @@ const PGRCard = () => {
   links = links.filter(hasRequiredRoles);
 
   const propsForModuleCard = {
-    Icon: "UpdateExpense",
+    // "UpdateExpense" is a line-art document-and-pencil built for an expense
+    // screen, which sat next to the Dashboard card's filled grid and read as a
+    // different icon set (#2038). Announcement is the filled speech-bubble the
+    // reference image uses for complaints, and is already what this tenant's
+    // own MDMS "Complaints" card row asks for.
+    Icon: "Announcement",
     moduleName: t("PGR"),
     kpis: [],
     links: links,

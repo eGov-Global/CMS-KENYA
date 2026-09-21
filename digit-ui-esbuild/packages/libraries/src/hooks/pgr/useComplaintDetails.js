@@ -37,47 +37,109 @@ const fetchBoundaryAncestors = async (tenantId, localityCode) => {
       if (node.code === localityCode) break;
       node = node.children && node.children[0];
     }
+    // Resolve display NAMES here rather than relying on t(code): the
+    // rainmaker-boundary-<hierarchy> localization module is only loaded into
+    // i18next by screens that mount the boundary cascade (create form, inbox
+    // filter) — the details page can render before/without any of them, and
+    // then t(code) misses even though the message is seeded. Best-effort: on
+    // failure the entries keep code-derived fallbacks only.
+    try {
+      const locale = Digit.StoreData?.getCurrentLanguage?.() || "en_IN";
+      const loc = await Digit.CustomService.getResponse({
+        url: "/localization/messages/v1/_search",
+        useCache: true,
+        method: "POST",
+        userService: false,
+        params: {
+          tenantId,
+          locale,
+          module: `rainmaker-boundary-${String(hierarchyType).toLowerCase()}`,
+          codes: chain.map((c) => c.code).join(","),
+        },
+      });
+      const byCode = {};
+      (loc?.messages || []).forEach((m) => {
+        byCode[m.code] = m.message;
+      });
+      chain.forEach((c) => {
+        if (byCode[c.code]) c.name = byCode[c.code];
+      });
+    } catch (e) {
+      /* names stay code-derived */
+    }
     return chain;
   } catch (e) {
     return [];
   }
 };
 
-const getDetailsRow = ({ id, service, complaintType, boundaryAncestors }) => {
-  const details = {
-    CS_COMPLAINT_DETAILS_COMPLAINT_NO: id,
-    CS_COMPLAINT_DETAILS_APPLICATION_STATUS: `CS_COMMON_${service.applicationStatus}`,
-    // Key-based (COMPLAINT_HIERARCHY.<code>) — the display t()s these values, so
-    // they resolve per-locale like every other service. complaintType is the
-    // parent node code (already upper-cased); serviceCode is the leaf.
-    CS_ADDCOMPLAINT_COMPLAINT_TYPE: complaintType === "" ? `CS_COMPLAINT_TYPE_OTHERS` : `COMPLAINT_HIERARCHY.${complaintType}`,
-    CS_ADDCOMPLAINT_COMPLAINT_SUB_TYPE: `COMPLAINT_HIERARCHY.${service.serviceCode.toUpperCase()}`,
-    CS_COMPLAINT_ADDTIONAL_DETAILS: service.description,
-    CS_COMPLAINT_FILED_DATE: Digit.DateUtils.ConvertTimestampToDate(service.auditDetails.createdTime),
-  };
-
-  // One labelled row per boundary level, using the same localization
-  // convention as the create-side cascade (BoundaryComponent):
-  //   label -> t(`${hierarchyType}_${boundaryType}`)  e.g. ADMIN_COUNTY -> "County"
-  //   value -> t(code)                                e.g. BOMET        -> "Bomet"
-  // Tenant-agnostic (Kenya: County/Sub County/Ward; Maputo: Município/…) and
-  // falls back to the raw code when a label/name is missing.
-  (boundaryAncestors || []).forEach((level) => {
-    const labelKey = `${level.hierarchyType}_${String(level.boundaryType).toUpperCase()}`;
-    details[labelKey] = level.code;
-  });
-
-  if (service?.address?.landmark) {
-    details.CS_ADDCOMPLAINT_LANDMARK = service.address.landmark;
-  }
-  // Pincode is optional in this deployment (the create flow lets the citizen
-  // skip it), so only render a row when the complaint actually carries one.
-  if (service?.address?.pincode) {
-    details.CORE_COMMON_PINCODE = service.address.pincode;
-  }
-
-  return details;
+// Boundary codes arrive as raw identifiers, sometimes prefixed with the
+// tenant/hierarchy chain ("MZ_IGE_ADMIN_hungaro"). Render them readable
+// without depending on the boundary localization module being loaded:
+// strip the ALL-CAPS prefix, then title-case ("Hungaro", "Vila De Sena").
+const readableBoundary = (code) => {
+  if (!code) return null;
+  const bare = String(code).replace(/^(?:[A-Z0-9]+_)+(?=[^A-Z])/, "");
+  return bare
+    .replace(/[_-]+/g, " ")
+    .replace(/\b\w/g, (c) => c.toUpperCase());
 };
+
+const getDetailsRow = ({ id, service, complaintType, boundaryAncestors }) => ({
+  CS_COMPLAINT_DETAILS_COMPLAINT_NO: id,
+  // The seeded key is CS_COMMON_PGR_STATE_<STATUS>; the bare CS_COMMON_<STATUS>
+  // this used to emit exists only for a few legacy statuses, so escalated
+  // complaints rendered the raw key (CS_COMMON_ESCALATEDLEVEL3) on the citizen
+  // details page. This row is a KEY that the view t()s, so pick the spelling
+  // that is actually seeded. Consumers that need a graceful fallback for an
+  // unseeded status use products/pgr/src/utils/statusLabel.js instead.
+  CS_COMPLAINT_DETAILS_APPLICATION_STATUS: `CS_COMMON_PGR_STATE_${service.applicationStatus}`,
+  // Key-based (COMPLAINT_HIERARCHY.<code>) — the display t()s these values, so
+  // they resolve per-locale like every other service. complaintType is the
+  // parent node code (already upper-cased); serviceCode is the leaf.
+  CS_ADDCOMPLAINT_COMPLAINT_TYPE: complaintType === "" ? `CS_COMPLAINT_TYPE_OTHERS` : `COMPLAINT_HIERARCHY.${complaintType}`,
+  CS_ADDCOMPLAINT_COMPLAINT_SUB_TYPE: `COMPLAINT_HIERARCHY.${service.serviceCode.toUpperCase()}`,
+  CS_COMPLAINT_ADDTIONAL_DETAILS: service.description,
+  CS_COMPLAINT_FILED_DATE: Digit.DateUtils.ConvertTimestampToDate(service.auditDetails.createdTime),
+  // Landmark is its OWN row (employee-page parity, P-2026-000019 feedback):
+  // it used to be folded into the Address line, which read as one run-on
+  // "TEST ADDRESS, TEST LANDMARK" value.
+  CS_COMPLAINT_LANDMARK__DETAILS: service.address?.landmark || "NA",
+  // CCSD-2207 (supersedes the QA #31/#25 typed-only product call): the
+  // READABLE administrative chain, leaf upward ("Municipio Namaacha,
+  // Namaacha, Maputo Provincia"), is ALWAYS part of the row — it is the one
+  // location every complaint has (the map/dropdown selection), so the field
+  // can no longer render blank or as a bare pincode. Typed parts stay as a
+  // prefix when present: the complainant address the backend persists into
+  // the User Service (returned as service.citizen.correspondenceAddress;
+  // the extendedAttributes copy is stripped on write — masking there is
+  // backend policy) and the typed location parts. landmark is deliberately
+  // NOT here (own row above); pincode is deliberately gone (CCSD-2207 —
+  // "address, <pincode>" was the reported garbage, and the field is being
+  // retired from intake). The raw boundary key and tenant/authority name of
+  // the original composition stay gone.
+  ES_CREATECOMPLAINT_ADDRESS: (() => {
+    const typed = [
+      service.citizen?.correspondenceAddress,
+      (service.extendedAttributes || {}).complainantAddress,
+      service.address.buildingName,
+      service.address.street,
+    ].filter((v) => v && String(v).trim());
+    // Chain entries carry the raw CODE plus a humanized fallback: the display
+    // t()s each element, so a seeded boundary localization ("018" → "Silibwet
+    // Township" on Bomet, where codes are numeric) wins; readableBoundary is
+    // only the fallback for unseeded codes. Humanizing FIRST defeated the
+    // lookup and rendered Bomet addresses as bare numbers ("018, 004").
+    const chain = [...(boundaryAncestors || [])]
+      .reverse()
+      .map((b) => (b?.code ? { code: b.code, name: b.name, fallback: readableBoundary(b.code) } : null))
+      .filter(Boolean);
+    const parts = [...typed, ...chain];
+    // "NA" (landmark-row parity) rather than a blank labelled row when the
+    // complaint predates boundaries or the chain lookup fails.
+    return parts.length ? parts : "NA";
+  })(),
+});
 
 const isEmptyOrNull = (obj) => obj === undefined || obj === null || Object.keys(obj).length === 0;
 
@@ -89,6 +151,10 @@ const transformDetails = ({ id, service, workflow, thumbnails, complaintType, bo
     : {};
   return {
     details: !isEmptyOrNull(customDetails) ? customDetails : getDetailsRow({ id, service, complaintType, boundaryAncestors }),
+    // Root→leaf administrative chain ({boundaryType, code, hierarchyType} per
+    // level) so detail pages can render one labelled row per level (County /
+    // Sub-County / Ward) — employee-page parity (CCRS#927).
+    boundaryAncestors: boundaryAncestors || [],
     thumbnails: thumbnails?.thumbs,
     images: thumbnails?.images,
     workflow: workflow,

@@ -1,18 +1,20 @@
 [
   {
     "code": "IGE",
-    "name": "Institutions of Governance and Education",
+    "name": "PGR_RELATEDTO_NAME_IGE",
     "active": true,
     "shortName": "IGE",
     "displayOrder": 1,
-    "tenantId": "me"
+    "tenantId": "mz",
+    "tenantCode": "mz"
   },
   {
     "code": "IGSAE",
-    "name": "Institutions of Governance, Services, and Economic Activity",
-    "active": true,
+    "name": "PGR_RELATEDTO_NAME_IGSAE",
+    "active": false,
     "shortName": "IGSAE",
     "displayOrder": 2,
-    "tenantId": "me"
+    "tenantId": "mz",
+    "tenantCode": "mz"
   }
 ]

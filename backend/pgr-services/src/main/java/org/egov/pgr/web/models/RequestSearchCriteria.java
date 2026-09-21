@@ -34,6 +34,15 @@ public class RequestSearchCriteria {
     @JsonProperty("mobileNumber")
     private String mobileNumber;
 
+    /**
+     * uuid(s) of the user who actually submitted the complaint (ser.createdby) —
+     * e.g. the employee who filed it on a citizen's behalf. Distinct from
+     * ownership: accountId/userIds identify whose complaint it is (the citizen),
+     * this identifies who created the record.
+     */
+    @JsonProperty("createdBy")
+    private Set<String> createdBy;
+
     @SafeHtml
     @JsonProperty("serviceRequestId")
     private String serviceRequestId;
@@ -98,6 +107,7 @@ public class RequestSearchCriteria {
         applicationStatus,
         serviceRequestId,
         createdTime,
+        lastModifiedTime,
         sla
     }
 
@@ -109,13 +119,47 @@ public class RequestSearchCriteria {
     @JsonProperty("assignee")
     private String assignee;
 
+    @SafeHtml
+    @JsonProperty("department")
+    private String department;
+
     @JsonIgnore
     private Set<String> serviceRequestIds;
+
+    // Server-resolved only — never bound from the request body. Matches against the complaint's
+    // stored additionaldetails.department. Set by EmployeeDepartmentScopeService to restrict an
+    // employee's search to their own HRMS department code(s), or by AdminComplaintSearchService
+    // to filter the SUPERUSER admin search on an arbitrary chosen department (code or name).
+    @JsonIgnore
+    private Set<String> departmentCodes;
+
+    // Set only by AdminComplaintSearchService for the SUPERUSER cross-department admin search.
+    // Exempts that path entirely from PGRService#applyEmployeeDepartmentScope, which would
+    // otherwise overwrite the admin's explicitly chosen departmentCodes with the caller's own
+    // HRMS department whenever the caller also happens to hold a role in
+    // pgr.department.scope.roles — silently narrowing a "cross-department" search to one dept.
+    @JsonIgnore
+    private boolean skipEmployeeDepartmentScope;
+
+    // Server-resolved only — never bound from the request body. Matches against the complaint's
+    // stored ads.locality (still an exact-code match in PGRQueryBuilder). Set by
+    // EmployeeJurisdictionScopeService to the union of the employee's own HRMS jurisdiction
+    // codes PLUS every descendant beneath each of them (BoundaryUtil) — so a jurisdiction mapped
+    // above leaf level still matches leaf-level complaints under it. Kept separate from the
+    // client-bindable `locality` field above so an employee's own explicit locality filter and
+    // their jurisdiction scope simply AND together (intersect) instead of one overwriting the other.
+    @JsonIgnore
+    private Set<String> jurisdictionBoundaryCodes;
+
+    // Mirrors skipEmployeeDepartmentScope — set by AdminComplaintSearchService so the SUPERUSER
+    // cross-tenant admin search isn't silently narrowed to the caller's own locality either.
+    @JsonIgnore
+    private boolean skipEmployeeJurisdictionScope;
 
     public boolean isEmpty(){
         return (this.tenantId==null && this.serviceCode==null && this.mobileNumber==null && this.serviceRequestId==null
         && this.applicationStatus==null && this.ids==null && this.userIds==null && this.locality==null
-        && this.assignee==null);
+        && this.assignee==null && this.createdBy==null && this.department==null);
     }
 
 }

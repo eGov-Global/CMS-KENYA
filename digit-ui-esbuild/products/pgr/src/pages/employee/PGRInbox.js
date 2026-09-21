@@ -74,13 +74,19 @@ const PGRSearchInbox = () => {
   // assigned-to-me radio restored, OPEN_STATES default — and skips the
   // workflow/_count requests entirely.
   const { enabled: visibilityEnabled, serverSide: visibilityServerSide, isLoading: visLoading } = useInboxVisibility();
-  const [activeTab, setActiveTab] = useState("MY");
+  // QA #18: default scope is "everyone's complaints" — in tabs mode too.
+  const [activeTab, setActiveTab] = useState("ALL");
   // Both tabs share the same status scope (all open/actionable states); they
   // differ on the assignee axis — My = assigned to me, All = everyone's
   // (PO decision 2026-07-15; the tabs replaced the assigned-to-me radio).
-  const { allActionableStates: allStates, isLoading: bsLoading } = useBusinessServiceStates(tenantId, {
-    enabled: visibilityEnabled,
-  });
+  //
+  // Always fetched, not just in visibility mode: this list is what preProcess
+  // sends as the default applicationStatus. Gating it on the visibility flag
+  // left allStates empty on non-visibility tenants, so the search fell back to
+  // the static OPEN_STATES list — which predates the escalation-tier states
+  // (Bomet's chief-officer/CECM hops), making escalated complaints invisible
+  // until the operator manually ticked that state's checkbox in the filter.
+  const { allActionableStates: allStates, isLoading: bsLoading } = useBusinessServiceStates(tenantId);
 
   // Tab notification numbers DISABLED (product call — see the NOTE in
   // PGRInboxTabs.js). Restoring the two commented blocks below re-enables the
@@ -194,10 +200,15 @@ const PGRSearchInbox = () => {
     [pageConfig, serviceDefs]
   );
 
-  // Per-tab config: carry the active tab + its state-set into preProcess via
-  // additionalDetails (read as the 2nd arg in PGRInboxConfig.preProcess).
+  // Composer config for BOTH modes: carries the workflow-derived state set
+  // (and, in tabs mode, the active tab) into preProcess via additionalDetails
+  // (read as the 2nd arg in PGRInboxConfig.preProcess). Previously only the
+  // tabs branch used this object — legacy mode passed updatedConfig, which has
+  // no additionalDetails.allStates, so tabs-off tenants (Bomet) always fell
+  // back to the static OPEN_STATES and escalated-state complaints stayed
+  // hidden until their checkbox was ticked.
   // NOTE: declared before the early Loader return to keep hook order stable.
-  const tabConfig = useMemo(() => {
+  const composerConfig = useMemo(() => {
     const c = _.cloneDeep(updatedConfig || {});
     c.additionalDetails = {
       ...(c.additionalDetails || {}),
@@ -225,9 +236,14 @@ const PGRSearchInbox = () => {
   }, [location, visLoading, visibilityEnabled]);
 
   /**
-   * Show loader until necessary data is available
+   * Show loader until necessary data is available.
+   * bsLoading is included so the composer's FIRST search already carries the
+   * workflow-derived status list — otherwise it fires with the static
+   * OPEN_STATES fallback and escalated-state complaints are missing until a
+   * re-render re-fires it (or never, if the config reference stayed stable).
+   * On fetch failure bsLoading settles false and the fallback still applies.
    */
-  if (isLoading || isValidationLoading || visLoading || !pageConfig || serviceDefs == null) {
+  if (isLoading || isValidationLoading || visLoading || bsLoading || !pageConfig || serviceDefs == null) {
     return <Loader />;
   }
 
@@ -257,6 +273,50 @@ const PGRSearchInbox = () => {
 
   return (
     <div className="v2-pgr-inbox v2-scope">
+      {/* CCSD-2086: the system-name card in the inbox's left links panel read
+          flush top-left. The shipped digit-inbox-search-links-container has NO
+          padding / height / centering rule (only the legacy non-"digit-"
+          prefixed .inbox-search-links-container scss did), so the header text
+          sat in the top-left corner with the rest of the card empty below it.
+          Give the container real padding and make it a full-height flex column
+          that centres its content vertically, and centre the header row + text
+          horizontally. Scoped to .v2-pgr-inbox so the shared
+          InboxSearchComposer classes aren't restyled for other modules; the
+          two-class selector outranks the component's own single-class rule
+          without !important. margin-bottom:0 on the header stops the stock
+          1.5rem gap (meant to separate header from links) from nudging the
+          text up when there are no links below it. */}
+      <style>{`
+        .v2-pgr-inbox .digit-inbox-search-links-container {
+          /* The links card (.digit-section.links) is a flex ROW item that the
+             sections grid stretches to match the search column's height, but
+             its default align-items:flex-start pins THIS container to the top
+             and percentage-height won't resolve against a grid-stretched
+             parent. align-self:stretch makes the container fill that height so
+             justify-content:center actually centres in the visible card. */
+          align-self: stretch;
+          height: 100%;
+          box-sizing: border-box;
+          padding: 1.5rem 1rem 1.5rem 0;
+          display: flex;
+          flex-direction: column;
+          justify-content: center;
+        }
+        /* Title and quick-links (e.g. "New Complaint") are both LEFT-aligned and
+           share the same left edge, so they line up. The card content is still
+           vertically centred (container justify-content:center below); only the
+           horizontal alignment is left. Collapse the empty logo span so the
+           title starts at the true left edge, matching the link. */
+        .v2-pgr-inbox .digit-inbox-search-links-header { justify-content: flex-start; text-align: left; margin-bottom: 0; }
+        .v2-pgr-inbox .digit-inbox-search-links-header-text { text-align: left; }
+        .v2-pgr-inbox .digit-inbox-search-links-header-logo:empty { display: none; }
+        .v2-pgr-inbox .digit-inbox-search-links-contents { align-items: flex-start; text-align: left; }
+        .v2-pgr-inbox .digit-inbox-search-links-contents:not(:empty) { margin-top: 1rem; }
+        /* Page title sat flush in the top-left corner (header padding 12px 0 8px
+           — no left gutter), 24px left of the card content below it. Give it a
+           left gutter that lines up with the card and a little more top room. */
+        .v2-pgr-inbox .v2-employee-page-header { padding: 1rem 1.5rem 0.75rem; }
+      `}</style>
       <header className="v2-employee-page-header">
         <h1>{heading}</h1>
       </header>
@@ -270,11 +330,15 @@ const PGRSearchInbox = () => {
         {visibilityEnabled ? (
           <InboxSearchComposer
             key={activeTab}
-            configs={tabConfig}
+            configs={composerConfig}
             resultsHeader={<PGRInboxTabs activeTab={activeTab} onChange={setActiveTab} /* counts={counts} */ />}
           />
         ) : (
-          <InboxSearchComposer configs={updatedConfig} />
+          // Legacy mode uses the same config object: it needs
+          // additionalDetails.allStates for the default status scope. The
+          // tab-specific bits are inert here (activeTab stays "ALL", the
+          // endpoint swap is gated on serverSide).
+          <InboxSearchComposer configs={composerConfig} />
         )}
       </div>
     </div>

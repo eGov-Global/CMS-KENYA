@@ -5,9 +5,25 @@
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>DIGIT Complaints Management</title>
+    <!-- Ops kill switch for this app's own telemetry. A CLASSIC script, loaded
+         before the module below, so the flag exists before main.tsx decides
+         whether to initialise PostHog and Sentry. Shipped in dist alongside this
+         file, so the two can never skew. See src/lib/telemetryGate.ts. -->
+    <!-- Base-aware: vite.config.ts sets base '/configurator/', so an origin-root
+         path 404s once deployed under that prefix. A missing global makes
+         isTelemetryKilled() return false — i.e. the kill switch fails OPEN. -->
+    <script src="./telemetry-config.js"></script>
   </head>
   <body>
     <div id="root"></div>
+    <!-- Same-origin runtime config shared with the portal (rendered by ansible
+         from globalConfigs.js.j2). Loaded so the Studio can honour the SAME
+         per-env settings the esbuild portal reads — first consumer is the
+         default locale (LOCALE_DEFAULT/LOCALE_REGION, i18nProvider). A classic
+         script tag executes before the module bundle, so window.globalConfigs
+         is defined by the time main.tsx runs. On a box without the portal the
+         request 404s and the app just falls back to its built-in defaults. -->
+    <script src="/digit-ui/globalConfigs.js"></script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

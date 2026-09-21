@@ -445,6 +445,103 @@ test("v2 bridge: re-apply reuses the same style tag (no duplicates)", () => {
   } finally { restore(); }
 });
 
+// ── landing (--pgrl-*) bridge ────────────────────────────────────────────────
+
+test("pgrl bridge: v3 record retints the landing brand/text/surface tokens", () => {
+  const { head, restore } = stubDocument();
+  try {
+    const applyTheme = freshApply();
+    applyTheme({
+      version: "3",
+      colors: {
+        "primary-1": "#1565A8",
+        "primary-2": "#1B85D2",
+        "primary-2-bg": "#7FC0EA",
+        "sidebar-selected-bg": "#093B50",
+        "button-primary-bg-hover": "#1565A8",
+        "button-secondary-bg-hover": "#5FAFE4",
+        "button-primary-text": "#FFFFFF",
+        "text-primary": "#1D2433",
+        "text-secondary": "#5F5C62",
+        "page-bg": "#FFFFFF",
+        "page-secondary-bg": "#FAFAFA",
+        "card-border": "#D6D5D4",
+      },
+    });
+    const css = head.children.find((el) => el.id === "mdms-theme-v2-bridge").textContent;
+    assert.match(css, /--pgrl-primary-brand: 207 78% 37%/); // #1565A8
+    assert.match(css, /--pgrl-ring-brand: 207 78% 37%/);
+    assert.match(css, /--pgrl-deep-brand: 198 80% 17%/); // #093B50, darkest brand surface
+    // Accent = the tint role (#7FC0EA), NOT the button fill #1B85D2: the CTA
+    // label is dark ink, which needs a light surface.
+    assert.match(css, /--pgrl-accent-brand: 204 72% 71%/);
+    assert.match(css, /--pgrl-accent-hover-brand: 204 71% 63%/); // #5FAFE4
+    assert.match(css, /--pgrl-on-primary-brand: 0 0% 100%/);
+    assert.match(css, /--pgrl-ink-brand: 221 28% 16%/);
+    assert.match(css, /--pgrl-ink-soft-brand: 270 3% 37%/);
+    assert.match(css, /--pgrl-surface-brand: 0 0% 100%/);
+    assert.match(css, /--pgrl-page-brand: 0 0% 98%/);
+    assert.match(css, /--pgrl-line-brand: 30 2% 84%/);
+    // Contrast-critical / categorical tokens stay on the shipped defaults.
+    assert.doesNotMatch(css, /--pgrl-on-accent-brand/);
+    assert.doesNotMatch(css, /--pgrl-type-/);
+    assert.doesNotMatch(css, /--pgrl-radius-brand/);
+  } finally { restore(); }
+});
+
+test("pgrl bridge: `landing: false` keeps the bundled default off the landing page", () => {
+  // Regression: index.js applies default.json (DIGIT orange) synchronously at
+  // boot. Bridged, that painted /digit-ui/landing orange instead of leaving it
+  // on its own shipped palette. The v2-scope tokens must still be written.
+  const { head, restore } = stubDocument();
+  try {
+    const applyTheme = freshApply();
+    const defaultTheme = require("./default.json");
+    applyTheme(defaultTheme, { landing: false });
+    const css = head.children.find((el) => el.id === "mdms-theme-v2-bridge").textContent;
+    assert.doesNotMatch(css, /--pgrl-/);
+    assert.match(css, /--v2-primary: /);
+  } finally { restore(); }
+});
+
+test("pgrl bridge: the same record DOES retint when applied as a tenant theme", () => {
+  const { head, restore } = stubDocument();
+  try {
+    const applyTheme = freshApply();
+    applyTheme(require("./default.json"));
+    const css = head.children.find((el) => el.id === "mdms-theme-v2-bridge").textContent;
+    assert.match(css, /--pgrl-primary-brand: /);
+  } finally { restore(); }
+});
+
+test("pgrl bridge: v1 record resolves through the legacy fallbacks", () => {
+  const { head, restore } = stubDocument();
+  try {
+    const applyTheme = freshApply();
+    applyTheme({
+      version: "1",
+      colors: {
+        primary: { main: "#1B85D2", dark: "#1565A8" },
+        text: { primary: "#1D2433", secondary: "#5F5C62" },
+        grey: { light: "#FAFAFA" },
+        border: "#D6D5D4",
+      },
+    });
+    const css = head.children.find((el) => el.id === "mdms-theme-v2-bridge").textContent;
+    assert.match(css, /--pgrl-primary-brand: 207 78% 37%/); // primary.dark
+    assert.match(css, /--pgrl-deep-brand: 207 78% 37%/); // no sidebar token -> primary
+    assert.match(css, /--pgrl-accent-brand: 205 77% 46%/); // primary.main
+    // No light-surface hover role in the record -> accent darkened by 7 points,
+    // so a retinted accent never hovers into the shipped default's yellow.
+    assert.match(css, /--pgrl-accent-hover-brand: 205 77% 39%/);
+    assert.match(css, /--pgrl-page-brand: 0 0% 98%/); // grey.light
+    assert.match(css, /--pgrl-line-brand: 30 2% 84%/); // border
+    // Nothing invented for roles the record doesn't carry.
+    assert.doesNotMatch(css, /--pgrl-surface-brand/);
+    assert.doesNotMatch(css, /--pgrl-on-primary-brand/);
+  } finally { restore(); }
+});
+
 // ── v3 backfill for v1/v2 records ────────────────────────────────────────────
 
 test("v3 backfill: v1 record feeds button + primary-N tokens from palette", () => {
@@ -463,7 +560,7 @@ test("v3 backfill: v1 record feeds button + primary-N tokens from palette", () =
   } finally { restore(); }
 });
 
-test("v3 backfill: skipped entirely for real v3 records", () => {
+test("v3 backfill: record's own button background wins over any derived one", () => {
   const { props, restore } = stubDocument();
   try {
     const applyTheme = freshApply();
@@ -477,8 +574,13 @@ test("v3 backfill: skipped entirely for real v3 records", () => {
     });
     // v3 path applied the record's own value, not a backfilled one
     assert.equal(props["--color-button-primary-bg-default"], "#E6B800");
-    // hover wasn't in the record and must NOT be invented for v3 records
-    assert.equal(props["--color-button-primary-bg-hover"], undefined);
+    // Hover WAS left out of the record, and is now filled. It used to expect
+    // `undefined`: leaving it unset meant CSS fell through to the vendored
+    // :root orange, because a `var(--token, …)` chain cannot reach its fallback
+    // once :root defines the token. It is filled from the BUTTON's own surface,
+    // not from primary-1 (#204F37 here) — primary-1 is a separate brand colour
+    // and using it would change the button's hue on hover.
+    assert.equal(props["--color-button-primary-bg-hover"], "#E6B800");
   } finally { restore(); }
 });
 
@@ -489,5 +591,158 @@ test("v3 backfill: no primary in record → nothing invented", () => {
     applyTheme({ version: "1", colors: { grey: { bg: "#E6E6E6" } } });
     assert.equal(props["--color-button-primary-bg-default"], undefined);
     assert.equal(props["--color-primary-2"], undefined);
+  } finally { restore(); }
+});
+
+// --- Pass 5: primary-button states + foreground -----------------------------
+// The vendored :root hard-defines the whole button group (bg default/hover/
+// pressed + text), so a CSS `var(--token, <fallback>)` can never reach its
+// fallback. A partial v3 record therefore inherits DIGIT orange for whichever
+// state it omitted. Backfill the backgrounds first, then pick a foreground
+// against what actually gets painted, across every state.
+
+test("button states: partial v3 record gets its missing state, not vendored orange", () => {
+  const { props, restore } = stubDocument();
+  try {
+    const applyTheme = freshApply();
+    // Bomet's live shape: default + hover stated, pressed and text omitted.
+    applyTheme({
+      version: "3",
+      colors: {
+        "primary-1": "#1565A8",
+        "primary-2": "#1B85D2",
+        "button-primary-bg-default": "#1B85D2",
+        "button-primary-bg-hover": "#1565A8",
+      },
+    });
+    assert.equal(props["--color-button-primary-bg-default"], "#1B85D2");
+    assert.equal(props["--color-button-primary-bg-hover"], "#1565A8");
+    // Previously fell through to :root #A03A0A — an orange flash on press.
+    assert.equal(props["--color-button-primary-bg-pressed"], "#1565A8");
+  } finally { restore(); }
+});
+
+test("button foreground: judged across all three states, not just the resting one", () => {
+  const { props, restore } = stubDocument();
+  try {
+    const applyTheme = freshApply();
+    applyTheme({
+      version: "3",
+      colors: {
+        "primary-1": "#1565A8",
+        "primary-2": "#1B85D2",
+        "button-primary-bg-default": "#1B85D2",
+        "button-primary-bg-hover": "#1565A8",
+      },
+    });
+    // Neither candidate clears AA on every state here (white 3.94:1 on the
+    // default, black 3.50:1 on hover/pressed), so the better worst case wins.
+    assert.equal(props["--color-button-primary-text"], "#FFFFFF");
+  } finally { restore(); }
+});
+
+test("button foreground: light brand with no stated text colour gets near-black", () => {
+  const { props, restore } = stubDocument();
+  try {
+    const applyTheme = freshApply();
+    // kenya-yellow button on a green-primary-1 palette: white would be ~1.5:1.
+    applyTheme({
+      version: "3",
+      colors: { "primary-1": "#204F37", "button-primary-bg-default": "#FEC931" },
+    });
+    assert.equal(props["--color-button-primary-text"], "#0B0C0C");
+    // primary-1 is a second brand colour, not a shade of the button. Inventing
+    // hover/pressed from it turned the button green under the cursor, where
+    // near-black reads 2.08:1. The generated states keep the button's hue.
+    assert.equal(props["--color-button-primary-bg-hover"], "#FEC931");
+    assert.equal(props["--color-button-primary-bg-pressed"], "#FEC931");
+  } finally { restore(); }
+});
+
+test("button states: a stated text colour is never made invisible by a generated hover", () => {
+  const { props, restore } = stubDocument();
+  try {
+    const applyTheme = freshApply();
+    // Nairobi-shaped: yellow button, green text, green primary-1, no hover.
+    // Deriving hover from primary-1 made hover === text, i.e. 1.00:1.
+    applyTheme({
+      version: "3",
+      colors: {
+        "primary-1": "#204F37",
+        "button-primary-bg-default": "#FEC931",
+        "button-primary-text": "#204F37",
+      },
+    });
+    assert.equal(props["--color-button-primary-text"], "#204F37");
+    assert.notEqual(props["--color-button-primary-bg-hover"], props["--color-button-primary-text"]);
+    assert.equal(props["--color-button-primary-bg-hover"], "#FEC931");
+    assert.equal(props["--color-button-primary-bg-pressed"], "#FEC931");
+  } finally { restore(); }
+});
+
+test("button foreground: AA is judged on #0B0C0C, not on pure black", () => {
+  const { props, restore } = stubDocument();
+  try {
+    const applyTheme = freshApply();
+    // #777777 is the boundary: pure black scores 4.69:1 and looks like an AA
+    // pass, but the colour actually returned (#0B0C0C) renders 4.37:1. Neither
+    // candidate clears AA here, so the better worst case wins — white at
+    // 4.48:1 rather than a near-black that only appeared compliant.
+    applyTheme({ version: "3", colors: { "primary-1": "#333333", "button-primary-bg-default": "#777777" } });
+    assert.equal(props["--color-button-primary-text"], "#FFFFFF");
+  } finally { restore(); }
+});
+
+test("button foreground: the ticket's #2563EB clears AA with white", () => {
+  const { props, restore } = stubDocument();
+  try {
+    const applyTheme = freshApply();
+    applyTheme({
+      version: "3",
+      colors: {
+        "primary-1": "#0B1F3A",
+        "button-primary-bg-default": "#2563EB",
+        "button-primary-bg-hover": "#1D4FD8",
+        "button-primary-bg-pressed": "#1E40AF",
+      },
+    });
+    assert.equal(props["--color-button-primary-text"], "#FFFFFF");
+  } finally { restore(); }
+});
+
+test("button foreground: a record that states one is left alone", () => {
+  const { props, restore } = stubDocument();
+  try {
+    const applyTheme = freshApply();
+    // naipepea's live shape: states its own pairing, which must win.
+    applyTheme({
+      version: "3",
+      colors: {
+        "primary-1": "#204F37",
+        "button-primary-bg-default": "#FEC931",
+        "button-primary-text": "#204F37",
+      },
+    });
+    assert.equal(props["--color-button-primary-text"], "#204F37");
+  } finally { restore(); }
+});
+
+test("button foreground: v1 record derives from primary.main", () => {
+  const { props, restore } = stubDocument();
+  try {
+    const applyTheme = freshApply();
+    applyTheme({ version: "1", colors: { primary: { main: "#FEC931" } } });
+    assert.equal(props["--color-button-primary-text"], "#0B0C0C");
+  } finally { restore(); }
+});
+
+test("button states: nothing to derive from → nothing invented", () => {
+  const { props, restore } = stubDocument();
+  try {
+    const applyTheme = freshApply();
+    applyTheme({ version: "1", colors: { secondary: "#123456" } });
+    assert.equal(props["--color-button-primary-text"], undefined);
+    assert.equal(props["--color-button-primary-bg-default"], undefined);
+    assert.equal(props["--color-button-primary-bg-pressed"], undefined);
   } finally { restore(); }
 });

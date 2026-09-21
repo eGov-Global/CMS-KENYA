@@ -98,9 +98,22 @@ const StaticCitizenSideBar = ({ linkData, islinkDataLoading }) => {
 
   // #997: fetch + resolve the logged-in user's photo (a bare fileStoreId) so the
   // sidebar avatar renders the uploaded image instead of always the default.
+  // Depend on `user?.info?.photo` (not just `uuid`, and no longer guarded by
+  // `!profilePic`) so a photo uploaded mid-session — this component stays
+  // mounted across in-app navigation since it sits outside the routed
+  // <Switch> in pages/citizen/index.js — refetches on the next render
+  // instead of only once per mount.
   useEffect(() => {
     let cancelled = false;
     const fetchProfilePhoto = async () => {
+      // CCSD-1971 (A9): the session photo (written by the profile save) wins
+      // and re-resolves on change — no re-login needed to see the new avatar.
+      const sessionPhoto = user?.info?.photo;
+      if (sessionPhoto) {
+        const resolved = await resolveProfilePhoto(sessionPhoto, Digit.ULBService.getStateId());
+        if (!cancelled) setProfilePic(resolved);
+        return;
+      }
       const tenant = Digit.ULBService.getCurrentTenantId();
       const uuid = user?.info?.uuid;
       if (!uuid) return;
@@ -111,11 +124,11 @@ const StaticCitizenSideBar = ({ linkData, islinkDataLoading }) => {
         if (!cancelled) setProfilePic(resolved);
       }
     };
-    if (!profilePic) fetchProfilePhoto();
+    fetchProfilePhoto();
     return () => {
       cancelled = true;
     };
-  }, [user?.info?.uuid]);
+  }, [user?.info?.uuid, user?.info?.photo]);
 
   const handleLogout = () => {
     toggleSidebar(false);

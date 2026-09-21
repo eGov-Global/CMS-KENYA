@@ -35,6 +35,47 @@ import Header from "../../../components/Header";
 import Carousel from "./Carousel/Carousel";
 import ImageComponent from "../../../components/ImageComponent";
 
+// Testing-tenant visibility for the employee login city/institution dropdown.
+// Mirrors products/pgr/src/utils/testingTenant.js (can't import it — core must
+// not depend on a product). A tenant is "testing" when the configurator's
+// "Make this a testing tenant" checkbox set isTestingTenant on its record
+// (StoreService caches the codes as initData.testingTenantCodes), UNIONED with
+// the legacy deploy-time TESTING_TENANT_ID for boxes not yet migrated. On a
+// production entrance the dropdown must hide testing tenants; on the gated
+// /digit-ui-test entrance (TESTING_MODE) it shows only them.
+const getTestingTenantCodes = () => {
+  let codes = [];
+  try {
+    const cached = window?.Digit?.SessionStorage?.get?.("initData")?.testingTenantCodes;
+    if (Array.isArray(cached)) codes = cached.filter(Boolean);
+  } catch (e) {
+    /* initData not ready — legacy config below still applies */
+  }
+  const cfg = window?.globalConfigs?.getConfig?.("TESTING_TENANT_ID");
+  if (cfg && !codes.includes(cfg)) codes.push(cfg);
+  return new Set(codes);
+};
+const isTenantVisibleOnEntrance = (tenantCode) => {
+  const testing = getTestingTenantCodes();
+  const onTestingEntrance = !!window?.globalConfigs?.getConfig?.("TESTING_MODE");
+  if (testing.size === 0) return !onTestingEntrance;
+  return onTestingEntrance ? testing.has(tenantCode) : !testing.has(tenantCode);
+};
+
+// The exact tenant list the employee entrance may show: an optional
+// LOGIN_TENANT_ALLOWLIST (deploy config), then the testing-vs-production
+// entrance filter. Exported so every screen with a city/institution dropdown
+// (login AND forgot-password, and any future one) scopes it identically —
+// CCSD-2150 was the forgot-password dropdown listing every platform tenant
+// because it skipped this. Returns the raw tenant objects; callers map to
+// their own option shape.
+export const scopeLoginTenants = (tenants) => {
+  const all = Array.isArray(tenants) ? tenants : [];
+  const allow = window?.globalConfigs?.getConfig?.("LOGIN_TENANT_ALLOWLIST");
+  const allowed = Array.isArray(allow) && allow.length > 0 ? all.filter((tnt) => allow.includes(tnt.code)) : all;
+  return allowed.filter((tnt) => isTenantVisibleOnEntrance(tnt.code));
+};
+
 const setEmployeeDetail = (userObject, token) => {
   if (Digit.Utils.getMultiRootTenant() && process.env.NODE_ENV !== "development") return;
   let locale = JSON.parse(sessionStorage.getItem("Digit.locale"))?.value || Digit.Utils.getDefaultLanguage();
@@ -98,6 +139,17 @@ export function V2LoginShell({ children, withCarousel, bannerImages }) {
           justifyContent: "center",
           minHeight: "100vh",
           padding: "24px",
+          // FULL WIDTH: .banner is a flex container that centers its children,
+          // so without an explicit width this wrapper shrink-wraps to the
+          // card's min-content (~539px) and the card never reaches its
+          // designed maxWidth — it rendered ~491px ("white box smaller
+          // overall"). width:100% lets the card size itself properly.
+          width: "100%",
+          // TRANSPARENT so the <Background> banner (StateInfo bannerUrl behind
+          // the teal overlay) shows edge-to-edge with the card floating over it.
+          // Without this the v2-scope's default page-bg (#f5f5f5) painted a
+          // full-height grey column that hid the background image (Moz login-bg).
+          backgroundColor: "transparent",
         }}
       >
         {children}
@@ -194,12 +246,9 @@ const Login = ({ config: propsConfig, t, isDisabled, loginOTPBased, appTenants }
   // legacy `select:` literal in config.js).
   const cityField = useMemo(() => propsConfig?.inputs?.find((f) => f?.key === "city"), [propsConfig]);
   const cityOptions = useMemo(() => {
-    const all = Array.isArray(cities) ? cities : [];
-    const allow = window?.globalConfigs?.getConfig?.("LOGIN_TENANT_ALLOWLIST");
-    const filtered = Array.isArray(allow) && allow.length > 0
-      ? all.filter((tnt) => allow.includes(tnt.code))
-      : all;
-    return filtered.map((tnt) => ({
+    // Scoping (LOGIN_TENANT_ALLOWLIST + testing-vs-production entrance) is shared
+    // with forgot-password via scopeLoginTenants so the two dropdowns can't drift.
+    return scopeLoginTenants(cities).map((tnt) => ({
       value: tnt.code,
       label: tr(`TENANT_TENANTS_${Digit?.Utils?.locale?.getTransformedLocale?.(tnt.code) ?? tnt.code}`, tnt.name || tnt.code),
     }));
@@ -354,19 +403,42 @@ const Login = ({ config: propsConfig, t, isDisabled, loginOTPBased, appTenants }
       <V2Card
         style={{
           width: "100%",
-          maxWidth: "680px",
+          // Moz prototype proportions — tuned in design review:
+          // 680 → 480 (≈half) → 408 (−15%).
+          maxWidth: "408px",
           padding: "32px 32px 32px 32px",
           display: "flex",
           flexDirection: "column",
           gap: "18px",
         }}
       >
-        {/* Top logos — same Header the legacy login.js renders inline,
-            so the tenant + DIGIT secondary wordmark show above the form
-            exactly like v1. */}
-        <div className="v2-employee-login-top-logos" style={{ display: "flex", justifyContent: "center" }}>
-          {storeData?.stateInfo?.code ? <Header /> : <Header showTenant={false} />}
-        </div>
+        {/* Top logos. When the deployment seeds the portal-title localization
+            (CS_LOGIN_PORTAL_TITLE — Moz prototype), render the emblem +
+            two-line portal branding. Otherwise keep the legacy Header
+            (tenant + DIGIT wordmark) byte-identical for other deployments. */}
+        {t("CS_LOGIN_PORTAL_TITLE") !== "CS_LOGIN_PORTAL_TITLE" ? (
+          <div className="v2-employee-login-top-logos" style={{ display: "flex", alignItems: "center", gap: "14px" }}>
+            <ImageComponent
+              src={storeData?.stateInfo?.logoUrl}
+              alt=""
+              style={{ height: "56px", width: "56px", objectFit: "contain", flexShrink: 0 }}
+            />
+            <div style={{ minWidth: 0 }}>
+              <div style={{ fontWeight: 700, fontSize: "1.125rem", lineHeight: 1.3, color: "var(--color-text-primary, #0B0C0C)" }}>
+                {t("CS_LOGIN_PORTAL_TITLE")}
+              </div>
+              {t("CS_LOGIN_PORTAL_SUBTITLE") !== "CS_LOGIN_PORTAL_SUBTITLE" && (
+                <div style={{ fontSize: "0.875rem", color: "var(--color-text-secondary, #505A5F)" }}>
+                  {t("CS_LOGIN_PORTAL_SUBTITLE")}
+                </div>
+              )}
+            </div>
+          </div>
+        ) : (
+          <div className="v2-employee-login-top-logos" style={{ display: "flex", justifyContent: "center" }}>
+            {storeData?.stateInfo?.code ? <Header /> : <Header showTenant={false} />}
+          </div>
+        )}
         <header>
           <h1
             style={{

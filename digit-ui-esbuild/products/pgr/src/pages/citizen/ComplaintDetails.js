@@ -10,7 +10,8 @@
 // the rest of the modernized citizen surface.
 
 import React, { useEffect } from "react";
-import { useParams } from "react-router-dom";
+import { statusLabel } from "../../utils/statusLabel";
+import { useParams, Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 
 import { Loader } from "@egovernments/digit-ui-react-components";
@@ -19,13 +20,20 @@ import { AlertCircle } from "lucide-react";
 
 import { LOCALIZATION_KEY } from "../../constants/Localization";
 import { buildComplaintPath } from "../../utils/complaintHierarchyPath";
-import TimeLine from "../../components/TimeLine";
+import TimelineWrapper from "../../components/TimeLineWrapper";
+import useReopenWindow from "../../hooks/pgr/useReopenWindow";
 import ComplaintPhotos from "../../components/ComplaintPhotos";
 import ComplaintLocationMap from "../../components/ComplaintLocationMap";
-import useReopenWindow from "../../hooks/pgr/useReopenWindow";
+import { buildExtendedAttributeRows, useExtendedAttributeOrder } from "../../components/PgrExtendedAttributesView";
+import StarRated from "../../components/timelineInstances/StarRated";
 
-const CLOSED_STATUSES = ["RESOLVED", "REJECTED", "CLOSEDAFTERREJECTION", "CLOSEDAFTERRESOLUTION"];
-const REJECTED_STATUSES = ["REJECTED", "CLOSEDAFTERREJECTION"];
+// Terminal (non-active) states across standard PGR *and* the mz.igsae CMS workflow.
+// CANCELLED / CLOSEDAFTER* are CMS terminals; without them CANCELLED wrongly showed
+// as "open" (active). A fully workflow-driven derivation would read isTerminateState
+// off the BusinessService, but that state is not fetched on the citizen detail page,
+// so we key off the status name (which the BusinessService states are named after).
+const REJECTED_STATUSES = ["REJECTED", "CLOSEDAFTERREJECTION", "CANCELLED"];
+const CLOSED_STATUSES = ["RESOLVED", "REJECTED", "CLOSEDAFTERREJECTION", "CLOSEDAFTERRESOLUTION", "CANCELLED"];
 
 function statusToTone(status) {
   if (REJECTED_STATUSES.includes(status)) return "rejected";
@@ -51,10 +59,14 @@ const TONE_STYLES = {
 function StatusPill({ status, t }) {
   const tone = statusToTone(status);
   const palette = TONE_STYLES[tone];
-  const labelKey = `${LOCALIZATION_KEY.CS_COMMON}_${status}`;
-  const translated = t(labelKey);
-  const fallback = tone.toUpperCase();
-  const label = translated === labelKey ? fallback : translated.toUpperCase();
+  // Seeded key is CS_COMMON_PGR_STATE_<STATUS>; the bare form resolves only for
+  // a few legacy statuses, so escalated complaints fell through to the
+  // tone-bucket word and this pill read "OPEN" on a thrice-escalated complaint.
+  // Sentinel fallback keeps the bucket word as the last resort for a status
+  // that genuinely has no seeded label.
+  const NOT_SEEDED = "\u0000";
+  const resolved = statusLabel(t, status, NOT_SEEDED);
+  const label = resolved !== NOT_SEEDED ? resolved.toUpperCase() : tone.toUpperCase();
   return (
     <span
       style={{
@@ -111,43 +123,136 @@ function DetailRow({ label, value }) {
   );
 }
 
+// Localization-first with graceful fallbacks, in order: a `name` the hook
+// already resolved from the boundary localization module (deterministic — no
+// dependence on which screen loaded labels into i18next first), then t(code)
+// (the seeding convention), then the humanized fallback — never a raw code.
+function localizedOrFallback(t, code, fallback, name) {
+  if (name) return name;
+  if (!code) return fallback || "";
+  const translated = t(String(code));
+  return translated && translated !== String(code) ? translated : fallback || String(code);
+}
+
 function renderRowValue(val, t) {
   if (Array.isArray(val)) {
     return val
-      .map((item) => (typeof item === "object" && item ? t(item?.code) : t(String(item ?? ""))))
+      .map((item) =>
+        typeof item === "object" && item
+          ? localizedOrFallback(t, item?.code, item?.fallback, item?.name)
+          : t(String(item ?? ""))
+      )
       .filter(Boolean)
       .join(", ");
   }
   if (val == null || val === "") return "N/A";
-  if (typeof val === "object") return t(val?.code ?? "") || "N/A";
+  if (typeof val === "object") return localizedOrFallback(t, val?.code, val?.fallback) || "N/A";
   return t(String(val)) || "N/A";
 }
 
 function WorkflowComponent({ complaintDetails, id }) {
+  const { t } = useTranslation();
   const tenantId =
     Digit.SessionStorage.get("CITIZEN.COMMON.HOME.CITY")?.code ||
     complaintDetails.service.tenantId;
-  const workFlowDetails = Digit.Hooks.useWorkflowDetails({ tenantId, id, moduleCode: "PGR" });
 
-  // Replaces a fetch of the legacy RAINMAKER-PGR.ComplainClosingTime master whose result was
-  // discarded — the vestige of the reopen-window lookup that #925 restores. REOPENSLA is the
-  // master the configurator actually exposes, so read that and feed the timeline.
-  const ComplainMaxIdleTime = useReopenWindow(tenantId);
+  // Workflow-driven timeline: fetch the raw process instances (same source the
+  // employee side uses) and render them via the generic TimelineWrapper. This
+  // renders whatever states a BusinessService defines (standard PGR *and* the
+  // mz.igsae CMS workflow) with no hardcoded status list, replacing the legacy
+  // status-ordered <TimeLine>.
+  const { isLoading: isWorkFlowLoading, data: workflowData, revalidate } = Digit.Hooks.useCustomAPIHook({
+    url: "/egov-workflow-v2/egov-wf/process/_search",
+    params: { tenantId, history: true, businessIds: id },
+    changeQueryName: id,
+  });
+
+  // Reopen window, from RAINMAKER-PGR.UIConstants.REOPENSLA via useReopenWindow
+  // — the same master pgr-services reads in validateReOpen(), so the UI guard
+  // and server enforcement cannot drift.
+  //
+  // This used to query RAINMAKER-PGR.ComplainClosingTime and read `.cct` off
+  // the response. That could never resolve: mdms v1 keys its response by
+  // MASTER NAME, so the value would have had to live under
+  // `["RAINMAKER-PGR"].ComplainClosingTime`, and no environment defines that
+  // master at all. The lookup therefore always returned undefined and the
+  // 1-hour fallback below won everywhere — which is exactly the #925 bug that
+  // useReopenWindow was written to fix, reintroduced on this page.
+  const complainMaxIdleTime = useReopenWindow(tenantId);
 
   useEffect(() => {
-    workFlowDetails.revalidate();
+    revalidate();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  if (workFlowDetails.isLoading) return null;
+  // Citizen actions for the CURRENT state (RATE / REOPEN / …) straight from the
+  // workflow's nextActions — the legacy <TimeLine> rendered these links inside
+  // its Resolved/Rejected checkpoints, so the TimelineWrapper swap dropped them.
+  // COMMENT is excluded (no citizen page for it); REOPEN honors the idle-window.
+  const current = workflowData?.ProcessInstances?.[0];
+  const lastModifiedTime = complaintDetails?.service?.auditDetails?.lastModifiedTime;
+  // useReopenWindow returns undefined while MDMS loads and on tenants with no
+  // usable REOPENSLA. Treat that as "window unknown" and let REOPEN through
+  // rather than hiding it: pgr-services applies its own pgr.complain.idle.time
+  // backstop and rejects a genuinely late reopen, so deferring is safe, while
+  // falling back to a local 1-hour default enforces a deadline nobody
+  // configured — the #925 bug. Same rule the hook documents for its callers.
+  const reopenWindowOpen =
+    typeof complainMaxIdleTime !== "number"
+      ? true
+      : typeof lastModifiedTime === "number" &&
+        Number.isFinite(lastModifiedTime) &&
+        Date.now() - lastModifiedTime < complainMaxIdleTime;
+  const citizenActions = (current?.nextActions || [])
+    .filter((a) => Array.isArray(a?.roles) && a.roles.includes("CITIZEN"))
+    .map((a) => a?.action)
+    .filter((a) => a && a !== "COMMENT")
+    .filter((a) => a !== "REOPEN" || reopenWindowOpen);
+
+  // Rendered INSIDE the current-state timeline row (legacy-checkpoint parity):
+  // action buttons while actions are open; the given star rating once rated.
+  const rating = complaintDetails?.service?.rating;
+  const currentStateChildren =
+    rating || citizenActions.length > 0 ? (
+      <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "0.75rem", marginTop: "0.5rem" }}>
+        {rating ? <StarRated text={t("CS_ADDCOMPLAINT_YOU_RATED")} rating={rating} /> : null}
+        {citizenActions
+          .filter((action) => !(rating && action === "RATE"))
+          .map((action) => {
+            const key = `CS_COMMON_${action}`;
+            const label = t(key) === key ? action : t(key);
+            return (
+              <Link key={action} to={`/${window?.contextPath || "digit-ui"}/citizen/pgr/${action.toLowerCase()}/${id}`}>
+                <button
+                  type="button"
+                  style={{
+                    padding: "0.4rem 1.1rem",
+                    fontWeight: 600,
+                    color: "#fff",
+                    background: "var(--color-primary-1, var(--color-primary-main, #c84c0e))",
+                    border: "none",
+                    borderRadius: "0.375rem",
+                    cursor: "pointer",
+                  }}
+                >
+                  {label}
+                </button>
+              </Link>
+            );
+          })}
+      </div>
+    ) : null;
+
   return (
-    <TimeLine
-      data={workFlowDetails.data}
-      serviceRequestId={id}
-      complaintWorkflow={complaintDetails.workflow}
-      rating={complaintDetails.audit?.rating}
-      complaintDetails={complaintDetails}
-      ComplainMaxIdleTime={ComplainMaxIdleTime}
+    <TimelineWrapper
+      businessId={id}
+      isWorkFlowLoading={isWorkFlowLoading}
+      workflowData={workflowData}
+      labelPrefix="WF_PGR_"
+      currentStateChildren={currentStateChildren}
+      // QA #19 part 1 (sheet v4): the citizen must not see which employee
+      // handled the complaint — employee name + contact lines are omitted.
+      hideEmployeeContacts
     />
   );
 }
@@ -162,6 +267,9 @@ const ComplaintDetailsPage = () => {
     tenantId,
     id,
   });
+  // CCSD-2123: schema x-order for the Additional Details card (complainantName
+  // is pinned first inside buildExtendedAttributeRows regardless).
+  const extAttrOrder = useExtendedAttributeOrder(complaintDetails?.service?.extendedAttributes);
 
   // Complaint classification hierarchy (configurable N levels). Absent on
   // un-migrated tenants -> buildComplaintPath returns null and the legacy flat
@@ -169,8 +277,14 @@ const ComplaintDetailsPage = () => {
   // Single RAINMAKER-PGR.ComplaintHierarchy adjacency list (interior nodes +
   // leaf complaint types). buildComplaintPath finds the leaf (code===serviceCode)
   // and walks parentCode up through these same rows.
+  // The hierarchy (nodes + their names) is onboarded at the COMPLAINT'S tenant
+  // (e.g. mz.igsae) — not the citizen's home city, which on multi-authority envs
+  // is the state root with no such rows. Read it where it lives, else the
+  // Type/Sub-Type rows render raw COMPLAINT_HIERARCHY.* keys with no name
+  // fallback (nodes absent at the home tenant too).
+  const hierarchyTenant = complaintDetails?.service?.tenantId || tenantId;
   const { data: hier } = Digit.Hooks.useCustomMDMS(
-    tenantId,
+    hierarchyTenant,
     "RAINMAKER-PGR",
     [{ name: "ComplaintHierarchyDefinition" }, { name: "ComplaintHierarchy" }],
     {
@@ -178,18 +292,38 @@ const ComplaintDetailsPage = () => {
       select: (raw) => {
         const defs = (raw?.["RAINMAKER-PGR"]?.ComplaintHierarchyDefinition || []).filter((d) => d?.active !== false);
         const allRows = raw?.["RAINMAKER-PGR"]?.ComplaintHierarchy || [];
-        const def = defs.find((d) => allRows.some((n) => n?.hierarchyType === d?.hierarchyType)) || defs[0] || null;
-        const nodes = def ? allRows.filter((n) => n?.hierarchyType === def.hierarchyType) : [];
-        return { def, nodes };
+        return { defs, allRows };
       },
     },
-    { schemaCode: "PGR_COMPLAINT_HIERARCHY_DETAILS" }
+    // NOTE: this 5th arg switches useCustomMDMS into its v2 branch, which
+    // IGNORES the positional tenantId — the tenant must ride inside this
+    // object (mdmsv2.tenantId) or the fetch silently uses the logged-in
+    // tenant (the citizen's home/state root) no matter what we pass above.
+    { schemaCode: "PGR_COMPLAINT_HIERARCHY_DETAILS", tenantId: hierarchyTenant }
   );
+
+  // Pick the hierarchy DEFINITION that owns this complaint's leaf node — a
+  // tenant can hold several hierarchies (e.g. the state root aggregates every
+  // authority's), and "first def with any rows" mis-picked for complaints of
+  // the other authority, collapsing the view to the legacy flat rows.
+  const { hierDef, hierNodes } = React.useMemo(() => {
+    const defs = hier?.defs || [];
+    const allRows = hier?.allRows || [];
+    const sc = complaintDetails?.service?.serviceCode;
+    const leaf = sc ? allRows.find((n) => n?.code === sc) : null;
+    const def =
+      (leaf && defs.find((d) => d?.hierarchyType === leaf?.hierarchyType)) ||
+      defs.find((d) => allRows.some((n) => n?.hierarchyType === d?.hierarchyType)) ||
+      defs[0] ||
+      null;
+    const nodes = def ? allRows.filter((n) => n?.hierarchyType === def.hierarchyType) : [];
+    return { hierDef: def, hierNodes: nodes };
+  }, [hier, complaintDetails?.service?.serviceCode]);
 
   const classification = buildComplaintPath({
     serviceCode: complaintDetails?.service?.serviceCode,
-    def: hier?.def,
-    nodes: hier?.nodes,
+    def: hierDef,
+    nodes: hierNodes,
     t,
   });
 
@@ -207,11 +341,13 @@ const ComplaintDetailsPage = () => {
 
   const geoLocation = complaintDetails?.service?.address?.geoLocation;
   const address = complaintDetails?.service?.address;
+  // QA #31/#25: show ONLY what the complainant typed — no boundary code, no
+  // tenant/authority name (those rendered as raw identifiers like
+  // "MZ_IGE_ADMIN_hungaro" or appended "…, IGSAE").
   const displayAddress = [
     address?.buildingName,
     address?.street,
     address?.landmark,
-    address?.locality?.name || address?.locality?.code,
     address?.pincode,
   ]
     .filter(Boolean)
@@ -342,6 +478,33 @@ const ComplaintDetailsPage = () => {
                       value={renderRowValue(complaintDetails.details[flag], t)}
                     />
                   ))}
+                {/* One labelled row per administrative level (County / Sub-
+                    County / Ward), root → leaf — employee-page parity
+                    (CCRS#927). Labels follow the create-cascade convention
+                    (t(`${hierarchyType}_${TYPE}`)) with a humanized fallback;
+                    values are t(code) with a humanized-code fallback, so
+                    neither ever renders a raw key or a bare numeric code. */}
+                {(complaintDetails.boundaryAncestors || []).map((b) => {
+                  const levelKey = Digit.Utils.locale.getTransformedLocale(
+                    `${b.hierarchyType || "ADMIN"}_${b.boundaryType || ""}`
+                  );
+                  const humanizedType = String(b.boundaryType || "")
+                    .replace(/[_-]+/g, " ")
+                    .trim()
+                    .replace(/(^|\s)\S/g, (c) => c.toUpperCase());
+                  const label = t(levelKey) !== levelKey ? t(levelKey) : humanizedType;
+                  const humanizedCode = String(b.code || "")
+                    .replace(/^(?:[A-Z0-9]+_)+(?=[^A-Z])/, "")
+                    .replace(/[_-]+/g, " ")
+                    .replace(/\b\w/g, (c) => c.toUpperCase());
+                  return (
+                    <DetailRow
+                      key={`boundary-${b.boundaryType}-${b.code}`}
+                      label={label}
+                      value={localizedOrFallback(t, b.code, humanizedCode, b.name)}
+                    />
+                  );
+                })}
               </div>
               {complaintDetails?.workflow?.verificationDocuments?.length > 0 ? (
                 <div style={{ marginTop: "12px" }}>
@@ -353,7 +516,31 @@ const ComplaintDetailsPage = () => {
               ) : null}
             </Card>
 
-            {Number.isFinite(geoLocation?.latitude) && Number.isFinite(geoLocation?.longitude) ? (
+            {(() => {
+              // Read-only "Additional Details" — just fetch service.extendedAttributes
+              // and show it; the backend already returns masked ("****") values.
+              const extAttrRows = buildExtendedAttributeRows(complaintDetails?.service?.extendedAttributes, t, extAttrOrder);
+              return extAttrRows.length > 0 ? (
+                <Card style={{ padding: "20px 24px", display: "flex", flexDirection: "column", gap: "12px" }}>
+                  <SectionTitle>{tr("CS_COMPLAINT_DETAILS_ADDITIONAL_DETAILS", "Additional Details")}</SectionTitle>
+                  <div>
+                    {extAttrRows.map((r) => (
+                      <DetailRow key={r.fieldKey} label={r.label} value={r.value} />
+                    ))}
+                  </div>
+                </Card>
+              ) : null;
+            })()}
+
+            {/* Hide the section entirely when there is no REAL pin (issue #26,
+                employee-page parity). A complaint saved without coordinates
+                comes back as latitude/longitude 0 — JDBC getDouble() turns the
+                NULL columns into 0.0 — and Number.isFinite(0) let that sentinel
+                render a header pointing at null island. Exact (0,0) is not a
+                plausible complaint location for any tenant. */}
+            {Number.isFinite(geoLocation?.latitude) &&
+            Number.isFinite(geoLocation?.longitude) &&
+            !(geoLocation.latitude === 0 && geoLocation.longitude === 0) ? (
               <Card style={{ padding: "20px 24px", display: "flex", flexDirection: "column", gap: "12px" }}>
                 <SectionTitle>{t("CS_COMPLAINT_LOCATION")}</SectionTitle>
                 <ComplaintLocationMap

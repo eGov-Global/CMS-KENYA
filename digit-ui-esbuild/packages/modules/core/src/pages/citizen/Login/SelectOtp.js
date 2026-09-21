@@ -131,7 +131,12 @@ const SelectOtp = ({
   userType = "citizen",
   canSubmit,
 }) => {
-  const [timeLeft, setTimeLeft] = useState(30);
+  const RESEND_COOLDOWN_SECS = 120;
+  // m:ss — "2:00", "1:25", "0:07". With a 2-minute cooldown a raw seconds
+  // count ("120 segundos") reads poorly; a clock face needs no unit word,
+  // which also spares a per-locale "seconds" suffix.
+  const formatTimeLeft = (secs) => `${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, "0")}`;
+  const [timeLeft, setTimeLeft] = useState(RESEND_COOLDOWN_SECS);
 
   useInterval(
     () => {
@@ -142,7 +147,7 @@ const SelectOtp = ({
 
   const handleResendOtp = () => {
     onResend();
-    setTimeLeft(30);
+    setTimeLeft(RESEND_COOLDOWN_SECS);
   };
 
   const tr = (key, fallback) => {
@@ -158,7 +163,7 @@ const SelectOtp = ({
         <OtpBoxes value={otp} onChange={onOtpChange} hasError={!error} />
         {timeLeft > 0 ? (
           <p style={{ marginTop: "12px", fontSize: "0.875rem", color: "var(--color-text-secondary, #6B7280)" }}>
-            {`${t("CS_RESEND_ANOTHER_OTP")} ${timeLeft} ${t("CS_RESEND_SECONDS")}`}
+            {`${t("CS_RESEND_ANOTHER_OTP")} ${formatTimeLeft(timeLeft)}`}
           </p>
         ) : (
           <p
@@ -183,11 +188,22 @@ const SelectOtp = ({
     );
   }
 
-  const headerText = config?.texts?.header
-    ? tr(config.texts.header, "Verify your number")
-    : "Verify your number";
-  const cardText = config?.texts?.cardText
-    ? tr(config.texts.cardText, "Enter the 6-digit code we just sent.")
+  // QA #2: config.texts.* arrive ALREADY translated (see SelectMobileNumber) —
+  // and cardText is even composed with the phone number upstream. Consume
+  // directly instead of re-translating into the English fallback; raw
+  // ALL_CAPS keys (unseeded tenant/locale) still fall back to English.
+  const looksLikeRawKey = (s) => typeof s === "string" && /^[A-Z0-9_]{3,}$/.test(s.trim());
+  const pick = (v, fb) => (v && !looksLikeRawKey(v) ? v : fb);
+  const headerText = pick(config?.texts?.header, "Verify your number");
+  // cardText is composed upstream as "<translated> <mobileNumber>", so an
+  // unseeded key yields "CS_LOGIN_OTP_TEXT 2588…" — whole-string matching
+  // misses it. Test only the FIRST token; on a raw key fall back to the
+  // English default (the pre-existing tr() behaviour).
+  const cardTextValue = config?.texts?.cardText;
+  const cardText = cardTextValue
+    ? looksLikeRawKey(String(cardTextValue).trim().split(/\s+/)[0])
+      ? "Enter the 6-digit code we just sent."
+      : cardTextValue
     : null;
 
   const isReady = otp?.length === OTP_LENGTH && canSubmit;
@@ -252,7 +268,7 @@ const SelectOtp = ({
             </p>
           ) : null}
           <V2Button type="submit" disabled={!isReady} width="full">
-            {tr(config?.texts?.nextText || "CS_COMMONS_NEXT", "Continue")}
+            {pick(config?.texts?.nextText, null) || tr("CS_COMMONS_NEXT", "Continue")}
           </V2Button>
         </form>
 
@@ -266,8 +282,7 @@ const SelectOtp = ({
         >
           {timeLeft > 0 ? (
             <span>
-              {tr("CS_RESEND_ANOTHER_OTP", "Resend OTP in")} {timeLeft}
-              {t("CS_RESEND_SECONDS") === "CS_RESEND_SECONDS" ? "s" : ` ${t("CS_RESEND_SECONDS")}`}
+              {tr("CS_RESEND_ANOTHER_OTP", "Resend OTP in")} {formatTimeLeft(timeLeft)}
             </span>
           ) : (
             <button

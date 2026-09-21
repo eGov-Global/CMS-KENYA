@@ -262,6 +262,120 @@ function flatten(obj, prefix, out) {
 // the MDMS record cleanly falls back to defaults on next load.
 const V2_BRIDGE_STYLE_ID = "mdms-theme-v2-bridge";
 
+// The PGR public landing page (products/pgr/.../Landing/tokens.ts) has the same
+// problem and the same fix. Its palette lives in `--pgrl-*` tokens that
+// buildTokenStyle emits inline on the landing root — itself a `.v2-scope`
+// element — as `--pgrl-x: var(--pgrl-x-brand, <shipped default>)`. Defining the
+// `-brand` half in this rule is therefore the documented tenant hook: the record
+// retints the landing page, and an absent/incomplete record falls straight back
+// to the shipped defaults.
+//
+// Each entry is [brand var, ordered source `--color-*` vars]; the first source
+// present in `vars` wins, so a v1/v2/v3 record all resolve through the same map
+// (`vars` already encodes record precedence). Deliberately NOT mapped:
+//   --pgrl-on-accent  contrast-critical pairing with the accent surface
+//   --pgrl-type-*     a 4-way categorical scale, not a brand role
+//   --pgrl-radius     a CSS length, not a color
+const PGRL_BRIDGE = [
+  ["--pgrl-primary-brand", ["--color-primary-1", "--color-primary-dark"]],
+  ["--pgrl-ring-brand", ["--color-primary-1", "--color-primary-dark"]],
+  // Hero / footer / final-CTA band: the darkest brand surface the record has.
+  ["--pgrl-deep-brand", ["--color-sidebar-selected-bg", "--color-primary-1", "--color-primary-dark"]],
+  // Accent is a FILLED surface carrying dark ink (CTA buttons, the pilot notice,
+  // section rules, the active-nav bar), so it resolves from the accent-brand
+  // *tint* role first — `primary-2` itself is the button fill that pairs with
+  // white text, and using it here would leave the CTA label at ~4.3:1.
+  ["--pgrl-accent-brand", ["--color-primary-2-bg", "--color-primary-2", "--color-primary-main"]],
+  ["--pgrl-on-primary-brand", ["--color-button-primary-text"]],
+  ["--pgrl-ink-brand", ["--color-text-primary"]],
+  ["--pgrl-ink-soft-brand", ["--color-text-secondary"]],
+  ["--pgrl-surface-brand", ["--color-page-bg"]],
+  ["--pgrl-page-brand", ["--color-page-secondary-bg", "--color-grey-light"]],
+  ["--pgrl-line-brand", ["--color-card-border", "--color-border"]],
+];
+
+// The accent's hover state can't be left to the shipped default: a record that
+// moves the accent off yellow would hover into the default darker yellow. Prefer
+// the record's light-surface hover role, else darken the resolved accent by 7
+// lightness points — the relationship the shipped pair already encodes
+// (accent 48 95% 52% -> accentHover 45 92% 45%).
+const PGRL_ACCENT_HOVER_SOURCES = ["--color-button-secondary-bg-hover"];
+
+function darkenTriplet(triplet, points) {
+  const m = /^(\d+) (\d+)% (\d+)%$/.exec(triplet || "");
+  if (!m) return null;
+  return `${m[1]} ${m[2]}% ${Math.max(0, Number(m[3]) - points)}%`;
+}
+
+/** sRGB channels 0..1, or null if `hex` isn't a 3/6-digit hex colour. */
+function hexChannels(hex) {
+  if (typeof hex !== "string") return null;
+  const m = /^#?([0-9a-f]{3}|[0-9a-f]{6})$/i.exec(hex.trim());
+  if (!m) return null;
+  const h6 = m[1].length === 3 ? [...m[1]].map((c) => c + c).join("") : m[1];
+  return [
+    parseInt(h6.slice(0, 2), 16) / 255,
+    parseInt(h6.slice(2, 4), 16) / 255,
+    parseInt(h6.slice(4, 6), 16) / 255,
+  ];
+}
+
+/**
+ * Which of black/white reads on `hex`, by WCAG relative luminance.
+ *
+ * Needed because the vendored `:root` hard-defines
+ * `--color-button-primary-text: #FFFFFF`. A CSS-level
+ * `var(--color-button-primary-text, <something sensible>)` can therefore never
+ * reach its fallback — the token is always "set", just not by the tenant — so
+ * any record that omits it silently gets white, which is unreadable the moment
+ * the brand surface is light (kenya-yellow is ~1.5:1). Deciding it here, from
+ * the button background the theme actually resolved to, keeps every record
+ * legible without asking each tenant to state the pairing.
+ */
+const WHITE = "#FFFFFF";
+const NEAR_BLACK = "#0B0C0C";
+/** WCAG 2.2 AA for normal-sized text. Button labels here are 14px. */
+const AA_NORMAL_TEXT = 4.5;
+
+function relativeLuminance(hex) {
+  const ch = hexChannels(hex);
+  if (!ch) return null;
+  const lin = ch.map((c) => (c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4)));
+  return 0.2126 * lin[0] + 0.7152 * lin[1] + 0.0722 * lin[2];
+}
+
+function contrastWithLuminance(l1, l2) {
+  const [hi, lo] = l1 >= l2 ? [l1, l2] : [l2, l1];
+  return (hi + 0.05) / (lo + 0.05);
+}
+
+/**
+ * White or near-black, whichever stays legible across EVERY surface the label
+ * is painted on — default, hover and pressed, not just the resting state. A
+ * foreground chosen against one state can fail on another, which is how a
+ * button ends up readable until you hover it.
+ *
+ * Judged on the WORST case of each candidate: take AA (4.5:1, these labels are
+ * 14px) if a candidate clears it on all states, otherwise the one whose weakest
+ * state is strongest. Not every brand admits a compliant pair — a mid-tone blue
+ * has no perfect answer — and in that case the honest choice is the better of
+ * the two rather than a token that looks compliant on the state you measured.
+ */
+function readableForegroundAcross(hexes) {
+  const lums = hexes.map(relativeLuminance).filter((l) => l !== null);
+  if (!lums.length) return null;
+  const worst = (fgLum) => Math.min(...lums.map((l) => contrastWithLuminance(fgLum, l)));
+  // Score the colours actually returned. NEAR_BLACK is #0B0C0C, not #000000,
+  // and scoring it as pure black overstates its contrast by ~7.2% — enough to
+  // wave through a pair that misses AA, e.g. on #777777 it reports 4.69:1 while
+  // the rendered ratio is 4.37:1.
+  const white = worst(relativeLuminance(WHITE));
+  const black = worst(relativeLuminance(NEAR_BLACK));
+  if (white >= AA_NORMAL_TEXT) return WHITE;
+  if (black >= AA_NORMAL_TEXT) return NEAR_BLACK;
+  return white >= black ? WHITE : NEAR_BLACK;
+}
+
 function hexToHslTriplet(hex) {
   if (typeof hex !== "string") return null;
   const m = /^#?([0-9a-f]{3}|[0-9a-f]{6})$/i.exec(hex.trim());
@@ -288,7 +402,15 @@ function hexToHslTriplet(hex) {
 
 // vars already encodes record precedence (v3 > v2 > v1), so reading from it
 // keeps the bridge consistent with whatever won for the legacy surfaces.
-function injectV2Bridge(vars) {
+//
+// `landing` gates only the `--pgrl-*` half. index.js applies default.json
+// synchronously at boot so the app never flashes unthemed, and that record is
+// DIGIT orange — bridging it would repaint the landing page orange on every
+// load and, worse, keep it orange on any tenant whose MDMS ThemeConfig is
+// absent or fails to fetch. The landing ships its own complete government
+// palette, so the bundled default must lose to it; only a real tenant record
+// (StoreService.digitInitData -> window.Digit.applyTheme) retints the page.
+function injectV2Bridge(vars, landing) {
   if (typeof document.createElement !== "function" || !document.head) return 0;
   const primaryHex =
     vars["--color-button-primary-bg-default"] || vars["--color-primary-main"];
@@ -299,6 +421,24 @@ function injectV2Bridge(vars) {
   if (primary) decls.push(`--v2-primary: ${primary}`, `--v2-ring: ${primary}`);
   const fg = hexToHslTriplet(fgHex);
   if (fg) decls.push(`--v2-primary-foreground: ${fg}`);
+
+  const resolve = (sources) => {
+    const src = sources.find((v) => typeof vars[v] === "string");
+    return src ? hexToHslTriplet(vars[src]) : null;
+  };
+
+  let accent = null;
+  for (const [name, sources] of landing ? PGRL_BRIDGE : []) {
+    const hsl = resolve(sources);
+    if (!hsl) continue;
+    if (name === "--pgrl-accent-brand") accent = hsl;
+    decls.push(`${name}: ${hsl}`);
+  }
+  if (accent) {
+    const hover = resolve(PGRL_ACCENT_HOVER_SOURCES) || darkenTriplet(accent, 7);
+    if (hover) decls.push(`--pgrl-accent-hover-brand: ${hover}`);
+  }
+
   if (decls.length === 0) return 0;
 
   let el = document.getElementById(V2_BRIDGE_STYLE_ID);
@@ -311,7 +451,7 @@ function injectV2Bridge(vars) {
   return decls.length;
 }
 
-function applyTheme(config) {
+function applyTheme(config, options) {
   if (!config || typeof config !== "object" || Array.isArray(config)) {
     console.warn("[theme] config must be an object, skipping apply");
     return;
@@ -390,10 +530,70 @@ function applyTheme(config) {
     }
   }
 
+  // Pass 5: semantic tokens the vendored :root also defines, which means a CSS
+  // fallback chain can never supply them — the var is always set, just not by
+  // the tenant. Any record that leaves these out inherits a generic DIGIT
+  // default that has nothing to do with its palette. Applies to every record
+  // shape, v3 included: `primary-1` marks a record v3 but says nothing about
+  // whether these particular keys were filled in, and partial v3 records are
+  // the norm. Bomet states bg-default and bg-hover but not bg-pressed, so
+  // pressing a button flashed the vendored orange.
+  //
+  // Order matters: fill the button's BACKGROUND states first, then choose a
+  // foreground against what will actually be painted. Deriving the foreground
+  // from a palette colour the CSS never uses is how a mismatched pair happens.
+  const brandSurface =
+    vars["--color-button-primary-bg-default"] ||
+    vars["--color-primary-2"] ||
+    vars["--color-primary-main"];
+  if (brandSurface) {
+    // Fall back to the brand surface itself, NOT to primary-1. In the v3
+    // taxonomy primary-1 is a second dominant brand colour, not a darker shade
+    // of the button: on a yellow-button/green-primary-1 palette it would make
+    // hover green, and if that palette also states green button text the label
+    // hits 1.00:1 and vanishes. A flat hover keeps the button's hue and keeps
+    // whatever foreground was chosen for the resting state valid. A stated
+    // hover still wins, so a record like Bomet's keeps its real one and lets
+    // pressed derive from that.
+    const deeper = vars["--color-button-primary-bg-hover"] || brandSurface;
+    const states = {
+      "--color-button-primary-bg-default": brandSurface,
+      "--color-button-primary-bg-hover": deeper,
+      "--color-button-primary-bg-pressed": deeper,
+    };
+    for (const [name, value] of Object.entries(states)) {
+      if (!(name in vars)) vars[name] = value;
+    }
+    if (!("--color-button-primary-text" in vars)) {
+      const fg = readableForegroundAcross([
+        vars["--color-button-primary-bg-default"],
+        vars["--color-button-primary-bg-hover"],
+        vars["--color-button-primary-bg-pressed"],
+      ]);
+      if (fg) vars["--color-button-primary-text"] = fg;
+    }
+  }
+
   for (const name of Object.keys(vars)) {
     root.style.setProperty(name, vars[name]);
   }
-  const bridged = injectV2Bridge(vars);
+
+  // Brand assets are files, not tokens, so no amount of colour maths makes a
+  // dark-on-light lockup readable once a tenant paints its header navy. Publish
+  // the header's tone so the chrome can reach for the right file — the same
+  // luminance the foreground backfill above is judged on, so the two can never
+  // disagree about whether a surface is dark.
+  const headerLum = relativeLuminance(vars["--color-header-bg"]);
+  if (headerLum === null) {
+    delete root.dataset.headerTone;
+  } else {
+    root.dataset.headerTone =
+      contrastWithLuminance(headerLum, relativeLuminance(WHITE)) >= AA_NORMAL_TEXT
+        ? "dark"
+        : "light";
+  }
+
+  const bridged = injectV2Bridge(vars, (options || {}).landing !== false);
   console.log(
     `[theme] applied ${Object.keys(vars).length} variables` +
       (bridged ? ` (+${bridged} v2-scope tokens)` : ""),

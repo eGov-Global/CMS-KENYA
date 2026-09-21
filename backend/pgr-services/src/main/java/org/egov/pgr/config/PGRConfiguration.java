@@ -127,12 +127,39 @@ public class PGRConfiguration {
     @Value("${egov.mdms.search.endpoint}")
     private String mdmsEndPoint;
 
+    //Accesscontrol — Tier-2 PDP condition lookup, see org.egov.pgr.policy
+    @Value("${egov.accesscontrol.host}")
+    private String accessControlHost;
+
+    @Value("${egov.accesscontrol.actions.mdms.get.path}")
+    private String accessControlActionsMdmsGetPath;
+
+    // Explicit rollout gate for org.egov.pgr.policy.AccessPolicyRegistry#getCondition: false (the
+    // default) preserves today's backward-compatible behavior — a missing/invisible
+    // ACCESSCONTROL-ACTIONS-TEST entry for an action allows, same as before ABAC existed. A tenant
+    // only gets the ABAC-strict "missing action fails closed" behavior once it explicitly opts in
+    // here, after its policies are fully authored — never as a silent default that could brick an
+    // existing deployment's PGR search on the next redeploy.
+    @Value("${pgr.abac.strict-mode:false}")
+    private boolean abacStrictMode;
+
     //HRMS
     @Value("${egov.hrms.host}")
     private String hrmsHost;
 
     @Value("${egov.hrms.search.endpoint}")
     private String hrmsEndPoint;
+
+    // Display-only employee working-context classification. Deployments can map their own
+    // functional role codes to the three product-level contexts without a service code change.
+    @Value("#{'${pgr.employee.context.resolver-role-codes:PGR_LME,GRO,DGRO}'.split(',')}")
+    private List<String> employeeContextResolverRoleCodes;
+
+    @Value("#{'${pgr.employee.context.citizen-role-codes:CITIZEN}'.split(',')}")
+    private List<String> employeeContextCitizenRoleCodes;
+
+    @Value("#{'${pgr.employee.context.admin-role-codes:PGR_ADMIN,SUPERUSER,MDMS_ADMIN,HRMS_ADMIN,STADMIN,SUPERVISOR,PGR_SUPERVISOR}'.split(',')}")
+    private List<String> employeeContextAdminRoleCodes;
 
     //Notification
     @Value("${egov.user.event.notification.enabled}")
@@ -192,6 +219,28 @@ public class PGRConfiguration {
     @Value("${employee.allowed.search.params}")
     private String allowedEmployeeSearchParameters;
 
+    // Department scope — opt-in: an employee is restricted to their own HRMS department(s) in
+    // complaint search/count/plainSearch ONLY if they hold one of these roles. Empty (default) =
+    // no employee role is department-scoped, preserving pre-existing unrestricted search behavior
+    // on upgrade. See EmployeeDepartmentScopeService.
+    @Value("${pgr.department.scope.roles:}")
+    private List<String> departmentScopeRoles;
+
+    // Jurisdiction scope — opt-in: an employee is restricted to complaints filed in their own HRMS
+    // jurisdiction (boundary) in complaint search/count/plainSearch ONLY if they hold one of these
+    // roles. Empty (default) = no employee role is jurisdiction-scoped, preserving pre-existing
+    // unrestricted search behavior on upgrade. See EmployeeJurisdictionScopeService.
+    @Value("${pgr.jurisdiction.scope.roles:}")
+    private List<String> jurisdictionScopeRoles;
+
+    // TTL for BoundaryUtil's boundary-subtree cache. A jurisdiction-scoped employee's search
+    // expands their HRMS boundary to its descendants; the hierarchy changes rarely, so this is
+    // longer than the MDMS master TTL. Only non-empty subtrees are cached, and a stale entry is
+    // served in preference to an empty one, so a boundary-service blip never silently narrows
+    // an employee's scope. See BoundaryUtil#expandToDescendants.
+    @Value("${pgr.jurisdiction.subtree.cache.ttl.ms:300000}")
+    private Long jurisdictionSubtreeCacheTtlMs;
+
     //Sources
     @Value("${allowed.source}")
     private String allowedSource;
@@ -246,6 +295,9 @@ public class PGRConfiguration {
 
     @Value("${egov.boundary.search.url}")
     private String boundarySearchEndpoint;
+
+    @Value("${egov.boundary.relationship.search.url}")
+    private String boundaryRelationshipSearchEndpoint;
 
     @Value("${pgr.kafka.create.inbox.topic}")
     private String inboxCreateTopic;
@@ -325,6 +377,9 @@ public class PGRConfiguration {
 
     @Value("${pgr.escalation.kafka.topic}")
     private String escalationKafkaTopic;
+
+    @Value("${pgr.escalation.states:PENDINGATLME,PENDINGFORASSIGNMENT}")
+    private String escalationStates;
 
     // Dashboard
     @Value("${pgr.dashboard.refresh.enabled:true}")

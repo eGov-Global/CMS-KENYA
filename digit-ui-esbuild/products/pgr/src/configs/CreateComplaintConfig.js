@@ -1,4 +1,3 @@
-import { isPostalCodeValid } from "../utils/postalCode";
 
 export const CreateComplaintConfig = {
   get tenantId() { return Digit.ULBService.getCurrentTenantId(); },
@@ -9,6 +8,24 @@ export const CreateComplaintConfig = {
         {
           head: "ES_CREATECOMPLAINT_PROVIDE_COMPLAINANT_DETAILS",
           body: [
+            {
+              // QA #26 (product call): channel-of-receipt CHIP selector just
+              // above the mobile number — label in the LEFT column, chips in
+              // the control column (inline row, same as the fields below).
+              // The selected CODE becomes service.source at submit (email /
+              // inperson / letter / linhaverde — kept in pgr-services'
+              // allowed.source list). "In Person" is first and pre-selected.
+              inline: true,
+              isMandatory: false,
+              // Always carries a value (defaults to inperson) — suppress the
+              // generic "(Optional)" label suffix.
+              noOptionalSuffix: true,
+              type: "component",
+              component: "PGRChannelChipsComponent",
+              key: "ReceivedChannel",
+              label: "ES_CREATECOMPLAINT_RECEIVED_CHANNEL",
+              populators: { name: "ReceivedChannel" },
+            },
             {
               inline: true,
               label: "COMPLAINTS_COMPLAINANT_CONTACT_NUMBER",
@@ -90,6 +107,22 @@ export const CreateComplaintConfig = {
                     return /^(?!.*[ _-]{2})(?!^[\s_-])(?!.*[\s_-]$)(?=^[\p{L}][\p{L}\p{N} _\-\(\)]{0,29}$)^.*$/u;
                   },
                 }
+              },
+            },
+            {
+              // Complainant address — citizen-flow parity ("Your details" card).
+              // Optional; travels as extendedAttributes.complainantAddress so it
+              // shows on the employee details page and never round-trips the
+              // user service.
+              inline: true,
+              label: "ES_CREATECOMPLAINT_ADDRESS",
+              isMandatory: false,
+              type: "text",
+              key: "ComplainantAddress",
+              disable: false,
+              populators: {
+                name: "ComplainantAddress",
+                validation: { maxLength: 300 },
               },
             },
 
@@ -212,59 +245,6 @@ export const CreateComplaintConfig = {
                 name: "GeoLocationsPoint",
               },
             },
-            {
-              inline: true,
-              label: "CS_COMPLAINT_POSTALCODE__DETAILS",
-              // "text", not "number": the configured postalCodePattern may be
-              // alnum or dash-suffixed (UK / US 5+4 examples in
-              // _example.yml), and a number input physically can't hold those
-              // shapes — the shared validator would then reject every value
-              // the widget allows, making the field unfillable. The native
-              // maxLength cap (TextInput passes populators.validation.maxlength
-              // through) still applies to text inputs.
-              type: "text",
-              disable: false,
-              populators: {
-                name: "postalCode",
-                // Postal code is optional in Nairobi — the boundary picker
-                // already pins the complaint to a Ward, and many citizens
-                // don't know the postal code (which is the post-office area
-                // code, not a residential identifier in KE). We still
-                // validate format if anything is entered.
-                required: false,
-                validation: {
-                  required: false,
-                  // No configured postal pattern needs more than this many
-                  // digits — caps unbounded typing client-side (RenderFormFields
-                  // reads populators.validation.maxlength, lowercase) instead of
-                  // relying solely on the pattern check, which only surfaces
-                  // its error on submit.
-                  maxlength: 16,
-                  // Postal-code shape is per-country — enforced through the
-                  // shared isPostalCodeValid() (utils/postalCode.js), the same
-                  // check createComplaintForm.js runs at submit, so this field
-                  // rule can't drift from it. A react-hook-form `validate`
-                  // rule, NOT `pattern`: FieldV1 copies validation.pattern
-                  // onto the native input's pattern attribute, and on a text
-                  // input the browser then blocks submit with its own
-                  // unlocalized "Please match the requested format" bubble
-                  // (made worse by React stringifying a RegExp value with its
-                  // slashes, so the native check failed for EVERY value). A
-                  // validate function is consumed by react-hook-form only and
-                  // never reaches the DOM.
-                  validate: (value) => isPostalCodeValid(value),
-                },
-                // Static fallback only: createComplaintForm.js overrides this
-                // per render with the dynamic, length-aware message from
-                // getPostalCodeErrorMessage(t) ("Please enter a valid 4-digit
-                // postal code" on a 4-digit tenant — the same text the
-                // citizen v2 flow shows). This generic, still-localized key
-                // remains for any consumer that renders the raw config,
-                // rather than the old fixed "…5 digit…" key, which lied
-                // about the length on any non-5-digit tenant (CCRS#722).
-                error: "CS_COMPLAINT_POSTALCODE_INVALID_ERROR_GENERIC",
-              },
-            },
 
             // Boundary cascade — replaces the old City + Locality pair.
             // Renders N dropdowns derived from `boundaryHierarchyOrder`
@@ -315,12 +295,15 @@ export const CreateComplaintConfig = {
                 maxLength: 1000,
                 validation: {
                   required: true,
-                  // CCSD-1980: reject numbers-only / whitespace-only descriptions
-                  // (e.g. "000000000000") — require at least 3 letters (any
-                  // language). Non-empty is implied.
-                  pattern: /^(?=(?:[\s\S]*?\p{L}){3})[\s\S]+$/u,
+                  // CCSD-1956 + Moz QA: 20-1000 chars AND at least 3 letters, so
+                  // "00000000000000000000" (20 digits) and all-whitespace are
+                  // both rejected. The single `error` message below is worded to
+                  // cover both the length and the words requirement so a short or
+                  // numeric-only entry never reads as a bare "required" error.
+                  minLength: 20,
+                  pattern: /^(?=[\s\S]{20,1000}$)(?=(?:[\s\S]*?\p{L}){3})[\s\S]*$/u,
                 },
-                error: "CORE_COMMON_REQUIRED_ERRMSG",
+                error: "CS_DESC_MIN_CHARS",
               },
             },
           ],

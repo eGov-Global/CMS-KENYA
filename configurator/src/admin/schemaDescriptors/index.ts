@@ -10,6 +10,13 @@ import { stateInfoDescriptor } from './state-info';
 import { notificationRoutingDescriptor } from './notification-routing';
 import { notificationTemplateDescriptor } from './notification-template';
 import { mapConfigDescriptor } from './map-config';
+import { landingSectionDescriptor } from './landing-section';
+import { landingPageConfigDescriptor } from './landing-page-config';
+import { cityModuleDescriptor } from './city-module';
+import { uiHomePageDescriptor } from './ui-homepage';
+import { securityPolicyDescriptor } from './data-security';
+import { encryptionPolicyDescriptor } from './encryption-policy';
+import { analyticsProviderDescriptor } from './analytics-provider';
 
 /** Map of schema code -> descriptor. Add new entries as we cover more schemas. */
 const DESCRIPTORS: Record<string, SchemaDescriptor> = {
@@ -24,6 +31,13 @@ const DESCRIPTORS: Record<string, SchemaDescriptor> = {
   [notificationRoutingDescriptor.schema]: notificationRoutingDescriptor,
   [notificationTemplateDescriptor.schema]: notificationTemplateDescriptor,
   [mapConfigDescriptor.schema]: mapConfigDescriptor,
+  [landingSectionDescriptor.schema]: landingSectionDescriptor,
+  [landingPageConfigDescriptor.schema]: landingPageConfigDescriptor,
+  [cityModuleDescriptor.schema]: cityModuleDescriptor,
+  [uiHomePageDescriptor.schema]: uiHomePageDescriptor,
+  [securityPolicyDescriptor.schema]: securityPolicyDescriptor,
+  [encryptionPolicyDescriptor.schema]: encryptionPolicyDescriptor,
+  [analyticsProviderDescriptor.schema]: analyticsProviderDescriptor,
 };
 
 export function getDescriptor(schemaCode?: string): SchemaDescriptor | undefined {

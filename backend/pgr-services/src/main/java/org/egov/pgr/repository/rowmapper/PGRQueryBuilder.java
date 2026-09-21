@@ -1,6 +1,7 @@
 package org.egov.pgr.repository.rowmapper;
 
 import org.egov.pgr.config.PGRConfiguration;
+import org.egov.pgr.policy.PgrSearchScope;
 import org.egov.pgr.web.models.RequestSearchCriteria;
 import org.egov.tracer.model.CustomException;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -48,10 +49,37 @@ public class PGRQueryBuilder {
 
 
     public String getPGRSearchQuery(RequestSearchCriteria criteria, List<Object> preparedStmtList) {
-        return getPGRSearchQuery(criteria, preparedStmtList, null);
+        return getPGRSearchQuery(criteria, preparedStmtList, null, PgrSearchScope.UNRESTRICTED);
     }
 
     public String getPGRSearchQuery(RequestSearchCriteria criteria, List<Object> preparedStmtList, Map<String, Long> serviceCodeToSla) {
+        return getPGRSearchQuery(criteria, preparedStmtList, serviceCodeToSla, PgrSearchScope.UNRESTRICTED);
+    }
+
+    /**
+     * @param scope server-derived RBAC restriction (citizen-self / employee-department), or
+     *              {@link PgrSearchScope#UNRESTRICTED} for an explicitly-approved unrestricted
+     *              caller (e.g. plainSearch). NEVER sourced from client-controlled request fields
+     *              — see {@link org.egov.pgr.policy.SearchAccessPolicyService}. Never pass
+     *              {@code null}: see {@link #applyScope}.
+     */
+    public String getPGRSearchQuery(RequestSearchCriteria criteria, List<Object> preparedStmtList, Map<String, Long> serviceCodeToSla, PgrSearchScope scope) {
+
+        StringBuilder builder = buildFilteredQuery(criteria, preparedStmtList, scope);
+
+        addOrderByClause(builder, criteria, preparedStmtList, serviceCodeToSla);
+
+        addLimitAndOffset(builder, criteria, preparedStmtList);
+
+        return builder.toString();
+    }
+
+    /**
+     * The tenant/criteria/scope predicates shared by both the paginated search query and the count
+     * query — deliberately WITHOUT ordering or pagination, since a count must reflect the full
+     * scoped result set regardless of the requested page/limit.
+     */
+    private StringBuilder buildFilteredQuery(RequestSearchCriteria criteria, List<Object> preparedStmtList, PgrSearchScope scope) {
 
         StringBuilder builder = new StringBuilder(QUERY);
 
@@ -107,6 +135,13 @@ public class PGRQueryBuilder {
             addToPreparedStatement(preparedStmtList, ids);
         }
 
+        //department is stored under ser.additionaldetails (JSON), not a column - see PGRService#getDepartmentFromMDMS.
+        if (StringUtils.hasText(criteria.getDepartment())) {
+            addClauseIfRequired(preparedStmtList, builder);
+            builder.append(" ser.additionaldetails->>'department' = ? ");
+            preparedStmtList.add(criteria.getDepartment());
+        }
+
         //When UI tries to fetch "escalated" complaints count.
         if(criteria.getSlaDeltaMaxLimit() != null && criteria.getSlaDeltaMinLimit() == null){
             addClauseIfRequired(preparedStmtList, builder);
@@ -130,11 +165,29 @@ public class PGRQueryBuilder {
             addToPreparedStatement(preparedStmtList, userIds);
         }
 
+        Set<String> createdBy = criteria.getCreatedBy();
+        if (!CollectionUtils.isEmpty(createdBy)) {
+            addClauseIfRequired(preparedStmtList, builder);
+            builder.append(" ser.createdby IN (").append(createQuery(createdBy)).append(")");
+            addToPreparedStatement(preparedStmtList, createdBy);
+        }
+
         Set<String> serviceRequestIds = criteria.getServiceRequestIds();
         if (!CollectionUtils.isEmpty(serviceRequestIds)) {
             addClauseIfRequired(preparedStmtList, builder);
             builder.append(" ser.serviceRequestId IN (").append(createQuery(serviceRequestIds)).append(")");
             addToPreparedStatement(preparedStmtList, serviceRequestIds);
+        }
+
+        // Server-resolved department scope (see EmployeeDepartmentScopeService) — never bound
+        // from the request body. additionaldetails.department holds either the raw MDMS
+        // department code or its resolved name (see PGRService#getDepartmentFromMDMS), so
+        // EmployeeDepartmentScopeService populates departmentCodes with both forms.
+        Set<String> departmentCodes = criteria.getDepartmentCodes();
+        if (!CollectionUtils.isEmpty(departmentCodes)) {
+            addClauseIfRequired(preparedStmtList, builder);
+            builder.append(" ser.additionaldetails->>'department' IN (").append(createQuery(departmentCodes)).append(")");
+            addToPreparedStatement(preparedStmtList, departmentCodes);
         }
 
         // Visibility (reportee-scoped All): team-assigned complaints OR the
@@ -167,6 +220,17 @@ public class PGRQueryBuilder {
             addToPreparedStatement(preparedStmtList, localities);
         }
 
+        // Server-resolved jurisdiction scope (see EmployeeJurisdictionScopeService) — never bound
+        // from the request body. Exact match against ads.locality only; ANDs with the client-bound
+        // `locality` clause above rather than replacing it, so an employee's own explicit locality
+        // filter and their jurisdiction scope simply intersect.
+        Set<String> jurisdictionBoundaryCodes = criteria.getJurisdictionBoundaryCodes();
+        if (!CollectionUtils.isEmpty(jurisdictionBoundaryCodes)) {
+            addClauseIfRequired(preparedStmtList, builder);
+            builder.append(" ads.locality IN (").append(createQuery(jurisdictionBoundaryCodes)).append(")");
+            addToPreparedStatement(preparedStmtList, jurisdictionBoundaryCodes);
+        }
+
         if (criteria.getFromDate() != null) {
             addClauseIfRequired(preparedStmtList, builder);
 
@@ -187,22 +251,99 @@ public class PGRQueryBuilder {
         }
 
 
-        addOrderByClause(builder, criteria, preparedStmtList, serviceCodeToSla);
+        applyScope(scope, builder, preparedStmtList);
 
-        addLimitAndOffset(builder, criteria, preparedStmtList);
+        return builder;
+    }
 
-        return builder.toString();
+    /**
+     * Injects the RBAC scope's WHERE predicates. Mirrors the same axes/pattern as
+     * {@code AnalyticsPlanner.applyScope} in the analytics module (citizen self-scope, employee
+     * department-scope, and — per {@link PgrSearchScope}'s own Javadoc — the tenant axis itself),
+     * plus PGR search's own jurisdiction axis: an exact-match IN-list against the complaint's
+     * address locality, but {@code PgrSearchScope#jurisdictionCodes} itself already carries every
+     * DESCENDANT of each HRMS-assigned boundary (see {@code PolicyDrivenScopeResolver} /
+     * {@code BoundaryHierarchyExpander}), so this exact match still behaves like a hierarchical
+     * cascade for a coarse-grained jurisdiction assignment — the same cascade the analytics
+     * module's {@code AnalyticsPlanner} achieves independently via ancestor-path segment
+     * matching, since both read from the same resolved {@code jurisdictionCodes}.
+     *
+     * <p>{@code scope == null} is fail-closed, not "unrestricted": a missing scope on this path is
+     * a wiring bug (a caller forgot to resolve/pass one), and silently treating that as no
+     * restriction is exactly the RBAC hole this method exists to prevent. An intentionally
+     * unrestricted caller (plainSearch, internal fetch-by-id/update-reconciliation) must pass
+     * {@link PgrSearchScope#UNRESTRICTED} explicitly.
+     */
+    private void applyScope(PgrSearchScope scope, StringBuilder builder, List<Object> preparedStmtList) {
+        if (scope == null)
+            throw new IllegalStateException("PGRQueryBuilder: scope must not be null on a scoped search/count "
+                    + "path — pass PgrSearchScope.UNRESTRICTED explicitly for an approved unrestricted caller.");
+
+        if (scope == PgrSearchScope.UNRESTRICTED)
+            return;
+
+        // The tenant this scope was authorized against (see PolicyDrivenScopeResolver, which
+        // validates the requested tenant against the caller's own tenant/subtree before ever
+        // producing a non-deny scope) — applied here rather than trusted solely from
+        // criteria.getTenantId() above, so an authorization decision always reaches SQL as data,
+        // never just as an unchecked echo of client input.
+        if (scope.tenantId != null) {
+            addClauseIfRequired(preparedStmtList, builder);
+            if (scope.tenantStateLevel) {
+                builder.append(" ser.tenantId LIKE ? ");
+                preparedStmtList.add(scope.tenantId + '%');
+            } else {
+                builder.append(" ser.tenantId = ? ");
+                preparedStmtList.add(scope.tenantId);
+            }
+        }
+
+        if (scope.citizenUuid != null) {
+            addClauseIfRequired(preparedStmtList, builder);
+            builder.append(" ser.accountId = ? ");
+            preparedStmtList.add(scope.citizenUuid);
+        }
+
+        // null vs empty is deliberately NOT collapsed via CollectionUtils.isEmpty here: null means
+        // "axis not restricted" (skip the clause, matching every other axis's null/no-restriction
+        // semantic), but a non-null EMPTY list means "this axis IS restricted and resolved to zero
+        // allowed values" — ScopePolicyEngine.resolve always hands back a non-empty sentinel list
+        // instead of a true empty one for that case today, but this must independently enforce
+        // deny-all (not silently drop the axis and return unrestricted rows) if that contract ever
+        // regresses upstream (#1441 review).
+        if (scope.departmentCodes != null) {
+            addClauseIfRequired(preparedStmtList, builder);
+            if (scope.departmentCodes.isEmpty()) {
+                builder.append(" 1 = 0 ");
+            } else {
+                builder.append(" ser.additionaldetails->>'department' IN (").append(createQuery(scope.departmentCodes)).append(")");
+                addToPreparedStatement(preparedStmtList, scope.departmentCodes);
+            }
+        }
+
+        if (scope.jurisdictionCodes != null) {
+            addClauseIfRequired(preparedStmtList, builder);
+            if (scope.jurisdictionCodes.isEmpty()) {
+                builder.append(" 1 = 0 ");
+            } else {
+                builder.append(" ads.locality IN (").append(createQuery(scope.jurisdictionCodes)).append(")");
+                addToPreparedStatement(preparedStmtList, scope.jurisdictionCodes);
+            }
+        }
     }
 
 
     public String getCountQuery(RequestSearchCriteria criteria, List<Object> preparedStmtList){
-        return getCountQuery(criteria, preparedStmtList, null);
+        return getCountQuery(criteria, preparedStmtList, null, PgrSearchScope.UNRESTRICTED);
     }
 
     public String getCountQuery(RequestSearchCriteria criteria, List<Object> preparedStmtList, Map<String, Long> serviceCodeToSla){
-        String query = getPGRSearchQuery(criteria, preparedStmtList, serviceCodeToSla);
-        String countQuery = COUNT_WRAPPER.replace("{INTERNAL_QUERY}", query);
-        return countQuery;
+        return getCountQuery(criteria, preparedStmtList, serviceCodeToSla, PgrSearchScope.UNRESTRICTED);
+    }
+
+    public String getCountQuery(RequestSearchCriteria criteria, List<Object> preparedStmtList, Map<String, Long> serviceCodeToSla, PgrSearchScope scope){
+        StringBuilder builder = buildFilteredQuery(criteria, preparedStmtList, scope);
+        return COUNT_WRAPPER.replace("{INTERNAL_QUERY}", builder.toString());
     }
 
     private void addOrderByClause(StringBuilder builder, RequestSearchCriteria criteria, List<Object> preparedStmtList, Map<String, Long> serviceCodeToSla){
@@ -221,6 +362,9 @@ public class PGRQueryBuilder {
 
         else if(criteria.getSortBy()== RequestSearchCriteria.SortBy.createdTime)
             builder.append(" ORDER BY ser.createdtime ");
+
+        else if(criteria.getSortBy()== RequestSearchCriteria.SortBy.lastModifiedTime)
+            builder.append(" ORDER BY ser.lastmodifiedtime ");
 
         // SLA-remaining ordering = (SLA budget for this complaint type) − (wall-clock
         // elapsed since creation). Done server-side so the order is consistent across

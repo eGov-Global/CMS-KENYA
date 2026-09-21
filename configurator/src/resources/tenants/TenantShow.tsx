@@ -1,6 +1,7 @@
 import { DigitShow } from '@/admin';
 import { LabelFieldPair, CardLabel, Field } from '@/components/digit/LabelFieldPair';
 import { useRecordContext } from 'ra-core';
+import { useMastersCapability } from '@/hooks/useMastersCapability';
 
 function TenantDetail() {
   const record = useRecordContext();
@@ -22,7 +23,14 @@ function TenantDetail() {
       </LabelFieldPair>
       <LabelFieldPair>
         <CardLabel>Name</CardLabel>
-        <Field>{String(record.name ?? '')}</Field>
+        <Field>
+          {String(record.name ?? '')}
+          {record.isTestingTenant ? (
+            <span className="ml-2 inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800">
+              Testing tenant
+            </span>
+          ) : null}
+        </Field>
       </LabelFieldPair>
       <LabelFieldPair>
         <CardLabel>Description</CardLabel>
@@ -53,8 +61,9 @@ function TenantDetail() {
 }
 
 export function TenantShow() {
+  const { canEditResource } = useMastersCapability();
   return (
-    <DigitShow title="Tenant Details" hasEdit>
+    <DigitShow title="Tenant Details" hasEdit={canEditResource('tenants')}>
       <TenantDetail />
     </DigitShow>
   );

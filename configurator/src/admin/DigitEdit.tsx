@@ -6,6 +6,7 @@ import { DigitCard } from '@/components/digit/DigitCard';
 import { ActionBar } from '@/components/digit/ActionBar';
 import { Button } from '@/components/ui/button';
 import { toast } from '@/hooks/use-toast';
+import { useMastersCapability } from '@/hooks/useMastersCapability';
 import {
   useMutationError,
   MutationErrorBanner,
@@ -41,6 +42,11 @@ export interface DigitEditProps {
   redirect?: 'list' | 'edit' | 'show' | false;
   /** Optional pre-submit transform */
   transform?: TransformData;
+  /** Optional post-success side-effect — runs after update succeeds, before
+   *  the redirect (mirrors DigitCreate.afterCreate). Used e.g. to invalidate
+   *  the localization cache so an edited translation actually propagates.
+   *  Failures are surfaced as a toast; the redirect still fires. */
+  afterUpdate?: (data: RaRecord) => void | Promise<void>;
 }
 
 function DigitEditContent({
@@ -57,6 +63,13 @@ function DigitEditContent({
   const { record, isPending, saving, error, defaultTitle, refetch } =
     useEditContext();
   const navigate = useNavigate();
+  const resource = useResourceContext();
+  const { canEditResource } = useMastersCapability();
+  // UI-level only (not a security boundary) — see
+  // docs/design/masters-configurator-access-policy-design.md §3.3. A role
+  // that can view but not edit this master's schema loses the Save button;
+  // the resource keeps working read-only via the same Edit screen.
+  const canEdit = !resource || canEditResource(resource);
 
   const displayTitle = title || defaultTitle || 'Edit';
 
@@ -130,13 +143,21 @@ function DigitEditContent({
       {/* Form card */}
       <DigitCard className="max-w-none">
         <MutationErrorBanner info={errorInfo} onDismiss={onDismissError} />
+        {!canEdit && (
+          <div className="mb-4 rounded-md border border-border bg-muted/50 px-3 py-2 text-sm text-muted-foreground">
+            Your role has view-only access to this master.
+          </div>
+        )}
         {/* mode="onChange": see matching note in DigitCreate.tsx — without
             it, fieldState.invalid stays unset (no red/error styling) until
             the first submit attempt. */}
         <Form mode="onChange">
-          <div className="space-y-4">
+          {/* fieldset[disabled] natively blocks all interaction with (and keyboard/Enter
+              submission via) every native form control inside it — a view-only form has one
+              blocking input, but hiding the submit button alone doesn't stop that. */}
+          <fieldset disabled={!canEdit} className="space-y-4 border-0 p-0 m-0">
             {children}
-          </div>
+          </fieldset>
 
           <ActionBar>
             <Button
@@ -147,14 +168,16 @@ function DigitEditContent({
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={saving} className="gap-1.5">
-              {saving ? (
-                <RefreshCw className="w-4 h-4 animate-spin" />
-              ) : (
-                <Save className="w-4 h-4" />
-              )}
-              Save
-            </Button>
+            {canEdit && (
+              <Button type="submit" disabled={saving} className="gap-1.5">
+                {saving ? (
+                  <RefreshCw className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Save className="w-4 h-4" />
+                )}
+                Save
+              </Button>
+            )}
           </ActionBar>
         </Form>
       </DigitCard>
@@ -162,7 +185,7 @@ function DigitEditContent({
   );
 }
 
-export function DigitEdit({ title, children, resource, id, redirect = 'list', transform }: DigitEditProps) {
+export function DigitEdit({ title, children, resource, id, redirect = 'list', transform, afterUpdate }: DigitEditProps) {
   const { info, capture, clear } = useMutationError();
   const contextResource = useResourceContext();
   const redirectTo = useRedirect();
@@ -178,13 +201,24 @@ export function DigitEdit({ title, children, resource, id, redirect = 'list', tr
       transform={transform}
       mutationOptions={{
         onError: (err) => capture(err),
-        onSuccess: (data) => {
+        onSuccess: async (data) => {
           clear();
           const label = pickRecordLabel(data);
           toast({
             title: `${prettyResourceSingular(effectiveResource)} updated`,
             description: label !== 'Record' ? label : undefined,
           });
+          if (afterUpdate && data) {
+            try {
+              await afterUpdate(data as RaRecord);
+            } catch (e) {
+              toast({
+                title: 'Post-update step failed',
+                description: e instanceof Error ? e.message : String(e),
+                variant: 'destructive',
+              });
+            }
+          }
           if (redirect && effectiveResource) {
             redirectTo(redirect, effectiveResource, (data as RaRecord | undefined)?.id, data as RaRecord | undefined);
           }
