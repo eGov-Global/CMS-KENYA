@@ -7987,3 +7987,52 @@ body:has(.citizen-form-wrapper) .topbar svg path {
     background-image: none;
   }
 }
+
+/* ===========================================================================
+ * TopBar city picker (multi-city deployments only)
+ *
+ * The picker reuses the shared `Dropdown`, which ships styled for a form on a
+ * white card: a bordered white input with dark text. Dropped into the dark
+ * topbar it read as a thin white box with text invisible against it.
+ *
+ * Restyle it to match the other topbar controls (the language selector and
+ * the greeting): transparent, inherit the bar's text colour, no border or
+ * fixed width. Scoped to .pgr-topbar-v2 so the same component keeps its
+ * normal form styling everywhere else.
+ * ======================================================================== */
+.employee .pgr-topbar-v2 .digit-dropdown-employee-select-wrap,
+.employee .pgr-topbar-v2 .digit-dropdown-select {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  min-width: 0 !important;
+  width: auto !important;
+  padding: 0 !important;
+  margin: 0 !important;
+}
+.employee .pgr-topbar-v2 .digit-dropdown-employee-select-wrap input {
+  background: transparent !important;
+  border: none !important;
+  color: inherit !important;
+  font-size: 0.875rem !important;
+  font-weight: 400 !important;
+  padding: 0 !important;
+  width: auto !important;
+  min-width: 0 !important;
+  cursor: pointer;
+  /* The input is display-only here — the dropdown owns selection. */
+  pointer-events: none;
+  text-overflow: ellipsis;
+  max-width: 12rem;
+}
+/* Caret: vendor fills it #505A5F (dark grey), invisible on navy. */
+.employee .pgr-topbar-v2 .digit-dropdown-select svg path {
+  fill: currentColor !important;
+}
+/* The options list is a light popover, so it keeps vendor colours — but it
+ * must sit above the header and below the profile card's portal (z 10000). */
+.employee .pgr-topbar-v2 .digit-dropdown-options-card,
+.employee .pgr-topbar-v2 [class*="options-card"] {
+  z-index: 9999;
+  color: var(--color-text-primary, #0B0C0C);
+}

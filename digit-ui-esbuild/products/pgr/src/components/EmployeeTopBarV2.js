@@ -148,6 +148,65 @@ const ProfileRow = ({ icon, label, value }) =>
  * action field in overflow-clipping containers, so an absolutely-positioned
  * child never survives — this was the "popup does not show" bug.
  */
+/**
+ * City picker — rendered ONLY when the employee has more than one city to
+ * choose from. A dropdown with a single option is pure noise, which is why
+ * TopBar v2 dropped it for Bomet; a multi-city deployment still needs it.
+ *
+ * Cities are the distinct tenantIds across the logged-in user's roles, which
+ * is exactly how core's ChangeCity derives its own options — so the two agree
+ * on whether there is a choice to offer.
+ *
+ * Switching behaviour is kept identical to ChangeCity's: narrow the session
+ * user's roles to the chosen tenant, set Employee.tenantId, write the user
+ * back, then reload so every tenant-scoped query refetches. Re-stated here
+ * rather than imported because core registers ChangeCity through
+ * initCoreComponents(), which this build never calls — the registry lookup
+ * returns undefined at runtime (verified in-browser), and deep-importing the
+ * subtree'd path would couple products to core's internal layout.
+ */
+const cityOptions = () => {
+  const roles = Digit.SessionStorage.get("citizen.userRequestObject")?.info?.roles || [];
+  const codes = [...new Set(roles.map((r) => r?.tenantId).filter(Boolean))];
+  return codes.map((code) => ({
+    code,
+    value: code,
+    label: `TENANT_TENANTS_${code.split(".").join("_").toUpperCase()}`,
+  }));
+};
+
+const CityPicker = ({ t }) => {
+  const options = cityOptions();
+  const current = Digit.SessionStorage.get("Employee.tenantId");
+  const selected = options.find((o) => o.value === current) || options[0];
+
+  const onSelect = (city) => {
+    if (!city?.value || city.value === current) return;
+    const user = Digit.SessionStorage.get("citizen.userRequestObject");
+    const scoped = user?.info?.roles?.filter((role) => role.tenantId === city.value);
+    if (scoped?.length) {
+      user.info.roles = scoped;
+      user.info.tenantId = city.value;
+      Digit.UserService.setUser(user);
+    }
+    Digit.SessionStorage.set("Employee.tenantId", city.value);
+    window.location.reload();
+  };
+
+  return (
+    <span style={itemStyle}>
+      <Dropdown
+        t={t}
+        option={options}
+        optionKey="label"
+        selected={selected}
+        select={onSelect}
+        freeze={true}
+      />
+    </span>
+  );
+};
+
 const ProfileMenu = ({ t, userDetails, cityDetails, workingContext, userOptions, handleUserDropdownSelection }) => {
   const [open, setOpen] = useState(false);
   const [anchor, setAnchor] = useState(null);
@@ -458,6 +517,7 @@ const EmployeeTopBarV2 = (props) => {
         ),
         loggedin && name && <span style={dividerStyle} />,
         <LiveClock />,
+        cityOptions().length > 1 && <CityPicker t={t} />,
         showLanguageChange && <LanguageSelect />,
         loggedin && (
           <ProfileMenu
