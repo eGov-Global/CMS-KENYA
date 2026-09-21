@@ -1119,12 +1119,21 @@ async function phaseMatomo() {
     }
     // DB creds come from the compose file actually on disk, so an operator who
     // rotated them there stays consistent without another flag.
+    // Read the creds+host the CONTAINER actually has, not the compose source:
+    // the file holds `${MATOMO_DB_PASSWORD:-matomo_local_only}`, so scraping it
+    // yields the un-interpolated placeholder. `docker exec env` gives the
+    // resolved values, and is also correct when the operator rotated them.
     let dbPass = 'matomo_local_only';
-    try { const m = /MARIADB_PASSWORD:\s*(\S+)/.exec(sh('sudo cat /opt/digit/docker-compose.matomo.yml')); if (m) dbPass = m[1]; } catch {}
+    let dbHost = 'digit-matomo-db';
+    try {
+      const env = sh(`sudo docker exec ${MATOMO_CTR} env`);
+      const mp = /^MATOMO_DATABASE_PASSWORD=(.*)$/m.exec(env); if (mp) dbPass = mp[1].trim();
+      const mh = /^MATOMO_DATABASE_HOST=(.*)$/m.exec(env); if (mh) dbHost = mh[1].trim();
+    } catch {}
     const email = CFG.matomoAdminEmail || ('admin@' + U.hostname);
     const siteUrl = CFG.matomoSiteUrl || CFG.base;
     try {
-      await matomoWizard(origin, { host: 'matomo-db', user: 'matomo', pass: dbPass, name: 'matomo' },
+      await matomoWizard(origin, { host: dbHost, user: 'matomo', pass: dbPass, name: 'matomo' },
         { login: CFG.matomoAdminUser, pass: CFG.matomoAdminPass, email },
         { name: CFG.matomoSiteName, url: siteUrl });
       notes.push(`installed (superuser ${CFG.matomoAdminUser}, site 1 = ${siteUrl})`);
