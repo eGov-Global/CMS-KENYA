@@ -1097,7 +1097,7 @@ async function phaseMatomo() {
   /* Matomo's admin origin: derive from the ACTUAL published port, never assume. */
   let origin = '';
   if (!CFG.dryRun) {
-    try { origin = 'http://' + sh("sudo docker port matomo 80/tcp").trim().split('\n')[0]; }
+    try { origin = 'http://' + sh(`sudo docker port ${MATOMO_CTR} 80/tcp`).trim().split('\n')[0]; }
     catch { return record('matomo', OUTCOME.FAILED, 'matomo container has no published port 80', 'MATOMO_NO_PORT', 'Check docker-compose.matomo.yml ports.'); }
     // wait for apache+php to answer (first boot copies the whole app into the volume)
     let up = false;
