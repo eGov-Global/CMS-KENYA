@@ -7,8 +7,9 @@
 // in sequence as the section scrolls into view.
 
 import * as React from "react";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, FileText } from "lucide-react";
 import { Section, revealIndex } from "./Section";
+import { SkylineIllustration } from "./Illustrations";
 import { LandingLink } from "./LandingLink";
 import { MANIFESTATION_TYPES } from "../content";
 import { useLandingCopy } from "../useLandingCopy";
@@ -36,11 +37,22 @@ export function TypesSection({ routes, section }: TypesSectionProps) {
       title={c(section?.titleKey, "TYPES_TITLE")}
       intro={c(section?.subtitleKey, "TYPES_INTRO")}
       tone="page"
-      // Extra top room: the hero's stats strip overlaps into this section.
-      className="pt-10 md:pt-12"
+      // Extra top room: the hero's stat cards ride into this section.
+      className="pt-4 md:pt-6"
+      decor={
+        <div className="relative w-36 sm:w-60 lg:w-80">
+          <SkylineIllustration />
+          <span
+            aria-hidden
+            className="pgrl-float absolute right-1 top-1 flex h-9 w-9 items-center justify-center rounded-full bg-[hsl(var(--pgrl-primary))] text-[hsl(var(--pgrl-on-primary))] shadow-lg sm:h-11 sm:w-11"
+          >
+            <FileText className="h-4 w-4 sm:h-5 sm:w-5" />
+          </span>
+        </div>
+      }
     >
       <ul
-        className={`m-0 grid list-none grid-cols-1 gap-5 p-0 sm:grid-cols-2 ${
+        className={`m-0 grid list-none grid-cols-2 gap-3 p-0 sm:gap-5 ${
           items.length === 4 ? "lg:grid-cols-4" : "lg:grid-cols-3"
         }`}
       >
@@ -52,8 +64,8 @@ export function TypesSection({ routes, section }: TypesSectionProps) {
             <li key={type.id} className="pgrl-reveal-item m-0 p-0" style={revealIndex(i + 1)}>
               <article
                 className={
-                  "pgrl-lift group relative flex h-full flex-col rounded-[var(--pgrl-radius)] border border-solid " +
-                  "border-[hsl(var(--pgrl-line))] bg-[hsl(var(--pgrl-surface))] p-6 " +
+                  "pgrl-lift group relative flex h-full flex-col rounded-2xl border border-solid " +
+                  "border-[hsl(var(--pgrl-line))] bg-[hsl(var(--pgrl-surface))] p-4 sm:p-6 " +
                   "hover:border-[hsl(var(--pgrl-primary)/0.35)]"
                 }
               >
@@ -65,7 +77,7 @@ export function TypesSection({ routes, section }: TypesSectionProps) {
                   <Icon className="h-6 w-6" />
                 </span>
 
-                <h3 className="mb-0 mt-5 text-lg font-bold leading-snug text-[hsl(var(--pgrl-ink))]">
+                <h3 className="mb-0 mt-4 text-base font-bold leading-snug text-[hsl(var(--pgrl-ink))] sm:mt-5 sm:text-lg">
                   {/* Stretched link: one big click target, single tab stop. */}
                   <LandingLink
                     to={type.href ?? routes[type.route]}
@@ -79,7 +91,7 @@ export function TypesSection({ routes, section }: TypesSectionProps) {
                   </LandingLink>
                 </h3>
 
-                <p className="mb-0 mt-2 flex-1 text-sm leading-relaxed text-[hsl(var(--pgrl-ink-soft))]">
+                <p className="mb-0 mt-2 flex-1 text-[13px] leading-relaxed text-[hsl(var(--pgrl-ink-soft))] sm:text-sm">
                   {c(type.descKey, type.descKeyDefault)}
                 </p>
 

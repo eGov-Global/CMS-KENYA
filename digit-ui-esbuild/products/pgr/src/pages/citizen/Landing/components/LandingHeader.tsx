@@ -2,7 +2,7 @@
 //
 // Desktop: emblem + portal identity on the left, the primary nav on the right,
 // both inside one sticky bar that blurs the page scrolling beneath it. Nav
-// state is carried by a gold bottom bar alone — no background fill — with the
+// state is carried by a green bottom bar alone — no background fill — with the
 // label recoloured: soft ink by default, brand green on hover and on the
 // current page. The bar lives in ::after so switching it on never shifts the
 // row. The "report" destination renders as a filled pill on md+ so the page's
@@ -199,9 +199,9 @@ export function LandingHeader({ routes, emblemUrl, navItems, code }: LandingHead
                         FOCUS_RING,
                         // ! beats legacy overrides.css a:not(...):not(...) color rule
                         active
-                          ? "!text-[hsl(var(--pgrl-primary))] after:bg-[hsl(var(--pgrl-accent))]"
+                          ? "!text-[hsl(var(--pgrl-primary))] after:bg-[hsl(var(--pgrl-primary))]"
                           : "!text-[hsl(var(--pgrl-ink-soft))] after:bg-transparent " +
-                              "hover:!text-[hsl(var(--pgrl-primary))] hover:after:bg-[hsl(var(--pgrl-accent)/0.6)]"
+                              "hover:!text-[hsl(var(--pgrl-primary))] hover:after:bg-[hsl(var(--pgrl-primary)/0.45)]"
                       )}
                     >
                       {label}

@@ -176,3 +176,26 @@
   background-color: #fff;
   box-shadow: 0 24px 60px -24px rgba(0, 0, 0, 0.45);
 }
+/* Floating badges / speech bubbles: 6 s bob, ±6 px. */
+@keyframes pgrl-float {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-6px); }
+}
+.pgrl-float { animation: pgrl-float 6s ease-in-out infinite; }
+/* Gold line along the hero wave draws itself in once on load. */
+@keyframes pgrl-draw { to { stroke-dashoffset: 0; } }
+.pgrl-draw {
+  stroke-dasharray: 1000;
+  stroke-dashoffset: 1000;
+  animation: pgrl-draw 1.6s cubic-bezier(0.22, 1, 0.36, 1) 0.5s forwards;
+}
+/* Hand-lettered tagline ("A Cleaner, Greener Nairobi"). Caveat is requested
+   with the other Google Fonts in index.html; cursive is the offline fallback. */
+.pgrl-script { font-family: "Caveat", "Segoe Script", "Bradley Hand", cursive; }
+/* Phone-width channel carousel: scroll-snap row without a visible scrollbar. */
+.pgrl-scroll { scrollbar-width: none; -ms-overflow-style: none; }
+.pgrl-scroll::-webkit-scrollbar { display: none; }
+@media (prefers-reduced-motion: reduce) {
+  .pgrl-float { animation: none; }
+  .pgrl-draw { animation: none; stroke-dashoffset: 0; }
+}

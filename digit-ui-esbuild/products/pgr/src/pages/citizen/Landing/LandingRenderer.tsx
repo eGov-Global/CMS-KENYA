@@ -33,6 +33,7 @@ export interface LandingRendererProps {
   heroImageUrl?: string;
   heroImageSmallUrl?: string;
   bandImageUrl?: string;
+  personImageUrl?: string;
   emblemUrl?: string;
   footerLogoUrl?: string;
   languages?: LanguageOption[];
@@ -51,6 +52,7 @@ export function LandingRenderer({
   heroImageUrl,
   heroImageSmallUrl,
   bandImageUrl,
+  personImageUrl,
   emblemUrl,
   footerLogoUrl,
   languages = DEFAULT_LANGUAGES,
@@ -86,8 +88,8 @@ export function LandingRenderer({
   const fabOn = hasSections && (showWhatsAppFab ?? page.showWhatsAppFab ?? true);
 
   const ctx: RenderCtx = React.useMemo(
-    () => ({ routes, news, heroImageUrl, heroImageSmallUrl, bandImageUrl, emblemUrl, footerLogoUrl }),
-    [routes, news, heroImageUrl, heroImageSmallUrl, bandImageUrl, emblemUrl, footerLogoUrl]
+    () => ({ routes, news, heroImageUrl, heroImageSmallUrl, bandImageUrl, personImageUrl, emblemUrl, footerLogoUrl }),
+    [routes, news, heroImageUrl, heroImageSmallUrl, bandImageUrl, personImageUrl, emblemUrl, footerLogoUrl]
   );
 
   // Group the ordered, visible sections into DOM slots; unknown types (no

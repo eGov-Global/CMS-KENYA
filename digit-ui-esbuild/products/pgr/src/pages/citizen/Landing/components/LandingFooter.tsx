@@ -4,8 +4,10 @@
 // page closes the way nairobi.go.ke does.
 
 import * as React from "react";
+import { Leaf, Mail } from "lucide-react";
 import { cn } from "@egovernments/digit-ui-components-v2";
 import { LandingLink } from "./LandingLink";
+import { DotGrid, DOT_GRID_CORNER } from "./DotGrid";
 import { useLandingCopy } from "../useLandingCopy";
 import { sectionDomId } from "../config/resolve";
 import type { LandingSectionConfig } from "../config/types";
@@ -15,8 +17,10 @@ import { CONTAINER, FOCUS_RING_DARK } from "../tokens";
 
 export interface LandingFooterProps {
   routes: LandingRoutes;
-  /** Wide logo lockup (e.g. national arms + county seal) beside the identity text. */
+  /** Wide logo lockup; used only when no emblem is available for the wordmark. */
   logoUrl?: string;
+  /** County crest, set beside the typeset wordmark. */
+  emblemUrl?: string;
   /** Config-driven overrides; only `code` is read (DOM/pattern id derivation). */
   section?: LandingSectionConfig;
 }
@@ -24,6 +28,7 @@ export interface LandingFooterProps {
 interface FooterGroup {
   titleKey: LandingCopyKey;
   links: Array<{ labelKey: LandingCopyKey; route: keyof LandingRoutes; external?: boolean }>;
+  taglineKey?: LandingCopyKey;
 }
 
 // Links whose route is still the "#" placeholder are commented out rather than
@@ -32,13 +37,15 @@ interface FooterGroup {
 // destination and the matching route in routes.ts stops being "#".
 const GROUPS: FooterGroup[] = [
   {
-    titleKey: "FOOTER_CHANNELS",
+    titleKey: "GOV_NAME",
     links: [
-      { labelKey: "FOOTER_PORTAL_WEB", route: "HOME" },
+      { labelKey: "PORTAL_NAME", route: "HOME" },
       // { labelKey: "FOOTER_ANDROID", route: "ANDROID_APP", external: true },
       // { labelKey: "FOOTER_WHATSAPP", route: "WHATSAPP", external: true },
       { labelKey: "FOOTER_GREEN_LINE", route: "GREEN_LINE" },
     ],
+    // Motto in gold under the county's own column.
+    taglineKey: "MOTTO_VALUES",
   },
   {
     titleKey: "FOOTER_LINKS",
@@ -98,8 +105,15 @@ const FOOT_LINK = cn(
 );
 const FOOT_MUTED = "text-[hsl(var(--pgrl-on-primary)/0.62)]";
 const FOOT_HEAD = "m-0 text-xs font-bold uppercase tracking-[0.14em] text-[hsl(var(--pgrl-on-primary))]";
+const SOCIAL_BTN = cn(
+  "inline-flex h-10 w-10 items-center justify-center rounded-full no-underline",
+  "bg-[hsl(var(--pgrl-on-primary)/0.1)] !text-[hsl(var(--pgrl-on-primary))]",
+  "hover:bg-[hsl(var(--pgrl-accent))] hover:!text-[hsl(var(--pgrl-deep))]",
+  "motion-safe:transition-colors",
+  FOCUS_RING_DARK
+);
 
-export function LandingFooter({ routes, logoUrl, section }: LandingFooterProps) {
+export function LandingFooter({ routes, logoUrl, emblemUrl, section }: LandingFooterProps) {
   const { c } = useLandingCopy();
   const domId = sectionDomId(section?.code, "footer");
   const year = new Date().getFullYear();
@@ -110,62 +124,62 @@ export function LandingFooter({ routes, logoUrl, section }: LandingFooterProps) 
       className="relative isolate overflow-hidden bg-[hsl(var(--pgrl-deep))] text-[hsl(var(--pgrl-on-primary)/0.78)]"
     >
       <div aria-hidden className="h-1 w-full bg-[hsl(var(--pgrl-accent))]" />
-      <div className={cn(CONTAINER, "grid grid-cols-1 gap-10 py-14 sm:grid-cols-2 lg:grid-cols-6")}>
-        {/* Identity: logo lockup beside the text, as in the masthead. */}
-        <div className="sm:col-span-2">
-          <div className="flex items-start gap-4">
-            {logoUrl && (
-              // object-contain keeps the arms and seal uncropped; the lockup is
-              // landscape, so it gets a fixed height and free width.
-              <span className="flex h-16 shrink-0 items-center rounded-lg bg-white px-2">
-                <img src={logoUrl} alt="" className="h-full w-auto max-w-[160px] object-contain" />
+      <DotGrid id={`${domId}-dots`} className={DOT_GRID_CORNER} />
+      <Leaf aria-hidden className="pointer-events-none absolute -bottom-6 right-6 -z-10 h-40 w-40 rotate-[20deg] text-[hsl(var(--pgrl-on-primary)/0.06)]" />
+
+      <div className={cn(CONTAINER, "grid grid-cols-1 gap-10 py-14 lg:grid-cols-12")}>
+        {/* Wordmark: crest beside the county name set in type. */}
+        <div className="lg:col-span-3">
+          <div className="flex items-center gap-3">
+            {emblemUrl ? (
+              <img src={emblemUrl} alt="" className="h-16 w-16 shrink-0 object-contain" />
+            ) : logoUrl ? (
+              <span className="flex h-14 shrink-0 items-center rounded-lg bg-white px-2">
+                <img src={logoUrl} alt="" className="h-full w-auto max-w-[150px] object-contain" />
               </span>
-            )}
-            <div>
-              <p className={cn("m-0 text-xs font-semibold uppercase tracking-wide", FOOT_MUTED)}>{c("GOV_NAME")}</p>
-              <p className="mb-0 mt-1 text-xl font-bold leading-snug text-[hsl(var(--pgrl-on-primary))]">
-                {c("PORTAL_NAME")}
+            ) : null}
+            <div className="leading-none">
+              <p className="m-0 text-[1.65rem] font-bold uppercase leading-none tracking-tight text-[hsl(var(--pgrl-on-primary))]">
+                {c("WORDMARK_LINE1")}
               </p>
-              <p className="mb-0 mt-2 max-w-xs text-sm leading-relaxed">
-                {c("FOOTER_ORG")} · {c("TAGLINE")}
+              <p className="m-0 mt-1 text-[0.8rem] font-bold uppercase leading-none tracking-[0.22em] text-[hsl(var(--pgrl-on-primary)/0.9)]">
+                {c("WORDMARK_LINE2")}
               </p>
-              <p className="mb-0 mt-4 text-xs font-bold uppercase tracking-[0.18em] text-[hsl(var(--pgrl-accent))]">
-                {c("MOTTO_VALUES")}
-              </p>
+              <p className="m-0 mt-2.5 text-[11px] leading-none text-[hsl(var(--pgrl-accent))]">{c("MOTTO_VALUES")}</p>
             </div>
           </div>
+          <p className={cn("mb-0 mt-5 max-w-xs text-sm leading-relaxed", FOOT_MUTED)}>
+            {c("FOOTER_ORG")} · {c("TAGLINE")}
+          </p>
         </div>
 
-        {GROUPS.map((group) => (
-          <nav key={group.titleKey} aria-label={c(group.titleKey)}>
-            <p className={FOOT_HEAD}>{c(group.titleKey)}</p>
-            <ul className="m-0 mt-4 flex list-none flex-col gap-1 p-0">
-              {group.links.map((link) => {
-                const to = routes[link.route];
-                return (
-                  <li key={link.labelKey} className="m-0 p-0">
-                    <LandingLink
-                      to={to}
-                      target={link.external && to !== "#" ? "_blank" : undefined}
-                      className={FOOT_LINK}
-                    >
-                      {c(link.labelKey)}
-                    </LandingLink>
-                  </li>
-                );
-              })}
-            </ul>
-          </nav>
-        ))}
+        <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:col-span-9 lg:grid-cols-4">
+          {GROUPS.map((group) => (
+            <nav key={group.titleKey} aria-label={c(group.titleKey)}>
+              <p className={FOOT_HEAD}>{c(group.titleKey)}</p>
+              <ul className="m-0 mt-4 flex list-none flex-col gap-1 p-0">
+                {group.links.map((link) => {
+                  const to = routes[link.route];
+                  return (
+                    <li key={link.labelKey} className="m-0 p-0">
+                      <LandingLink to={to} target={link.external && to !== "#" ? "_blank" : undefined} className={FOOT_LINK}>
+                        {c(link.labelKey)}
+                      </LandingLink>
+                    </li>
+                  );
+                })}
+                {group.taglineKey && (
+                  <li className="m-0 mt-1 p-0 text-sm font-semibold text-[hsl(var(--pgrl-accent))]">{c(group.taglineKey)}</li>
+                )}
+              </ul>
+            </nav>
+          ))}
 
-        {/* Contact + social: own column so the row reads identity, three link
-            groups, contact. Fills the sixth grid column on desktop. */}
-        <div>
           {/* Contact details. <address> is the semantic element for an owner's
               contact info; it italicises by default, hence not-italic. */}
           <address className="not-italic">
             <p className={FOOT_HEAD}>{c("FOOTER_CONTACT")}</p>
-            <ul className="m-0 mt-4 flex list-none flex-col gap-1 p-0 text-sm">
+            <ul className="m-0 mt-4 flex list-none flex-col gap-2 p-0 text-sm">
               <li className="m-0 p-0">
                 <span className={FOOT_MUTED}>{c("CONTACT_HOTLINE")}: </span>
                 <a href={`tel:${CONTACT.hotline}`} className={FOOT_LINK}>
@@ -178,44 +192,43 @@ export function LandingFooter({ routes, logoUrl, section }: LandingFooterProps) 
                   {CONTACT.email}
                 </a>
               </li>
-              <li className="m-0 p-0">
+              <li className="m-0 p-0 leading-relaxed">
                 <span className={FOOT_MUTED}>{c("CONTACT_POST")}: </span>
                 {CONTACT.poBox}
               </li>
             </ul>
           </address>
-
-          {/* Social channels */}
-          <p className={cn(FOOT_HEAD, "mt-6")}>{c("FOOTER_FOLLOW")}</p>
-          <ul className="m-0 mt-3 flex list-none flex-row items-center gap-2 p-0">
-            {SOCIAL_LINKS.map((social) => (
-              <li key={social.id} className="m-0 p-0">
-                <a
-                  href={social.href}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  aria-label={`${c(social.labelKey)} (${c("EXTERNAL_LINK_NOTE")})`}
-                  className={cn(
-                    "inline-flex h-10 w-10 items-center justify-center rounded-full no-underline",
-                    "bg-[hsl(var(--pgrl-on-primary)/0.1)] !text-[hsl(var(--pgrl-on-primary))]",
-                    "hover:bg-[hsl(var(--pgrl-accent))] hover:!text-[hsl(var(--pgrl-deep))]",
-                    "motion-safe:transition-colors",
-                    FOCUS_RING_DARK
-                  )}
-                >
-                  <BrandMark id={social.id} />
-                </a>
-              </li>
-            ))}
-          </ul>
         </div>
       </div>
 
       <div className="border-0 border-t border-solid border-[hsl(var(--pgrl-on-primary)/0.12)]">
-        <div className={cn(CONTAINER, "py-5")}>
-          <p className={cn("m-0 text-center text-xs", FOOT_MUTED)}>
+        <div className={cn(CONTAINER, "flex flex-col-reverse items-start gap-4 py-5 sm:flex-row sm:items-center sm:justify-between")}>
+          <p className={cn("m-0 text-xs", FOOT_MUTED)}>
             © {year} {c("FOOTER_COPYRIGHT")}
           </p>
+          <div className="flex items-center gap-3">
+            <p className={cn(FOOT_HEAD, "hidden sm:block")}>{c("FOOTER_FOLLOW")}</p>
+            <ul className="m-0 flex list-none flex-row items-center gap-2 p-0">
+              {SOCIAL_LINKS.map((social) => (
+                <li key={social.id} className="m-0 p-0">
+                  <a
+                    href={social.href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label={`${c(social.labelKey)} (${c("EXTERNAL_LINK_NOTE")})`}
+                    className={SOCIAL_BTN}
+                  >
+                    <BrandMark id={social.id} />
+                  </a>
+                </li>
+              ))}
+              <li className="m-0 p-0">
+                <a href={`mailto:${CONTACT.email}`} aria-label={c("CONTACT_EMAIL")} className={SOCIAL_BTN}>
+                  <Mail aria-hidden className="h-4 w-4" />
+                </a>
+              </li>
+            </ul>
+          </div>
         </div>
       </div>
     </footer>

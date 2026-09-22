@@ -68,7 +68,8 @@ works with zero translations seeded), and the compiled Tailwind CSS from
 | `news` | `DEFAULT_NEWS` | Updates-grid cards (pass CMS content in production). |
 | `heroImageUrl` | none | Hero photo, rendered under a deep-green gradient scrim; flat green without it. |
 | `heroImageSmallUrl` | none | Narrow-viewport cut of the hero photo, offered through `srcSet`. |
-| `bandImageUrl` | none | Photo behind the closing call to action in the channels section. |
+| `bandImageUrl` | none | Photo for the circular artwork beside the channels title. |
+| `personImageUrl` | none | Portrait of a resident in the closing call to action; a megaphone tile stands in without it. |
 | `emblemUrl` | none | County emblem in the masthead (falls back to a glyph). |
 | `languages` | `en_IN` | Language switcher options (`{ code, label }`). |
 | `onLanguageChange` | platform localization service | Override for locale switching. |

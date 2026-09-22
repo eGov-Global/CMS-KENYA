@@ -38,8 +38,10 @@ export interface PGRLandingPageProps {
   heroImageUrl?: string;
   /** Narrow-viewport cut of the hero photo, offered via srcSet. */
   heroImageSmallUrl?: string;
-  /** Optional photo behind the closing call to action. */
+  /** Optional photo for the circular artwork beside the channels title. */
   bandImageUrl?: string;
+  /** Optional portrait of a resident for the closing call to action. */
+  personImageUrl?: string;
   /** Government emblem for the masthead. */
   emblemUrl?: string;
   /** Wide logo lockup shown beside the identity text in the footer. */
