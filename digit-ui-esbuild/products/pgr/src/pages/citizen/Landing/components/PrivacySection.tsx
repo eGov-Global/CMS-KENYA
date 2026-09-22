@@ -5,6 +5,7 @@
 import * as React from "react";
 import { ShieldCheck } from "lucide-react";
 import { Section, revealIndex } from "./Section";
+import { ShieldIllustration } from "./Illustrations";
 import { useLandingCopy } from "../useLandingCopy";
 import { sectionDomId } from "../config/resolve";
 import { LandingRoutes } from "../routes";
@@ -21,10 +22,17 @@ export function PrivacySection({ routes, section }: PrivacySectionProps) {
   const domId = sectionDomId(section?.code, "privacy");
 
   return (
-    <Section id={domId} code={section?.code} title={c(section?.titleKey, "PRIVACY_TITLE")} tone="page">
+    <Section
+      id={domId}
+      code={section?.code}
+      eyebrow={c("PRIVACY_EYEBROW")}
+      title={c(section?.titleKey, "PRIVACY_TITLE")}
+      tone="page"
+    >
+      <div className="grid gap-8 lg:grid-cols-12 lg:items-center">
       <div
         className={
-          "pgrl-reveal-item flex flex-col gap-6 rounded-[var(--pgrl-radius)] border border-solid " +
+          "pgrl-reveal-item flex flex-col gap-6 rounded-2xl border border-solid lg:col-span-8 " +
           "border-[hsl(var(--pgrl-line))] bg-[hsl(var(--pgrl-surface))] p-6 sm:flex-row sm:items-start md:p-8"
         }
         style={revealIndex(1)}
@@ -43,6 +51,10 @@ export function PrivacySection({ routes, section }: PrivacySectionProps) {
             {c(section?.subtitleKey, "PRIVACY_P2")}
           </p>
         </div>
+      </div>
+      <div className="pgrl-reveal-item hidden lg:col-span-4 lg:block" style={revealIndex(2)}>
+        <ShieldIllustration className="pgrl-float mx-auto w-56" />
+      </div>
       </div>
     </Section>
   );

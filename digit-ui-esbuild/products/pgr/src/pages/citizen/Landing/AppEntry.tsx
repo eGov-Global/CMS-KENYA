@@ -22,6 +22,9 @@ import nairobiFooterLogo from "./assets/nairobi-footer-logo.png";
 import nairobiHero from "./assets/nairobi-hero.jpg";
 import nairobiHeroSm from "./assets/nairobi-hero-sm.jpg";
 import nairobiBand from "./assets/nairobi-band.jpg";
+// Resident portrait in the closing band (Commons, CC BY-SA 4.0 — see
+// CREDITS.md). Swap for a county-supplied photo when one is available.
+import nairobiPerson from "./assets/nairobi-person.jpg";
 
 export function PGRLandingEntry() {
   const ctx = (typeof window !== "undefined" && (window as any)?.contextPath) || "digit-ui";
@@ -46,6 +49,7 @@ export function PGRLandingEntry() {
       heroImageUrl={nairobiHero}
       heroImageSmallUrl={nairobiHeroSm}
       bandImageUrl={nairobiBand}
+      personImageUrl={nairobiPerson}
     />
   );
 }

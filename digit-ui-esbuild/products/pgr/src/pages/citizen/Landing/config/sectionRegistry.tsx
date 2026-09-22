@@ -43,8 +43,10 @@ export interface RenderCtx {
   heroImageUrl?: string;
   /** Narrow-viewport cut of the hero photo (srcSet); only used with heroImageUrl. */
   heroImageSmallUrl?: string;
-  /** Photo behind the closing call to action in the channels section. */
+  /** Photo for the circular artwork beside the channels title. */
   bandImageUrl?: string;
+  /** Portrait of a resident for the closing call to action. */
+  personImageUrl?: string;
   emblemUrl?: string;
   footerLogoUrl?: string;
 }
@@ -106,14 +108,16 @@ export const SECTION_REGISTRY: Record<string, SectionEntry> = {
   steps: {
     Component: HowItWorksSection,
     slot: "main",
-    buildProps: (s, ctx) => ({ section: withItems(s, HOW_STEPS, ctx.routes) }),
+    // The orb reuses the hero photo: already in cache, nothing new to download.
+    buildProps: (s, ctx) => ({ orbImageUrl: mediaUrl(s.media) ?? ctx.heroImageUrl, section: withItems(s, HOW_STEPS, ctx.routes) }),
   },
   channels: {
     Component: ChannelsSection,
     slot: "main",
     buildProps: (s, ctx) => ({
       routes: ctx.routes,
-      bandImageUrl: mediaUrl(s.media) ?? ctx.bandImageUrl,
+      orbImageUrl: mediaUrl(s.media) ?? ctx.bandImageUrl,
+      personImageUrl: ctx.personImageUrl,
       section: withItems(s, CHANNELS, ctx.routes),
     }),
   },
@@ -130,7 +134,12 @@ export const SECTION_REGISTRY: Record<string, SectionEntry> = {
   institutions: {
     Component: InstitutionsSection,
     slot: "main",
-    buildProps: (s, ctx) => ({ section: withItems(s, INSTITUTIONS, ctx.routes) }),
+    buildProps: (s, ctx) => ({
+      routes: ctx.routes,
+      // Phone-only photo card: the small hero cut phones already downloaded.
+      photoUrl: ctx.heroImageSmallUrl ?? ctx.heroImageUrl,
+      section: withItems(s, INSTITUTIONS, ctx.routes),
+    }),
   },
   cta: {
     Component: FinalCtaSection,
@@ -146,6 +155,7 @@ export const SECTION_REGISTRY: Record<string, SectionEntry> = {
     buildProps: (s, ctx) => ({
       routes: ctx.routes,
       logoUrl: mediaUrl(s.media) ?? ctx.footerLogoUrl,
+      emblemUrl: ctx.emblemUrl,
       section: s,
     }),
   },

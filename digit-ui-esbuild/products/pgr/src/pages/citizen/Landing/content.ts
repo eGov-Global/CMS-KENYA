@@ -99,6 +99,10 @@ export const LANDING_COPY = {
   HERO_TRUST_NOTIFICATIONS: { en: "SMS acknowledgement with your case number" },
   HERO_CHANNELS_LABEL: { en: "Also available through:" },
   HERO_PHOTO_CAPTION: { en: "Uhuru Park and the city centre, Nairobi" },
+  // Hand-lettered tagline over the hero photo and on the phone photo card.
+  HERO_SCRIPT: { en: "A Cleaner, Greener Nairobi" },
+  // Speech bubble on the circular photos beside the steps and channels.
+  ORB_TAGLINE: { en: "Your Voice Matters" },
   // Headline figures under the hero — every one from the BRD (§1, §3, §5.2, §6).
   STAT_SUBCOUNTIES_VALUE: { en: "2" },
   STAT_SUBCOUNTIES_LABEL: { en: "pilot sub-counties" },
@@ -185,11 +189,14 @@ export const LANDING_COPY = {
       "Call agents log your complaint while you are on the call and read your case number back to you. Two shifts, every working day.",
   },
   CHANNEL_LINE_CTA: { en: "Call the help line" },
+  CAROUSEL_PREV: { en: "Previous channels" },
+  CAROUSEL_NEXT: { en: "Next channels" },
   CHANNEL_INPERSON_TITLE: { en: "Counter Desks" },
   CHANNEL_INPERSON_DESC: {
     en:
       "Counter employees at ward and sub-county offices log walk-in complaints for you and hand over your case reference before you leave.",
   },
+  CHANNEL_INPERSON_CTA: { en: "Find a desk" },
   CHANNEL_SMS_TITLE: { en: "SMS Updates" },
   CHANNEL_SMS_DESC: {
     en:
@@ -201,6 +208,8 @@ export const LANDING_COPY = {
   CHANNEL_WA_CTA: { en: "Chat on WhatsApp" },
 
   // Privacy ------------------------------------------------------------—---
+  CHANNEL_SMS_CTA: { en: "Track your case" },
+  PRIVACY_EYEBROW: { en: "Privacy & data" },
   PRIVACY_TITLE: { en: "Your Privacy and Your Data" },
   PRIVACY_P1: {
     en:
@@ -242,6 +251,9 @@ export const LANDING_COPY = {
 
   // Areas covered ("institutions" section) -----------------------------—---
   INST_EYEBROW: { en: "Pilot geography" },
+  // Footer wordmark, two lines, set in type beside the crest.
+  WORDMARK_LINE1: { en: "Nairobi" },
+  WORDMARK_LINE2: { en: "City County" },
   INST_TITLE: { en: "Areas We Cover" },
   INST_INTRO: { en: "Nai Pepea starts in two sub-counties. Every ward listed here has counter staff and an assigned department contact." },
   INST_MAKADARA_TITLE: { en: "Makadara Sub-County" },
@@ -382,6 +394,8 @@ export interface ChannelItem {
   descKey: LandingCopyKey;
   ctaKey?: LandingCopyKey;
   route?: keyof LandingRoutes;
+  /** Literal destination (e.g. an in-page "#section" anchor) when no route applies. */
+  href?: string;
   /** Chip shown on the current channel ("You are here"). */
   badgeKey?: LandingCopyKey;
   external?: boolean;
@@ -390,8 +404,9 @@ export interface ChannelItem {
 export const CHANNELS: ChannelItem[] = [
   { id: "web", icon: Globe, titleKey: "CHANNEL_WEB_TITLE", descKey: "CHANNEL_WEB_DESC", ctaKey: "CHANNEL_WEB_CTA", route: "REGISTER_COMPLAINT", badgeKey: "CHANNEL_WEB_BADGE" },
   { id: "callcentre", icon: Phone, titleKey: "CHANNEL_LINE_TITLE", descKey: "CHANNEL_LINE_DESC", ctaKey: "CHANNEL_LINE_CTA", route: "GREEN_LINE" },
-  { id: "counter", icon: MapPin, titleKey: "CHANNEL_INPERSON_TITLE", descKey: "CHANNEL_INPERSON_DESC" },
-  { id: "sms", icon: Bell, titleKey: "CHANNEL_SMS_TITLE", descKey: "CHANNEL_SMS_DESC" },
+  // In-page jump to the "Areas We Cover" section (its DOM id from sectionDomId).
+  { id: "counter", icon: MapPin, titleKey: "CHANNEL_INPERSON_TITLE", descKey: "CHANNEL_INPERSON_DESC", ctaKey: "CHANNEL_INPERSON_CTA", href: "#pgr-landing-institutions" },
+  { id: "sms", icon: Bell, titleKey: "CHANNEL_SMS_TITLE", descKey: "CHANNEL_SMS_DESC", ctaKey: "CHANNEL_SMS_CTA", route: "TRACK_COMPLAINT" },
 ];
 
 export interface InstitutionItem {
