@@ -14,9 +14,11 @@
 // the whole page without touching this file, while the page still renders a
 // complete government identity with zero configuration.
 //
-// Default palette: Nairobi City County brand — the deep green and gold of the
-// county crest and of nairobi.go.ke, with the site's burgundy as a categorical
-// accent. Contrast-checked for WCAG 2.2 AA; hex and role noted inline below.
+// Default palette: Nairobi City County brand — the green and gold of the county
+// crest and of nairobi.go.ke, softened for long-form reading (lighter brand
+// green, warmed gold, green-tinted charcoal text, off-white page) with the
+// site's burgundy as a categorical accent. Contrast-checked for WCAG 2.2 AA;
+// hex and role noted inline below.
 
 import * as React from "react";
 
@@ -49,6 +51,10 @@ export interface LandingTokens {
   line: string;
   /** Focus ring on light surfaces. */
   ring: string;
+  /** Soft brand tint — section bands, icon tiles, hover fills. */
+  tint: string;
+  /** Soft gold tint — highlights that should not shout. */
+  tintGold: string;
   /** Card accent tints. Names are historical; content.ts decides which service
    *  area uses which one (see MANIFESTATION_TYPES accentVar). */
   typeComplaint: string;
@@ -60,25 +66,29 @@ export interface LandingTokens {
 }
 
 export const DEFAULT_LANDING_TOKENS: LandingTokens = {
-  primary: "149.5 100% 12%",    // #003D1E  header, nav, section titles, primary buttons/links (nairobi.go.ke nav band)
-  primaryHover: "148.6 100% 8.2%", // #002A14  hover for primary buttons/links
-  secondary: "334 77% 32.4%",   // #92134A  burgundy from nairobi.go.ke — reserved
-  deep: "155.3 74% 9%",         // #06281A  hero, footer, CTA band
-  accent: "53.2 96.6% 53.5%",   // #FBE116  county gold — buttons, accent bars, active nav
-  accentHover: "53.3 88.4% 47.3%", // #E3CB0E
-  onPrimary: "0 0% 100%",       // white text on green
-  onAccent: "149.5 100% 12%",   // #003D1E  deep green on gold — 11.7:1, and tonally the crest's own pairing
-  ink: "221 28% 16%",           // #1D2433  body text
-  inkSoft: "270 3% 37%",        // #5F5C62
+  primary: "152 62% 22%",       // #15583A  brand green, one step lighter than the crest's #003D1E so large
+                                //          text areas read calm rather than heavy; still 7.9:1 on white
+  primaryHover: "152 70% 16%",  // #0C4529
+  secondary: "334 62% 36%",     // #94245A  softened burgundy from nairobi.go.ke — reserved
+  deep: "153 60% 11%",          // #0B2D1E  footer, closing band, hero scrim base
+  accent: "47 92% 56%",         // #F5C842  county gold, slightly warmed and desaturated from the crest's
+                                //          #FBE116 so it sits with photography without glaring
+  accentHover: "45 85% 49%",    // #E6B420
+  onPrimary: "0 0% 100%",       // white on green
+  onAccent: "153 60% 11%",      // #0B2D1E  deep green on gold — 10.6:1
+  ink: "160 14% 15%",           // #21302A  body text, green-tinted charcoal instead of near-black
+  inkSoft: "155 9% 36%",        // #546560  secondary text — 6.3:1 on white, 5.6:1 on the page tint
   surface: "0 0% 100%",         // white cards
-  page: "0 0% 98%",             // #FAFAFA
-  line: "30 2% 84%",            // #D6D5D4
-  ring: "149.5 100% 12%",
-  typeComplaint: "149.5 60% 30%",  // Urban Development & Planning — brand green
-  typeGrievance: "334 77% 32%",    // Finance & Economic Planning — burgundy
+  page: "120 14% 97%",          // #F6F8F6  warm off-white page
+  line: "140 10% 88%",          // #DCE3DF
+  ring: "152 62% 22%",
+  tint: "150 32% 93%",          // #E7F1EB  soft green band / icon tiles
+  tintGold: "47 90% 93%",       // #FEF6DC  soft gold highlight
+  typeComplaint: "152 62% 22%",    // Urban Development & Planning — brand green
+  typeGrievance: "334 62% 36%",    // Finance & Economic Planning — burgundy
   typePetition: "120 45% 35%",     // Environment / Green Nairobi — leaf green
-  typeReport: "40 80% 35%",        // Boroughs & Sub-County Administration — earth gold
-  radius: "0.375rem",
+  typeReport: "36 70% 40%",        // Boroughs & Sub-County Administration — earth
+  radius: "0.875rem",           // 14px — rounder cards, in keeping with current government portals
 };
 
 /** kebab-case CSS var name for a token key, e.g. typeReport -> --pgrl-type-report */

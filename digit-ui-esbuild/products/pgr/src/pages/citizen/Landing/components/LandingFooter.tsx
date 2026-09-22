@@ -1,5 +1,7 @@
 // Government footer: channels, help links, the legal surface (privacy, terms,
 // accessibility) and both login entries, all routed through the route map.
+// Deep county green under a gold rule — the same pairing as the crest — so the
+// page closes the way nairobi.go.ke does.
 
 import * as React from "react";
 import { cn } from "@egovernments/digit-ui-components-v2";
@@ -9,7 +11,7 @@ import { sectionDomId } from "../config/resolve";
 import type { LandingSectionConfig } from "../config/types";
 import { LandingCopyKey, CONTACT, SOCIAL_LINKS } from "../content";
 import { LandingRoutes } from "../routes";
-import { CONTAINER, FOCUS_RING } from "../tokens";
+import { CONTAINER, FOCUS_RING_DARK } from "../tokens";
 
 export interface LandingFooterProps {
   routes: LandingRoutes;
@@ -90,10 +92,12 @@ function BrandMark({ id }: { id: SocialId }) {
 
 // !important text colors: see CtaLink.tsx — legacy anchor rule collision.
 const FOOT_LINK = cn(
-  "inline-flex min-h-[32px] items-center text-sm !text-[hsl(var(--pgrl-ink-soft))] no-underline",
-  "hover:!text-[hsl(var(--pgrl-primary-hover))] motion-safe:transition-colors",
-  FOCUS_RING
+  "inline-flex min-h-[32px] items-center text-sm !text-[hsl(var(--pgrl-on-primary)/0.78)] no-underline",
+  "hover:!text-[hsl(var(--pgrl-accent))] motion-safe:transition-colors",
+  FOCUS_RING_DARK
 );
+const FOOT_MUTED = "text-[hsl(var(--pgrl-on-primary)/0.62)]";
+const FOOT_HEAD = "m-0 text-xs font-bold uppercase tracking-[0.14em] text-[hsl(var(--pgrl-on-primary))]";
 
 export function LandingFooter({ routes, logoUrl, section }: LandingFooterProps) {
   const { c } = useLandingCopy();
@@ -101,29 +105,31 @@ export function LandingFooter({ routes, logoUrl, section }: LandingFooterProps) 
   const year = new Date().getFullYear();
 
   return (
-    <footer data-pgrl-code={section?.code} className="relative isolate overflow-hidden border-0 border-t border-solid border-[hsl(var(--pgrl-line))] bg-[hsl(var(--pgrl-surface))]">
-      <div className={cn(CONTAINER, "grid grid-cols-1 gap-8 py-12 sm:grid-cols-2 lg:grid-cols-6")}>
+    <footer
+      data-pgrl-code={section?.code}
+      className="relative isolate overflow-hidden bg-[hsl(var(--pgrl-deep))] text-[hsl(var(--pgrl-on-primary)/0.78)]"
+    >
+      <div aria-hidden className="h-1 w-full bg-[hsl(var(--pgrl-accent))]" />
+      <div className={cn(CONTAINER, "grid grid-cols-1 gap-10 py-14 sm:grid-cols-2 lg:grid-cols-6")}>
         {/* Identity: logo lockup beside the text, as in the masthead. */}
         <div className="sm:col-span-2">
           <div className="flex items-start gap-4">
             {logoUrl && (
               // object-contain keeps the arms and seal uncropped; the lockup is
               // landscape, so it gets a fixed height and free width.
-              <span className="flex h-16 shrink-0 items-center bg-white">
+              <span className="flex h-16 shrink-0 items-center rounded-lg bg-white px-2">
                 <img src={logoUrl} alt="" className="h-full w-auto max-w-[160px] object-contain" />
               </span>
             )}
             <div>
-              <p className="m-0 text-xs font-semibold uppercase tracking-wide text-[hsl(var(--pgrl-ink-soft))]">
-                {c("GOV_NAME")}
-              </p>
-              <p className="mb-0 mt-1 text-lg font-bold leading-snug text-[hsl(var(--pgrl-ink-soft))]">
+              <p className={cn("m-0 text-xs font-semibold uppercase tracking-wide", FOOT_MUTED)}>{c("GOV_NAME")}</p>
+              <p className="mb-0 mt-1 text-xl font-bold leading-snug text-[hsl(var(--pgrl-on-primary))]">
                 {c("PORTAL_NAME")}
               </p>
-              <p className="mb-0 mt-2 text-sm text-[hsl(var(--pgrl-ink-soft))]">
+              <p className="mb-0 mt-2 max-w-xs text-sm leading-relaxed">
                 {c("FOOTER_ORG")} · {c("TAGLINE")}
               </p>
-              <p className="mb-0 mt-3 text-xs font-bold uppercase tracking-widest text-[hsl(var(--pgrl-ink-soft))]">
+              <p className="mb-0 mt-4 text-xs font-bold uppercase tracking-[0.18em] text-[hsl(var(--pgrl-accent))]">
                 {c("MOTTO_VALUES")}
               </p>
             </div>
@@ -132,10 +138,8 @@ export function LandingFooter({ routes, logoUrl, section }: LandingFooterProps) 
 
         {GROUPS.map((group) => (
           <nav key={group.titleKey} aria-label={c(group.titleKey)}>
-            <p className="m-0 text-sm font-bold uppercase tracking-wide text-[hsl(var(--pgrl-ink-soft))]">
-              {c(group.titleKey)}
-            </p>
-            <ul className="m-0 mt-3 flex list-none flex-col gap-1 p-0">
+            <p className={FOOT_HEAD}>{c(group.titleKey)}</p>
+            <ul className="m-0 mt-4 flex list-none flex-col gap-1 p-0">
               {group.links.map((link) => {
                 const to = routes[link.route];
                 return (
@@ -160,34 +164,30 @@ export function LandingFooter({ routes, logoUrl, section }: LandingFooterProps) 
           {/* Contact details. <address> is the semantic element for an owner's
               contact info; it italicises by default, hence not-italic. */}
           <address className="not-italic">
-            <p className="m-0 text-sm font-bold uppercase tracking-wide text-[hsl(var(--pgrl-ink-soft))]">
-              {c("FOOTER_CONTACT")}
-            </p>
-            <ul className="m-0 mt-2 flex list-none flex-col gap-1 p-0 text-sm text-[hsl(var(--pgrl-ink-soft))]">
+            <p className={FOOT_HEAD}>{c("FOOTER_CONTACT")}</p>
+            <ul className="m-0 mt-4 flex list-none flex-col gap-1 p-0 text-sm">
               <li className="m-0 p-0">
-                <span className="text-[hsl(var(--pgrl-ink-soft))]">{c("CONTACT_HOTLINE")}: </span>
+                <span className={FOOT_MUTED}>{c("CONTACT_HOTLINE")}: </span>
                 <a href={`tel:${CONTACT.hotline}`} className={FOOT_LINK}>
                   {CONTACT.hotlineDisplay}
                 </a>
               </li>
               <li className="m-0 p-0">
-                <span className="text-[hsl(var(--pgrl-ink-soft))]">{c("CONTACT_EMAIL")}: </span>
+                <span className={FOOT_MUTED}>{c("CONTACT_EMAIL")}: </span>
                 <a href={`mailto:${CONTACT.email}`} className={FOOT_LINK}>
                   {CONTACT.email}
                 </a>
               </li>
               <li className="m-0 p-0">
-                <span className="text-[hsl(var(--pgrl-ink-soft))]">{c("CONTACT_POST")}: </span>
+                <span className={FOOT_MUTED}>{c("CONTACT_POST")}: </span>
                 {CONTACT.poBox}
               </li>
             </ul>
           </address>
 
           {/* Social channels */}
-          <p className="m-0 mt-5 text-sm font-bold uppercase tracking-wide text-[hsl(var(--pgrl-ink-soft))]">
-            {c("FOOTER_FOLLOW")}
-          </p>
-          <ul className="m-0 mt-2 flex list-none flex-row items-center gap-2 p-0">
+          <p className={cn(FOOT_HEAD, "mt-6")}>{c("FOOTER_FOLLOW")}</p>
+          <ul className="m-0 mt-3 flex list-none flex-row items-center gap-2 p-0">
             {SOCIAL_LINKS.map((social) => (
               <li key={social.id} className="m-0 p-0">
                 <a
@@ -196,11 +196,11 @@ export function LandingFooter({ routes, logoUrl, section }: LandingFooterProps) 
                   rel="noopener noreferrer"
                   aria-label={`${c(social.labelKey)} (${c("EXTERNAL_LINK_NOTE")})`}
                   className={cn(
-                    "inline-flex h-9 w-9 items-center justify-center rounded-full no-underline",
-                    "bg-[hsl(var(--pgrl-primary)/0.1)] !text-[hsl(var(--pgrl-ink-soft))]",
+                    "inline-flex h-10 w-10 items-center justify-center rounded-full no-underline",
+                    "bg-[hsl(var(--pgrl-on-primary)/0.1)] !text-[hsl(var(--pgrl-on-primary))]",
                     "hover:bg-[hsl(var(--pgrl-accent))] hover:!text-[hsl(var(--pgrl-deep))]",
                     "motion-safe:transition-colors",
-                    FOCUS_RING
+                    FOCUS_RING_DARK
                   )}
                 >
                   <BrandMark id={social.id} />
@@ -211,9 +211,9 @@ export function LandingFooter({ routes, logoUrl, section }: LandingFooterProps) 
         </div>
       </div>
 
-      <div className="border-0 border-t border-solid border-[hsl(var(--pgrl-line))]">
-        <div className={cn(CONTAINER, "py-4")}>
-          <p className="m-0 text-center text-xs text-[hsl(var(--pgrl-ink-soft))]">
+      <div className="border-0 border-t border-solid border-[hsl(var(--pgrl-on-primary)/0.12)]">
+        <div className={cn(CONTAINER, "py-5")}>
+          <p className={cn("m-0 text-center text-xs", FOOT_MUTED)}>
             © {year} {c("FOOTER_COPYRIGHT")}
           </p>
         </div>

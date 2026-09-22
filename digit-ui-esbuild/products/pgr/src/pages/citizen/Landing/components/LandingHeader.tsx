@@ -1,13 +1,12 @@
-// Masthead + primary navigation — a single white bar.
+// Masthead + primary navigation — a single translucent white bar.
 //
 // Desktop: emblem + portal identity on the left, the primary nav on the right,
-// both inside one sticky bar. Nav state is carried by a bottom bar alone — no
-// background fill — with the label recoloured to match it: ink by default,
-// `--pgrl-primary` on hover and on the current page. The bar lives in ::after
-// so switching it on never shifts the row.
-// Contrast note: primary on white is 3.14:1 — fine for the bar (3:1 non-text
-// minimum) but under the 4.5:1 AA threshold for the label text it now shares.
-// Darkening `primary` to ~#187DB2 clears both.
+// both inside one sticky bar that blurs the page scrolling beneath it. Nav
+// state is carried by a gold bottom bar alone — no background fill — with the
+// label recoloured: soft ink by default, brand green on hover and on the
+// current page. The bar lives in ::after so switching it on never shifts the
+// row. The "report" destination renders as a filled pill on md+ so the page's
+// primary action is always one click away while scrolling.
 // Mobile: the nav wraps to its own full-width row, collapsed behind an
 // accessible disclosure menu (aria-expanded / aria-controls, Escape closes and
 // restores focus to the trigger).
@@ -28,6 +27,7 @@ import { Menu, X, Landmark } from "lucide-react";
 import { cn } from "@egovernments/digit-ui-components-v2";
 import { __RouterContext } from "react-router";
 import { LandingLink } from "./LandingLink";
+import { CtaLink } from "./CtaLink";
 import { NAV_ITEMS } from "../content";
 import { useLandingCopy } from "../useLandingCopy";
 import { LandingRoutes } from "../routes";
@@ -76,10 +76,13 @@ export function LandingHeader({ routes, emblemUrl, navItems, code }: LandingHead
     <header
       data-pgrl-code={code}
       className={cn(
-        "sticky top-[var(--pgrl-nav-offset,0px)] z-40 font-condensed shadow-sm",
-        "bg-[hsl(var(--pgrl-surface))] text-[hsl(var(--pgrl-ink))]",
-        // Hairline: the page background (#FAFAFA) is nearly white, so the
-        // shadow alone doesn't reliably separate the bar from the content.
+        "sticky top-[var(--pgrl-nav-offset,0px)] z-40 font-condensed",
+        // Translucent + blur: the hero photo shows faintly through as it
+        // scrolls under; falls back to a solid bar where backdrop-filter is
+        // unsupported (the alpha is high enough to stay legible either way).
+        "bg-[hsl(var(--pgrl-surface)/0.92)] text-[hsl(var(--pgrl-ink))] backdrop-blur-md",
+        // Hairline: the page background is nearly white, so the shadow alone
+        // doesn't reliably separate the bar from the content.
         "border-0 border-b border-solid border-[hsl(var(--pgrl-line))]"
       )}
     >
@@ -90,16 +93,14 @@ export function LandingHeader({ routes, emblemUrl, navItems, code }: LandingHead
           to={routes.HOME}
           className={cn(
             "flex items-center gap-3 py-2 no-underline",
-            // Same ink-soft as the nav labels — size and weight carry the
-            // hierarchy in the brand block, not color.
-            "!text-[hsl(var(--pgrl-ink-soft))]",
+            "!text-[hsl(var(--pgrl-ink))]",
             FOCUS_RING,
             "rounded-[var(--pgrl-radius)]"
           )}
         >
           {emblemUrl ? (
             // object-contain keeps the crest's ribbon text uncropped.
-            <span className="flex h-14 w-14 shrink-0 items-center justify-center bg-white">
+            <span className="flex h-12 w-12 shrink-0 items-center justify-center md:h-14 md:w-14">
               <img src={emblemUrl} alt="" className="h-full w-full object-contain" />
             </span>
           ) : (
@@ -114,7 +115,9 @@ export function LandingHeader({ routes, emblemUrl, navItems, code }: LandingHead
             <span className="text-[11px] font-semibold uppercase leading-tight tracking-wide text-[hsl(var(--pgrl-ink-soft))]">
               {c("GOV_NAME")}
             </span>
-            <span className="text-base font-bold leading-tight sm:text-lg">{c("PORTAL_NAME")}</span>
+            <span className="text-lg font-bold leading-tight tracking-tight text-[hsl(var(--pgrl-primary))] sm:text-xl">
+              {c("PORTAL_NAME")}
+            </span>
             {/* lg+ only: the bar stays two lines tall on phones and tablets. */}
             <span className="hidden text-[11px] leading-tight text-[hsl(var(--pgrl-ink-soft))] lg:block">
               {c("MOTTO_VALUES")}
@@ -148,34 +151,62 @@ export function LandingHeader({ routes, emblemUrl, navItems, code }: LandingHead
             open ? "block" : "hidden"
           )}
         >
-          <ul className="m-0 flex list-none flex-col gap-0 p-0 md:h-full md:flex-row md:items-stretch">
+          <ul className="m-0 flex list-none flex-col gap-0 p-0 pb-2 md:h-full md:flex-row md:items-center md:gap-1 md:pb-0">
             {items.map((item) => {
               const to = item.href ?? routes[item.route];
               const active = isActive(to);
+              // The page's primary action gets a filled pill on md+; on the
+              // phone menu it is a plain row like the others.
+              const isPrimary = item.route === "REGISTER_COMPLAINT";
+              const label = c(item.labelKey, item.labelKeyDefault);
               return (
-                <li key={item.code ?? item.labelKey} className="m-0 p-0 md:h-full">
-                  <LandingLink
-                    to={to}
-                    aria-current={active ? "page" : undefined}
-                    onClick={() => setOpen(false)}
-                    className={cn(
-                      "relative flex min-h-[48px] items-center px-4 text-sm font-semibold uppercase tracking-wide no-underline md:h-full",
-                      "motion-safe:transition-colors",
-                      // The state bar. Always present, transparent when idle,
-                      // so turning it on never reflows the row.
-                      "after:absolute after:inset-x-4 after:bottom-0 after:h-[3px] after:rounded-t-full after:content-['']",
-                      FOCUS_RING,
-                      // ! beats legacy overrides.css a:not(...):not(...) color rule
-                      active
-                        ? "!text-[hsl(var(--pgrl-primary))] after:bg-[hsl(var(--pgrl-primary))]"
-                        : // ink-soft, not ink: near-black idle labels read as
-                          // heavy next to the blue they turn on hover.
-                          "!text-[hsl(var(--pgrl-ink-soft))] after:bg-transparent " +
-                            "hover:!text-[hsl(var(--pgrl-primary-hover))] hover:after:bg-[hsl(var(--pgrl-primary-hover))]"
-                    )}
-                  >
-                    {c(item.labelKey, item.labelKeyDefault)}
-                  </LandingLink>
+                <li key={item.code ?? item.labelKey} className={cn("m-0 p-0", isPrimary && "md:ml-3")}>
+                  {isPrimary ? (
+                    <>
+                      <LandingLink
+                        to={to}
+                        aria-current={active ? "page" : undefined}
+                        onClick={() => setOpen(false)}
+                        className={cn(
+                          "relative flex min-h-[48px] items-center px-4 text-[15px] font-semibold no-underline md:hidden",
+                          "!text-[hsl(var(--pgrl-primary))]",
+                          FOCUS_RING
+                        )}
+                      >
+                        {label}
+                      </LandingLink>
+                      <CtaLink
+                        to={to}
+                        variant="primary"
+                        aria-current={active ? "page" : undefined}
+                        onClick={() => setOpen(false)}
+                        className="hidden !rounded-full md:inline-flex"
+                      >
+                        {label}
+                      </CtaLink>
+                    </>
+                  ) : (
+                    <LandingLink
+                      to={to}
+                      aria-current={active ? "page" : undefined}
+                      onClick={() => setOpen(false)}
+                      className={cn(
+                        "relative flex min-h-[48px] items-center px-4 text-[15px] font-semibold no-underline md:min-h-[64px]",
+                        "motion-safe:transition-colors",
+                        // The state bar. Always present, transparent when idle,
+                        // so turning it on never reflows the row.
+                        "after:absolute after:inset-x-4 after:bottom-0 after:h-[3px] after:rounded-t-full after:content-['']",
+                        FOCUS_RING,
+                        // ! beats legacy overrides.css a:not(...):not(...) color rule
+                        active
+                          ? "!text-[hsl(var(--pgrl-primary))] after:bg-[hsl(var(--pgrl-accent))]"
+                          : "!text-[hsl(var(--pgrl-ink-soft))] after:bg-transparent " +
+                              "hover:!text-[hsl(var(--pgrl-primary))] hover:after:bg-[hsl(var(--pgrl-accent)/0.6)]"
+                      )}
+                    >
+                      {label}
+                    </LandingLink>
+                  )}
                 </li>
               );
             })}

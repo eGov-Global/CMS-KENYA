@@ -3,8 +3,8 @@
 // left out until the county supplies a real notice (routes.PRIVACY is still "#").
 
 import * as React from "react";
-import { Lock } from "lucide-react";
-import { Section } from "./Section";
+import { ShieldCheck } from "lucide-react";
+import { Section, revealIndex } from "./Section";
 import { useLandingCopy } from "../useLandingCopy";
 import { sectionDomId } from "../config/resolve";
 import { LandingRoutes } from "../routes";
@@ -21,22 +21,27 @@ export function PrivacySection({ routes, section }: PrivacySectionProps) {
   const domId = sectionDomId(section?.code, "privacy");
 
   return (
-    <Section
-      id={domId}
-      code={section?.code}
-      title={c(section?.titleKey, "PRIVACY_TITLE")}
-      tone="surface"
-    >
-      <div className="flex flex-col gap-6 rounded-[var(--pgrl-radius)] border border-solid border-[hsl(var(--pgrl-line))] border-l-4 border-l-[hsl(var(--pgrl-primary))] bg-[hsl(var(--pgrl-page))] p-6 sm:flex-row sm:items-start md:p-8">
+    <Section id={domId} code={section?.code} title={c(section?.titleKey, "PRIVACY_TITLE")} tone="page">
+      <div
+        className={
+          "pgrl-reveal-item flex flex-col gap-6 rounded-[var(--pgrl-radius)] border border-solid " +
+          "border-[hsl(var(--pgrl-line))] bg-[hsl(var(--pgrl-surface))] p-6 sm:flex-row sm:items-start md:p-8"
+        }
+        style={revealIndex(1)}
+      >
         <span
           aria-hidden
-          className="flex h-14 w-14 shrink-0 items-center justify-center rounded-[var(--pgrl-radius)] bg-[hsl(var(--pgrl-primary)/0.1)] text-[hsl(var(--pgrl-primary))]"
+          className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-[hsl(var(--pgrl-tint))] text-[hsl(var(--pgrl-primary))]"
         >
-          <Lock className="h-7 w-7" />
+          <ShieldCheck className="h-7 w-7" />
         </span>
         <div className="max-w-3xl">
-          <p className="m-0 text-base font-semibold leading-relaxed text-[hsl(var(--pgrl-ink-soft))]">{c(section?.bodyKey, "PRIVACY_P1")}</p>
-          <p className="mb-0 mt-3 text-sm leading-relaxed text-[hsl(var(--pgrl-ink-soft))]">{c(section?.subtitleKey, "PRIVACY_P2")}</p>
+          <p className="m-0 text-base font-semibold leading-relaxed text-[hsl(var(--pgrl-ink))] md:text-lg">
+            {c(section?.bodyKey, "PRIVACY_P1")}
+          </p>
+          <p className="mb-0 mt-3 text-sm leading-relaxed text-[hsl(var(--pgrl-ink-soft))] md:text-base">
+            {c(section?.subtitleKey, "PRIVACY_P2")}
+          </p>
         </div>
       </div>
     </Section>
