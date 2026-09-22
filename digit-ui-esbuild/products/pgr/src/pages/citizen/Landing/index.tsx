@@ -13,7 +13,7 @@
 //
 // Works with or without a react-router v5 <Router> above it; strings resolve
 // from MDMS localization (PGR_LANDING_* keys) with built-in EN fallbacks;
-// colors resolve from --pgrl-*-brand CSS vars with Bomet county defaults.
+// colors resolve from --pgrl-*-brand CSS vars with Nairobi City County defaults.
 
 import * as React from "react";
 
