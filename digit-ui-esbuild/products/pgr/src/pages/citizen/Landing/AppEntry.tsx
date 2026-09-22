@@ -14,8 +14,8 @@ import type { LandingRoutes } from "./routes";
 // Tenant branding belongs to the deployment entry, not the reusable page:
 // esbuild's `file` loader emits the asset and returns its URL. An MDMS
 // `navigation` section with a media.imageId still overrides this.
-import bometLogo from "./assets/bomet-logo.jpg";
-import bometFooterLogo from "./assets/bomet-footer-logo.jpg";
+import nairobiEmblem from "./assets/nairobi-emblem.png";
+import nairobiFooterLogo from "./assets/nairobi-footer-logo.png";
 
 export function PGRLandingEntry() {
   const ctx = (typeof window !== "undefined" && (window as any)?.contextPath) || "digit-ui";
@@ -32,7 +32,7 @@ export function PGRLandingEntry() {
     [ctx]
   );
 
-  return <PGRLandingPage routes={routes} emblemUrl={bometLogo} footerLogoUrl={bometFooterLogo} />;
+  return <PGRLandingPage routes={routes} emblemUrl={nairobiEmblem} footerLogoUrl={nairobiFooterLogo} />;
 }
 
 export default PGRLandingEntry;

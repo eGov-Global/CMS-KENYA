@@ -36,7 +36,7 @@ export function TypesSection({ routes, section }: TypesSectionProps) {
       tone="page"
     >
       {/* 3-up at desktop: the deck ships three configured departments. */}
-      <ul className="m-0 grid list-none grid-cols-1 gap-5 p-0 sm:grid-cols-2 lg:grid-cols-3">
+      <ul className={`m-0 grid list-none grid-cols-1 gap-5 p-0 sm:grid-cols-2 ${items.length === 4 ? "lg:grid-cols-4" : "lg:grid-cols-3"}`}>
         {items.map((type) => {
           const Icon = type.icon;
           const accent = "hsl(var(--pgrl-primary))";

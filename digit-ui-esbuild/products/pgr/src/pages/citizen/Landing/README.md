@@ -1,7 +1,8 @@
 # PGR Public Landing Page
 
 Self-contained public landing page for the Complaints & Reports Portal —
-shipped for the County Government of Bomet as the "Bomet Feedback Hub". It
+shipped for the Nairobi City County Government as "Nai Pepea" (copy from the
+Nai Pepea BRD, palette from nairobi.go.ke; see content.ts / tokens.ts). It
 routes citizens into the **existing** application; it implements no internal
 pages, no auth and no APIs of its own.
 
@@ -69,7 +70,7 @@ works with zero translations seeded), and the compiled Tailwind CSS from
 | `emblemUrl` | none | County emblem in the masthead (falls back to a glyph). |
 | `languages` | `en_IN` | Language switcher options (`{ code, label }`). |
 | `onLanguageChange` | platform localization service | Override for locale switching. |
-| `tokens` | Bomet blues | Design-token overrides (HSL triples — see `tokens.ts`). |
+| `tokens` | Nairobi green & gold | Design-token overrides (HSL triples — see `tokens.ts`). |
 | `showWhatsAppFab` | `true` | Floating WhatsApp action; renders nothing while the route is `"#"`. |
 | `showUtilityBar` | `false` | Top gov strip (hotline, phone, language, sign-in). |
 
