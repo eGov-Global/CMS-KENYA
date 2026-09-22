@@ -98,11 +98,22 @@ export const LANDING_COPY = {
   HERO_TRUST_CASE_NUMBER: { en: "Unique case number" },
   HERO_TRUST_NOTIFICATIONS: { en: "SMS acknowledgement with your case number" },
   HERO_CHANNELS_LABEL: { en: "Also available through:" },
+  HERO_PHOTO_CAPTION: { en: "Uhuru Park and the city centre, Nairobi" },
+  // Headline figures under the hero — every one from the BRD (§1, §3, §5.2, §6).
+  STAT_SUBCOUNTIES_VALUE: { en: "2" },
+  STAT_SUBCOUNTIES_LABEL: { en: "pilot sub-counties" },
+  STAT_WARDS_VALUE: { en: "9" },
+  STAT_WARDS_LABEL: { en: "wards in the pilot" },
+  STAT_SLA_VALUE: { en: "72 h" },
+  STAT_SLA_LABEL: { en: "to resolve, then automatic escalation" },
+  STAT_DEPARTMENTS_VALUE: { en: "17" },
+  STAT_DEPARTMENTS_LABEL: { en: "departments in the complaint catalogue" },
   HERO_CHANNEL_APP: { en: "Counter desks at ward and sub-county offices" },
   HERO_CHANNEL_WA: { en: "SMS case updates" },
   HERO_CHANNEL_LINE: { en: "County help line" },
 
   // Service areas ("types" section) -------------------------------------—--
+  TYPES_EYEBROW: { en: "Service areas" },
   TYPES_TITLE: { en: "What You Can Report" },
   TYPES_INTRO: {
     en:
@@ -131,6 +142,7 @@ export const LANDING_COPY = {
   TYPE_CTA: { en: "Report an issue" },
 
   // How it works -----------------------------------------------------------
+  HOW_EYEBROW: { en: "From report to resolution" },
   HOW_TITLE: { en: "How It Works" },
   HOW_STEP_LABEL: { en: "Step" },
   HOW_STEP_1: { en: "Report through this portal, the county help line or a counter desk" },
@@ -154,6 +166,7 @@ export const LANDING_COPY = {
   },
 
   // Channels -----------------------------------------------------------—---
+  CHANNELS_EYEBROW: { en: "Channels" },
   CHANNELS_TITLE: { en: "Ways to Reach Us" },
   CHANNELS_INTRO: {
     en:
@@ -228,7 +241,9 @@ export const LANDING_COPY = {
   NEWS_VIEW_ALL: { en: "See all updates" },
 
   // Areas covered ("institutions" section) -----------------------------—---
+  INST_EYEBROW: { en: "Pilot geography" },
   INST_TITLE: { en: "Areas We Cover" },
+  INST_INTRO: { en: "Nai Pepea starts in two sub-counties. Every ward listed here has counter staff and an assigned department contact." },
   INST_MAKADARA_TITLE: { en: "Makadara Sub-County" },
   INST_MAKADARA_DESC: { en: "Wards: Harambee · Maringo/Hamza · Makongeni · Viwandani" },
   INST_KIBRA_TITLE: { en: "Kibra Sub-County" },

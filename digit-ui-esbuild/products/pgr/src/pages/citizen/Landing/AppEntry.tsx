@@ -16,6 +16,12 @@ import type { LandingRoutes } from "./routes";
 // `navigation` section with a media.imageId still overrides this.
 import nairobiEmblem from "./assets/nairobi-emblem.png";
 import nairobiFooterLogo from "./assets/nairobi-footer-logo.png";
+// Photography (Wikimedia Commons, see assets/CREDITS.md): Uhuru Park for the
+// hero in two cuts (phones get the 960 px one), the dawn skyline behind the
+// closing call to action.
+import nairobiHero from "./assets/nairobi-hero.jpg";
+import nairobiHeroSm from "./assets/nairobi-hero-sm.jpg";
+import nairobiBand from "./assets/nairobi-band.jpg";
 
 export function PGRLandingEntry() {
   const ctx = (typeof window !== "undefined" && (window as any)?.contextPath) || "digit-ui";
@@ -32,7 +38,16 @@ export function PGRLandingEntry() {
     [ctx]
   );
 
-  return <PGRLandingPage routes={routes} emblemUrl={nairobiEmblem} footerLogoUrl={nairobiFooterLogo} />;
+  return (
+    <PGRLandingPage
+      routes={routes}
+      emblemUrl={nairobiEmblem}
+      footerLogoUrl={nairobiFooterLogo}
+      heroImageUrl={nairobiHero}
+      heroImageSmallUrl={nairobiHeroSm}
+      bandImageUrl={nairobiBand}
+    />
+  );
 }
 
 export default PGRLandingEntry;

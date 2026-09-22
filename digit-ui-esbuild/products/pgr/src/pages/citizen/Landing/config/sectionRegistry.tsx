@@ -41,6 +41,10 @@ export interface RenderCtx {
   routes: LandingRoutes;
   news: NewsItem[];
   heroImageUrl?: string;
+  /** Narrow-viewport cut of the hero photo (srcSet); only used with heroImageUrl. */
+  heroImageSmallUrl?: string;
+  /** Photo behind the closing call to action in the channels section. */
+  bandImageUrl?: string;
   emblemUrl?: string;
   footerLogoUrl?: string;
 }
@@ -82,11 +86,17 @@ export const SECTION_REGISTRY: Record<string, SectionEntry> = {
     // P4 (approved adapter tweak): hero trust "features" are items-driven when
     // config provides items[]; icons resolve through the whitelist. CTAs stay
     // application behavior (fixed destinations).
-    buildProps: (s, ctx) => ({
-      routes: ctx.routes,
-      imageUrl: mediaUrl(s.media) ?? ctx.heroImageUrl,
-      section: withItems(s, [], ctx.routes),
-    }),
+    buildProps: (s, ctx) => {
+      const configured = mediaUrl(s.media);
+      return {
+        routes: ctx.routes,
+        imageUrl: configured ?? ctx.heroImageUrl,
+        // The small cut belongs to the shipped photo only; a configured image
+        // has no sibling, so it is dropped rather than mismatched.
+        imageSmallUrl: configured ? undefined : ctx.heroImageSmallUrl,
+        section: withItems(s, [], ctx.routes),
+      };
+    },
   },
   types: {
     Component: TypesSection,
@@ -101,7 +111,11 @@ export const SECTION_REGISTRY: Record<string, SectionEntry> = {
   channels: {
     Component: ChannelsSection,
     slot: "main",
-    buildProps: (s, ctx) => ({ routes: ctx.routes, section: withItems(s, CHANNELS, ctx.routes) }),
+    buildProps: (s, ctx) => ({
+      routes: ctx.routes,
+      bandImageUrl: mediaUrl(s.media) ?? ctx.bandImageUrl,
+      section: withItems(s, CHANNELS, ctx.routes),
+    }),
   },
   privacy: {
     Component: PrivacySection,
