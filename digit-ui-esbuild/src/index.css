@@ -167,6 +167,32 @@
 .citizen .citizen-home-container > .citizen-form-wrapper:not([style*="--banner-url"]) {
   background: none !important;
 }
+/* The pre-auth topbar sits above the photo. The vendored Bomet-era rule pins
+   it to a hardcoded navy (rgba(8,40,64,.55)) with !important, which reads as
+   a foreign blue-grey band above a green page. Re-tint it from the tenant's
+   own header colour; the plain rgba fallback keeps a sane scrim where
+   color-mix is unsupported. */
+.citizen body:has(.citizen-form-wrapper) .navbar,
+.citizen body:has(.citizen-form-wrapper) .topbar,
+body:has(.citizen-form-wrapper) .navbar,
+body:has(.citizen-form-wrapper) .topbar {
+  background-color: rgba(11, 45, 30, 0.55) !important;
+  background-color: color-mix(in srgb, var(--color-header-bg, #0b2d1e) 62%, transparent) !important;
+}
+
+/* The wrapper's min-height is calc(100vh - topbar - footer), so at viewport
+   heights where those constants under-measure, the wrapper ends short of the
+   fold and the body shows through beneath the photo — it reads as a second,
+   repeated image band. Paint the same backdrop on the body while this page is
+   mounted so any leftover strip is continuous with the wrapper. */
+body:has(.citizen-form-wrapper) {
+  background-color: hsl(var(--pgrl-deep, 153 60% 11%));
+}
+.citizen .citizen-home-container > .citizen-form-wrapper {
+  /* Fill the space the calc() leaves over rather than stopping short. */
+  flex: 1 1 auto;
+}
+
 /* The citizen card is white-on-white today; on the photo it needs its own
    surface and a little breathing room at phone widths. */
 .citizen .citizen-form-wrapper[style*="--banner-url"] {
