@@ -191,8 +191,12 @@ body:has(.citizen-form-wrapper) .topbar {
   align-items: stretch;
 }
 .citizen .citizen-home-container > .citizen-form-wrapper {
-  flex: 1 1 auto;
-  min-height: 100% !important;
+  /* `min-height:100%` resolves against the PARENT'S min-height (a calc), not
+     its rendered height, so it can't close the gap. Let flex-grow do it and
+     drop the vendored fixed min-height that was holding the box short. */
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
+  align-self: stretch !important;
 }
 body:has(.citizen-form-wrapper),
 body:has(.citizen-form-wrapper) .body-container,
