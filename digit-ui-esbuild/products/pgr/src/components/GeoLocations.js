@@ -14,6 +14,7 @@ import VectorBaseLayer from "./VectorBaseLayer";
 import MapCamera, { MapZoomBounds } from "./MapCamera";
 import { brandPin } from "./mapPin";
 import useTenantBoundaries from "../hooks/pgr/useTenantBoundaries";
+import { geolocationErrorLabel, trFallback, GEOLOCATION_FALLBACKS } from "../utils/geolocationMessages";
 
 // Fix default icon issue in React builds
 delete L.Icon.Default.prototype._getIconUrl;
@@ -469,17 +470,12 @@ const GeoLocations = ({ t, config, onSelect, formData, tenantId }) => {
           // are otherwise indistinguishable. code: 1=PERMISSION_DENIED,
           // 2=POSITION_UNAVAILABLE, 3=TIMEOUT.
           console.error("Error getting location:", error?.code, error?.message, error);
-          const KEY_BY_CODE = {
-            1: "CS_GEOLOCATION_PERMISSION_DENIED",
-            2: "CS_GEOLOCATION_UNAVAILABLE",
-            3: "CS_GEOLOCATION_TIMEOUT",
-          };
-          const specificKey = KEY_BY_CODE[error?.code];
-          const specific = specificKey ? t(specificKey) : null;
-          // Only ever show localized text — the raw browser message stays in the
-          // console (QA: no technical detail in the toast).
-          const label = specific && specific !== specificKey ? specific : t("CS_GEOLOCATION_ERROR");
-          setShowToast({ key: "error", label });
+          // Only ever show localized text — the raw browser message stays in
+          // the console (QA: no technical detail in the toast). Resolution goes
+          // through geolocationErrorLabel because none of the CS_GEOLOCATION_*
+          // messages are seeded on Bomet: the generic branch used to call t()
+          // bare, so a denied permission printed the literal key (#54).
+          setShowToast({ key: "error", label: geolocationErrorLabel(t, error?.code) });
           setIsSearching(false);
         },
         {
@@ -492,7 +488,10 @@ const GeoLocations = ({ t, config, onSelect, formData, tenantId }) => {
         }
       );
     } else {
-      setShowToast({ key: "error", label: t("CS_GEOLOCATION_NOT_SUPPORTED") });
+      setShowToast({
+        key: "error",
+        label: trFallback(t, "CS_GEOLOCATION_NOT_SUPPORTED", GEOLOCATION_FALLBACKS.CS_GEOLOCATION_NOT_SUPPORTED),
+      });
     }
   };
 
