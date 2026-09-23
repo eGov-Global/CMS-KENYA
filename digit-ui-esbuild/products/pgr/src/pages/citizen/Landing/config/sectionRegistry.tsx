@@ -47,6 +47,9 @@ export interface RenderCtx {
   bandImageUrl?: string;
   /** Portrait of a resident for the closing call to action. */
   personImageUrl?: string;
+  /** Square cuts for the two circular photo orbs. */
+  stepsOrbImageUrl?: string;
+  channelsOrbImageUrl?: string;
   emblemUrl?: string;
   footerLogoUrl?: string;
 }
@@ -108,15 +111,16 @@ export const SECTION_REGISTRY: Record<string, SectionEntry> = {
   steps: {
     Component: HowItWorksSection,
     slot: "main",
-    // The orb reuses the hero photo: already in cache, nothing new to download.
-    buildProps: (s, ctx) => ({ orbImageUrl: mediaUrl(s.media) ?? ctx.heroImageUrl, section: withItems(s, HOW_STEPS, ctx.routes) }),
+    // Square cut so the circular orb isn't a heavy crop of a wide photo;
+    // falls back to the hero image when a deployment ships no square asset.
+    buildProps: (s, ctx) => ({ orbImageUrl: mediaUrl(s.media) ?? ctx.stepsOrbImageUrl ?? ctx.heroImageUrl, section: withItems(s, HOW_STEPS, ctx.routes) }),
   },
   channels: {
     Component: ChannelsSection,
     slot: "main",
     buildProps: (s, ctx) => ({
       routes: ctx.routes,
-      orbImageUrl: mediaUrl(s.media) ?? ctx.bandImageUrl,
+      orbImageUrl: mediaUrl(s.media) ?? ctx.channelsOrbImageUrl ?? ctx.bandImageUrl,
       personImageUrl: ctx.personImageUrl,
       section: withItems(s, CHANNELS, ctx.routes),
     }),

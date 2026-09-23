@@ -25,6 +25,10 @@ import nairobiBand from "./assets/nairobi-band.jpg";
 // Resident portrait in the closing band (Commons, CC BY-SA 4.0 — see
 // CREDITS.md). Swap for a county-supplied photo when one is available.
 import nairobiPerson from "./assets/nairobi-person.jpg";
+// Square cuts for the circular photo orbs. Reusing the wide hero/band photos
+// meant a 1.9 image in a 1.0 box — object-fit:cover threw away ~47% of it.
+import nairobiOrbSteps from "./assets/nairobi-orb-steps.jpg";
+import nairobiOrbChannels from "./assets/nairobi-orb-channels.jpg";
 
 export function PGRLandingEntry() {
   const ctx = (typeof window !== "undefined" && (window as any)?.contextPath) || "digit-ui";
@@ -50,6 +54,8 @@ export function PGRLandingEntry() {
       heroImageSmallUrl={nairobiHeroSm}
       bandImageUrl={nairobiBand}
       personImageUrl={nairobiPerson}
+      stepsOrbImageUrl={nairobiOrbSteps}
+      channelsOrbImageUrl={nairobiOrbChannels}
     />
   );
 }
