@@ -33,7 +33,6 @@ export const Icons = {
   shield: <svg viewBox="0 0 24 24" {...S}><path d="M12 3l7 3v5.5c0 4.3-3 7.7-7 9-4-1.3-7-4.7-7-9V6z" /><path d="M9.2 12.2l2 2 3.6-3.8" /></svg>,
   bolt: <svg viewBox="0 0 24 24" fill="currentColor"><path d="M13 3L5 13.5h5.5L11 21l8-10.5h-5.5z" /></svg>,
   refresh: <svg viewBox="0 0 24 24" {...S}><path d="M20 12a8 8 0 1 1-2.3-5.7" /><path d="M20 4v5h-5" /></svg>,
-  logout: <svg viewBox="0 0 24 24" {...S}><path d="M10 4H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h4" /><path d="M14 8l4 4-4 4M18 12H9" /></svg>,
   globe: <svg viewBox="0 0 24 24" {...S}><circle cx="12" cy="12" r="9" /><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18" /></svg>,
   home: <svg viewBox="0 0 24 24" {...S}><path d="M3 11l9-7 9 7" /><path d="M5 10v10h14V10" /></svg>,
 };

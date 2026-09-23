@@ -32,7 +32,10 @@ import { useDashboardAccess } from "../../../../../dashboard/roles";
 import useHomeData, { SCOPE } from "./useHomeData";
 import { KpiCard, ActionTile, SectionHead, Panel, Medallion } from "./components/Primitives";
 import { Donut, Bars, HeatRows } from "./components/Charts";
-import { PanelHead, LinkButton, Feed, TabbedTable, QuickLinks, DueList, PerfPanel, DraftCard, ErrorPanel, TopBar } from "./components/Panels";
+import { PanelHead, LinkButton, Feed, TabbedTable, QuickLinks, DueList, PerfPanel, DraftCard, ErrorPanel, SignOutDialog } from "./components/Panels";
+// The SAME component the employee chrome registers as its custom header, so
+// the logo, clock, language menu and hover profile card are identical here.
+import EmployeeTopBarV2 from "../../../components/EmployeeTopBarV2";
 
 /* ── localisation + formatting helpers ─────────────────────────────────── */
 
@@ -96,8 +99,10 @@ const feedIconOf = (i) =>
 
 /* ── chrome ────────────────────────────────────────────────────────────── */
 
-const Sidebar = ({ items, active, onNavigate, tr }) => (
-  <aside className="hidden w-[212px] shrink-0 flex-col bg-[hsl(var(--pgrl-deep))] px-2.5 py-3.5 md:flex">
+const Sidebar = ({ items, active, onNavigate, tr, open, onClose, topOffset }) => (
+  <>
+    {open && <button type="button" aria-label="Close menu" onClick={onClose} style={{ top: topOffset }} className="fixed inset-x-0 bottom-0 z-30 m-0 cursor-default border-0 bg-black/40 p-0 md:hidden" />}
+    <aside style={open ? { top: topOffset } : undefined} className={`${open ? "fixed bottom-0 left-0 z-40 flex" : "hidden"} w-[212px] shrink-0 flex-col bg-[hsl(var(--pgrl-deep))] px-2.5 py-3.5 md:static md:flex`}>
     <nav className="flex flex-col gap-0.5">
       {items.map((i) => (
         <button
@@ -125,8 +130,32 @@ const Sidebar = ({ items, active, onNavigate, tr }) => (
         {tr("PGR_HOME_MOTTO_2", "Nairobi Work")}
       </p>
     </div>
-  </aside>
+    </aside>
+  </>
 );
+
+/**
+ * Height of the chrome's fixed header, observed rather than hardcoded: it is
+ * 72px on desktop and 56px on phones, and the body below must start exactly
+ * under it (the chrome does this with .employee-app-wrapper's margin-top).
+ */
+const useHeaderHeight = () => {
+  const [height, setHeight] = React.useState(72);
+  React.useEffect(() => {
+    const el = document.querySelector(".digit-topbar");
+    if (!el) return undefined;
+    const sync = () => setHeight(Math.round(el.getBoundingClientRect().height) || 72);
+    sync();
+    const ro = typeof ResizeObserver !== "undefined" ? new ResizeObserver(sync) : null;
+    ro?.observe(el);
+    window.addEventListener("resize", sync);
+    return () => {
+      ro?.disconnect();
+      window.removeEventListener("resize", sync);
+    };
+  }, []);
+  return height;
+};
 
 /** Panel with the landing's entrance motion, staggered by `i`. */
 const Rise = ({ i = 0, className = "", children }) => (
@@ -165,6 +194,9 @@ export const EmployeeHomeV2 = () => {
 
   const { tier, readOnly, isIntake, hasAny } = resolveTier();
   const isOversight = tier === TIER.OVERSIGHT;
+  const [sidebarOpen, setSidebarOpen] = React.useState(false);
+  const headerHeight = useHeaderHeight();
+  const [showSignOut, setShowSignOut] = React.useState(false);
   const isCasework = tier === TIER.CASEWORK;
   const intakeOnly = tier === TIER.NARROW && isIntake;
   const scope = isOversight || readOnly ? SCOPE.ALL : intakeOnly ? SCOPE.LOGGED : SCOPE.MINE;
@@ -184,6 +216,16 @@ export const EmployeeHomeV2 = () => {
   const firstRole = (user?.info?.roles || []).map((r) => r.code).find((c) => c && !["EMPLOYEE", "CITIZEN", "INTERNAL_MICROSERVICE_ROLE"].includes(c));
   const { data: storeData } = Digit.Hooks.useStore.getInitData();
   const stateInfo = storeData?.stateInfo;
+  // Same inputs the chrome hands its header (TopBarSideBar/index.js).
+  const cityDetails = Digit.ULBService.getCurrentUlb();
+  const { data: workingContext, isError: workingContextError } = Digit.Hooks.pgr.useEmployeeWorkingContext(tenantId, {
+    enabled: !!tenantId && !!user?.access_token,
+  });
+  // Logout first, as requested for this surface; the profile card keeps this order.
+  const userOptions = [
+    { name: t("CORE_COMMON_LOGOUT"), icon: "Logout", func: () => setShowSignOut(true) },
+    { name: t("EDIT_PROFILE"), icon: "Edit", func: () => go(`/${ctx}/employee/user/profile`) },
+  ];
 
   // A user with no PGR role at all gets nothing here — the same posture the
   // existing PGRCard takes (it returns null).
@@ -360,19 +402,31 @@ export const EmployeeHomeV2 = () => {
   // tenant ThemeConfig retints this page exactly as it retints the landing.
   return (
     <div className="v2-scope" style={buildTokenStyle()}>
-      <div className="pgr-emp-home flex min-h-screen flex-col bg-[hsl(var(--pgrl-page))] font-condensed text-[hsl(var(--pgrl-ink))]">
-        <TopBar
-          logoUrl={stateInfo?.logoUrlWhite || stateInfo?.logoUrl}
-          brand={tr(tenantKey, stateInfo?.name || tenantId)}
-          brandSub={tr("PGR_HOME_BRAND_SUB", "Citizen Complaint Resolution System")}
-          dateText={dateText}
-          name={name}
-          roleLabel={firstRole ? tr(`ACCESSCONTROL_ROLES_ROLES_${firstRole}`, firstRole) : ""}
-          signOutLabel={tr("CORE_COMMON_LOGOUT", "Sign out")}
-          onSignOut={() => Digit.UserService.logout()}
+      <div className="pgr-emp-home flex min-h-screen flex-col bg-[hsl(var(--pgrl-page))] font-sans text-[hsl(var(--pgrl-ink))]">
+        <EmployeeTopBarV2
+          t={t}
+          stateInfo={stateInfo}
+          toggleSidebar={() => setSidebarOpen((v) => !v)}
+          isSidebarOpen={sidebarOpen}
+          handleLogout={() => setShowSignOut(true)}
+          userDetails={user}
+          CITIZEN={false}
+          cityDetails={cityDetails}
+          mobileView={typeof window !== "undefined" && window.innerWidth <= 640}
+          userOptions={userOptions}
+          handleUserDropdownSelection={(option) => option.func()}
+          logoUrl={stateInfo?.logoUrl}
+          logoUrlWhite={stateInfo?.logoUrlWhite}
+          showLanguageChange={true}
+          workingContext={workingContext}
+          workingContextError={workingContextError}
+          workingContextTenantId={tenantId}
+          loggedin={!!user?.access_token}
         />
-        <div className="flex min-h-0 flex-1">
-          <Sidebar items={nav} active="home" onNavigate={go} tr={tr} />
+        {showSignOut && <SignOutDialog t={t} onConfirm={() => Digit.UserService.logout()} onCancel={() => setShowSignOut(false)} />}
+        {/* the shared header is position:fixed — offset the body below it, as the chrome does */}
+        <div className="flex min-h-0 flex-1" style={{ paddingTop: headerHeight }}>
+          <Sidebar items={nav} active="home" onNavigate={(to) => { setSidebarOpen(false); go(to); }} tr={tr} open={sidebarOpen} onClose={() => setSidebarOpen(false)} topOffset={headerHeight} />
 
           <main className="min-w-0 flex-1 px-4 py-4 md:px-5">
             {/* greeting hero over the county photograph */}

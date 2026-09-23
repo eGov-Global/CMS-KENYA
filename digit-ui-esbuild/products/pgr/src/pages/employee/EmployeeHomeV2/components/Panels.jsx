@@ -5,7 +5,8 @@
 // data contracts.
 
 import React from "react";
-import { Icons, Medallion, Panel } from "./Primitives";
+import { Medallion, Panel } from "./Primitives";
+import { PopUp, CardText, Button } from "@egovernments/digit-ui-components";
 import { Sparkline } from "./Charts";
 import { FOCUS_RING, FOCUS_RING_DARK } from "../../../citizen/Landing/tokens";
 
@@ -224,33 +225,31 @@ export const ErrorPanel = ({ title, sub, retryLabel, onRetry }) => (
   </Panel>
 );
 
-/** Top bar: county mark, date, user chip, sign out. */
-export const TopBar = ({ logoUrl, brand, brandSub, dateText, name, roleLabel, signOutLabel, onSignOut }) => (
-  <header className="flex h-14 items-center gap-4 bg-[hsl(var(--pgrl-deep))] px-4 text-[hsl(var(--pgrl-on-primary))]">
-    <div className="flex min-w-0 items-center gap-2.5">
-      {logoUrl ? (
-        <img src={logoUrl} alt="" className="h-9 w-9 shrink-0 rounded-lg bg-white/90 object-contain p-0.5" />
-      ) : (
-        <span aria-hidden className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[hsl(var(--pgrl-accent))] text-[11px] font-black text-[hsl(var(--pgrl-on-accent))]">{String(brand || "").slice(0, 3).toUpperCase()}</span>
-      )}
-      <div className="min-w-0 leading-tight">
-        <div className="truncate text-[12px] font-bold uppercase tracking-wide">{brand}</div>
-        {brandSub && <div className="truncate text-[10px] text-[hsl(var(--pgrl-on-primary)/0.7)]">{brandSub}</div>}
-      </div>
-    </div>
-    <div className="ml-auto hidden items-center gap-4 text-xs text-[hsl(var(--pgrl-on-primary)/0.85)] md:flex">
-      <span>{dateText}</span>
-    </div>
-    <div className="flex items-center gap-2.5 md:ml-2">
-      <span aria-hidden className="flex h-8 w-8 items-center justify-center rounded-full bg-[hsl(var(--pgrl-on-primary)/0.15)] text-[hsl(var(--pgrl-on-primary))]"><span className="h-4 w-4">{Icons.user}</span></span>
-      <div className="hidden leading-tight sm:block">
-        <div className="max-w-[160px] truncate text-xs font-semibold">{name}</div>
-        <div className="max-w-[160px] truncate text-[10px] text-[hsl(var(--pgrl-on-primary)/0.7)]">{roleLabel}</div>
-      </div>
-      <button type="button" onClick={onSignOut} title={signOutLabel} aria-label={signOutLabel} className={`m-0 flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg border-0 bg-transparent text-[hsl(var(--pgrl-on-primary)/0.85)] hover:bg-[hsl(var(--pgrl-on-primary)/0.12)] ${FOCUS_RING_DARK}`}>
-        <span className="h-4 w-4">{Icons.logout}</span>
-      </button>
-    </div>
-  </header>
+/**
+ * Sign-out confirmation — the same PopUp, strings and class as core's
+ * LogoutDialog, which is module-internal and cannot be imported here.
+ */
+export const SignOutDialog = ({ t, onConfirm, onCancel }) => (
+  <PopUp
+    type="default"
+    heading={t("CORE_LOGOUT_WEB_HEADER")}
+    children={[
+      <div key="msg">
+        <CardText>
+          {t("CORE_LOGOUT_WEB_CONFIRMATION_MESSAGE") + " "}
+          <strong>{t("CORE_LOGOUT_MESSAGE")}</strong>
+        </CardText>
+      </div>,
+    ]}
+    footerChildren={[
+      <Button key="cancel" type="button" size="large" variation="secondary" label={t("CORE_LOGOUT_CANCEL")} className="logout-cancel-button" onClick={onCancel} />,
+      <Button key="yes" type="button" size="large" variation="primary" label={t("CORE_LOGOUT_WEB_YES")} onClick={onConfirm} />,
+    ]}
+    sortFooterButtons={true}
+    equalWidthButtons={true}
+    onClose={onCancel}
+    onOverlayClick={onCancel}
+    className="digit-logout-popup-wrapper"
+  />
 );
 
