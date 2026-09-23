@@ -186,17 +186,22 @@ body:has(.citizen-form-wrapper) .topbar {
    second, repeated image band. The parent is the flex container, so stretch
    the wrapper there rather than on the wrapper alone, and carry the same deep
    brand colour on the ancestors so any residual strip is continuous. */
+/* The container carries `padding-top: 58px` to clear the fixed topbar. The
+   wrapper stretches inside the PADDING box, so that 58px strip sits above the
+   photo and shows the page through — which is what read as a repeated image
+   band. The topbar is translucent over the backdrop anyway, so drop the pad
+   on this page and let the photo run to the top; the card stays centred. */
 .citizen .main.center-container.citizen-home-container:has(> .citizen-form-wrapper) {
+  padding-top: 0 !important;
   background-color: hsl(var(--pgrl-deep, 153 60% 11%));
   align-items: stretch;
 }
 .citizen .citizen-home-container > .citizen-form-wrapper {
-  /* `min-height:100%` resolves against the PARENT'S min-height (a calc), not
-     its rendered height, so it can't close the gap. Let flex-grow do it and
-     drop the vendored fixed min-height that was holding the box short. */
   flex: 1 1 auto !important;
-  min-height: 0 !important;
   align-self: stretch !important;
+  /* Re-add the topbar clearance as padding INSIDE the painted box so the card
+     still sits below the bar without leaving an unpainted strip. */
+  padding-top: 58px !important;
 }
 body:has(.citizen-form-wrapper),
 body:has(.citizen-form-wrapper) .body-container,
