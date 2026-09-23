@@ -170,15 +170,30 @@ const TimelineWrapper = ({ businessId, isWorkFlowLoading, workflowData, labelPre
 
     useEffect(() => {
         if (workflowData && workflowData.ProcessInstances) {
-            // ASSIGN / REASSIGN / ESCALATE all move the complaint to a new
-            // assignee (ESCALATE via the auto-escalator picking the next-level
-            // employee), so the timeline row should show that assignee
-            // (instance.assignes[0]) not the actor who performed the action
-            // (instance.assigner). egovernments/CCRS#490 originally listed
-            // ASSIGN / REASSIGN; ESCALATE shipped after and inherits the
-            // same intent.
+            // ASSIGN / REASSIGN move the complaint to a new assignee, so those
+            // rows show that assignee (instance.assignes[0]) rather than the
+            // actor who performed the action (instance.assigner) —
+            // egovernments/CCRS#490.
+            //
+            // ESCALATE used to be in this list too, which is what #27 reported:
+            // every other row (Applied, Rejected, Resolved, Reopened) names the
+            // ACTOR, so an ESCALATE row naming the next assignee read as "this
+            // person escalated it" when they are in fact the recipient.
+            // ESCALATE now follows the same actor rule as the rest, and the
+            // recipient moves to its own explicit "Escalated To" line below, so
+            // no information is lost and neither name can be misread.
             const isAssigningAction = (action) =>
-                action === "ASSIGN" || action === "REASSIGN" || action === "ESCALATE";
+                action === "ASSIGN" || action === "REASSIGN";
+
+            // Auto-escalation runs as the INTERNAL_MICROSERVICE_ROLE system
+            // account, so the actor on those rows is literally "Internal
+            // Microservice User" (verified on bgrm). Naming that is worse than
+            // naming nobody, so the row says the system escalated it. A MANUAL
+            // escalate keeps its real actor.
+            const isSystemActor = (person) => {
+                const n = String(person?.name || "").toLowerCase();
+                return n.includes("internal microservice") || n.includes("system");
+            };
 
             // Just the person's name. The prior implementation appended the
             // localized role list as " - <role1>, <role2>, ..." which for
@@ -254,6 +269,19 @@ const TimelineWrapper = ({ businessId, isWorkFlowLoading, workflowData, labelPre
                 const shownMobile = hideThis ? null : maskThis ? maskPhone(mobile) : mobile;
                 const contactLine = shownMobile ? `${t("ES_COMMON_CONTACT_DETAILS")}: ${shownMobile}` : null;
 
+                // ESCALATE keeps the recipient visible, but on its OWN labelled
+                // line so it cannot be misread as the actor (#27). Masked with
+                // the same rules as any other employee identity on this row.
+                const escalatedToLine = (() => {
+                  if (instance?.action !== "ESCALATE" || !assignee?.name) return null;
+                  if (piiMasking && hideEmployeeContacts && !isCitizenActor(assignee)) return null;
+                  const shouldMask =
+                    piiMasking &&
+                    (isCitizenActor(assignee) || (maskEmployeeContacts && !isCitizenActor(assignee)));
+                  const who = shouldMask ? maskName(assignee.name) : assignee.name;
+                  return `${t("CS_MYCOMPLAINTS_ESCALATED_TO")} ${who}`;
+                })();
+
                 // Workflow-driven label: try the localized key, else fall back to the
                 // raw action code so ANY workflow's actions (standard PGR + CMS) render
                 // legibly even before their WF_PGR_* keys are seeded.
@@ -264,8 +292,12 @@ const TimelineWrapper = ({ businessId, isWorkFlowLoading, workflowData, labelPre
                     variant: 'completed',
                     subElements: [
                         convertEpochFormateToDate(instance?.auditDetails?.lastModifiedTime),
-                        personLine,
-                        contactLine,
+                        // The system account is not a person worth naming; the
+                        // action label and the comment ("Auto-escalated: SLA
+                        // breach at level N") already say what happened.
+                        isSystemActor(personRecord) ? null : personLine,
+                        isSystemActor(personRecord) ? null : contactLine,
+                        escalatedToLine,
                         formatComment(instance?.comment),
                     ].filter(Boolean),
                     // CCSD-1965: the attachments uploaded AT this workflow step
