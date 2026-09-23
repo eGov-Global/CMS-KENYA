@@ -182,11 +182,26 @@ const PGRSearchInbox = () => {
   /**
    * Preprocess config using translation and inject complaint types into the serviceCode dropdown
    */
+  // preProcessMDMSConfigInboxSearch MUTATES its `config` argument (it ends with
+  // `_.set(config, jsonpath, updatedConfig)`) and returns that same object, so
+  // `updatedConfig` and `pageConfig` were the same reference. Two consequences,
+  // both of which left the Complaint Subtype filter with zero options:
+  //
+  //   * the memo is not pure — re-running it on a `pageConfig` whose fields had
+  //     already been replaced re-injected into the previous result, and
+  //   * the effect below resets `pageConfig` to a fresh `_.cloneDeep(configs)`
+  //     when `visLoading` resolves, which threw away the injected options while
+  //     the memo, keyed on that same reference, did not recompute.
+  //
+  // Clone first so the injection is pure and always applied to a pristine
+  // config. `serviceDefs` is the hook's array (91 leaves on Bomet); it stays a
+  // flat array because THIS utility assigns `value` verbatim — unlike
+  // preProcessMDMSConfig, which indexes `value?.[i]`.
   var updatedConfig = useMemo(
     () =>
       Digit.Utils.preProcessMDMSConfigInboxSearch(
         t,
-        pageConfig,
+        _.cloneDeep(pageConfig),
         "sections.filter.uiConfig.fields",
         {
           updateDependent: [
@@ -197,7 +212,7 @@ const PGRSearchInbox = () => {
           ],
         }
       ),
-    [pageConfig, serviceDefs]
+    [pageConfig, serviceDefs, t]
   );
 
   // Composer config for BOTH modes: carries the workflow-derived state set

@@ -262,7 +262,7 @@ const ForgotPassword = ({ config: propsConfig, t, stateCode }) => {
                 type="submit"
                 width="full"
                 loading={submitting}
-                disabled={submitting || !username.trim() || !city?.code}
+                disabled={submitting || !mobile.trim() || !city?.code}
               >
                 {tr(propsConfig?.texts?.submitButtonLabel, "Continue")}
               </V2Button>

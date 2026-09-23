@@ -30,6 +30,15 @@ const CustomDropdown = ({ t, config, inputRef, label, onChange,id, value, errorS
     return <Loader />;
   }
 
+  // `data` is from useCustomMDMS above. With no mdmsConfig on the field the
+  // hook runs `enabled: false`, yet its select still returns
+  // `_.get(..., [])` — an EMPTY ARRAY, which is truthy. So
+  // `data || config?.options` chose the empty array and discarded options
+  // supplied directly in the config. That is how the inbox's Complaint
+  // Subtype filter rendered NO_RESULTS_FOUND while its config held 91
+  // options injected via preProcess.updateDependent.
+  const dropdownOptions = data?.length ? data : config?.options || [];
+
   const renderField = () => {
     switch (type) {
       case "radio":
@@ -37,7 +46,7 @@ const CustomDropdown = ({ t, config, inputRef, label, onChange,id, value, errorS
           <RadioButtons
             inputRef={inputRef}
             style={{...config.styles }}
-            options={data || config?.options || []}
+            options={dropdownOptions}
             key={config.name}
             optionsKey={config?.optionsKey}
             value={value}
@@ -62,7 +71,7 @@ const CustomDropdown = ({ t, config, inputRef, label, onChange,id, value, errorS
         if (config?.allowMultiselect) {
           return (
             <MultiSelectDropdown
-              options={data || config?.options || []}
+              options={dropdownOptions}
               optionsKey={config?.optionsKey}
               chipsKey={config?.chipsKey}
               props={config}
@@ -97,7 +106,7 @@ const CustomDropdown = ({ t, config, inputRef, label, onChange,id, value, errorS
           <Dropdown
             inputRef={inputRef}
             style={{...config.styles }}
-            option={data || config?.options || []}
+            option={dropdownOptions}
             key={config.name}
             optionKey={config?.optionsKey}
             value={value}
@@ -120,7 +129,7 @@ const CustomDropdown = ({ t, config, inputRef, label, onChange,id, value, errorS
         return (
          <Toggle
             inputRef={inputRef}
-            options={data || config?.options || []}
+            options={dropdownOptions}
             key={config.name}
             style={config?.style || {}}
             optionsKey={config?.optionsKey}
