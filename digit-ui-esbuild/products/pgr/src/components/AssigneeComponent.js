@@ -1,6 +1,8 @@
 import { useTranslation } from "react-i18next";
 import React, { useEffect, useState } from "react";
 import { Dropdown, Loader } from "@egovernments/digit-ui-components";
+import { narrowByJurisdiction } from "../utils/autoAssign";
+import useFetchBoundaries from "../hooks/boundary/useFetchBoundaries";
 
 const AssigneeComponent = ({ config, onSelect, formState, defaultValues }) => {
   const { t } = useTranslation();
@@ -12,7 +14,23 @@ const AssigneeComponent = ({ config, onSelect, formState, defaultValues }) => {
   // Get roles from config populators. `allDepartments` is true only for a
   // CMS_SCREENING_OFFICER, who routes across EVERY department in the tenant;
   // everyone else stays scoped to the single primary `department`.
-  const { roles = [], department, allDepartments } = config?.populators || {};
+  // `localityCode` is the complaint's leaf boundary — the jurisdiction axis
+  // Bomet routes on (department + jurisdiction). Absent on tenants that route
+  // by department alone, which leaves the jurisdiction gate a no-op.
+  const { roles = [], department, allDepartments, localityCode } = config?.populators || {};
+
+  // Jurisdiction coverage is a property of the boundary TREE (an officer
+  // assigned the sub-county covers every ward beneath it), so the filter needs
+  // the hierarchy, not just the leaf code. Shares the react-query cache key
+  // BoundaryComponent and useAutoAssignment already populate, so this is
+  // normally a cache hit rather than a third fetch. Never gates rendering: if
+  // it hasn't landed, narrowByJurisdiction widens to the full list.
+  const { data: boundaryData } = useFetchBoundaries(tenantId, {
+    staleTime: 10 * 60 * 1000,
+    retry: false,
+    refetchOnWindowFocus: false,
+    enabled: !!tenantId && !!localityCode,
+  });
 
   // Fetch employee data based on roles
   // Staff lists change on the scale of HRMS edits, not seconds. The hook's
@@ -94,9 +112,26 @@ const AssigneeComponent = ({ config, onSelect, formState, defaultValues }) => {
         if (!d || !e?.user?.uuid) return false;
         return unscoped ? true : d === department;
       });
-      setAssignees(transformData(filtered));
+      // Then by JURISDICTION, the second axis Bomet routes on: an officer with
+      // no jurisdiction over the complaint's ward should not be offered as its
+      // assignee (the backend validates department but NOT jurisdiction, so
+      // this dropdown is the only gate). Applied AFTER the department filter so
+      // the two narrow together, and shared with the automatic router so manual
+      // and auto assignment can never disagree about who is eligible.
+      //
+      // Deliberately widening, not exclusive: narrowByJurisdiction returns the
+      // list UNCHANGED when no level of the boundary path has a candidate — the
+      // case on every tenant that never seeded HRMS jurisdictions. Filtering
+      // strictly there would empty the dropdown and block the action outright.
+      const { candidates } = narrowByJurisdiction({
+        employees: filtered,
+        localityCode,
+        boundaryRoots: boundaryData?.[0]?.boundary,
+        tenantId,
+      });
+      setAssignees(transformData(candidates));
     }
-  }, [employeeData]);
+  }, [employeeData, department, allDepartments, localityCode, boundaryData, tenantId]);
 
   // Handle employee selection
   const handleEmployeeSelect = (employee) => {

@@ -17,7 +17,7 @@ import { buildComplaintPath } from "../../utils/complaintHierarchyPath";
 import { selectServiceDefsFromComplaintHierarchy } from "../../utils";
 import { isPiiMaskingEnabled } from "../../utils/piiMasking";
 import useReopenWindow from "../../hooks/pgr/useReopenWindow";
-import { findLatestAssigneeUuidByRole } from "../../utils/workflowAssignee";
+import { findLatestAssigneeUuidByRole, findLatestAssigneeUuidByAnyRole } from "../../utils/workflowAssignee";
 import { EV, trackE } from "../../utils/analytics";
 
 // CCSD-2167 (employee side) — route-back / terminal actions derive their
@@ -390,13 +390,32 @@ const PGRDetails = () => {
     const pickedUuid = _data?.SelectedAssignee?.uuid || null;
     const derivedRole = HISTORY_DERIVED_ASSIGNEE_ROLE[selectedAction.action];
     let assigneeUuid = pickedUuid;
-    if (!pickedUuid && derivedRole) {
+    if (!pickedUuid) {
       // Search history at the COMPLAINT's tenant: its process instances live
       // where it was filed (e.g. mz.ige), and a state-tenant search silently
       // returns nothing there — the resolver then derived null every time.
       const wfTenant = baseService?.tenantId || Digit.ULBService.getStateId();
       const businessId = baseService?.serviceRequestId;
-      assigneeUuid = await findLatestAssigneeUuidByRole(wfTenant, businessId, derivedRole);
+      // The fixed CMS role first, so Mozambique's routing is unchanged.
+      if (derivedRole) {
+        assigneeUuid = await findLatestAssigneeUuidByRole(wfTenant, businessId, derivedRole);
+      }
+      // Then ANY role the LIVE workflow treats as assignable — the same
+      // widening the citizen reopen already does (ReopenComplaint/
+      // AddtionalDetails.js). HISTORY_DERIVED_ASSIGNEE_ROLE names CMS roles
+      // that Bomet's 2-level workflow does not have, so on Bomet the lookup
+      // above always returned null and an assignee-optional action submitted
+      // with assignes: null — leaving the complaint with NO owner, in nobody's
+      // inbox, on states that offer no ASSIGN action to repair it. Keeping the
+      // PREVIOUS holder is the intended behaviour when the officer doesn't pick
+      // someone, so derive them from the complaint's own history instead.
+      if (!assigneeUuid) {
+        assigneeUuid = await findLatestAssigneeUuidByAnyRole(
+          wfTenant,
+          businessId,
+          selectedAction?.assigneeRoles?.length ? selectedAction.assigneeRoles : selectedAction?.roles || []
+        );
+      }
     }
     // Parse (object OR stringified) so stamping never discards existing keys
     // like supervisorName / serviceName that older flows stored as a string.
@@ -479,6 +498,11 @@ const PGRDetails = () => {
     // department. Every other actor stays scoped to the complaint type's single
     // primary department. (Backend validateDepartment still scopes to the primary
     // until relaxed — cross-department assigns will be rejected at submit for now.)
+    // The complaint's leaf boundary — the second routing axis on Bomet
+    // (department + jurisdiction). AssigneeComponent uses it to drop employees
+    // with no jurisdiction over this complaint's ward; absent/unseeded, the
+    // gate widens to the full department list rather than emptying.
+    const localityCode = complaintData?.ServiceWrappers?.[0]?.service?.address?.locality?.code;
     const userRoles = userInfo?.info?.roles?.map((r) => r.code) || [];
     // Show every department's employees when the picker TARGETS a cross-department
     // role, not only when the ACTOR is one. A CMS_SCREENING_OFFICER routes across
@@ -500,11 +524,12 @@ const PGRDetails = () => {
             roles,
             department,
             allDepartments,
+            localityCode,
             // Filestore is tenant-scoped — the uploader must write to the
             // COMPLAINT's tenant so the attachment renders later (the display
             // side fetches at service.tenantId).
             tenantId: complaintTenantId,
-            props: { ...bodyItem.populators.props, department, allDepartments },
+            props: { ...bodyItem.populators.props, department, allDepartments, localityCode },
           },
         })),
       })),
