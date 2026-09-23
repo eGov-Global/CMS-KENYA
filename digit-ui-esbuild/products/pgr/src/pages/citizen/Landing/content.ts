@@ -86,7 +86,7 @@ export const LANDING_COPY = {
   HERO_TITLE: { en: "Nai Pepea" },
   HERO_PILOT_NOTICE: {
     en:
-      "Pilot phase: complaints are handled for Makadara and Kibra Sub-Counties. Other parts of Nairobi will follow as the service scales up to all 85 wards.",
+      "Pilot phase: complaints are handled for six Sub-Counties — Makadara, Lang'ata, Kibra, Kasarani, Embakasi North and Kamukunji. Other parts of Nairobi will follow as the service scales up to all 85 wards.",
   },
   HERO_LEDE: {
     en:
@@ -104,9 +104,9 @@ export const LANDING_COPY = {
   // Speech bubble on the circular photos beside the steps and channels.
   ORB_TAGLINE: { en: "Your Voice Matters" },
   // Headline figures under the hero — every one from the BRD (§1, §3, §5.2, §6).
-  STAT_SUBCOUNTIES_VALUE: { en: "2" },
+  STAT_SUBCOUNTIES_VALUE: { en: "6" },
   STAT_SUBCOUNTIES_LABEL: { en: "pilot sub-counties" },
-  STAT_WARDS_VALUE: { en: "9" },
+  STAT_WARDS_VALUE: { en: "17" },
   STAT_WARDS_LABEL: { en: "wards in the pilot" },
   STAT_SLA_VALUE: { en: "72 h" },
   STAT_SLA_LABEL: { en: "to resolve, then automatic escalation" },
@@ -158,7 +158,7 @@ export const LANDING_COPY = {
   HOW_NOTE_TITLE: { en: "Who handles your case, and what happens if it stalls" },
   HOW_NOTE_NOTIFY: {
     en:
-      "Customer Service assigns every case to the Department Representative or the Director of the department concerned. Whoever receives it is directly responsible for resolving it.",
+      "Customer Service assigns every case to the Director of the department concerned, who is directly responsible for resolving it.",
   },
   HOW_NOTE_RECORD: {
     en:
@@ -255,11 +255,19 @@ export const LANDING_COPY = {
   WORDMARK_LINE1: { en: "Nairobi" },
   WORDMARK_LINE2: { en: "City County" },
   INST_TITLE: { en: "Areas We Cover" },
-  INST_INTRO: { en: "Nai Pepea starts in two sub-counties. Every ward listed here has counter staff and an assigned department contact." },
+  INST_INTRO: { en: "Nai Pepea starts in six sub-counties, 17 wards in all. Every ward listed here has counter staff and an assigned department contact." },
   INST_MAKADARA_TITLE: { en: "Makadara Sub-County" },
-  INST_MAKADARA_DESC: { en: "Wards: Harambee · Maringo/Hamza · Makongeni · Viwandani" },
+  INST_MAKADARA_DESC: { en: "Wards: Viwandani · Harambee · Makongeni · Maringo/Hamza" },
+  INST_LANGATA_TITLE: { en: "Lang'ata Sub-County" },
+  INST_LANGATA_DESC: { en: "Wards: Karen · Nairobi West · Mugumo-ini · South C · Nyayo Highrise" },
   INST_KIBRA_TITLE: { en: "Kibra Sub-County" },
-  INST_KIBRA_DESC: { en: "Wards: Sarang'ombe · Makina · Laini Saba · Silanga · Mashimoni" },
+  INST_KIBRA_DESC: { en: "Wards: Laini Saba · Lindi · Makina · Woodley/Kenyatta Golf Course · Sarang'ombe" },
+  INST_KASARANI_TITLE: { en: "Kasarani Sub-County" },
+  INST_KASARANI_DESC: { en: "Ward: Ruai" },
+  INST_EMBAKASI_NORTH_TITLE: { en: "Embakasi North Sub-County" },
+  INST_EMBAKASI_NORTH_DESC: { en: "Ward: Dandora" },
+  INST_KAMUKUNJI_TITLE: { en: "Kamukunji Sub-County" },
+  INST_KAMUKUNJI_DESC: { en: "Ward: Eastleigh" },
 
   // Final CTA ----------------------------------------------------------—---
   FINAL_TITLE: { en: "Have a complaint about a county service?" },
@@ -417,8 +425,14 @@ export interface InstitutionItem {
 
 // County > Sub-County > Ward — the pilot geography from BRD §6.1.
 export const INSTITUTIONS: InstitutionItem[] = [
-  { icon: Landmark, titleKey: "INST_MAKADARA_TITLE", descKey: "INST_MAKADARA_DESC" },
-  { icon: Landmark, titleKey: "INST_KIBRA_TITLE", descKey: "INST_KIBRA_DESC" },
+  // Order follows the BRD's ward table (§6.1): the four multi-ward
+  // sub-counties first, then the three single-ward ones.
+  { id: "makadara", icon: Landmark, titleKey: "INST_MAKADARA_TITLE", descKey: "INST_MAKADARA_DESC" },
+  { id: "langata", icon: Landmark, titleKey: "INST_LANGATA_TITLE", descKey: "INST_LANGATA_DESC" },
+  { id: "kibra", icon: Landmark, titleKey: "INST_KIBRA_TITLE", descKey: "INST_KIBRA_DESC" },
+  { id: "kasarani", icon: Landmark, titleKey: "INST_KASARANI_TITLE", descKey: "INST_KASARANI_DESC" },
+  { id: "embakasi-north", icon: Landmark, titleKey: "INST_EMBAKASI_NORTH_TITLE", descKey: "INST_EMBAKASI_NORTH_DESC" },
+  { id: "kamukunji", icon: Landmark, titleKey: "INST_KAMUKUNJI_TITLE", descKey: "INST_KAMUKUNJI_DESC" },
 ];
 
 export interface NewsItem {
