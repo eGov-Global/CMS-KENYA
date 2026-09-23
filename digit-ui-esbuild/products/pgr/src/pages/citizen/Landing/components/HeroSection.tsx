@@ -93,12 +93,12 @@ export function HeroSection({ routes, imageUrl, imageSmallUrl, section }: HeroSe
           {imageUrl && (
             <img
               src={imageUrl}
-              srcSet={imageSmallUrl ? `${imageSmallUrl} 960w, ${imageUrl} 1920w` : undefined}
+              srcSet={imageSmallUrl ? `${imageSmallUrl} 900w, ${imageUrl} 1800w` : undefined}
               sizes="100vw"
               alt=""
               // @ts-expect-error fetchpriority is not in React 17's typings; browsers read the lowercase attribute.
               fetchpriority="high"
-              className="pgrl-drift absolute inset-0 h-full w-full object-cover object-[72%_40%]"
+              className="pgrl-drift absolute inset-0 h-full w-full object-cover object-[68%_45%]"
             />
           )}
           {/* Solid green on the text side, thinning to the right so the city
