@@ -93,7 +93,7 @@ export function HeroSection({ routes, imageUrl, imageSmallUrl, section }: HeroSe
           {imageUrl && (
             <img
               src={imageUrl}
-              srcSet={imageSmallUrl ? `${imageSmallUrl} 900w, ${imageUrl} 1800w` : undefined}
+              srcSet={imageSmallUrl ? `${imageSmallUrl} 760w, ${imageUrl} 1800w` : undefined}
               sizes="100vw"
               alt=""
               // @ts-expect-error fetchpriority is not in React 17's typings; browsers read the lowercase attribute.
