@@ -177,3 +177,37 @@ export const resolveAutoAssignee = ({ employees, departmentCode, localityCode, b
     return null;
   }
 };
+
+/**
+ * Narrow a candidate list to the employees whose HRMS jurisdiction covers the
+ * complaint's locality — the jurisdiction half of resolveAutoAssignee's tier 1,
+ * factored out so the MANUAL assignee picker can apply the same rule the
+ * automatic router does. Without it, the employee dropdown listed every
+ * department member county-wide, so a reopen could be handed to an officer with
+ * no jurisdiction over the ward the complaint is in (the backend does not
+ * validate jurisdiction, so the UI is the only gate).
+ *
+ * Widening is deliberate and mirrors resolveAutoAssignee: walk the boundary
+ * path NARROWEST FIRST and return the first level that has anyone, so a ward
+ * officer is preferred over the sub-county officer above them. When no level on
+ * the path has a candidate — or the locality/boundary tree is missing, which is
+ * the norm on tenants that never seeded jurisdictions — return the input
+ * UNCHANGED rather than an empty list. An empty assignee dropdown blocks the
+ * action outright; a too-wide one is merely imprecise. Same fallback
+ * philosophy as BoundaryComponent's jurisdiction prune.
+ *
+ * @returns {{ candidates: Array, jurisdiction: string|null }}
+ */
+export const narrowByJurisdiction = ({ employees, localityCode, boundaryRoots, tenantId }) => {
+  const all = Array.isArray(employees) ? employees : [];
+  try {
+    const path = boundaryAncestorCodes(boundaryRoots, localityCode) || [];
+    for (const code of path) {
+      const atLevel = all.filter((e) => usableJurisdictionCodes(e, tenantId).includes(code));
+      if (atLevel.length > 0) return { candidates: atLevel, jurisdiction: code };
+    }
+    return { candidates: all, jurisdiction: null };
+  } catch (e) {
+    return { candidates: all, jurisdiction: null };
+  }
+};
