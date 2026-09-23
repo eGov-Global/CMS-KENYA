@@ -1433,7 +1433,24 @@ function StepComplaint(props: StepBodyProps) {
       />
       {/* Single-authority: the one option is auto-selected upstream — no picker. */}
       {hasDispatcher && (relatedToOptions?.length ?? 0) > 1 ? <RelatedToStepBody {...props} /> : null}
-      <ReporterDetailsCard {...props} />
+      {/* Every value this card collects (name / address / email) travels ONLY
+          inside service.extendedAttributes, which is built solely when a
+          category resolved (see the caseRelatedTo block in mapFormDataToRequest).
+          A tenant with no dispatcher therefore cannot persist any of them, so
+          rendering the card there asks the citizen to fill three fields that
+          are silently discarded on submit (#51) — and the address in
+          particular is then missing from the details page, which is what QA
+          reported on #21.
+          Not fixable by moving the fields out of that block: pgr-services
+          throws INVALID_CASE_RELATED_TO for ANY non-null extendedAttributes
+          whose caseRelatedTo has no ComplaintTemplateType row (PGRService
+          ~L119-125), and Bomet seeds none — so sending them would fail the
+          create outright (#43). The user-service write that stores the address
+          (EnrichmentService.enrichUserContactDetails) is itself gated on
+          extendedAttributes being present, so persisting it on a
+          dispatcher-less tenant needs a backend change, not a frontend one.
+          Until then, don't collect what we cannot keep. */}
+      {hasDispatcher ? <ReporterDetailsCard {...props} /> : null}
       {showType ? (
         catalogueLoading ? <InlineSpinner /> : <Step0Type {...props} />
       ) : (
