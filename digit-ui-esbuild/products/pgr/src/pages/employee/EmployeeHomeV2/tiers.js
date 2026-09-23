@@ -105,4 +105,10 @@ export const resolveTier = () => {
   };
 };
 
+// AdminSearch.js redirects anyone outside this pair back to /employee, so the
+// home must not offer the link to the wider OVERSIGHT tier (the ombudsman
+// roles would land on a bounce). Keep in step with ADMIN_SEARCH_ROLES there.
+export const ADMIN_SEARCH_ROLES = ["SUPERUSER", "CMS_ADMIN"];
+export const canAdminSearch = () => holdsRole(ADMIN_SEARCH_ROLES);
+
 export default resolveTier;
