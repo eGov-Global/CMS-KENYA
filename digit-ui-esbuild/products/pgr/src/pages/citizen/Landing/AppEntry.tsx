@@ -14,8 +14,17 @@ import type { LandingRoutes } from "./routes";
 // Tenant branding belongs to the deployment entry, not the reusable page:
 // esbuild's `file` loader emits the asset and returns its URL. An MDMS
 // `navigation` section with a media.imageId still overrides this.
-import bometLogo from "./assets/bomet-logo.jpg";
-import bometFooterLogo from "./assets/bomet-footer-logo.jpg";
+import nairobiEmblem from "./assets/nairobi-emblem.png";
+import nairobiFooterLogo from "./assets/nairobi-footer-logo.png";
+// Photography (Wikimedia Commons, see assets/CREDITS.md): Uhuru Park for the
+// hero in two cuts (phones get the 960 px one), the dawn skyline behind the
+// closing call to action.
+import nairobiHero from "./assets/nairobi-hero.jpg";
+import nairobiHeroSm from "./assets/nairobi-hero-sm.jpg";
+import nairobiBand from "./assets/nairobi-band.jpg";
+// Resident portrait in the closing band (Commons, CC BY-SA 4.0 — see
+// CREDITS.md). Swap for a county-supplied photo when one is available.
+import nairobiPerson from "./assets/nairobi-person.jpg";
 
 export function PGRLandingEntry() {
   const ctx = (typeof window !== "undefined" && (window as any)?.contextPath) || "digit-ui";
@@ -32,7 +41,17 @@ export function PGRLandingEntry() {
     [ctx]
   );
 
-  return <PGRLandingPage routes={routes} emblemUrl={bometLogo} footerLogoUrl={bometFooterLogo} />;
+  return (
+    <PGRLandingPage
+      routes={routes}
+      emblemUrl={nairobiEmblem}
+      footerLogoUrl={nairobiFooterLogo}
+      heroImageUrl={nairobiHero}
+      heroImageSmallUrl={nairobiHeroSm}
+      bandImageUrl={nairobiBand}
+      personImageUrl={nairobiPerson}
+    />
+  );
 }
 
 export default PGRLandingEntry;

@@ -61,11 +61,11 @@ export interface ButtonProps
  * naipepea's kenya-yellow legacy button pixel-for-pixel:
  *
  *   bg    = var(--color-button-primary-bg-default, --color-primary-2, #FEC931)
- *   text  = var(--color-text-primary, #0B0C0C) — every other yellow CTA on
- *           naipepea (the classless-button override rule in overrides.css,
- *           Save / Search / submit-bar buttons) reads dark text on yellow,
- *           so the v2 Next/Submit matches that convention rather than the
- *           old `.digit-button-primary` inner-h2 white-on-yellow.
+ *   text  = var(--color-button-primary-text, --color-text-primary, #0B0C0C)
+ *           — the record's own "text on primary button" role. A yellow
+ *           button (Bomet) declares dark text there; a deep-green one
+ *           (Nairobi) declares white. Reading body text-primary here instead
+ *           painted the Nairobi Login / Continue labels dark on dark green.
  *
  * Hover / active also route through the same vars so a tenant changing
  * `--color-button-primary-bg-hover` retints the v2 button automatically.
@@ -73,7 +73,7 @@ export interface ButtonProps
 const PRIMARY_INLINE_STYLE: React.CSSProperties = {
   backgroundColor:
     "var(--color-button-primary-bg-default, var(--color-primary-2, #FEC931))",
-  color: "var(--color-text-primary, #0B0C0C)",
+  color: "var(--color-button-primary-text, var(--color-text-primary, #0B0C0C))",
 };
 const PRIMARY_HOVER_BG =
   "var(--color-button-primary-bg-hover, var(--color-primary-2, #E6B800))";

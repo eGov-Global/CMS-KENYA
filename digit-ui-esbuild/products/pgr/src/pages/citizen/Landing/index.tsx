@@ -13,7 +13,9 @@
 //
 // Works with or without a react-router v5 <Router> above it; strings resolve
 // from MDMS localization (PGR_LANDING_* keys) with built-in EN fallbacks;
-// colors resolve from --pgrl-*-brand CSS vars with Bomet county defaults.
+// colors resolve from --pgrl-*-brand CSS vars with Nairobi City County defaults.
+// Photography is injected by the deployment entry (AppEntry.tsx); without it
+// the hero and the closing band render on flat brand green.
 
 import * as React from "react";
 
@@ -34,6 +36,12 @@ export interface PGRLandingPageProps {
   news?: NewsItem[];
   /** Optional hero photo (rendered under the brand scrim). */
   heroImageUrl?: string;
+  /** Narrow-viewport cut of the hero photo, offered via srcSet. */
+  heroImageSmallUrl?: string;
+  /** Optional photo for the circular artwork beside the channels title. */
+  bandImageUrl?: string;
+  /** Optional portrait of a resident for the closing call to action. */
+  personImageUrl?: string;
   /** Government emblem for the masthead. */
   emblemUrl?: string;
   /** Wide logo lockup shown beside the identity text in the footer. */
