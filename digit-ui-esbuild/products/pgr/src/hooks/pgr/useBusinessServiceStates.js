@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { useQuery } from "react-query";
 import { Request } from "@egovernments/digit-ui-libraries";
 import Urls from "../../utils/urls";
+import { isActionable } from "../../utils/workflowStates";
 
 /**
  * useBusinessServiceStates — reads the PGR workflow BusinessService and exposes
@@ -18,7 +19,6 @@ import Urls from "../../utils/urls";
  * config off it, and the composer treats config identity as load-bearing
  * (see the CCRS#558 note in PGRInbox.js).
  */
-const isActionable = (s) => !s?.isTerminateState && Array.isArray(s?.actions) && s.actions.length > 0;
 
 // Both identifiers of a state, not one-or-the-other. What eg_pgr_service_v2
 // persists as applicationstatus does not reliably match the BusinessService's

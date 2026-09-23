@@ -1700,6 +1700,14 @@ export const UICustomizations = {
       // have state ≠ applicationStatus — PENDINGFORREASSIGNMENT→"REASSIGND" (spec's
       // spelling) and INFOFROMCITIZEN→"AWAITINGINFORMATION" — so both spellings are
       // included; a value unknown to a tenant's workflow simply matches nothing.
+      // RESOLVED/REJECTED are included even though they are terminal: they still
+      // carry REOPEN (granted to CSR) and RATE, so a call-centre employee must be
+      // able to find them in the default list in order to reopen them (#46).
+      // Bomet's ESCALATEDLEVEL1-3 are listed for the same reason the others are —
+      // this static list is only the fallback used before the live BusinessService
+      // resolves (allStates above), and it was missing them.
+      // Still excluded: CLOSEDAFTERRESOLUTION / CLOSEDAFTERREJECTION / CANCELLED,
+      // which declare zero actions and genuinely cannot be acted on.
       const OPEN_STATES = [
         "PENDINGFORASSIGNMENT",
         "PENDINGFORREASSIGNMENT",
@@ -1710,6 +1718,11 @@ export const UICustomizations = {
         "INFOFROMCITIZEN",
         "REASSIGND",
         "AWAITINGINFORMATION",
+        "ESCALATEDLEVEL1",
+        "ESCALATEDLEVEL2",
+        "ESCALATEDLEVEL3",
+        "RESOLVED",
+        "REJECTED",
       ];
       const rawStatuses = filterForm.status || {};
       const statuses = Object.keys(rawStatuses).filter((key) => rawStatuses[key] === true);
