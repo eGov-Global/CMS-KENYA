@@ -203,6 +203,9 @@ body:has(.citizen-form-wrapper) .topbar {
      still sits below the bar without leaving an unpainted strip. */
   padding-top: 58px !important;
 }
+/* Root/body too: a few pixels of white were still visible under the footer
+   (the html element's own background). */
+html:has(.citizen-form-wrapper),
 body:has(.citizen-form-wrapper),
 body:has(.citizen-form-wrapper) .body-container,
 body:has(.citizen-form-wrapper) .citizen {
