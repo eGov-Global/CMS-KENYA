@@ -1,17 +1,22 @@
 import { useTranslation } from "react-i18next";
 import React, { useEffect, useState } from "react";
-import { Dropdown, Loader } from "@egovernments/digit-ui-components";
+import { Dropdown, Loader, TextInput } from "@egovernments/digit-ui-components";
+import { filterAssigneeGroups, countAssignees } from "../utils/assigneeSearch";
 
 const AssigneeComponent = ({ config, onSelect, formState, defaultValues }) => {
   const { t } = useTranslation();
   const [assignees, setAssignees] = useState([]);
   const [selectedEmployee, setSelectedEmployee] = useState(null);
+  // Free-text filter over department OR person; the dropdown atom itself only
+  // matches group headers, so people would be unsearchable without this.
+  const [query, setQuery] = useState("");
   const tenantId = Digit.ULBService.getCurrentTenantId();
   const hrmsContext = window?.globalConfigs?.getConfig("HRMS_CONTEXT_PATH") || "egov-hrms";
 
-  // Get roles from config populators. `allDepartments` is true only for a
-  // CMS_SCREENING_OFFICER, who routes across EVERY department in the tenant;
-  // everyone else stays scoped to the single primary `department`.
+  // Get roles from config populators. `allDepartments` is true for a
+  // CMS_SCREENING_OFFICER (routes across EVERY department) and for REASSIGN
+  // (department-agnostic by design); everyone else stays scoped to the single
+  // primary `department`.
   const { roles = [], department, allDepartments } = config?.populators || {};
 
   // Fetch employee data based on roles
@@ -128,11 +133,31 @@ const AssigneeComponent = ({ config, onSelect, formState, defaultValues }) => {
     );
   }
 
+  const visible = filterAssigneeGroups(assignees, query);
+  const searchLabel = t("CS_COMMON_SEARCH_EMPLOYEE") === "CS_COMMON_SEARCH_EMPLOYEE" ? "Search by name or department" : t("CS_COMMON_SEARCH_EMPLOYEE");
+  const noMatch = t("CS_COMMON_NO_EMPLOYEE_MATCH") === "CS_COMMON_NO_EMPLOYEE_MATCH" ? "No employee or department matches" : t("CS_COMMON_NO_EMPLOYEE_MATCH");
+
   return (
     <div className="assignee-dropdown-container">
+      {/* Only worth a search box once the list spans departments (unscoped). */}
+      {(allDepartments || !department || department === "NA") && countAssignees(assignees) > 5 && (
+        <div className="assignee-search" style={{ marginBottom: "0.5rem" }}>
+          <TextInput
+            type="text"
+            name="assigneeSearch"
+            value={query}
+            placeholder={searchLabel}
+            aria-label={searchLabel}
+            onChange={(e) => setQuery(typeof e === "string" ? e : e?.target?.value ?? "")}
+          />
+          {query && visible.length === 0 && (
+            <div style={{ color: "var(--color-text-secondary, #5F5C62)", fontSize: "0.875rem", marginTop: "0.25rem" }}>{noMatch}</div>
+          )}
+        </div>
+      )}
       <Dropdown
         t={t}
-        option={assignees}
+        option={visible}
         optionKey="name"
         selected={selectedEmployee}
         select={(value) => {

@@ -25,6 +25,19 @@ import static org.egov.pgr.util.PGRConstants.*;
 @Component
 public class ServiceRequestValidator {
 
+    /** Workflow actions exempt from the complaint-type -> department match (see validateUpdate). */
+    private static final Set<String> DEPARTMENT_AGNOSTIC_ACTIONS =
+            new HashSet<>(Arrays.asList(PGR_WF_REOPEN, REASSIGN));
+
+    private boolean isDepartmentAgnostic(ServiceRequest request, Service persisted) {
+        String action = request.getWorkflow() != null ? request.getWorkflow().getAction() : null;
+        if (action == null) return false;
+        if (DEPARTMENT_AGNOSTIC_ACTIONS.contains(action)) return true;
+        return ASSIGN.equalsIgnoreCase(action)
+                && persisted != null
+                && PENDING_FOR_REASSIGNMENT.equalsIgnoreCase(persisted.getApplicationStatus());
+    }
+
 
     private PGRConfiguration config;
 
@@ -79,13 +92,23 @@ public class ServiceRequestValidator {
         String tenantId = request.getService().getTenantId();
         validateSource(request.getService().getSource());
         validateMDMS(request, mdmsData);
-        validateDepartment(request, mdmsData);
         RequestSearchCriteria criteria = RequestSearchCriteria.builder().ids(Collections.singleton(id)).tenantId(tenantId).build();
         criteria.setIsPlainSearch(false);
         List<ServiceWrapper> serviceWrappers = repository.getServiceWrappers(criteria);
 
         if(CollectionUtils.isEmpty(serviceWrappers))
             throw new CustomException("INVALID_UPDATE","The record that you are trying to update does not exists");
+
+        // The complaint-type -> department match is a ROUTING rule: it applies when a
+        // complaint is first sent to a department (ASSIGN from PENDINGFORASSIGNMENT).
+        // REOPEN hands the complaint back to the officer who already handled it,
+        // REASSIGN moves it deliberately to a named person, and the ASSIGN that
+        // follows a reassign request re-routes it — none of these is bound by the
+        // type's department, and the reception/CSR actors driving them are not
+        // mapped to a department at all. Decided against the PERSISTED status, never
+        // the request body.
+        if (!isDepartmentAgnostic(request, serviceWrappers.get(0).getService()))
+            validateDepartment(request, mdmsData);
 
         // Re-open eligibility (authorization + deadline) must be checked against the
         // persisted record, so fetch it first and pass it in — never trust the request body.

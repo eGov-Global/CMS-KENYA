@@ -225,11 +225,17 @@ function WorkflowComponent({ complaintDetails, id }) {
               <Link key={action} to={`/${window?.contextPath || "digit-ui"}/citizen/pgr/${action.toLowerCase()}/${id}`}>
                 <button
                   type="button"
+                  // The class is load-bearing: overrides.css restyles every
+                  // CLASSLESS <button> with text-primary (near-black) !important,
+                  // which on a dark-green primary read as black-on-green.
+                  className="pgr-citizen-action-btn"
                   style={{
                     padding: "0.4rem 1.1rem",
                     fontWeight: 600,
-                    color: "#fff",
-                    background: "var(--color-primary-1, var(--color-primary-main, #c84c0e))",
+                    // Same pair the design-system primary button uses; applyTheme
+                    // derives a readable text colour when the tenant omits it.
+                    color: "var(--color-button-primary-text, #fff)",
+                    background: "var(--color-button-primary-bg-default, var(--color-primary-1, var(--color-primary-main, #c84c0e)))",
                     border: "none",
                     borderRadius: "0.375rem",
                     cursor: "pointer",
