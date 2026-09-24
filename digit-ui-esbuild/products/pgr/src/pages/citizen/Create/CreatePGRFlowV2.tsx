@@ -138,6 +138,12 @@ interface FormData {
   complainantName?: string;
   complainantAddress?: string;
   email?: string;
+  // Optional free-text address. Persisted as service.address.street — a
+  // first-class column — NOT via extendedAttributes, which only exists when a
+  // Mozambique category resolved and which pgr-services rejects outright on a
+  // tenant with no ComplaintTemplateType row (#43). Verified end-to-end
+  // against the API for both the citizen and employee personas (#21).
+  street?: string;
 }
 
 // RAINMAKER-PGR.ComplaintRelatedToMap — the citizen-facing category lookup. Maps
@@ -394,7 +400,7 @@ function mapFormDataToRequest(formData: FormData, tenantId: string, user: any, d
       address: {
         landmark: validateString(formData?.landmark),
         buildingName: "",
-        street: "",
+        street: validateString(formData?.street),
         locality: {
           // SelectedBoundary FIRST: it is the confirmed cascade value (a real
           // boundary-tree code, and the user's manual correction when they
@@ -1359,6 +1365,33 @@ function InlineSpinner() {
 // the logged-in citizen's profile (name + address editable per complaint). The
 // values travel in extendedAttributes (complainantName/complainantAddress), so
 // editing them never round-trips through the user service.
+// Optional free-text address, shown on EVERY tenant.
+//
+// Kept separate from ReporterDetailsCard: that card's three fields (name /
+// address / email) travel in extendedAttributes and are therefore unusable on
+// a tenant with no category dispatcher (#51). This one writes
+// service.address.street, a first-class column every tenant persists, so the
+// citizen and employee create forms can offer the same optional address and
+// both details pages can render it (#21).
+function AddressCardFields({ data, patch, t }: StepBodyProps) {
+  return (
+    <div className="space-y-2" style={{ marginTop: "1rem" }}>
+      <Field label={tr(t, "ES_CREATECOMPLAINT_ADDRESS", "Address")} htmlFor="complaint-address">
+        <Input
+          id="complaint-address"
+          data-matomo-mask
+          maxLength={300}
+          value={data.street ?? ""}
+          onChange={(e) => patch({ street: e.target.value })}
+        />
+        <FieldHelp>
+          {tr(t, "CS_ADDRESS_HELP", "Optional — a nearby building, plot or description to help the officer find the spot.")}
+        </FieldHelp>
+      </Field>
+    </div>
+  );
+}
+
 function ReporterDetailsCard({ data, patch, t }: StepBodyProps) {
   React.useEffect(() => {
     const info = Digit.UserService.getUser()?.info;
@@ -1477,6 +1510,7 @@ function StepWhere(props: StepBodyProps) {
           </div>
           <div style={{ flex: "2 1 300px", minWidth: 0 }}>
             <Step2Location {...props} />
+            <AddressCardFields {...props} />
           </div>
         </div>
       </Card>

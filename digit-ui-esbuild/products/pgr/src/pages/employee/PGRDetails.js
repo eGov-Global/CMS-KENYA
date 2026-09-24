@@ -732,13 +732,21 @@ const PGRDetails = () => {
                   // alongside the complainant name/mobile. The
                   // extendedAttributes.complainantAddress fallback already
                   // arrives masked, so the mask is idempotent for that branch.
-                  ...((pgrData?.ServiceWrappers?.[0]?.service?.citizen?.correspondenceAddress ||
+                  // address.street FIRST: it is where both create forms now write
+                  // the optional typed address (#21). The two legacy sources stay
+                  // as fallbacks so complaints filed before the change, and any
+                  // Mozambique complaint still using extendedAttributes, keep
+                  // rendering exactly as they did. Row is omitted entirely when
+                  // none of the three is set, so a blank address adds no row.
+                  ...((pgrData?.ServiceWrappers?.[0]?.service?.address?.street ||
+                      pgrData?.ServiceWrappers?.[0]?.service?.citizen?.correspondenceAddress ||
                       pgrData?.ServiceWrappers?.[0]?.service?.extendedAttributes?.complainantAddress)
                     ? [
                         {
                           inline: true,
                           label: t("ES_CREATECOMPLAINT_ADDRESS"),
                           value: maskIfConfidential(
+                            pgrData.ServiceWrappers[0].service.address?.street ||
                             pgrData.ServiceWrappers[0].service.citizen?.correspondenceAddress ||
                             pgrData.ServiceWrappers[0].service.extendedAttributes?.complainantAddress
                           ),
