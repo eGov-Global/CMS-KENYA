@@ -234,6 +234,21 @@ button[class*="submit-bar"]:hover {
   color: var(--color-button-primary-text, #FFFFFF) !important;
 }
 
+/* Primary button resting state. The vendored `.digit-button-primary` paints
+ * `var(--color-primary-main)` — on a v3 record that is primary-2 (Nairobi's
+ * gold) — while the hover/pressed rules above and the label colour follow the
+ * `--color-button-primary-*` tokens (applyTheme resolves those to the record's
+ * button surface, dark green on Nairobi, and derives a readable label for it).
+ * The two disagreed: white text on a gold button that turned green on hover.
+ * Paint the resting state from the same token the label was chosen for. */
+.digit-btn.primary,
+.digit-button.primary,
+.digit-button-primary,
+button.digit-submit-bar,
+button[class*="submit-bar"] {
+  background-color: var(--color-button-primary-bg-default, var(--color-primary-2, #FEC931)) !important;
+}
+
 /* Primary button pressed — designer's "Primary Button / Background Pressed"
  * (Nairobi: #CC9F00). Active state during click. */
 .digit-btn.primary:active,
