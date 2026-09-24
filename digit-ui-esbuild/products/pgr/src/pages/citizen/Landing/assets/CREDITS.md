@@ -1,4 +1,4 @@
-# Photo credits — Nai Pepea landing page
+# Photo credits — Bonga Nai landing page
 
 All photographs are from Wikimedia Commons under licences that permit reuse with
 attribution. Resized and recompressed for the web; no other edits. Keep this

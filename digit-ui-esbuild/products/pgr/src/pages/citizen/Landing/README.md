@@ -1,7 +1,8 @@
 # PGR Public Landing Page
 
 Self-contained public landing page for the Complaints & Reports Portal —
-shipped for the Nairobi City County Government as "Nai Pepea" (copy from the
+shipped for the Nairobi City County Government as "Bonga Nai" (launched as
+"Nai Pepea"; copy from the
 Nai Pepea BRD, palette from nairobi.go.ke; see content.ts / tokens.ts). It
 routes citizens into the **existing** application; it implements no internal
 pages, no auth and no APIs of its own.

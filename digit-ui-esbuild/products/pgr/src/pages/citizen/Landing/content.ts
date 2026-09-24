@@ -5,7 +5,9 @@
 //   2. Built-in copy below (`en`; other locales come from seeded MDMS keys).
 //   3. The raw key (never expected to surface).
 //
-// ── Deployment: Nairobi City County Government, Kenya ("Nai Pepea") ──
+// ── Deployment: Nairobi City County Government, Kenya ("Bonga Nai") ──
+// Portal renamed from "Nai Pepea" to "Bonga Nai" (September 2026); the BRD
+// still carries the launch name.
 // Every factual claim below comes from the Nai Pepea Business Requirements
 // Document (BRD Draft V0.1, September 2026; NCCG / eGov Global / Smart Nairobi /
 // World Bank) and the county's public website (nairobi.go.ke — contacts):
@@ -56,7 +58,7 @@ export type IconComponent = React.ComponentType<{ className?: string; "aria-hidd
 export const LANDING_COPY = {
   // Chrome ------------------------------------------------------------------
   GOV_NAME: { en: "Nairobi City County Government" },
-  PORTAL_NAME: { en: "Nai Pepea" },
+  PORTAL_NAME: { en: "Bonga Nai" },
   ORG_NAMES: { en: "Office of the County Chief Officer · Public Participation, Citizen Engagement and Customer Service" },
   FOOTER_ORG: { en: "Nairobi City County Government" },
   TAGLINE: { en: "You report it. The County acts on it." },
@@ -83,14 +85,14 @@ export const LANDING_COPY = {
 
   // Hero -----------------------------------------------------------------—--
   HERO_EYEBROW: { en: "Nairobi City County Government · Kenya" },
-  HERO_TITLE: { en: "Nai Pepea" },
+  HERO_TITLE: { en: "Bonga Nai" },
   HERO_PILOT_NOTICE: {
     en:
       "Pilot phase: complaints are handled for six Sub-Counties — Makadara, Lang'ata, Kibra, Kasarani, Embakasi North and Kamukunji. Other parts of Nairobi will follow as the service scales up to all 85 wards.",
   },
   HERO_LEDE: {
     en:
-      "Nai Pepea means fresh air. Report a problem with a county service, get a case number within seconds, and follow it until it is resolved. Every case is assigned to an officer in the responsible department and escalated automatically if it misses its deadline.",
+      "Bonga Nai means speak up, Nairobi. Report a problem with a county service, get a case number within seconds, and follow it until it is resolved. Every case is assigned to an officer in the responsible department and escalated automatically if it misses its deadline.",
   },
   HERO_CTA_SUBMIT: { en: "Report an Issue" },
   HERO_CTA_TRACK: { en: "Track a Complaint" },
@@ -204,7 +206,7 @@ export const LANDING_COPY = {
   },
   // Retained key: referenced directly by WhatsAppFab, which renders nothing
   // while the WHATSAPP route is "#" (WhatsApp is registered but not a live
-  // Phase 1 channel for Nai Pepea).
+  // Phase 1 channel for Bonga Nai).
   CHANNEL_WA_CTA: { en: "Chat on WhatsApp" },
 
   // Privacy ------------------------------------------------------------—---
@@ -225,7 +227,7 @@ export const LANDING_COPY = {
   PRIVACY_PAGE_TITLE: { en: "Privacy Notice" },
   PRIVACY_PAGE_P1: {
     en:
-      "Nai Pepea is operated by the Nairobi City County Government through the Office of the County Chief Officer for Public Participation, Citizen Engagement and Customer Service. We are committed to protecting your privacy and to handling your personal information securely, transparently and in line with the Data Protection Act, 2019.",
+      "Bonga Nai is operated by the Nairobi City County Government through the Office of the County Chief Officer for Public Participation, Citizen Engagement and Customer Service. We are committed to protecting your privacy and to handling your personal information securely, transparently and in line with the Data Protection Act, 2019.",
   },
   PRIVACY_PAGE_P2: {
     en:
@@ -255,7 +257,7 @@ export const LANDING_COPY = {
   WORDMARK_LINE1: { en: "Nairobi" },
   WORDMARK_LINE2: { en: "City County" },
   INST_TITLE: { en: "Areas We Cover" },
-  INST_INTRO: { en: "Nai Pepea starts in six sub-counties, 17 wards in all. Every ward listed here has counter staff and an assigned department contact." },
+  INST_INTRO: { en: "Bonga Nai starts in six sub-counties, 17 wards in all. Every ward listed here has counter staff and an assigned department contact." },
   INST_MAKADARA_TITLE: { en: "Makadara Sub-County" },
   INST_MAKADARA_DESC: { en: "Wards: Viwandani · Harambee · Makongeni · Maringo/Hamza" },
   INST_LANGATA_TITLE: { en: "Lang'ata Sub-County" },
@@ -301,7 +303,7 @@ export const LANDING_COPY = {
   SOCIAL_X: { en: "X (formerly Twitter)" },
   SOCIAL_YOUTUBE: { en: "YouTube" },
   FOOTER_COPYRIGHT: {
-    en: "Nai Pepea · Nairobi City County Government. All rights reserved.",
+    en: "Bonga Nai · Nairobi City County Government. All rights reserved.",
   },
 
   // Misc ---------------------------------------------------------------—---
@@ -458,7 +460,7 @@ export const DEFAULT_NEWS: NewsItem[] = [
     dateLabel: "Pilot phase",
     dateTime: "2026-09-01",
     tag: "Programme",
-    title: "Nai Pepea opens in Makadara and Kibra",
+    title: "Bonga Nai opens in Makadara and Kibra",
     excerpt:
       "The pilot covers two sub-counties and nine wards, with complaint types configured for 17 county departments so the service can scale without re-configuration.",
     source: "Nairobi City County Government",
