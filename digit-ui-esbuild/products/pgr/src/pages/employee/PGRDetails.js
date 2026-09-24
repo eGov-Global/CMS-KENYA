@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { complaintLabel } from "../../utils/complaintLabel";
 import { useTranslation } from "react-i18next";
 import { useHistory, useLocation, useParams } from "react-router-dom/cjs/react-router-dom.min";
@@ -445,6 +445,40 @@ const PGRDetails = () => {
     await workFlowRevalidate();
   };
 
+  // #57: this page can sit open for hours (a Director reading a complaint at
+  // the 23rd hour of a 24h escalation window). The global query defaults keep
+  // data for 15 minutes and every hook here opts out of refetchOnWindowFocus,
+  // so when the user comes back the timeline and the Take Action menu still
+  // describe a state the backend has long since escalated past. Refetch when
+  // the tab becomes visible again so they act on current data. Scoped to this
+  // page via a listener rather than flipping the codebase-wide focus-refetch
+  // convention; held in a ref so the effect subscribes once and always calls
+  // the latest revalidators.
+  const refreshRef = useRef(refreshData);
+  refreshRef.current = refreshData;
+  useEffect(() => {
+    const onVisible = () => {
+      if (document.visibilityState !== "visible") return;
+      refreshRef.current?.().catch((e) => console.warn("PGRDetails: refresh on tab focus did not complete", e));
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
+  }, []);
+
+  // #57: a failed update is the clearest signal the page is stale — the
+  // backend rejected the action against a state the UI no longer knows
+  // (INVALID ROLE after a further auto-escalation, in the reported case).
+  // The toast used to be the end of it, leaving the user staring at the
+  // outdated timeline with no way to see why. Refetch so the timeline and
+  // Take Action availability reflect what the backend actually holds. The
+  // refetch is best-effort: if it fails too, the original error toast must
+  // still stand, so it is logged rather than allowed to replace it.
+  const handleUpdateFailure = (actionCode) => {
+    trackE(EV.WORKFLOW_FAILED, actionCode);
+    setToast({ show: true, label: t("FAILED_TO_UPDATE_COMPLAINT"), type: "error" });
+    refreshData().catch((e) => console.warn("PGRDetails: refresh after failed update did not complete", e));
+  };
+
   // Handle response after updating complaint
   const handleResponseForUpdateComplaint = async (payload) => {
     setOpenModal(false);
@@ -452,15 +486,11 @@ const PGRDetails = () => {
     // bounded vocabulary, never the comment, assignee or complaint id.
     const actionCode = payload?.workflow?.action || "";
     await UpdateComplaintMutation(payload, {
-      onError: () => {
-        trackE(EV.WORKFLOW_FAILED, actionCode);
-        setToast({ show: true, label: t("FAILED_TO_UPDATE_COMPLAINT"), type: "error" });
-      },
+      onError: () => handleUpdateFailure(actionCode),
       onSuccess: async (responseData) => {
         const msg = payload.workflow.action || "RESOLVE";
         if (responseData?.ResponseInfo?.Errors) {
-          trackE(EV.WORKFLOW_FAILED, actionCode);
-          setToast({ show: true, label: t("FAILED_TO_UPDATE_COMPLAINT"), type: "error" });
+          handleUpdateFailure(actionCode);
         } else {
           trackE(EV.WORKFLOW_COMPLETED, actionCode);
           setToast({ show: true, label: t(`${msg}_SUCCESSFULLY`), type: "success" });
