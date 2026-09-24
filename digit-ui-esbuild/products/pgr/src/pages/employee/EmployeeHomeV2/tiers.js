@@ -45,13 +45,16 @@ const INTAKE_ROLES = ["CSR", "CMS_RECEPTION_OFFICER"];
 // TICKET_REPORT_VIEWER is the same shape (report access, no queue actions).
 const READ_ONLY_ROLES = ["CMS_VIEWER", "PGR_VIEWER", "TICKET_REPORT_VIEWER"];
 
-// Everything else that can work a queue. All nine <DEPT>_* roles live here
-// regardless of the DIRECTOR / CHIEF_OFFICER / CECM suffix: the department
-// prefix bounds their scope, the suffix is only an escalation rung.
+// Everything else that can work a queue. Nairobi's HRMS provisions the rungs
+// as BARE codes — DIRECTOR (the LME), CHIEF_OFFICER and CECM (escalation) —
+// with the department carried by the assignment, not the role name; the
+// <DEPT>_* variants are kept for tenants that encode the department in the
+// role. Missing the bare codes blanked the page for 40 of 142 pilot users.
 // GRO defaults here deliberately — no code fact places it cross-department,
 // so it fails narrow pending a product decision.
 const CASEWORK_ROLES = [
   "PGR_LME", "GRO", "DGRO",
+  "DIRECTOR", "CHIEF_OFFICER", "CECM",
   "CMS_SUPERVISOR", "CMS_SCREENING_OFFICER", "CMS_CASE_MANAGER",
   "HEALTH_DIRECTOR", "HEALTH_CHIEF_OFFICER", "HEALTH_CECM",
   "WATER_DIRECTOR", "WATER_CHIEF_OFFICER", "WATER_CECM",
