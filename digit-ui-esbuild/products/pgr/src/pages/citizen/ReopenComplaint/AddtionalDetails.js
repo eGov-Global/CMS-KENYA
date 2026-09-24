@@ -166,11 +166,11 @@ const AddtionalDetails = (props) => {
     });
   }
 
-  // CCSD-2082 Issue 3: mandatory label. Falls back to the required PT copy when
-  // the localisation key is not yet present, so it reads correctly pre-seed.
+  // CCSD-2082 Issue 3: mandatory label. Falls back to English when the
+  // localisation key is not seeded (Kenya tenants are English-only).
   const detailsLabel =
     t("CS_REOPEN_DETAILS_LABEL") === "CS_REOPEN_DETAILS_LABEL"
-      ? "Forneça os detalhes do motivo da re-abertura da reclamação"
+      ? "Provide the details of the reason for reopening the complaint"
       : t("CS_REOPEN_DETAILS_LABEL");
 
   return (

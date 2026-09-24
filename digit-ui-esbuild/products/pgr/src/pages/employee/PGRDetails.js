@@ -486,8 +486,20 @@ const PGRDetails = () => {
     // (e.g. a Supervisor doing REASSIGN / send-back), scoping to the complaint's
     // single department wrongly emptied the list ("no eligible employee") — the
     // screening officer usually sits in a different department. (CCSD-2167)
+    //
+    // REASSIGN is department-agnostic too: the reception/CSR actors who
+    // reassign are not mapped to any department, and a reassignment moves the
+    // complaint deliberately to a named person. Scoping the list to the type's
+    // department hid most of the staff, so it shows every department's users,
+    // grouped by department, and the picker is searchable by either.
+    // The ASSIGN that follows a reassign request (state PENDINGFORREASSIGNMENT)
+    // is the same re-routing decision, so it is unscoped as well.
+    const currentState = workflowData?.ProcessInstances?.[0]?.state?.state;
     const allDepartments =
-      userRoles.includes("CMS_SCREENING_OFFICER") || roles.includes("CMS_SCREENING_OFFICER");
+      userRoles.includes("CMS_SCREENING_OFFICER") ||
+      roles.includes("CMS_SCREENING_OFFICER") ||
+      selectedAction?.action === "REASSIGN" ||
+      currentState === "PENDINGFORREASSIGNMENT";
 
     return {
       ...actionConfig.formConfig,
