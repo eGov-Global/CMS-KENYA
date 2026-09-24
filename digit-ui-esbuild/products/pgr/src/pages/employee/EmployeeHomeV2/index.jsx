@@ -194,12 +194,17 @@ export const EmployeeHomeV2 = () => {
 
   const { tier, readOnly, isIntake, hasAny } = resolveTier();
   const isOversight = tier === TIER.OVERSIGHT;
+  // A user with no complaint-handling role still gets the page, in read-only
+  // shape with a plain notice — an empty screen reads as "broken", and the
+  // pilot showed exactly that to every role the tier map did not know.
+  const noRole = !hasAny;
+  const wideView = isOversight || readOnly || noRole;
   const [sidebarOpen, setSidebarOpen] = React.useState(false);
   const headerHeight = useHeaderHeight();
   const [showSignOut, setShowSignOut] = React.useState(false);
   const isCasework = tier === TIER.CASEWORK;
   const intakeOnly = tier === TIER.NARROW && isIntake;
-  const scope = isOversight || readOnly ? SCOPE.ALL : intakeOnly ? SCOPE.LOGGED : SCOPE.MINE;
+  const scope = wideView ? SCOPE.ALL : intakeOnly ? SCOPE.LOGGED : SCOPE.MINE;
 
   const { data, isLoading, isFetching, isError, refetch } = useHomeData({ scope, withAnalytics: isOversight });
   const [tab, setTab] = React.useState("all");
@@ -227,9 +232,6 @@ export const EmployeeHomeV2 = () => {
     { name: t("EDIT_PROFILE"), icon: "Edit", func: () => go(`/${ctx}/employee/user/profile`) },
   ];
 
-  // A user with no PGR role at all gets nothing here — the same posture the
-  // existing PGRCard takes (it returns null).
-  if (!hasAny) return null;
 
   const d = data || {};
   const totals = d.totals || {};
@@ -246,7 +248,7 @@ export const EmployeeHomeV2 = () => {
   const dueEmptyText = loading || unavailable ? emptyText : tr("PGR_HOME_R_DUE_EMPTY", "No open case is close to its SLA.");
 
   /* KPIs — four per tier, same density everywhere */
-  const kpis = isOversight || readOnly
+  const kpis = wideView
     ? [
         { icon: "doc", hue: "brand", label: tr("PGR_HOME_KPI_TOTAL", "Total complaints"), value: totals.total, caption: tr("PGR_HOME_KPI_TOTAL_SUB", "visible to you") },
         { icon: "clock", hue: "warning", label: tr("PGR_HOME_KPI_OPEN_ALL", "Open"), value: totals.open, caption: tr("PGR_HOME_KPI_OPEN_ALL_SUB", "awaiting action") },
@@ -269,12 +271,12 @@ export const EmployeeHomeV2 = () => {
 
   /* Quick actions — per-link role filter, NOT the tier */
   const tiles = [
-    !readOnly && { key: "search", icon: "search", hue: "brand", to: R.inbox, title: tr("ACTION_TEST_SEARCH_COMPLAINT", "Search Complaints"), sub: tr("PGR_HOME_A_SEARCH_SUB", "Find and view complaint details") },
+    !readOnly && !noRole && { key: "search", icon: "search", hue: "brand", to: R.inbox, title: tr("ACTION_TEST_SEARCH_COMPLAINT", "Search Complaints"), sub: tr("PGR_HOME_A_SEARCH_SUB", "Find and view complaint details") },
     (isCasework || isOversight) && { key: "mine", icon: "user", hue: "accent", to: R.inbox, title: tr("PGR_HOME_NAV_MINE", "My Complaints"), sub: tr("PGR_HOME_A_MINE_SUB", "Your assigned queue") },
     isIntake && { key: "create", icon: "plus", hue: "leaf", to: R.create, title: tr("ACTION_TEST_CREATE_COMPLAINT", "New Complaint"), sub: tr("PGR_HOME_A_CREATE_SUB", "Register on behalf of a citizen") },
     adminSearch && { key: "admin", icon: "shield", hue: "plum", to: R.admin, title: tr("ES_PGR_ADMIN_SEARCH", "Admin Search"), sub: tr("PGR_HOME_A_ADMIN_SUB", "Across all departments") },
     dashboardAllowed && { key: "reports", icon: "chart", hue: "warning", to: R.dashboard, title: tr("PGR_HOME_A_REPORTS", "Reports"), sub: tr("PGR_HOME_A_REPORTS_SUB", "Dashboard, analytics and exports") },
-    readOnly && { key: "ro", icon: "search", hue: "brand", to: R.inbox, title: tr("ACTION_TEST_SEARCH_COMPLAINT", "Search Complaints"), sub: tr("PGR_HOME_A_READONLY_SUB", "Read-only access") },
+    (readOnly || noRole) && { key: "ro", icon: "search", hue: "brand", to: R.inbox, title: tr("ACTION_TEST_SEARCH_COMPLAINT", "Search Complaints"), sub: tr("PGR_HOME_A_READONLY_SUB", "Read-only access") },
     { key: "portal", icon: "globe", hue: "leaf", to: R.landing, secondary: true, title: tr("PGR_HOME_A_PORTAL", "Citizen portal"), sub: tr("PGR_HOME_A_PORTAL_SUB", "What citizens see") },
     { key: "refresh", icon: "refresh", hue: "accent", secondary: true, onClick: () => refetch(), title: tr("PGR_HOME_A_REFRESH", "Refresh figures"), sub: isFetching ? tr("PGR_HOME_A_REFRESHING", "Updating…") : tr("PGR_HOME_A_REFRESH_SUB", "Reload every panel") },
   ].filter(Boolean);
@@ -287,7 +289,7 @@ export const EmployeeHomeV2 = () => {
     : intakeOnly
     ? { title: tr("PGR_HOME_C_CHANNEL", "Logged by channel"), sub: partialNote, center: tr("PGR_HOME_LOGGED", "Logged"),
         segments: (d.bySource || []).map((r) => ({ key: r.key, label: channelLabel(tr, r.key), n: r.n })) }
-    : { title: readOnly ? tr("PGR_HOME_C_STATUS_ALL", "Complaints by status") : tr("PGR_HOME_C_STATUS_MINE", "My queue by status"), sub: partialNote, center: tr("PGR_HOME_CASES", "Cases"),
+    : { title: readOnly || noRole ? tr("PGR_HOME_C_STATUS_ALL", "Complaints by status") : tr("PGR_HOME_C_STATUS_MINE", "My queue by status"), sub: partialNote, center: tr("PGR_HOME_CASES", "Cases"),
         segments: (d.byStatus || []).slice(0, 6).map((r) => ({ key: r.key, label: statusLabel(t, r.key, r.key), n: r.n })) };
   const bars = isOversight
     ? { title: tr("PGR_HOME_C_WARD", "Complaints by ward"), sub: an.available ? tr("PGR_HOME_TOP_WARDS", "busiest wards") : partialNote,
@@ -295,7 +297,7 @@ export const EmployeeHomeV2 = () => {
     : intakeOnly
     ? { title: tr("PGR_HOME_C_WEEK", "This week by day"), sub: [tr("PGR_HOME_C_WEEK_SUB", "complaints you logged, Monday to today"), partialNote].filter(Boolean).join(" · "),
         data: (d.byWeekday || []).map((r) => ({ key: r.key, label: tr(...WEEKDAY_LABEL[r.key]), n: r.n })) }
-    : { title: readOnly ? tr("PGR_HOME_C_AGE_ALL", "Open cases by age") : tr("PGR_HOME_C_AGE_MINE", "My open cases by age"), sub: partialNote,
+    : { title: readOnly || noRole ? tr("PGR_HOME_C_AGE_ALL", "Open cases by age") : tr("PGR_HOME_C_AGE_MINE", "My open cases by age"), sub: partialNote,
         data: (d.byAge || []).map((r) => ({ key: r.key, label: tr(...AGE_LABEL[r.key]), n: r.n })) };
 
   /* Activity feed */
@@ -441,12 +443,29 @@ export const EmployeeHomeV2 = () => {
                   ? tr("PGR_HOME_SUB_OVERSIGHT", "County-wide overview across all departments.")
                   : intakeOnly
                   ? tr("PGR_HOME_SUB_INTAKE", "Log a complaint for a citizen at the counter or on the phone.")
+                  : noRole
+                  ? tr("PGR_HOME_SUB_NOROLE", "Your account has no complaint-handling role yet. Figures below are those visible to you.")
                   : readOnly
                   ? tr("PGR_HOME_SUB_READONLY", "Read-only view of the complaints visible to you.")
                   : tr("PGR_HOME_SUB_CASEWORK", "Your queue. Figures are scoped to your own cases.")}
               </p>
             </section>
 
+            {!isError && data && !noRole && (isCasework || intakeOnly) && totals.total === 0 && (
+              <Panel className="flex items-center gap-4">
+                <Medallion icon={intakeOnly ? "plus" : "user"} hue="brand" />
+                <div className="min-w-0 flex-1">
+                  <div className="text-sm font-bold text-[hsl(var(--pgrl-ink))]">
+                    {intakeOnly ? tr("PGR_HOME_EMPTY_LOGGED_TITLE", "You have not logged any complaints yet") : tr("PGR_HOME_EMPTY_QUEUE_TITLE", "Nothing is assigned to you yet")}
+                  </div>
+                  <div className="mt-0.5 text-xs text-[hsl(var(--pgrl-ink-soft))]">
+                    {intakeOnly
+                      ? tr("PGR_HOME_EMPTY_LOGGED_SUB", "Complaints you register for citizens will appear here.")
+                      : tr("PGR_HOME_EMPTY_QUEUE_SUB", "Complaints assigned to you will appear here. Use Search Complaints to look at the wider list.")}
+                  </div>
+                </div>
+              </Panel>
+            )}
             {isError && (
               <ErrorPanel
                 title={tr("PGR_HOME_ERR_TITLE", "Figures could not be loaded")}
@@ -491,11 +510,11 @@ export const EmployeeHomeV2 = () => {
 
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                   <Rise i={4} className="md:mb-4">
-                    <PanelHead title={isOversight || readOnly ? tr("PGR_HOME_FEED", "Recent activity") : tr("PGR_HOME_FEED_MINE", "My recent activity")} sub={partialNote} action={viewAll} />
+                    <PanelHead title={wideView ? tr("PGR_HOME_FEED", "Recent activity") : tr("PGR_HOME_FEED_MINE", "My recent activity")} sub={partialNote} action={viewAll} />
                     <Feed rows={feed} emptyText={emptyText} />
                   </Rise>
                   <Rise i={5} className="md:mb-4">
-                    <PanelHead title={isOversight || readOnly ? tr("PGR_HOME_PERF", "Performance overview") : intakeOnly ? tr("PGR_HOME_PERF_INTAKE", "My intake summary") : tr("PGR_HOME_PERF_MINE", "My performance")} />
+                    <PanelHead title={wideView ? tr("PGR_HOME_PERF", "Performance overview") : intakeOnly ? tr("PGR_HOME_PERF_INTAKE", "My intake summary") : tr("PGR_HOME_PERF_MINE", "My performance")} />
                     <PerfPanel
                       {...perf}
                       spark={d.perDay14 || Array(14).fill(0)}
@@ -507,7 +526,7 @@ export const EmployeeHomeV2 = () => {
 
                 <Rise i={6} className="mb-0">
                   <PanelHead
-                    title={isOversight || readOnly ? tr("PGR_HOME_TABLE_ALL", "All complaints") : intakeOnly ? tr("PGR_HOME_TABLE_LOGGED", "Complaints I logged") : tr("PGR_HOME_TABLE_MINE", "My assigned complaints")}
+                    title={wideView ? tr("PGR_HOME_TABLE_ALL", "All complaints") : intakeOnly ? tr("PGR_HOME_TABLE_LOGGED", "Complaints I logged") : tr("PGR_HOME_TABLE_MINE", "My assigned complaints")}
                     sub={tr("PGR_HOME_TABLE_SUB", "Showing the most recent; open the inbox for the full list")}
                     action={viewAll}
                   />
@@ -517,7 +536,7 @@ export const EmployeeHomeV2 = () => {
 
               {/* ── rail ── */}
               <aside className="min-w-0">
-                {isOversight || readOnly ? (
+                {wideView ? (
                   <>
                     <Rise i={2}>
                       <PanelHead title={tr("PGR_HOME_R_WARDS", "Wards needing attention")} sub={an.available ? tr("PGR_HOME_R_WARDS_SUB", "open complaints") : partialNote} />
