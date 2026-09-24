@@ -10,8 +10,8 @@ import { updateComplaints } from "../../../redux/actions/index";
 import { LOCALIZATION_KEY } from "../../../constants/Localization";
 import { mergeAdditionalDetail } from "../../../utils/additionalDetail";
 import { findLatestAssigneeUuidByRole, findLatestAssigneeUuidByAnyRole } from "../../../utils/workflowAssignee";
-import { deriveAssigneeRoles } from "../../../utils/autoAssign";
-import { EV, trackE } from "../../../utils/analytics";
+import { deriveTransitionAssigneeRoles } from "../../../utils/autoAssign";
+import { EV, trackE, trackApiError } from "../../../utils/analytics";
 
 const AddtionalDetails = (props) => {
   const history = useHistory();
@@ -24,7 +24,10 @@ const AddtionalDetails = (props) => {
   // Roles that may hold an assignment come from the LIVE workflow, not a
   // hardcoded constant: Bomet's 2-level PGR has no CMS_SUPERVISOR.
   const reopenTenant = complaintDetails?.service?.tenantId || Digit.ULBService.getCurrentTenantId();
-  const { businessService } = Digit.Hooks.pgr.useBusinessServiceStates(reopenTenant);
+  // The submit waits for this: the routing below reads the live workflow to
+  // find who can act on the reopened state, and a click that beats the fetch
+  // would send the reopen unassigned — into nobody's queue.
+  const { businessService, isLoading: workflowLoading } = Digit.Hooks.pgr.useBusinessServiceStates(reopenTenant);
   const autoAssignment = Digit.Hooks.pgr.useAutoAssignment(reopenTenant);
   const queryClient = useQueryClient();
 
@@ -33,6 +36,10 @@ const AddtionalDetails = (props) => {
   // reopen and surface an error until the citizen provides an explanation.
   const [details, setDetails] = useState(() => Digit.SessionStorage.get(`reopen.${id}`)?.addtionalDetail || "");
   const [error, setError] = useState(false);
+  // A rejected _update used to surface nowhere: the promise was never awaited,
+  // so the citizen stayed on this step with a silent console error (#61).
+  const [submitError, setSubmitError] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     if (appState.complaints) {
@@ -88,8 +95,11 @@ const AddtionalDetails = (props) => {
       setError(true);
       return;
     }
+    if (submitting || workflowLoading || !complaintDetails) return;
     let reopenDetails = Digit.SessionStorage.get(`reopen.${id}`);
-    if (complaintDetails) {
+    setSubmitError(false);
+    setSubmitting(true);
+    try {
       // CCSD-2167: find the Supervisor from the complaint's workflow history.
       // Complaint's tenant, not the state root — see SelectRating.js note.
       const wfTenant = complaintDetails?.service?.tenantId || Digit.ULBService.getStateId();
@@ -101,8 +111,12 @@ const AddtionalDetails = (props) => {
       // be left empty.
       //
       // 1) CMS_SUPERVISOR keeps the Mozambique CMS workflow behaviour.
-      // 2) Otherwise the previous holder of any role the live workflow treats
-      //    as assignable (Bomet: PGR_LME / PGR_VIEWER).
+      // 2) Otherwise the previous holder of a role that can act on the state
+      //    REOPEN lands in (Bomet: PGR_LME / PGR_VIEWER; Nairobi: PGR_LME).
+      //    Derived from the REOPEN transition, not the create path: Nairobi
+      //    fronts creation with a GRO triage stop, so the create-path roles
+      //    picked the assessor who filed the complaint and the engine refused
+      //    the reopen with INVALID_ASSIGNEE (#61).
       // 3) Otherwise fall back to fresh department+jurisdiction routing, the
       //    same resolver the citizen create flow uses — covers a complaint
       //    whose original handler has since left.
@@ -111,7 +125,7 @@ const AddtionalDetails = (props) => {
         reopenAssignee = await findLatestAssigneeUuidByAnyRole(
           wfTenant,
           businessId,
-          deriveAssigneeRoles(businessService)
+          deriveTransitionAssigneeRoles(businessService, complaintDetails?.service?.applicationStatus, "REOPEN")
         );
       }
       if (!reopenAssignee) {
@@ -143,16 +157,14 @@ const AddtionalDetails = (props) => {
         { REOPEN_REASON: reopenDetails.reason },
         { resetEscalation: true }
       );
-      updateComplaint({ service: complaintDetails.service, workflow: complaintDetails.workflow });
+      await updateComplaint({ service: complaintDetails.service, workflow: complaintDetails.workflow });
+    } catch (err) {
+      // Stay on the step, say so, and let the citizen retry: the button is
+      // disabled only while a submit is in flight.
+      trackApiError("PgrReopen", err);
+      setSubmitError(true);
+      setSubmitting(false);
     }
-    return (
-      <Redirect
-        to={{
-          pathname: `${props.parentRoute}/response`,
-          state: { complaintDetails },
-        }}
-      />
-    );
   }
 
   function textInput(e) {
@@ -172,6 +184,10 @@ const AddtionalDetails = (props) => {
     t("CS_REOPEN_DETAILS_LABEL") === "CS_REOPEN_DETAILS_LABEL"
       ? "Provide the details of the reason for reopening the complaint"
       : t("CS_REOPEN_DETAILS_LABEL");
+  const submitErrorText =
+    t("CS_REOPEN_SUBMIT_ERROR") === "CS_REOPEN_SUBMIT_ERROR"
+      ? "The complaint could not be reopened. Please try again."
+      : t("CS_REOPEN_SUBMIT_ERROR");
 
   return (
     <React.Fragment>
@@ -182,8 +198,9 @@ const AddtionalDetails = (props) => {
         <CardText>{t(`${LOCALIZATION_KEY.CS_ADDCOMPLAINT}_ADDITIONAL_DETAILS_TEXT`)}</CardText>
         <TextArea name={"AdditionalDetails"} value={details} onChange={textInput}></TextArea>
         {error ? <CardLabelError>{t(`${LOCALIZATION_KEY.CS_ADDCOMPLAINT}_ERROR_REOPEN_DETAILS`)}</CardLabelError> : null}
+        {submitError ? <CardLabelError>{submitErrorText}</CardLabelError> : null}
         <div onClick={reopenComplaint}>
-          <SubmitBar label={t(`${LOCALIZATION_KEY.CS_HEADER}_REOPEN_COMPLAINT`)} />
+          <SubmitBar label={t(`${LOCALIZATION_KEY.CS_HEADER}_REOPEN_COMPLAINT`)} disabled={submitting || workflowLoading} />
         </div>
       </Card>
     </React.Fragment>

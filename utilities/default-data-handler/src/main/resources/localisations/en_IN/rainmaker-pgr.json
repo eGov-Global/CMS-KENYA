@@ -8280,6 +8280,12 @@
         "locale": "en_IN"
     },
     {
+        "code": "CS_REOPEN_SUBMIT_ERROR",
+        "message": "The complaint could not be reopened. Please try again.",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
         "code": "CS_REOPEN_UPLOAD_HINT",
         "message": "JPG, PNG, PDF, DOC, DOCX, XLS, XLSX, MP4, MOV, AVI, MKV up to 5 MB each. You can upload up to 5 files.",
         "module": "rainmaker-pgr",

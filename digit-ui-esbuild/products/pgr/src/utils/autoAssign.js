@@ -21,9 +21,10 @@
 // ComplaintHierarchy leaf share). `additionalDetail.department` as written by
 // the backend on create holds the department display NAME — never match on it.
 
-// Mirrors PGRDetails' NON_ASSIGNEE_ROLES: system / non-employee actors that a
-// workflow state may list but that must never receive an assignment.
-const NON_ASSIGNEE_ROLES = new Set(["CITIZEN", "AUTO_ESCALATE", "ANONYMOUS"]);
+// Mirrors PGRDetails' NON_ASSIGNEE_ROLES, plus SYSTEM — the actor the Nairobi
+// workflow puts on its auto-ESCALATE actions. System / non-employee actors that
+// a workflow state may list but that must never receive an assignment.
+const NON_ASSIGNEE_ROLES = new Set(["CITIZEN", "AUTO_ESCALATE", "ANONYMOUS", "SYSTEM"]);
 
 // The last-mile role a NEW complaint is assigned to. deriveAssigneeRoles reads
 // every role on the create target state's forward actions, which on a
@@ -52,17 +53,49 @@ export const deriveAssigneeRoles = (businessService, action = "APPLY") => {
   const states = businessService?.states || [];
   const start = states.find((s) => s?.isStartState);
   const createAction = (start?.actions || []).find((a) => a?.action === action && a?.active !== false);
-  const nextRef = createAction?.nextState;
-  if (!nextRef) return [];
+  if (!createAction?.nextState) return [];
+  return rolesActingOn(states, createAction.nextState);
+};
+
+const isActive = (a) => a?.active !== false;
+
+// Roles that can act on the state `nextRef` points at (uuid or name): the
+// union over its forward (non-self-loop) actions, falling back to every action
+// when the state only loops on itself.
+const rolesActingOn = (states, nextRef) => {
   const nextState = states.find((s) => s?.uuid === nextRef || s?.state === nextRef);
   if (!nextState) return [];
   const isSelf = (a) => a?.nextState === nextState.uuid || a?.nextState === nextState.state;
-  const actions = (nextState.actions || []).filter((a) => a?.active !== false);
+  const actions = (nextState.actions || []).filter(isActive);
   const forward = actions.filter((a) => a?.nextState && !isSelf(a));
   const source = forward.length > 0 ? forward : actions;
   const roles = new Set();
   source.forEach((a) => (a?.roles || []).forEach((r) => roles.add(r)));
   return [...roles].filter((r) => !NON_ASSIGNEE_ROLES.has(r));
+};
+
+/**
+ * Assignable roles for taking `action` from the complaint's CURRENT state
+ * (`status` = applicationStatus or state name): the roles that can act on the
+ * state the action lands in.
+ *
+ * The reopen path needs this rather than deriveAssigneeRoles. On a workflow
+ * with a GRO triage stop the create action lands on the assessors' state,
+ * while REOPEN lands on PENDINGATLME, whose actors are the last-mile officers.
+ * Deriving from the create path there picked the assessor who filed the
+ * complaint, and the engine refused them: it validates every assignee as
+ * "can act on the TARGET state" (INVALID_ASSIGNEE). When the current state is
+ * unknown, every state carrying the action contributes.
+ */
+export const deriveTransitionAssigneeRoles = (businessService, status, action) => {
+  const states = businessService?.states || [];
+  if (!action) return [];
+  const transitions = (s) => (s?.actions || []).filter((a) => a?.action === action && isActive(a) && a?.nextState);
+  const current = states.find((s) => status && (s?.state === status || s?.applicationStatus === status) && transitions(s).length > 0);
+  const sources = current ? [current] : states.filter((s) => transitions(s).length > 0);
+  const roles = new Set();
+  sources.forEach((s) => transitions(s).forEach((a) => rolesActingOn(states, a.nextState).forEach((r) => roles.add(r))));
+  return [...roles];
 };
 
 /**
