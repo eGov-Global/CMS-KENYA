@@ -261,16 +261,20 @@ export const formPayloadToCreateComplaint = (formData, tenantId, user, extOpts) 
     complaint.service.extendedAttributes = ext;
   }
 
-  // Complainant address (citizen-flow parity — same extendedAttributes key the
-  // citizen "Your details" card writes). Attached even when the tenant has no
-  // category mapping so the field never silently drops its value; deliberately
-  // NOT citizen.correspondenceAddress, which would round-trip the user service.
-  const complainantAddress = formData?.ComplainantAddress?.trim();
-  if (complainantAddress) {
-    complaint.service.extendedAttributes = {
-      ...(complaint.service.extendedAttributes || {}),
-      complainantAddress,
-    };
+  // Optional free-text address -> service.address.street, a first-class column.
+  //
+  // This used to attach extendedAttributes.complainantAddress "even when the
+  // tenant has no category mapping so the field never silently drops its
+  // value". On Mozambique that is harmless (caseRelatedTo is always set); on
+  // Bomet it produced extendedAttributes with NO caseRelatedTo, and
+  // pgr-services throws INVALID_CASE_RELATED_TO for exactly that shape
+  // (PGRService ~L119-125) — so an employee who filled in Address could not
+  // file the complaint at all (#43). street has no such gate, is persisted by
+  // every tenant, and is already read by both details pages, which also puts
+  // the employee and citizen flows on the same field (#21).
+  const typedAddress = formData?.ComplainantAddress?.trim();
+  if (typedAddress) {
+    complaint.service.address.street = typedAddress;
   }
 
   return complaint;
