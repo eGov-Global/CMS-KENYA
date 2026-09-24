@@ -770,9 +770,18 @@ export function CitizenSidebar({
           open={logoutOpen}
           title={t("CORE_LOGOUT_WEB_HEADER") === "CORE_LOGOUT_WEB_HEADER" ? "Log out?" : t("CORE_LOGOUT_WEB_HEADER")}
           body={
-            (t("CORE_LOGOUT_WEB_CONFIRMATION_MESSAGE") === "CORE_LOGOUT_WEB_CONFIRMATION_MESSAGE"
-              ? "You'll be signed out of this device. "
-              : t("CORE_LOGOUT_WEB_CONFIRMATION_MESSAGE") + " ")
+            t("CORE_LOGOUT_WEB_CONFIRMATION_MESSAGE") === "CORE_LOGOUT_WEB_CONFIRMATION_MESSAGE" ? (
+              "You'll be signed out of this device."
+            ) : (
+              // The seeded message is only the first half of the sentence
+              // ("Are you sure you want to"); the legacy LogoutDialog completes
+              // it with CORE_LOGOUT_MESSAGE in bold. Do the same, or the
+              // question stops mid-sentence.
+              <>
+                {t("CORE_LOGOUT_WEB_CONFIRMATION_MESSAGE")}{" "}
+                <strong>{t("CORE_LOGOUT_MESSAGE") === "CORE_LOGOUT_MESSAGE" ? "log out" : t("CORE_LOGOUT_MESSAGE")}</strong>?
+              </>
+            )
           }
           cancelLabel={t("CORE_LOGOUT_CANCEL") === "CORE_LOGOUT_CANCEL" ? "Cancel" : t("CORE_LOGOUT_CANCEL")}
           confirmLabel={t("CORE_LOGOUT_WEB_YES") === "CORE_LOGOUT_WEB_YES" ? "Yes, log out" : t("CORE_LOGOUT_WEB_YES")}
