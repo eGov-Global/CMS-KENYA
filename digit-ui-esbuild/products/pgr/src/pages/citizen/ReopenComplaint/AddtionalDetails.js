@@ -108,10 +108,14 @@ const AddtionalDetails = (props) => {
       //    whose original handler has since left.
       let reopenAssignee = await findLatestAssigneeUuidByRole(wfTenant, businessId, "CMS_SUPERVISOR");
       if (!reopenAssignee) {
+        // Assignees only: the actor fallback can name a superuser or a
+        // cross-department director who resolved it, whom pgr-services
+        // rejects (INVALID_ASSIGNMENT). Tier 3 below routes fresh instead.
         reopenAssignee = await findLatestAssigneeUuidByAnyRole(
           wfTenant,
           businessId,
-          deriveAssigneeRoles(businessService)
+          deriveAssigneeRoles(businessService),
+          { includeActor: false }
         );
       }
       if (!reopenAssignee) {

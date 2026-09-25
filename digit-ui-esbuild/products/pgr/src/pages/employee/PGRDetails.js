@@ -18,6 +18,7 @@ import { selectServiceDefsFromComplaintHierarchy } from "../../utils";
 import { isPiiMaskingEnabled } from "../../utils/piiMasking";
 import useReopenWindow from "../../hooks/pgr/useReopenWindow";
 import { findLatestAssigneeUuidByRole, findLatestAssigneeUuidByAnyRole } from "../../utils/workflowAssignee";
+import useAutoAssignment from "../../hooks/pgr/useAutoAssignment";
 import { EV, trackE } from "../../utils/analytics";
 
 // CCSD-2167 (employee side) — route-back / terminal actions derive their
@@ -301,6 +302,10 @@ const PGRDetails = () => {
     config: { enabled: !!pgrData },
   });
 
+  // Department + jurisdiction router — the same resolver the citizen create and
+  // reopen flows use. Tier 3 of the no-pick assignee derivation below.
+  const autoAssignment = useAutoAssignment(complaintTenantId);
+
   // Automatically dismiss toast messages after 3 seconds
   useEffect(() => {
     if (toast?.show) {
@@ -421,12 +426,38 @@ const PGRDetails = () => {
       // inbox, on states that offer no ASSIGN action to repair it. Keeping the
       // PREVIOUS holder is the intended behaviour when the officer doesn't pick
       // someone, so derive them from the complaint's own history instead.
+      //
+      // ASSIGNEES ONLY here (includeActor: false). The actor fallback returns
+      // whoever last acted when nobody was ever assigned, and on a complaint a
+      // superuser or cross-department director resolved that is someone whose
+      // HRMS department differs from the complaint's — pgr-services then 400s
+      // with INVALID_ASSIGNMENT and the officer sees a generic failure. A
+      // "previous owner" means a prior assignee; if there is none, route fresh.
       if (!assigneeUuid) {
         assigneeUuid = await findLatestAssigneeUuidByAnyRole(
           wfTenant,
           businessId,
-          selectedAction?.assigneeRoles?.length ? selectedAction.assigneeRoles : selectedAction?.roles || []
+          selectedAction?.assigneeRoles?.length ? selectedAction.assigneeRoles : selectedAction?.roles || [],
+          { includeActor: false }
         );
+      }
+      // Tier 3 — no prior assignee at all (complaints filed before
+      // auto-assignment, or one it found nobody for): route by department +
+      // jurisdiction exactly as the citizen create/reopen flows do, so the
+      // reopen lands with an eligible officer instead of nobody. The
+      // department comes from the complaint type's mapping first, then the
+      // stamp the create-time router left. resolve() is best-effort and
+      // returns null when it finds no one — the update then goes out
+      // unassigned, which the backend accepts (the pre-routing behaviour).
+      if (!assigneeUuid) {
+        const def = serviceDefs?.find((d) => d.serviceCode === baseService?.serviceCode);
+        const stampedDept = parseAdditionalDetail(baseService?.additionalDetail)?.autoAssignment?.departmentCode;
+        const departmentCode = def?.department && def.department !== "NA" ? def.department : stampedDept;
+        assigneeUuid = autoAssignment.resolve({
+          departmentCode,
+          localityCode: baseService?.address?.locality?.code,
+          seed: `${businessId}:${selectedAction.action}`,
+        })?.uuid || null;
       }
     }
     // Parse (object OR stringified) so stamping never discards existing keys
