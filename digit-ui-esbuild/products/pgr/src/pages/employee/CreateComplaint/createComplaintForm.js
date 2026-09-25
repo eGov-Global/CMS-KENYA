@@ -77,6 +77,12 @@ const CreateComplaintForm = ({
 
   // Fetch the list of service definitions (e.g., complaint types) for current tenant
   const serviceDefs = Digit.Hooks.pgr.useServiceDefs(tenantId, "PGR");
+  // Create-time routing, same resolver the citizen create flow uses. On Bomet
+  // APPLY lands straight in PENDINGATLME, which has NO ASSIGN action — a
+  // complaint filed here without an assignee sits in nobody's inbox with no
+  // way to give it an owner later. Prefetches while the operator fills the
+  // form so submit can resolve synchronously.
+  const autoAssignment = Digit.Hooks.pgr.useAutoAssignment(tenantId);
 
   // Does this tenant have a configurable complaint hierarchy (with nodes)?
   // If so, the flat Type/Sub-Type dropdowns are replaced by the cascading
@@ -644,6 +650,41 @@ const CreateComplaintForm = ({
       caseRelatedTo,
       fieldKeys: extFields.map((f) => f.fieldKey),
     });
+    // Best-effort auto-assignment (citizen-create parity): department from the
+    // picked complaint type's ComplaintHierarchy leaf, jurisdiction from the
+    // submitted ward. A null resolution — data still loading, no eligible
+    // PGR_LME officer, unmapped type — submits unchanged; routing never blocks
+    // the operator.
+    const leaf = (serviceDefs || []).find((d) => d.serviceCode === payload?.service?.serviceCode);
+    const assignment = autoAssignment.resolve({
+      departmentCode: leaf?.department && leaf.department !== "NA" ? leaf.department : undefined,
+      localityCode: payload?.service?.address?.locality?.code,
+      seed: `${user?.info?.uuid ?? ""}:${Date.now()}`,
+    });
+    if (assignment) {
+      payload.workflow.assignes = [assignment.uuid];
+      payload.workflow.hrmsAssignes = [assignment.uuid];
+      // MERGE into additionalDetail (built as a JSON string) and send it back as
+      // an OBJECT: pgr-services' extractAdditionalDetails only keeps Map-shaped
+      // payloads, and replacing it would drop the fields already stamped there.
+      let existing = {};
+      try {
+        const raw = payload.service.additionalDetail;
+        existing = typeof raw === "string" ? JSON.parse(raw || "{}") : raw || {};
+      } catch (e) {
+        existing = {};
+      }
+      payload.service.additionalDetail = {
+        ...existing,
+        autoAssignment: {
+          assignee: assignment.uuid,
+          departmentCode: assignment.department,
+          tier: assignment.tier,
+          ...(assignment.jurisdiction ? { jurisdiction: assignment.jurisdiction } : {}),
+          source: "employee-create",
+        },
+      };
+    }
     handleResponseForCreateComplaint(payload);
   };
 
