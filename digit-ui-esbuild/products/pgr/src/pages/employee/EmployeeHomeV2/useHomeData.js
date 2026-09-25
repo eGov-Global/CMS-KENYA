@@ -15,9 +15,10 @@
 // WORKFLOW_NOT_FOUND (reproduced on the local stack). Paging by offset works.
 //
 // Scope is a SERVER concern. This hook only forwards the criterion that
-// selects the caller's own queue (`assignee`) or own intake (`createdBy`);
-// what an unscoped search returns is decided by pgr-services' visibility
-// rules, never by the client.
+// selects the caller's own queue (`assignee`) or own intake (`createdBy`),
+// plus the `scope` the server-side inbox endpoints need (homeQuery.js); what
+// the search returns is decided by pgr-services' visibility rules, never by
+// the client.
 //
 // Failures degrade, never flatten: a count that could not be read is `null`
 // (rendered as "—"), a page that failed is simply absent, and `isError` is
@@ -28,17 +29,15 @@ import { useQuery } from "react-query";
 import { Request } from "@egovernments/digit-ui-libraries";
 import Urls from "../../../utils/urls";
 import useInboxVisibility from "../../../hooks/pgr/useInboxVisibility";
+import { SCOPE, homeQueryParams } from "./homeQuery";
 import { deriveHomeData, OPEN_STATES, RESOLVED_STATES, startOfDay } from "./deriveHomeData";
 
 const ANALYTICS_QUERY_URL = "/pgr-services/v2/analytics/_query";
 const PAGE = 10;
 const MAX_PAGES = 3;
 
-export const SCOPE = {
-  ALL: "ALL", // whatever the server lets this user see
-  MINE: "MINE", // assigned to the caller
-  LOGGED: "LOGGED", // created by the caller (intake)
-};
+// Re-exported so the page keeps importing SCOPE from the hook.
+export { SCOPE };
 
 const post = (url, params = {}, data = {}) =>
   Request({ url, method: "POST", auth: true, userService: true, useCache: false, params, data });
@@ -127,9 +126,7 @@ const useHomeData = ({ scope = SCOPE.ALL, withAnalytics = false } = {}) => {
   const searchUrl = serverSide ? Urls.pgr.visibilitySearch : Urls.pgr.search;
   const countUrl = serverSide ? Urls.pgr.visibilityCount : Urls.pgr.search.replace("_search", "_count");
 
-  const base = { tenantId };
-  if (scope === SCOPE.MINE && uuid) base.assignee = [uuid];
-  if (scope === SCOPE.LOGGED && uuid) base.createdBy = [uuid];
+  const base = homeQueryParams({ tenantId, uuid, scope, serverSide });
 
   const query = useQuery(
     ["pgr-home-data", tenantId, uuid, scope, serverSide, withAnalytics],
