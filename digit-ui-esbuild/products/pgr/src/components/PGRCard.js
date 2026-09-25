@@ -13,6 +13,10 @@ const ROLES = {
     "HEALTH_DIRECTOR", "HEALTH_CHIEF_OFFICER", "HEALTH_CECM",
     "WATER_DIRECTOR", "WATER_CHIEF_OFFICER", "WATER_CECM",
     "ADMIN_DIRECTOR", "ADMIN_CHIEF_OFFICER", "ADMIN_CECM",
+    // Nairobi's HRMS provisions the same tiers as BARE codes, and its workflow
+    // lets them act at Pending-at-LME and the escalation levels. Without these,
+    // chief officers and CECMs (who hold no PGR_LME) got no Complaints card.
+    "DIRECTOR", "CHIEF_OFFICER", "CECM",
     // Bomet ombudsman office — works the inbox/search like PGR_LME (2026-09-18
     // request). Code as provisioned in HRMS, mixed case included.
     "Ombudsman_Officer", "OMBUDSMAN_OFFICER",
