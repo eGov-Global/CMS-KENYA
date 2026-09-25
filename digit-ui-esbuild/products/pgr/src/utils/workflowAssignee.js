@@ -34,7 +34,12 @@ const rolesOf = (user) => ((user && Array.isArray(user.roles)) ? user.roles : []
  * @param {string} roleCode   e.g. "CMS_SUPERVISOR" | "CMS_CASE_MANAGER"
  * @returns {Promise<string|null>}
  */
-export const findLatestAssigneeUuidByRole = async (stateCode, businessId, roleCode) => {
+// `includeActor` (default true) keeps the historical behaviour: when the role
+// never appears as an assignee, fall back to the actor of a step. Callers that
+// need a genuine PRIOR OWNER pass false — the actor of RESOLVE/REJECT may be a
+// superuser or a cross-department director, and pgr-services rejects an
+// assignee whose department differs from the complaint's (INVALID_ASSIGNMENT).
+export const findLatestAssigneeUuidByRole = async (stateCode, businessId, roleCode, { includeActor = true } = {}) => {
   if (!stateCode || !businessId || !roleCode) return null;
   let response;
   try {
@@ -59,8 +64,10 @@ export const findLatestAssigneeUuidByRole = async (stateCode, businessId, roleCo
     }
   }
   // Fallback: the role only surfaced as the actor of a step.
-  for (const pi of ordered) {
-    if (pi?.assigner?.uuid && rolesOf(pi.assigner).includes(roleCode)) return pi.assigner.uuid;
+  if (includeActor) {
+    for (const pi of ordered) {
+      if (pi?.assigner?.uuid && rolesOf(pi.assigner).includes(roleCode)) return pi.assigner.uuid;
+    }
   }
   return null;
 };
@@ -80,11 +87,11 @@ export const findLatestAssigneeUuidByRole = async (stateCode, businessId, roleCo
  * @param {string[]} roleCodes e.g. ["PGR_LME", "PGR_VIEWER"]
  * @returns {Promise<string|null>}
  */
-export const findLatestAssigneeUuidByAnyRole = async (stateCode, businessId, roleCodes) => {
+export const findLatestAssigneeUuidByAnyRole = async (stateCode, businessId, roleCodes, opts = {}) => {
   const wanted = (Array.isArray(roleCodes) ? roleCodes : []).filter(Boolean);
   if (!stateCode || !businessId || wanted.length === 0) return null;
   for (const role of wanted) {
-    const uuid = await findLatestAssigneeUuidByRole(stateCode, businessId, role);
+    const uuid = await findLatestAssigneeUuidByRole(stateCode, businessId, role, opts);
     if (uuid) return uuid;
   }
   return null;
