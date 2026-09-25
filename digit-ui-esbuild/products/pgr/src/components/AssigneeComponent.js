@@ -1,15 +1,11 @@
 import { useTranslation } from "react-i18next";
 import React, { useEffect, useState } from "react";
-import { Dropdown, Loader, TextInput } from "@egovernments/digit-ui-components";
-import { filterAssigneeGroups, countAssignees } from "../utils/assigneeSearch";
+import { Dropdown, Loader } from "@egovernments/digit-ui-components";
 
 const AssigneeComponent = ({ config, onSelect, formState, defaultValues }) => {
   const { t } = useTranslation();
   const [assignees, setAssignees] = useState([]);
   const [selectedEmployee, setSelectedEmployee] = useState(null);
-  // Free-text filter over department OR person; the dropdown atom itself only
-  // matches group headers, so people would be unsearchable without this.
-  const [query, setQuery] = useState("");
   const tenantId = Digit.ULBService.getCurrentTenantId();
   const hrmsContext = window?.globalConfigs?.getConfig("HRMS_CONTEXT_PATH") || "egov-hrms";
 
@@ -133,37 +129,23 @@ const AssigneeComponent = ({ config, onSelect, formState, defaultValues }) => {
     );
   }
 
-  const visible = filterAssigneeGroups(assignees, query);
+  // One control: the dropdown's own input is the search box. Typing filters
+  // the department-grouped list by department OR person (the atom matches
+  // nested children, not just group headers).
   const searchLabel = t("CS_COMMON_SEARCH_EMPLOYEE") === "CS_COMMON_SEARCH_EMPLOYEE" ? "Search by name or department" : t("CS_COMMON_SEARCH_EMPLOYEE");
-  const noMatch = t("CS_COMMON_NO_EMPLOYEE_MATCH") === "CS_COMMON_NO_EMPLOYEE_MATCH" ? "No employee or department matches" : t("CS_COMMON_NO_EMPLOYEE_MATCH");
 
   return (
     <div className="assignee-dropdown-container">
-      {/* Only worth a search box once the list spans departments (unscoped). */}
-      {(allDepartments || !department || department === "NA") && countAssignees(assignees) > 5 && (
-        <div className="assignee-search" style={{ marginBottom: "0.5rem" }}>
-          <TextInput
-            type="text"
-            name="assigneeSearch"
-            value={query}
-            placeholder={searchLabel}
-            aria-label={searchLabel}
-            onChange={(e) => setQuery(typeof e === "string" ? e : e?.target?.value ?? "")}
-          />
-          {query && visible.length === 0 && (
-            <div style={{ color: "var(--color-text-secondary, #5F5C62)", fontSize: "0.875rem", marginTop: "0.25rem" }}>{noMatch}</div>
-          )}
-        </div>
-      )}
       <Dropdown
         t={t}
-        option={visible}
+        option={assignees}
         optionKey="name"
         selected={selectedEmployee}
         select={(value) => {
           handleEmployeeSelect(value);
         }}
-        placeholder={t("CS_COMMON_SELECT_EMPLOYEE")}
+        isSearchable
+        placeholder={searchLabel}
         label={t(config.label)}
         variant="nesteddropdown"
       />
