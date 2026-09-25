@@ -35,7 +35,7 @@ import java.util.Map;
  * {@code novu.bridge.direct.channels} (see {@link NovuBridgeConfiguration#isDirectChannel}),
  * for deployments where {@code novu-api} can't run at all.
  *
- * <p>SMS talks directly to one of two gateways' HTTP APIs, selected by
+ * <p>SMS talks directly to one of three gateways' HTTP APIs, selected by
  * {@code novu.bridge.direct.sms.provider} (default {@code ozeki}):
  * <ul>
  *   <li>Ozeki's classic HTTP API: a GET with recipient/message/credentials as
@@ -80,9 +80,13 @@ public class DirectDeliveryService {
      * {@code SmsProviderOverridesFactory} on the Novu-routed side.
      */
     public NovuClient.NovuResponse sendSms(String phone, String body, String transactionId) {
-        return config.isDirectSmsProviderBongatech()
-                ? sendSmsViaBongatech(phone, body, transactionId)
-                : sendSmsViaOzeki(phone, body, transactionId);
+        if (config.isDirectSmsProviderBongatech()) {
+            return sendSmsViaBongatech(phone, body, transactionId);
+        }
+        if (config.isDirectSmsProviderSourcecode()) {
+            return sendSmsViaSourcecode(phone, body, transactionId);
+        }
+        return sendSmsViaOzeki(phone, body, transactionId);
     }
 
     /**
@@ -197,6 +201,91 @@ public class DirectDeliveryService {
             log.error("Bongatech direct SMS failed: txn={}", transactionId, e);
             throw new CustomException("NB_DIRECT_SMS_FAILED", "Failed sending direct SMS via Bongatech: " + e.getMessage());
         }
+    }
+
+    /**
+     * Send an SMS via Source Code's Bulk SMS API ({@code POST <directSmsBaseUrl>}
+     * — directSmsBaseUrl is expected to already include the full path, e.g.
+     * {@code https://api.sourcecode.co.ke/sms/sendsms}).
+     *
+     * <p>Unlike Ozeki (query-param auth) and Bongatech (Bearer header), Source Code
+     * carries its credential as {@code api_key} INSIDE the JSON body — so
+     * {@code directSmsToken} is written into the payload, never a header. Its
+     * sender is {@code shortcode} and its recipient is {@code mobile} (bare
+     * {@code 2547XXXXXXXX}, no {@code +}).
+     *
+     * <p>Source Code answers HTTP 200 even for failures, signalling the real
+     * outcome in the {@code status_code} body field ({@code "1000"}/{@code "1"} =
+     * success; {@code 1001} invalid sender, {@code 1003} invalid mobile,
+     * {@code 1004} low credits, {@code 1006} invalid credentials, …). Comparing
+     * as a string because the single-send API documents it quoted while the bulk
+     * API returns it numeric. Never logs the api_key or an unmasked recipient.
+     */
+    private NovuClient.NovuResponse sendSmsViaSourcecode(String phone, String body, String transactionId) {
+        try {
+            Map<String, Object> requestBody = new LinkedHashMap<>();
+            requestBody.put("api_key", config.getDirectSmsToken());
+            requestBody.put("service_id", config.getDirectSmsServiceIdAsInt());
+            requestBody.put("mobile", phone);
+            requestBody.put("response_type", "json");
+            requestBody.put("shortcode", config.getSmsSenderId());
+            requestBody.put("message", body);
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+            headers.setAccept(List.of(MediaType.APPLICATION_JSON));
+
+            String url = config.getDirectSmsBaseUrl();
+            log.info("Source Code direct SMS send: recipient={} txn={}", PiiMask.mask(phone), transactionId);
+
+            ResponseEntity<Map> httpResponse = restTemplate.exchange(url, HttpMethod.POST,
+                    new HttpEntity<>(requestBody, headers), Map.class);
+
+            Map<?, ?> parsed = httpResponse.getBody();
+            String statusCode = parsed != null && parsed.get("status_code") != null
+                    ? String.valueOf(parsed.get("status_code")).trim()
+                    : null;
+            boolean accepted = "1000".equals(statusCode) || "1".equals(statusCode);
+            if (!accepted) {
+                log.warn("Source Code direct SMS rejected: txn={} status_code={} status_desc={}",
+                        transactionId, statusCode, parsed != null ? parsed.get("status_desc") : null);
+                return NovuClient.NovuResponse.builder().statusCode(502)
+                        .response(sanitizeSourcecodeResponse(parsed)).build();
+            }
+
+            log.info("Source Code direct SMS accepted: txn={} messageId={}",
+                    transactionId, parsed.get("message_id"));
+            return NovuClient.NovuResponse.builder().statusCode(200)
+                    .response(sanitizeSourcecodeResponse(parsed)).build();
+        } catch (HttpStatusCodeException e) {
+            // Mirror the Bongatech path: surface a non-2xx as a structured failure so the
+            // pipeline's status-code gate persists FAILED with the real HTTP status rather
+            // than a generic thrown-exception reason.
+            log.warn("Source Code direct SMS failed: txn={} httpStatus={}", transactionId, e.getStatusCode().value());
+            Map<String, Object> response = new HashMap<>();
+            response.put("httpStatus", e.getStatusCode().value());
+            return NovuClient.NovuResponse.builder().statusCode(e.getStatusCode().value()).response(response).build();
+        } catch (Exception e) {
+            log.error("Source Code direct SMS failed: txn={}", transactionId, e);
+            throw new CustomException("NB_DIRECT_SMS_FAILED", "Failed sending direct SMS via Source Code: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Source Code echoes the recipient back as a full unmasked {@code mobile_number}, and this map
+     * is persisted verbatim into {@code nb_dispatch_log.provider_response}. The log deliberately
+     * stores the subscriber id rather than a phone number in {@code recipient_value}, so passing
+     * the raw MSISDN straight through would reintroduce exactly the PII that design avoids. Mask it
+     * on the way in; every other field is kept as-is for diagnostics.
+     */
+    private static Map<String, Object> sanitizeSourcecodeResponse(Map<?, ?> parsed) {
+        Map<String, Object> sanitized = toResponseMap(parsed);
+        Object mobile = sanitized.get("mobile_number");
+        if (mobile != null) {
+            sanitized = new LinkedHashMap<>(sanitized);
+            sanitized.put("mobile_number", PiiMask.mask(String.valueOf(mobile)));
+        }
+        return sanitized;
     }
 
     @SuppressWarnings("unchecked")

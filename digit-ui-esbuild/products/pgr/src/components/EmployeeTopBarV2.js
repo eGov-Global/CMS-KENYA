@@ -273,6 +273,10 @@ const ProfileMenu = ({ t, userDetails, cityDetails, workingContext, userOptions,
 
   const editOption = (userOptions || []).find((o) => o?.icon === "Edit");
   const logoutOption = (userOptions || []).find((o) => o?.icon === "Logout");
+  // Actions render in the order the caller lists them, so a surface can put
+  // Logout first without a fork of this menu. Logout is always present.
+  const actions = (userOptions || []).filter((o) => o === editOption || o === logoutOption);
+  if (!logoutOption) actions.push({ icon: "Logout", name: t("CORE_COMMON_LOGOUT"), func: () => {} });
   const pick = (opt) => {
     setOpen(false);
     if (opt) handleUserDropdownSelection ? handleUserDropdownSelection(opt) : opt.func && opt.func();
@@ -323,35 +327,28 @@ const ProfileMenu = ({ t, userDetails, cityDetails, workingContext, userOptions,
               * header stylesheet sets a tight line-height on buttons, which
               * collapsed these rows even with padding applied. */}
             <div style={{ paddingTop: "0.75rem", display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-              {editOption && (
-                <button
-                  type="button"
-                  role="menuitem"
-                  // Class is load-bearing, not cosmetic: overrides.css resets
-                  // `button:not([class]):has(> svg)` padding to 0 !important for
-                  // bare icon-only buttons, which beat this row's inline padding.
-                  className="pgr-topbar-menu-item"
-                  onClick={() => pick(editOption)}
-                  onMouseEnter={(e) => (e.currentTarget.style.background = "#f3f4f6")}
-                  onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
-                  style={menuItemStyle("#111827")}
-                >
-                  <Glyph d={ICONS.edit} size={18} style={{ stroke: "#111827" }} />
-                  <span>{editOption.name}</span>
-                </button>
-              )}
-              <button
-                type="button"
-                role="menuitem"
-                className="pgr-topbar-menu-item"
-                onClick={() => pick(logoutOption || { func: () => {} })}
-                onMouseEnter={(e) => (e.currentTarget.style.background = "#fef2f2")}
-                onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
-                style={menuItemStyle("#e11d48")}
-              >
-                <Glyph d={ICONS.logout} size={18} style={{ stroke: "#e11d48" }} />
-                <span>{logoutOption?.name || t("CORE_COMMON_LOGOUT")}</span>
-              </button>
+              {actions.map((opt) => {
+                const isLogout = opt.icon === "Logout";
+                const tone = isLogout ? "#e11d48" : "#111827";
+                return (
+                  <button
+                    key={opt.icon}
+                    type="button"
+                    role="menuitem"
+                    // Class is load-bearing, not cosmetic: overrides.css resets
+                    // `button:not([class]):has(> svg)` padding to 0 !important for
+                    // bare icon-only buttons, which beat this row's inline padding.
+                    className="pgr-topbar-menu-item"
+                    onClick={() => pick(opt)}
+                    onMouseEnter={(e) => (e.currentTarget.style.background = isLogout ? "#fef2f2" : "#f3f4f6")}
+                    onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+                    style={menuItemStyle(tone)}
+                  >
+                    <Glyph d={isLogout ? ICONS.logout : ICONS.edit} size={18} style={{ stroke: tone }} />
+                    <span>{opt.name}</span>
+                  </button>
+                );
+              })}
             </div>
           </div>,
           document.body

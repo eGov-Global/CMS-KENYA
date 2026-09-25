@@ -188,7 +188,15 @@ public class NovuBridgeConfiguration {
     private String directSmsProvider;
 
     public boolean isDirectSmsProviderBongatech() {
-        return directSmsProvider != null && "bongatech".equalsIgnoreCase(directSmsProvider.trim());
+        return isDirectSmsProvider("bongatech");
+    }
+
+    public boolean isDirectSmsProviderSourcecode() {
+        return isDirectSmsProvider("sourcecode");
+    }
+
+    private boolean isDirectSmsProvider(String name) {
+        return directSmsProvider != null && name.equalsIgnoreCase(directSmsProvider.trim());
     }
 
     // Generic direct-mode SMS gateway config — ONE shared set of names for
@@ -196,7 +204,9 @@ public class NovuBridgeConfiguration {
     // field block per provider (only one gateway is ever active in direct mode).
     // Ozeki reads baseUrl/username/password (query-param auth); Bongatech reads
     // baseUrl/token (Bearer auth) + smsSenderId above — see
-    // https://bulk.bongatech.co.ke/docs/1.0/send-sms. Each provider simply
+    // https://bulk.bongatech.co.ke/docs/1.0/send-sms. Source Code reads
+    // baseUrl/token (the token IS its api_key, carried in the JSON BODY, not a
+    // header) + serviceId + smsSenderId (its "shortcode"). Each provider simply
     // ignores the field(s) it doesn't need.
     @Value("${novu.bridge.direct.sms.base.url:}")
     private String directSmsBaseUrl;
@@ -209,6 +219,23 @@ public class NovuBridgeConfiguration {
 
     @Value("${novu.bridge.direct.sms.token:}")
     private String directSmsToken;
+
+    // Source Code only: its "service_id" body field. Ozeki/Bongatech ignore it.
+    // Bound as String, not Integer, on purpose: deployments template these env vars
+    // with `| default('')`, and an empty value fails Integer conversion at context
+    // startup — the service would not boot at all. Blank simply means 0 here.
+    @Value("${novu.bridge.direct.sms.service.id:0}")
+    private String directSmsServiceId;
+
+    /** {@code service_id} as an int; blank/malformed config reads as 0 rather than failing a send. */
+    public int getDirectSmsServiceIdAsInt() {
+        if (directSmsServiceId == null || directSmsServiceId.isBlank()) return 0;
+        try {
+            return Integer.parseInt(directSmsServiceId.trim());
+        } catch (NumberFormatException e) {
+            return 0;
+        }
+    }
 
     @Value("${novu.bridge.direct.email.from:}")
     private String directEmailFrom;

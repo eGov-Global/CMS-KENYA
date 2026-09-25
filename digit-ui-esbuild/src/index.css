@@ -98,3 +98,149 @@
 @media (max-width: 480px) {
   .pgr-map-bar { flex-direction: column; }
 }
+
+/* ── PGR public landing page: motion ─────────────────────────────────────── */
+/* Sections carry `pgrl-reveal`; useReveal() adds `data-pgrl-in` when they
+   scroll into view. Children with `pgrl-reveal-item` stagger by --pgrl-i.
+   Everything here is off under prefers-reduced-motion — content is simply
+   visible, no movement. */
+.pgrl-reveal .pgrl-reveal-item {
+  opacity: 0;
+  transform: translateY(14px);
+  transition: opacity 560ms cubic-bezier(0.22, 1, 0.36, 1), transform 560ms cubic-bezier(0.22, 1, 0.36, 1);
+  transition-delay: calc(var(--pgrl-i, 0) * 70ms);
+}
+.pgrl-reveal[data-pgrl-in] .pgrl-reveal-item {
+  opacity: 1;
+  transform: none;
+}
+/* Hero entrance: runs once on load, no observer needed. */
+@keyframes pgrl-rise {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: none; }
+}
+.pgrl-rise {
+  animation: pgrl-rise 700ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: calc(var(--pgrl-i, 0) * 90ms);
+}
+/* Slow drift on the hero photograph — 40 s, barely perceptible, gives the
+   page life without drawing the eye. */
+@keyframes pgrl-drift {
+  from { transform: scale(1.04) translate3d(0, 0, 0); }
+  to   { transform: scale(1.08) translate3d(-1.2%, -0.8%, 0); }
+}
+.pgrl-drift { animation: pgrl-drift 40s ease-in-out infinite alternate; will-change: transform; }
+/* Card hover lift, shared by the type / channel / step cards. */
+.pgrl-lift { transition: transform 220ms ease, box-shadow 220ms ease; }
+.pgrl-lift:hover { transform: translateY(-3px); box-shadow: 0 14px 30px -12px rgba(11, 45, 30, 0.28); }
+@media (prefers-reduced-motion: reduce) {
+  .pgrl-reveal .pgrl-reveal-item { opacity: 1; transform: none; transition: none; }
+  .pgrl-rise, .pgrl-drift { animation: none; }
+  .pgrl-lift, .pgrl-lift:hover { transform: none; transition: none; }
+}
+
+/* ── Sign-in backdrops (Nai Pepea) ───────────────────────────────────────── */
+/* Both sign-in pages paint StateInfo.bannerUrl (--banner-url) behind the card:
+   the employee page through the vendored .banner-container rule, the citizen
+   page through the form wrapper (Login/index.js sets the var). The vendored
+   rule tints in Maputo teal; retint in the county green. The first
+   declaration is the plain fallback; the color-mix one, where supported,
+   follows the tenant's MDMS header colour instead of a fixed green. */
+.employee .loginContainer .banner,
+.employee .loginContainer .banner-container,
+.citizen .citizen-home-container > .citizen-form-wrapper {
+  background:
+    linear-gradient(rgba(11, 45, 30, 0.62), rgba(11, 45, 30, 0.62)),
+    var(--banner-url) no-repeat center center / cover !important;
+}
+.employee .loginContainer .banner,
+.employee .loginContainer .banner-container,
+.citizen .citizen-home-container > .citizen-form-wrapper {
+  background:
+    linear-gradient(
+      color-mix(in srgb, var(--color-header-bg, #0b2d1e) 62%, transparent),
+      color-mix(in srgb, var(--color-header-bg, #0b2d1e) 62%, transparent)
+    ),
+    var(--banner-url) no-repeat center center / cover !important;
+}
+/* No photo configured: stay on the plain page rather than a green slab. */
+.citizen .citizen-home-container > .citizen-form-wrapper:not([style*="--banner-url"]) {
+  background: none !important;
+}
+/* The pre-auth topbar sits above the photo. The vendored Bomet-era rule pins
+   it to a hardcoded navy (rgba(8,40,64,.55)) with !important, which reads as
+   a foreign blue-grey band above a green page. Re-tint it from the tenant's
+   own header colour; the plain rgba fallback keeps a sane scrim where
+   color-mix is unsupported. */
+.citizen body:has(.citizen-form-wrapper) .navbar,
+.citizen body:has(.citizen-form-wrapper) .topbar,
+body:has(.citizen-form-wrapper) .navbar,
+body:has(.citizen-form-wrapper) .topbar {
+  background-color: rgba(11, 45, 30, 0.55) !important;
+  background-color: color-mix(in srgb, var(--color-header-bg, #0b2d1e) 62%, transparent) !important;
+}
+
+/* The wrapper's min-height is calc(100vh - topbar - footer). Where those
+   constants under-measure, the wrapper (854px) ends short of its flex parent
+   (912px) and the page behind shows through below the photo — it reads as a
+   second, repeated image band. The parent is the flex container, so stretch
+   the wrapper there rather than on the wrapper alone, and carry the same deep
+   brand colour on the ancestors so any residual strip is continuous. */
+/* The container carries `padding-top: 58px` to clear the fixed topbar. The
+   wrapper stretches inside the PADDING box, so that 58px strip sits above the
+   photo and shows the page through — which is what read as a repeated image
+   band. The topbar is translucent over the backdrop anyway, so drop the pad
+   on this page and let the photo run to the top; the card stays centred. */
+.citizen .main.center-container.citizen-home-container:has(> .citizen-form-wrapper) {
+  padding-top: 0 !important;
+  background-color: hsl(var(--pgrl-deep, 153 60% 11%));
+  align-items: stretch;
+}
+.citizen .citizen-home-container > .citizen-form-wrapper {
+  flex: 1 1 auto !important;
+  align-self: stretch !important;
+  /* Re-add the topbar clearance as padding INSIDE the painted box so the card
+     still sits below the bar without leaving an unpainted strip. */
+  padding-top: 58px !important;
+}
+/* Root/body too: a few pixels of white were still visible under the footer
+   (the html element's own background). */
+html:has(.citizen-form-wrapper),
+body:has(.citizen-form-wrapper),
+body:has(.citizen-form-wrapper) .body-container,
+body:has(.citizen-form-wrapper) .citizen {
+  background-color: hsl(var(--pgrl-deep, 153 60% 11%));
+}
+
+/* The citizen card is white-on-white today; on the photo it needs its own
+   surface and a little breathing room at phone widths. */
+.citizen .citizen-form-wrapper[style*="--banner-url"] {
+  padding: 1.5rem 1rem !important;
+}
+.citizen .citizen-form-wrapper[style*="--banner-url"] > .v2-scope > .rounded-lg {
+  background-color: #fff;
+  box-shadow: 0 24px 60px -24px rgba(0, 0, 0, 0.45);
+}
+/* Floating badges / speech bubbles: 6 s bob, ±6 px. */
+@keyframes pgrl-float {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-6px); }
+}
+.pgrl-float { animation: pgrl-float 6s ease-in-out infinite; }
+/* Gold line along the hero wave draws itself in once on load. */
+@keyframes pgrl-draw { to { stroke-dashoffset: 0; } }
+.pgrl-draw {
+  stroke-dasharray: 1000;
+  stroke-dashoffset: 1000;
+  animation: pgrl-draw 1.6s cubic-bezier(0.22, 1, 0.36, 1) 0.5s forwards;
+}
+/* Hand-lettered tagline ("A Cleaner, Greener Nairobi"). Caveat is requested
+   with the other Google Fonts in index.html; cursive is the offline fallback. */
+.pgrl-script { font-family: "Caveat", "Segoe Script", "Bradley Hand", cursive; }
+/* Phone-width channel carousel: scroll-snap row without a visible scrollbar. */
+.pgrl-scroll { scrollbar-width: none; -ms-overflow-style: none; }
+.pgrl-scroll::-webkit-scrollbar { display: none; }
+@media (prefers-reduced-motion: reduce) {
+  .pgrl-float { animation: none; }
+  .pgrl-draw { animation: none; stroke-dashoffset: 0; }
+}

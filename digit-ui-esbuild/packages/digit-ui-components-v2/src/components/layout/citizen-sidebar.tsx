@@ -528,7 +528,9 @@ function ConfirmDialog({
               border: 0,
               backgroundColor:
                 "var(--color-button-primary-bg-default, var(--color-primary-2, #FEC931))",
-              color: "var(--color-text-primary, #0B0C0C)",
+              // Label colour must be the one derived for THIS surface: body text
+              // (#1D2433) on Nairobi's dark-green button read as black-on-green.
+              color: "var(--color-button-primary-text, var(--color-text-primary, #0B0C0C))",
               fontWeight: 600,
               fontSize: "0.875rem",
               cursor: "pointer",
