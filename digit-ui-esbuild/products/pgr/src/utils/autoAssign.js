@@ -164,8 +164,9 @@ const usableJurisdictionCodes = (employee, tenantId) =>
     .filter((b) => typeof b === "string" && b.length > 0 && b !== tenantId && !b.includes("."));
 
 // Same "current assignment" semantics as the CSR create form's department
-// gate (isCurrentAssignment !== false: an absent flag counts as current).
-const currentDepartments = (employee) => {
+// gate and pgr-services' HrmsScopeSemantics (isCurrentAssignment !== false: an
+// absent flag counts as current). Also groups the Assign picker.
+export const currentDepartments = (employee) => {
   const set = new Set();
   (employee?.assignments || [])
     .filter((a) => a?.isCurrentAssignment !== false && a?.department)

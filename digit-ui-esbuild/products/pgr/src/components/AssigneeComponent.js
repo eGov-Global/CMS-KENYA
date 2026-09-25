@@ -1,6 +1,7 @@
 import { useTranslation } from "react-i18next";
 import React, { useEffect, useState } from "react";
 import { Dropdown, Loader } from "@egovernments/digit-ui-components";
+import { buildAssigneeGroups } from "../utils/assigneeOptions";
 
 const AssigneeComponent = ({ config, onSelect, formState, defaultValues }) => {
   const { t } = useTranslation();
@@ -9,10 +10,8 @@ const AssigneeComponent = ({ config, onSelect, formState, defaultValues }) => {
   const tenantId = Digit.ULBService.getCurrentTenantId();
   const hrmsContext = window?.globalConfigs?.getConfig("HRMS_CONTEXT_PATH") || "egov-hrms";
 
-  // Get roles from config populators. `allDepartments` is true for a
-  // CMS_SCREENING_OFFICER (routes across EVERY department) and for REASSIGN
-  // (department-agnostic by design); everyone else stays scoped to the single
-  // primary `department`.
+  // Get roles from config populators; buildAssigneeGroups documents how
+  // `department` / `allDepartments` scope the list.
   const { roles = [], department, allDepartments } = config?.populators || {};
 
   // Fetch employee data based on roles
@@ -32,6 +31,7 @@ const AssigneeComponent = ({ config, onSelect, formState, defaultValues }) => {
     params: {
       tenantId: tenantId,
       roles: roles.join(","),
+      isActive: true,
     },
     changeQueryName: `hrms-assignees-${tenantId}-${roles.join(",")}`,
     options: {
@@ -43,59 +43,17 @@ const AssigneeComponent = ({ config, onSelect, formState, defaultValues }) => {
     },
   });
 
-  // Transform employee data for dropdown
-  function transformData(data) {
-    return Object.values(
-      data?.reduce((acc, employee) => {
-        const department = employee?.assignments?.[0]?.department;
-        const uuid = employee?.user?.uuid;
-        const userServiceUUID = employee?.user?.userServiceUuid;
-        if (!department) return acc;
-        // Department display name. Onboarding seeds COMMON_MASTERS_DEPARTMENT_<code>
-        // (not DEPARTMENT_<code>), so use that key; fall back to the raw code.
-        const deptKey = `COMMON_MASTERS_DEPARTMENT_${department}`;
-        const deptName = t(deptKey) === deptKey ? department : t(deptKey);
-
-        if (!acc[department]) {
-          acc[department] = {
-            code: department,
-            name: deptName,
-            options: []
-          };
-        }
-
-        acc[department].options.push({
-          code: `${employee.user?.name} (${deptName})`,
-          name: `${employee.user?.name} (${deptName})`,
-          uuid: uuid,
-          userServiceUUID: userServiceUUID,
-          mobileNumber: employee.user?.mobileNumber,
-          department: department
-        });
-  
-        return acc;
-      }, {}) || {}
-    );
-  }
-  
-  
+  // Department display name. Onboarding seeds COMMON_MASTERS_DEPARTMENT_<code>
+  // (not DEPARTMENT_<code>), so use that key; fall back to the raw code.
+  const deptLabel = (code) => {
+    const deptKey = `COMMON_MASTERS_DEPARTMENT_${code}`;
+    return t(deptKey) === deptKey ? code : t(deptKey);
+  };
 
   // Update assignees when employee data changes
   useEffect(() => {
     if (employeeData?.Employees?.length > 0) {
-      // Screening officer (allDepartments): NO department filter — list every
-      // department's assignable employees (transformData groups them by
-      // department). Every other actor stays scoped to the single primary dept.
-      // Unmapped complaint type (department "NA" or absent in the hierarchy):
-      // pgr-services skips its department validation for these, so the actor may
-      // route to ANY department — filtering by "NA" would empty the dropdown.
-      const unscoped = allDepartments || !department || department === "NA";
-      const filtered = employeeData.Employees.filter((e) => {
-        const d = e?.assignments?.[0]?.department;
-        if (!d || !e?.user?.uuid) return false;
-        return unscoped ? true : d === department;
-      });
-      setAssignees(transformData(filtered));
+      setAssignees(buildAssigneeGroups(employeeData.Employees, { department, allDepartments, deptLabel }));
     }
   }, [employeeData]);
 
