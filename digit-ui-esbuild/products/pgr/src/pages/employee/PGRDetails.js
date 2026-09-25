@@ -389,8 +389,20 @@ const PGRDetails = () => {
     // who previously handled it — unless the officer explicitly picked someone.
     const pickedUuid = _data?.SelectedAssignee?.uuid || null;
     const derivedRole = HISTORY_DERIVED_ASSIGNEE_ROLE[selectedAction.action];
+    // Derive an owner only for actions whose modal OFFERS an assignee. REJECT
+    // and any action into a terminal state (RESOLVE -> RESOLVED) show no
+    // picker, and handing a finished complaint to someone is meaningless — it
+    // also broke: the derivation returned whoever in the history held a
+    // REOPEN/RATE role, so on a citizen-filed complaint it could pick the
+    // citizen (pgr-services: DEPARTMENT_NOT_FOUND) and on an employee-filed
+    // one it sent the filing CSR. Those actions go out with assignes: null,
+    // which is what they sent before the derivation existed. The check reads
+    // the same form config the modal renders, so it cannot drift from the UI.
+    const offersAssignee = actionConfig.formConfig.form.some((section) =>
+      section.body.some((field) => field.key === "SelectedAssignee")
+    );
     let assigneeUuid = pickedUuid;
-    if (!pickedUuid) {
+    if (!pickedUuid && offersAssignee) {
       // Search history at the COMPLAINT's tenant: its process instances live
       // where it was filed (e.g. mz.ige), and a state-tenant search silently
       // returns nothing there — the resolver then derived null every time.
