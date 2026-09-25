@@ -32,6 +32,7 @@ const AssigneeComponent = ({ config, onSelect, formState, defaultValues }) => {
     params: {
       tenantId: tenantId,
       roles: roles.join(","),
+      isActive: true,
     },
     changeQueryName: `hrms-assignees-${tenantId}-${roles.join(",")}`,
     options: {
@@ -90,9 +91,11 @@ const AssigneeComponent = ({ config, onSelect, formState, defaultValues }) => {
       // pgr-services skips its department validation for these, so the actor may
       // route to ANY department — filtering by "NA" would empty the dropdown.
       const unscoped = allDepartments || !department || department === "NA";
+      // Deactivated employees are asked away server-side (isActive=true above);
+      // this guard keeps them out even where HRMS ignores that param.
       const filtered = employeeData.Employees.filter((e) => {
         const d = e?.assignments?.[0]?.department;
-        if (!d || !e?.user?.uuid) return false;
+        if (!d || !e?.user?.uuid || e?.isActive === false) return false;
         return unscoped ? true : d === department;
       });
       setAssignees(transformData(filtered));
