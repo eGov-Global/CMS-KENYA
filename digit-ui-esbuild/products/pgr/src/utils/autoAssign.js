@@ -92,12 +92,33 @@ const rolesActingOn = (states, nextRef) => {
 export const deriveTransitionAssigneeRoles = (businessService, status, action) => {
   const states = businessService?.states || [];
   if (!action) return [];
-  const transitions = (s) => (s?.actions || []).filter((a) => a?.action === action && isActive(a) && a?.nextState);
-  const current = states.find((s) => status && (s?.state === status || s?.applicationStatus === status) && transitions(s).length > 0);
-  const sources = current ? [current] : states.filter((s) => transitions(s).length > 0);
   const roles = new Set();
-  sources.forEach((s) => transitions(s).forEach((a) => rolesActingOn(states, a.nextState).forEach((r) => roles.add(r))));
+  transitionsFrom(states, status, action).forEach((a) => rolesActingOn(states, a.nextState).forEach((r) => roles.add(r)));
   return [...roles];
+};
+
+// `action`'s transitions from the complaint's current state (`status` =
+// applicationStatus or state name), or from every state carrying the action
+// when the current one is unknown or has none.
+const transitionsFrom = (states, status, action) => {
+  const of = (s) => (s?.actions || []).filter((a) => a?.action === action && isActive(a) && a?.nextState);
+  const current = states.find((s) => status && (s?.state === status || s?.applicationStatus === status) && of(s).length > 0);
+  return (current ? [current] : states.filter((s) => of(s).length > 0)).flatMap(of);
+};
+
+/**
+ * Names of the state(s) `action` leads to from the complaint's current state,
+ * chosen the same way as deriveTransitionAssigneeRoles (transitionsFrom).
+ */
+export const transitionTargetStateNames = (businessService, status, action) => {
+  const states = businessService?.states || [];
+  if (!action) return [];
+  const names = new Set();
+  transitionsFrom(states, status, action).forEach((a) => {
+    const target = states.find((t) => t?.uuid === a.nextState || t?.state === a.nextState);
+    if (target?.state) names.add(target.state);
+  });
+  return [...names];
 };
 
 /**

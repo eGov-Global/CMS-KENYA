@@ -9,8 +9,8 @@ import { BackButton, Card, CardHeader, CardText, CardLabelError, TextArea, Submi
 import { updateComplaints } from "../../../redux/actions/index";
 import { LOCALIZATION_KEY } from "../../../constants/Localization";
 import { mergeAdditionalDetail } from "../../../utils/additionalDetail";
-import { findLatestAssigneeUuidByRole, findLatestAssigneeUuidByAnyRole } from "../../../utils/workflowAssignee";
-import { deriveTransitionAssigneeRoles } from "../../../utils/autoAssign";
+import { findReopenAssignee } from "../../../utils/workflowAssignee";
+import { deriveTransitionAssigneeRoles, transitionTargetStateNames } from "../../../utils/autoAssign";
 import { EV, trackE, trackApiError } from "../../../utils/analytics";
 
 const AddtionalDetails = (props) => {
@@ -110,24 +110,27 @@ const AddtionalDetails = (props) => {
       // reopen can therefore never be given an owner again, so this must not
       // be left empty.
       //
+      // From the history (utils/workflowHistory.js pickReopenAssignee):
       // 1) CMS_SUPERVISOR keeps the Mozambique CMS workflow behaviour.
-      // 2) Otherwise the previous holder of a role that can act on the state
-      //    REOPEN lands in (Bomet: PGR_LME / PGR_VIEWER; Nairobi: PGR_LME).
+      // 2) Otherwise whoever held the complaint the last time it sat in the
+      //    state REOPEN returns it to, if they can still act there — on
+      //    Nairobi the officer it was last with at PENDINGATLME, not a chief
+      //    officer or CECM it reached by escalation.
+      // 3) Otherwise a history participant (assignee, else actor) holding a
+      //    role that can act on that state, tried role by role in workflow order.
       //    Derived from the REOPEN transition, not the create path: Nairobi
       //    fronts creation with a GRO triage stop, so the create-path roles
       //    picked the assessor who filed the complaint and the engine refused
       //    the reopen with INVALID_ASSIGNEE (#61).
-      // 3) Otherwise fall back to fresh department+jurisdiction routing, the
-      //    same resolver the citizen create flow uses — covers a complaint
-      //    whose original handler has since left.
-      let reopenAssignee = await findLatestAssigneeUuidByRole(wfTenant, businessId, "CMS_SUPERVISOR");
-      if (!reopenAssignee) {
-        reopenAssignee = await findLatestAssigneeUuidByAnyRole(
-          wfTenant,
-          businessId,
-          deriveTransitionAssigneeRoles(businessService, complaintDetails?.service?.applicationStatus, "REOPEN")
-        );
-      }
+      // 4) Otherwise fresh department+jurisdiction routing, the resolver the
+      //    citizen create flow uses. On Nairobi that resolver's pool is the
+      //    create path's GROs, whom PENDINGATLME does not accept — a known
+      //    gap for complaints whose history names no officer.
+      const reopenStatus = complaintDetails?.service?.applicationStatus;
+      let reopenAssignee = await findReopenAssignee(wfTenant, businessId, {
+        targetStates: transitionTargetStateNames(businessService, reopenStatus, "REOPEN"),
+        reopenRoles: deriveTransitionAssigneeRoles(businessService, reopenStatus, "REOPEN"),
+      });
       if (!reopenAssignee) {
         const resolved = autoAssignment.resolve({
           departmentCode: complaintDetails?.service?.additionalDetail?.autoAssignment?.departmentCode,
