@@ -1,4 +1,5 @@
 import { WorkflowService } from "../services/workflow/Workflow";
+import { latestHolderAtState } from "./workflowHistory";
 
 // CCSD-2167 — derive a workflow assignee UUID from the complaint's own history.
 //
@@ -88,4 +89,28 @@ export const findLatestAssigneeUuidByAnyRole = async (stateCode, businessId, rol
     if (uuid) return uuid;
   }
   return null;
+};
+
+/**
+ * Network wrapper for latestHolderAtState (utils/workflowHistory.js): who held
+ * the complaint the last time it sat in one of `stateNames`, among users who
+ * still hold one of `allowedRoles`. Null on no match or a failed fetch — the
+ * caller then falls through to its role-based and department routing.
+ *
+ * @param {string} stateCode
+ * @param {string} businessId
+ * @param {string[]} stateNames
+ * @param {string[]} [allowedRoles]
+ * @returns {Promise<string|null>}
+ */
+export const findLatestHolderAtState = async (stateCode, businessId, stateNames, allowedRoles) => {
+  if (!stateCode || !businessId) return null;
+  let response;
+  try {
+    response = await WorkflowService.getByBusinessId(stateCode, businessId, {}, true);
+  } catch (e) {
+    console.warn(`workflowAssignee: history fetch failed for ${businessId}; skipping the previous-holder lookup`, e);
+    return null;
+  }
+  return latestHolderAtState(response && response.ProcessInstances, stateNames, allowedRoles);
 };

@@ -99,6 +99,28 @@ export const deriveTransitionAssigneeRoles = (businessService, status, action) =
 };
 
 /**
+ * Names of the state(s) `action` leads to from the complaint's current state
+ * (`status` = applicationStatus or state name); every state carrying the
+ * action contributes when the current state is unknown. Same source selection
+ * as deriveTransitionAssigneeRoles.
+ */
+export const transitionTargetStateNames = (businessService, status, action) => {
+  const states = businessService?.states || [];
+  if (!action) return [];
+  const transitions = (s) => (s?.actions || []).filter((a) => a?.action === action && isActive(a) && a?.nextState);
+  const current = states.find((s) => status && (s?.state === status || s?.applicationStatus === status) && transitions(s).length > 0);
+  const sources = current ? [current] : states.filter((s) => transitions(s).length > 0);
+  const names = new Set();
+  sources.forEach((s) =>
+    transitions(s).forEach((a) => {
+      const target = states.find((t) => t?.uuid === a.nextState || t?.state === a.nextState);
+      if (target?.state) names.add(target.state);
+    })
+  );
+  return [...names];
+};
+
+/**
  * Codes on the boundary-tree path to the complaint's locality, ordered
  * NARROWEST FIRST: the locality itself, then its parent, up to the root.
  *

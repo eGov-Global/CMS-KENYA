@@ -9,8 +9,8 @@ import { BackButton, Card, CardHeader, CardText, CardLabelError, TextArea, Submi
 import { updateComplaints } from "../../../redux/actions/index";
 import { LOCALIZATION_KEY } from "../../../constants/Localization";
 import { mergeAdditionalDetail } from "../../../utils/additionalDetail";
-import { findLatestAssigneeUuidByRole, findLatestAssigneeUuidByAnyRole } from "../../../utils/workflowAssignee";
-import { deriveTransitionAssigneeRoles } from "../../../utils/autoAssign";
+import { findLatestAssigneeUuidByRole, findLatestAssigneeUuidByAnyRole, findLatestHolderAtState } from "../../../utils/workflowAssignee";
+import { deriveTransitionAssigneeRoles, transitionTargetStateNames } from "../../../utils/autoAssign";
 import { EV, trackE, trackApiError } from "../../../utils/analytics";
 
 const AddtionalDetails = (props) => {
@@ -111,22 +111,34 @@ const AddtionalDetails = (props) => {
       // be left empty.
       //
       // 1) CMS_SUPERVISOR keeps the Mozambique CMS workflow behaviour.
-      // 2) Otherwise the previous holder of a role that can act on the state
-      //    REOPEN lands in (Bomet: PGR_LME / PGR_VIEWER; Nairobi: PGR_LME).
-      //    Derived from the REOPEN transition, not the create path: Nairobi
-      //    fronts creation with a GRO triage stop, so the create-path roles
-      //    picked the assessor who filed the complaint and the engine refused
-      //    the reopen with INVALID_ASSIGNEE (#61).
-      // 3) Otherwise fall back to fresh department+jurisdiction routing, the
+      // 2) Otherwise whoever held the complaint the last time it sat in the
+      //    state REOPEN returns it to, if they can still act there. On Nairobi
+      //    that is the director the GRO assigned: escalation to a chief
+      //    officer or CECM happens at other states, and a send-back to the GRO
+      //    queue lands at PENDINGFORREASSIGNMENT. A role-ordered search picked
+      //    those instead — the widened workflow lists CECM first — and the
+      //    admin account (GRO + PGR_LME) could win after a send-back.
+      // 3) Otherwise the previous holder of a role that can act on the state
+      //    REOPEN lands in. Derived from the REOPEN transition, not the create
+      //    path: Nairobi fronts creation with a GRO triage stop, so the
+      //    create-path roles picked the assessor who filed the complaint and
+      //    the engine refused the reopen with INVALID_ASSIGNEE (#61).
+      // 4) Otherwise fall back to fresh department+jurisdiction routing, the
       //    same resolver the citizen create flow uses — covers a complaint
       //    whose original handler has since left.
+      const reopenStatus = complaintDetails?.service?.applicationStatus;
+      const reopenRoles = deriveTransitionAssigneeRoles(businessService, reopenStatus, "REOPEN");
       let reopenAssignee = await findLatestAssigneeUuidByRole(wfTenant, businessId, "CMS_SUPERVISOR");
       if (!reopenAssignee) {
-        reopenAssignee = await findLatestAssigneeUuidByAnyRole(
+        reopenAssignee = await findLatestHolderAtState(
           wfTenant,
           businessId,
-          deriveTransitionAssigneeRoles(businessService, complaintDetails?.service?.applicationStatus, "REOPEN")
+          transitionTargetStateNames(businessService, reopenStatus, "REOPEN"),
+          reopenRoles
         );
+      }
+      if (!reopenAssignee) {
+        reopenAssignee = await findLatestAssigneeUuidByAnyRole(wfTenant, businessId, reopenRoles);
       }
       if (!reopenAssignee) {
         const resolved = autoAssignment.resolve({
