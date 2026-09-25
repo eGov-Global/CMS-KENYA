@@ -18,6 +18,7 @@ import { selectServiceDefsFromComplaintHierarchy } from "../../utils";
 import { isPiiMaskingEnabled } from "../../utils/piiMasking";
 import useReopenWindow from "../../hooks/pgr/useReopenWindow";
 import { findLatestAssigneeUuidByRole } from "../../utils/workflowAssignee";
+import { narrowToLastMile } from "../../utils/autoAssign";
 import { EV, trackE } from "../../utils/analytics";
 
 // CCSD-2167 (employee side) — route-back / terminal actions derive their
@@ -532,6 +533,13 @@ const PGRDetails = () => {
   // roles. Self-loops like ESCALATE / SLA_ESCALATE / COMMENT add noise (e.g.
   // GRO showing up in a PENDINGATLME assignment dropdown), so we exclude them.
   // System roles (CITIZEN, AUTO_ESCALATE, ANONYMOUS) are filtered out too.
+  //
+  // Finally narrowed to the last-mile role when the state has one: on Nairobi
+  // the escalation tiers (CHIEF_OFFICER, CECM) may also act at PENDINGATLME,
+  // but a GRO assigns to the last-mile officer (PGR_LME, i.e. the directors);
+  // the tiers above receive a complaint only by escalation. Transitions whose
+  // target has no PGR_LME actor (REASSIGN → GRO queue, the CMS workflow) are
+  // unchanged.
   const computeAssigneeRoles = (nextStateUuid, businessServiceResponse) => {
     const nextState = businessServiceResponse?.states?.find((s) => s.uuid === nextStateUuid);
     if (!nextState?.actions) return [];
@@ -539,7 +547,7 @@ const PGRDetails = () => {
     const source = forwardActions.length > 0 ? forwardActions : nextState.actions; // fall back if no forward actions
     const set = new Set();
     source.forEach((act) => (act.roles || []).forEach((r) => set.add(r)));
-    return [...set].filter((r) => !NON_ASSIGNEE_ROLES.has(r));
+    return narrowToLastMile([...set].filter((r) => !NON_ASSIGNEE_ROLES.has(r)));
   };
 
   // Get list of valid actions for current user and state

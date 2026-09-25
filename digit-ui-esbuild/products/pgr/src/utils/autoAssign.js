@@ -34,8 +34,10 @@ const NON_ASSIGNEE_ROLES = new Set(["CITIZEN", "AUTO_ESCALATE", "ANONYMOUS", "SY
 // receive it only via escalation. narrowToLastMile keeps just PGR_LME when the
 // workflow has one, and otherwise returns the derived set unchanged so a
 // single-tier tenant that routes straight to a viewer still resolves someone.
-// create-time only; reopen keeps the full set (it matches the PREVIOUS holder,
-// who legitimately may have been a viewer).
+// Used for create-time assignment and by the manual assignee picker
+// (PGRDetails), the employee-side reopen included. The citizen reopen does not
+// narrow: it matches the PREVIOUS holder, who legitimately may have been a
+// viewer.
 export const LAST_MILE_ROLE = "PGR_LME";
 
 export const narrowToLastMile = (roles) =>
