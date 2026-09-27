@@ -123,6 +123,8 @@ function Avatar({ name, photoUrl }: { name?: string; photoUrl?: string | null })
  */
 function SidebarRow({ item, isActive }: { item: NavItem; isActive: boolean }) {
   const Icon = item.Icon;
+  // Drives the hover marker only; colours are set on the element directly.
+  const [hovered, setHovered] = React.useState(false);
   // Bulletproof reset so a `<button>` row is pixel-identical to a `<Link>`
   // row regardless of browser defaults. Every property the user-agent might
   // disagree on is set explicitly.
@@ -138,8 +140,10 @@ function SidebarRow({ item, isActive }: { item: NavItem; isActive: boolean }) {
     borderRadius: "6px",
     transition: "background-color 0.15s ease-out",
     textDecoration: "none",
+    // --color-citizen-sidebar-* are optional, citizen-menu-only theme roles;
+    // without them the row uses the shared sidebar roles exactly as before.
     backgroundColor: isActive
-      ? "var(--color-sidebar-selected-bg, var(--color-primary-1, #c84c0e))"
+      ? "var(--color-citizen-sidebar-selected-bg, var(--color-sidebar-selected-bg, var(--color-primary-1, #c84c0e)))"
       : "transparent",
     cursor: "pointer",
     border: 0,
@@ -154,7 +158,7 @@ function SidebarRow({ item, isActive }: { item: NavItem; isActive: boolean }) {
     // Drive icon + label color from the outer button so hover/active
     // cascade through `currentColor` without per-element overrides.
     color: isActive
-      ? "var(--color-sidebar-selected-text, #FFFFFF)"
+      ? "var(--color-citizen-sidebar-selected-text, var(--color-sidebar-selected-text, #FFFFFF))"
       : "var(--color-sidebar-text-default, #D1D5DB)",
     textAlign: "left",
     outline: "none",
@@ -172,12 +176,16 @@ function SidebarRow({ item, isActive }: { item: NavItem; isActive: boolean }) {
       // haven't set a hover token.
       const el = e.currentTarget as HTMLElement;
       el.style.backgroundColor =
-        "var(--color-sidebar-hover-bg, var(--color-primary-selected-bg, #FFF4D6))";
+        "var(--color-citizen-sidebar-hover-bg, var(--color-sidebar-hover-bg, var(--color-primary-selected-bg, #FFF4D6)))";
       el.style.color =
-        "var(--color-sidebar-hover-text, var(--color-sidebar-bg, var(--color-primary-1, #204F37)))";
+        "var(--color-citizen-sidebar-hover-text, var(--color-sidebar-hover-text, var(--color-sidebar-bg, var(--color-primary-1, #204F37))))";
+      setHovered(true);
     }
   };
   const handleLeave = (e: React.MouseEvent<HTMLElement>) => {
+    // Always clear: a row clicked while hovered becomes active before the
+    // mouse leaves, and must not show the hover marker once it is inactive.
+    setHovered(false);
     if (!isActive) {
       const el = e.currentTarget as HTMLElement;
       el.style.backgroundColor = "transparent";
@@ -198,7 +206,23 @@ function SidebarRow({ item, isActive }: { item: NavItem; isActive: boolean }) {
             width: 3,
             borderRadius: "0 3px 3px 0",
             backgroundColor:
-              "var(--color-sidebar-selected-text, #FFFFFF)",
+              "var(--color-citizen-sidebar-selected-text, var(--color-sidebar-selected-text, #FFFFFF))",
+          }}
+        />
+      ) : hovered ? (
+        // Leading-edge marker in the citizen hover accent; transparent (no
+        // marker) on tenants that have not set one. A positioned bar, not a
+        // box-shadow: overrides.css pins `.v2-sidebar-row { box-shadow: none }`.
+        <span
+          aria-hidden
+          style={{
+            position: "absolute",
+            left: 0,
+            top: 6,
+            bottom: 6,
+            width: 3,
+            borderRadius: "0 3px 3px 0",
+            backgroundColor: "var(--color-citizen-sidebar-hover-text, transparent)",
           }}
         />
       ) : null}

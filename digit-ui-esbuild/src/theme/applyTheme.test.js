@@ -12,6 +12,9 @@ function stubDocument() {
       style: {
         setProperty(name, value) { props[name] = value; },
       },
+      // applyTheme publishes a marker on the root's dataset (header tone);
+      // without it every apply threw before reaching the asserts.
+      dataset: {},
     },
     head,
     createElement(tag) {
@@ -745,4 +748,70 @@ test("button states: nothing to derive from → nothing invented", () => {
     assert.equal(props["--color-button-primary-bg-default"], undefined);
     assert.equal(props["--color-button-primary-bg-pressed"], undefined);
   } finally { restore(); }
+});
+
+const bridgeCss = (head) => (head.children.find((el) => el.id && /bridge/i.test(el.id)) || head.children[0] || {}).textContent || "";
+
+test("citizen sidebar roles: mapped to their own vars, the shared sidebar vars untouched", () => {
+  const { props, restore } = stubDocument();
+  try {
+    freshApply()({ version: "3", colors: {
+      "primary-1": "#003D1E", "sidebar-selected-bg": "#06281A", "sidebar-selected-text": "#FFFFFF",
+      "citizen-sidebar-selected-bg": "#F9C400", "citizen-sidebar-selected-text": "#003D1E",
+      "citizen-sidebar-hover-bg": "#0B5A32", "citizen-sidebar-hover-text": "#F9C400",
+    } });
+    assert.equal(props["--color-citizen-sidebar-selected-bg"], "#F9C400");
+    assert.equal(props["--color-citizen-sidebar-selected-text"], "#003D1E");
+    assert.equal(props["--color-citizen-sidebar-hover-bg"], "#0B5A32");
+    assert.equal(props["--color-citizen-sidebar-hover-text"], "#F9C400");
+    assert.equal(props["--color-sidebar-selected-bg"], "#06281A");
+    assert.equal(props["--color-sidebar-selected-text"], "#FFFFFF");
+  } finally {
+    restore();
+  }
+});
+
+test("citizen sidebar: only a selected bg given -> a readable label is derived for it", () => {
+  const { props, restore } = stubDocument();
+  try {
+    freshApply()({ version: "3", colors: { "primary-1": "#003D1E", "sidebar-selected-text": "#FFFFFF", "citizen-sidebar-selected-bg": "#F9C400" } });
+    assert.equal(props["--color-citizen-sidebar-selected-text"], "#0B0C0C"); // near-black on yellow, not the shared white
+  } finally {
+    restore();
+  }
+});
+
+test("citizen sidebar roles absent: no citizen vars are written (tenants unchanged)", () => {
+  const { props, restore } = stubDocument();
+  try {
+    freshApply()({ version: "3", colors: { "primary-1": "#003D1E", "sidebar-selected-bg": "#06281A" } });
+    assert.equal(Object.keys(props).some((k) => k.startsWith("--color-citizen-sidebar")), false);
+  } finally {
+    restore();
+  }
+});
+
+test("landing deep brand skips a light selected-sidebar colour (cms-pilot yellow) for one that carries white text", () => {
+  const { head, restore } = stubDocument();
+  try {
+    freshApply()({ version: "3", colors: { "primary-1": "#003D1E", "sidebar-selected-bg": "#F9C400" } });
+    const css = bridgeCss(head);
+    const deep = (css.match(/--pgrl-deep-brand:\s*([^;]+)/) || [])[1];
+    assert.ok(deep, "deep brand bridged");
+    // #003D1E, not the yellow #F9C400 (hue ~47)
+    assert.match(deep.trim(), /^1[45]\d /, `expected the dark green, got ${deep}`);
+  } finally {
+    restore();
+  }
+});
+
+test("landing deep brand still uses a dark selected-sidebar colour (previous behaviour)", () => {
+  const { head, restore } = stubDocument();
+  try {
+    freshApply()({ version: "3", colors: { "primary-1": "#2563EB", "sidebar-selected-bg": "#06281A" } });
+    const deep = (bridgeCss(head).match(/--pgrl-deep-brand:\s*([^;]+)/) || [])[1];
+    assert.ok(deep && /^15\d /.test(deep.trim()), `expected #06281A (hue ~155), got ${deep}`);
+  } finally {
+    restore();
+  }
 });

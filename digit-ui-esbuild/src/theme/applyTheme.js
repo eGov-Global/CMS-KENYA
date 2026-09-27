@@ -174,6 +174,14 @@ const V3_EXPANSION = {
   "sidebar-icon-active": ["--color-sidebar-icon-active"],
   "sidebar-selected-bg": ["--color-sidebar-selected-bg"],
   "sidebar-selected-text": ["--color-sidebar-selected-text"],
+  // The CITIZEN side menu only (components-v2 citizen-sidebar.tsx). Optional:
+  // each falls back to the shared sidebar-* role above, so a tenant can brand
+  // the citizen menu (Nairobi: a yellow selected row) without touching the
+  // employee sidebar or the landing page, which read the shared roles.
+  "citizen-sidebar-selected-bg": ["--color-citizen-sidebar-selected-bg"],
+  "citizen-sidebar-selected-text": ["--color-citizen-sidebar-selected-text"],
+  "citizen-sidebar-hover-bg": ["--color-citizen-sidebar-hover-bg"],
+  "citizen-sidebar-hover-text": ["--color-citizen-sidebar-hover-text"],
 
   // ── Cards ────────────────────────────────────────────────────────────────
   "card-border": ["--color-card-border", "--color-border"],
@@ -280,8 +288,11 @@ const V2_BRIDGE_STYLE_ID = "mdms-theme-v2-bridge";
 const PGRL_BRIDGE = [
   ["--pgrl-primary-brand", ["--color-primary-1", "--color-primary-dark"]],
   ["--pgrl-ring-brand", ["--color-primary-1", "--color-primary-dark"]],
-  // Hero / footer / final-CTA band: the darkest brand surface the record has.
-  ["--pgrl-deep-brand", ["--color-sidebar-selected-bg", "--color-primary-1", "--color-primary-dark"]],
+  // Hero / footer / final-CTA band: a dark brand surface that carries the
+  // page's white text. The first candidate that clears AA against white wins,
+  // so a record whose selected-sidebar colour is a light highlight (cms-pilot
+  // set it to yellow) no longer paints the hero and footer yellow.
+  ["--pgrl-deep-brand", ["--color-sidebar-selected-bg", "--color-primary-1", "--color-primary-dark"], { carriesWhite: true }],
   // Accent is a FILLED surface carrying dark ink (CTA buttons, the pilot notice,
   // section rules, the active-nav bar), so it resolves from the accent-brand
   // *tint* role first — `primary-2` itself is the button fill that pairs with
@@ -432,14 +443,22 @@ function injectV2Bridge(vars, landing) {
   const fg = hexToHslTriplet(fgHex);
   if (fg) decls.push(`--v2-primary-foreground: ${fg}`);
 
-  const resolve = (sources) => {
-    const src = sources.find((v) => typeof vars[v] === "string");
+  const whiteLum = relativeLuminance(WHITE);
+  const carriesWhite = (hex) => {
+    const lum = relativeLuminance(hex);
+    return lum !== null && contrastWithLuminance(lum, whiteLum) >= AA_NORMAL_TEXT;
+  };
+  const resolve = (sources, opts = {}) => {
+    const present = sources.filter((v) => typeof vars[v] === "string");
+    // With carriesWhite, prefer a candidate that can carry white text; if none
+    // can, keep the first present one (the previous behaviour).
+    const src = (opts.carriesWhite && present.find((v) => carriesWhite(vars[v]))) || present[0];
     return src ? hexToHslTriplet(vars[src]) : null;
   };
 
   let accent = null;
-  for (const [name, sources] of landing ? PGRL_BRIDGE : []) {
-    const hsl = resolve(sources);
+  for (const [name, sources, opts] of landing ? PGRL_BRIDGE : []) {
+    const hsl = resolve(sources, opts);
     if (!hsl) continue;
     if (name === "--pgrl-accent-brand") accent = hsl;
     decls.push(`${name}: ${hsl}`);
@@ -582,6 +601,14 @@ function applyTheme(config, options) {
       ]);
       if (fg) vars["--color-button-primary-text"] = fg;
     }
+  }
+
+  // A tenant that sets only the citizen menu's selected background gets a
+  // label that reads on it, instead of inheriting the shared selected-text
+  // (white on Nairobi — ~1.7:1 on its yellow).
+  if (typeof vars["--color-citizen-sidebar-selected-bg"] === "string" && !vars["--color-citizen-sidebar-selected-text"]) {
+    const fg = readableForegroundAcross([vars["--color-citizen-sidebar-selected-bg"]]);
+    if (fg) vars["--color-citizen-sidebar-selected-text"] = fg;
   }
 
   for (const name of Object.keys(vars)) {
