@@ -21,6 +21,7 @@ import { isConfirmationAction, wasReopened } from "../../utils/withdraw";
 import { RETURN_TO_GRO_ACTION, buildReturnToGroRequest, isReturnToGroAction } from "../../utils/reassignToGro";
 import { findLatestAssigneeUuidByRole } from "../../utils/workflowAssignee";
 import { LAST_MILE_ROLE, narrowToLastMile } from "../../utils/autoAssign";
+import useExtendedAttributesEnabled from "../../hooks/pgr/useExtendedAttributesEnabled";
 import { EV, trackE } from "../../utils/analytics";
 import ReceiptActions from "../../components/ReceiptActions";
 import ReturnedToGroNotice from "../../components/ReturnedToGroNotice";
@@ -380,6 +381,11 @@ const PGRDetails = () => {
   // unchanged.
   const isLmeReassign = (action) =>
     action?.action === "REASSIGN" && (userInfo?.info?.roles || []).some((r) => r?.code === "PGR_LME");
+
+  // #73: the Complainant Details and Additional Details cards belong to the
+  // per-category extended-attributes feature (Mozambique IGE/IGSAE). A tenant
+  // outside it (Kenya/Bomet) shows neither — see the gate on each card below.
+  const { enabled: extAttrsEnabled } = useExtendedAttributesEnabled(complaintTenantId);
 
   // Automatically dismiss toast messages after 3 seconds
   useEffect(() => {
@@ -924,7 +930,13 @@ const PGRDetails = () => {
                   },
                 ],
               },
-              ...(filedOnBehalfOfCitizen
+              // #73: shown only on tenants running the extended-attributes
+              // feature. Its rows are the CITIZEN record (name / mobile), which
+              // pgr-services blanks for viewers other than the filing call-centre
+              // employee — so on Bomet the card appeared only for call-centre-
+              // filed complaints and read "NA" for Directors and managers: shown
+              // by source, empty by role. Kenya does not use the feature.
+              ...(extAttrsEnabled && filedOnBehalfOfCitizen
                 ? [{
                     cardType: "primary",
                     header: t("ES_CREATECOMPLAINT_PROVIDE_COMPLAINANT_DETAILS"),
@@ -947,7 +959,10 @@ const PGRDetails = () => {
               // Read-only "Additional Details" — fetch service.extendedAttributes
               // and show it as label:value rows; backend returns masked ("****")
               // values. Renders nothing when there are no extended attributes.
-              ...(buildExtendedAttributeRows(pgrData?.ServiceWrappers?.[0]?.service?.extendedAttributes, t, extAttrOrder).length > 0
+              // #73: gated on the feature too, not just on rows being present —
+              // stray extendedAttributes on a tenant that does not run the feature
+              // (old test data) must not surface an orphan card.
+              ...(extAttrsEnabled && buildExtendedAttributeRows(pgrData?.ServiceWrappers?.[0]?.service?.extendedAttributes, t, extAttrOrder).length > 0
                 ? [{
                   cardType: "primary",
                   header: t("CS_COMPLAINT_DETAILS_ADDITIONAL_DETAILS"),
