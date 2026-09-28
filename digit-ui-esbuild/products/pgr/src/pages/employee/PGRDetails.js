@@ -302,6 +302,37 @@ const PGRDetails = () => {
     config: { enabled: !!pgrData },
   });
 
+  // The logged-in employee's own HRMS record — the user token does not carry
+  // the department. Same query the create form makes (url, params and
+  // changeQueryName), so it is usually a cache hit. Drives the LME reassign
+  // scope below.
+  const hrmsContext = window?.globalConfigs?.getConfig?.("HRMS_CONTEXT_PATH") || "egov-hrms";
+  const currentTenantId = Digit.ULBService.getCurrentTenantId();
+  const { data: currentEmployeeData } = Digit.Hooks.useCustomAPIHook({
+    url: `/${hrmsContext}/employees/_search`,
+    params: { tenantId: currentTenantId, uuids: userInfo?.info?.uuid },
+    changeQueryName: `hrms-current-employee-${userInfo?.info?.uuid}`,
+    options: {
+      staleTime: 5 * 60 * 1000,
+      cacheTime: 10 * 60 * 1000,
+    },
+    config: { enabled: !!userInfo?.info?.uuid },
+  });
+  // Every department the employee is currently assigned to (a user can hold
+  // more than one), same semantics as the create form's department gate.
+  const actorDepartments = [];
+  (currentEmployeeData?.Employees || []).forEach((e) =>
+    (e?.assignments || [])
+      .filter((a) => a?.isCurrentAssignment !== false && a?.department)
+      .forEach((a) => { if (!actorDepartments.includes(a.department)) actorDepartments.push(a.department); })
+  );
+  // An LME correcting a wrong assignment: REASSIGN done by a PGR_LME hands the
+  // complaint directly to another last-mile officer of the SAME department
+  // (the workflow keeps it at PENDINGATLME). Other actors' REASSIGN is
+  // unchanged.
+  const isLmeReassign = (action) =>
+    action?.action === "REASSIGN" && (userInfo?.info?.roles || []).some((r) => r?.code === "PGR_LME");
+
   // Automatically dismiss toast messages after 3 seconds
   useEffect(() => {
     if (toast?.show) {
@@ -324,7 +355,10 @@ const PGRDetails = () => {
   // When the scoped department has no eligible employee, AssigneeComponent now
   // says so explicitly instead of rendering an empty dropdown — staffing gaps
   // surface as a clear message, not as an ownerless complaint.
-  const isAssigneeMandatory = (action) => action?.action === "ASSIGN";
+  // An LME reassign must name the officer: without a pick there is nobody to
+  // hand the complaint to, and the no-pick derivation would re-select the
+  // current holder, making the action a silent no-op.
+  const isAssigneeMandatory = (action) => action?.action === "ASSIGN" || isLmeReassign(action);
 
   // Prepare and submit the update complaint request
   const handleActionSubmit = async (_data) => {
@@ -496,11 +530,19 @@ const PGRDetails = () => {
     // The ASSIGN that follows a reassign request (state PENDINGFORREASSIGNMENT)
     // is the same re-routing decision, so it is unscoped as well.
     const currentState = workflowData?.ProcessInstances?.[0]?.state?.state;
+    const lmeReassign = isLmeReassign(selectedAction);
     const allDepartments =
-      userRoles.includes("CMS_SCREENING_OFFICER") ||
-      roles.includes("CMS_SCREENING_OFFICER") ||
-      selectedAction?.action === "REASSIGN" ||
-      currentState === "PENDINGFORREASSIGNMENT";
+      !lmeReassign &&
+      (userRoles.includes("CMS_SCREENING_OFFICER") ||
+        roles.includes("CMS_SCREENING_OFFICER") ||
+        selectedAction?.action === "REASSIGN" ||
+        currentState === "PENDINGFORREASSIGNMENT");
+    // LME reassign: other PGR_LME officers of the actor's own department(s),
+    // any jurisdiction (a wrong assignment is often the wrong ward, so the
+    // right officer may hold a different one), never the actor themself.
+    const assigneeRoles = lmeReassign ? ["PGR_LME"] : roles;
+    const departmentsIn = lmeReassign ? actorDepartments : undefined;
+    const excludeUuids = lmeReassign ? [userInfo?.info?.uuid] : undefined;
 
     return {
       ...actionConfig.formConfig,
@@ -510,9 +552,11 @@ const PGRDetails = () => {
           ...bodyItem,
           populators: {
             ...bodyItem.populators,
-            roles,
+            roles: assigneeRoles,
             department,
             allDepartments,
+            departmentsIn,
+            excludeUuids,
             // Filestore is tenant-scoped — the uploader must write to the
             // COMPLAINT's tenant so the attachment renders later (the display
             // side fetches at service.tenantId).
@@ -588,6 +632,13 @@ const PGRDetails = () => {
     const userRoles = userInfo?.info?.roles?.map((role) => role.code) || [];
     const currentState = workflowData?.ProcessInstances?.[0]?.state;
     if (!currentState?.actions) return false;
+    // Nairobi product rule: Take Action shows ONLY to the employee the
+    // complaint is currently assigned to — in every state, with no role-based
+    // exception. An unassigned complaint therefore shows it to nobody. This is
+    // a UI gate only; pgr-services / workflow-v2 authorise by role, not by
+    // assignee. The citizen side is untouched.
+    const assignedTo = (workflowData?.ProcessInstances?.[0]?.assignes || []).map((a) => a?.uuid).filter(Boolean);
+    if (!assignedTo.includes(userInfo?.info?.uuid)) return false;
     const allActionRoles = new Set();
     currentState.actions.forEach((action) => (action.roles || []).forEach((r) => allActionRoles.add(r)));
     return userRoles.some((r) => allActionRoles.has(r));

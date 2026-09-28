@@ -13,7 +13,11 @@ const AssigneeComponent = ({ config, onSelect, formState, defaultValues }) => {
   // CMS_SCREENING_OFFICER (routes across EVERY department) and for REASSIGN
   // (department-agnostic by design); everyone else stays scoped to the single
   // primary `department`.
-  const { roles = [], department, allDepartments } = config?.populators || {};
+  // `departmentsIn` / `excludeUuids` scope an LME-to-LME reassign: only the
+  // reassigning officer's own department(s), and never the officer themself
+  // (reassigning to yourself is a no-op). Both absent everywhere else, so
+  // every other picker is unchanged.
+  const { roles = [], department, allDepartments, departmentsIn, excludeUuids } = config?.populators || {};
 
   // Fetch employee data based on roles
   // Staff lists change on the scale of HRMS edits, not seconds. The hook's
@@ -93,14 +97,18 @@ const AssigneeComponent = ({ config, onSelect, formState, defaultValues }) => {
       const unscoped = allDepartments || !department || department === "NA";
       // Deactivated employees are asked away server-side (isActive=true above);
       // this guard keeps them out even where HRMS ignores that param.
+      const within = Array.isArray(departmentsIn) && departmentsIn.length > 0 ? new Set(departmentsIn) : null;
+      const excluded = new Set((excludeUuids || []).filter(Boolean));
       const filtered = employeeData.Employees.filter((e) => {
         const d = e?.assignments?.[0]?.department;
         if (!d || !e?.user?.uuid || e?.isActive === false) return false;
+        if (excluded.has(e.user.uuid)) return false;
+        if (within) return within.has(d);
         return unscoped ? true : d === department;
       });
       setAssignees(transformData(filtered));
     }
-  }, [employeeData]);
+  }, [employeeData, department, allDepartments, departmentsIn, excludeUuids]);
 
   // Handle employee selection
   const handleEmployeeSelect = (employee) => {
