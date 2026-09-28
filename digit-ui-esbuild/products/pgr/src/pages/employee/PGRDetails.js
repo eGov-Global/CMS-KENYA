@@ -140,6 +140,25 @@ const PGRDetails = () => {
   const UpdateComplaintSession = Digit.Hooks.useSessionStorage("COMPLAINT_UPDATE", {});
   const [sessionFormData, setSessionFormData, clearSessionFormData] = UpdateComplaintSession;
 
+  // #75: the Take Action draft lives under ONE session key shared by every
+  // complaint, and only a successful submit cleared it — so text typed into a
+  // popup that was closed unsubmitted reappeared on the next complaint. This
+  // page is also a single component instance reused across complaints (route
+  // complaint-details/:id), so the hook's first-render read alone can't scope
+  // it. A draft now belongs to one complaint and one action:
+  //  - arriving at a complaint (in-app navigation, a typed URL, a new visit)
+  //    starts with an empty draft;
+  //  - picking a DIFFERENT action discards the draft, so an abandoned popup's
+  //    text — or its SelectedAssignee, which the modal submits along with the
+  //    rest of the draft — cannot ride into another action's payload.
+  // Re-opening the SAME action on the same complaint keeps what was typed, so
+  // an accidental close still does not lose the text.
+  const draftActionRef = useRef(null);
+  useEffect(() => {
+    draftActionRef.current = null;
+    clearSessionFormData();
+  }, [id]);
+
   // Service definitions (leaf complaint types) adapted from the single
   // RAINMAKER-PGR.ComplaintHierarchy master — drives department + category
   // lookups below. Legacy ServiceDefs shape preserved (serviceCode/menuPath/
@@ -958,6 +977,10 @@ const PGRDetails = () => {
                     });
                     return;
                   }
+                }
+                if (draftActionRef.current !== selected?.action) {
+                  clearSessionFormData();
+                  draftActionRef.current = selected?.action || null;
                 }
                 setSelectedAction(selected);
                 setOpenModal(true);
