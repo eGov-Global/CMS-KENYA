@@ -20,11 +20,17 @@ export const nextLevelRoles = ({ currentState, nextStateRoles }) => {
 // The same additionalDetail keys pgr-services' EscalationService writes on an
 // SLA escalation. The scheduler reads escalationLevel to pick each level's
 // deadline and to stop at maxDepth, so a manual escalation must advance it too.
-export const escalationStamp = ({ additionalDetail, assignees, now }) => ({
-  escalationLevel: (Number(additionalDetail?.escalationLevel) || 0) + 1,
-  lastEscalatedAt: now,
-  escalatedFrom: (assignees || []).map((a) => a?.uuid).filter(Boolean),
-});
+// The level comes from the target state when it is named ESCALATEDLEVEL<n>, so
+// a counter left stale by another path cannot push it past the real level;
+// otherwise it counts on from the stored one.
+export const escalationStamp = ({ additionalDetail, assignees, targetState, now }) => {
+  const fromState = /^ESCALATEDLEVEL(\d+)$/.exec(targetState || "");
+  return {
+    escalationLevel: fromState ? Number(fromState[1]) : (Number(additionalDetail?.escalationLevel) || 0) + 1,
+    lastEscalatedAt: now,
+    escalatedFrom: (assignees || []).map((a) => a?.uuid).filter(Boolean),
+  };
+};
 
 // Escalating is the holder's call, not every officer who can open the page:
 // Take Action on this tenant is role-based, so without this any LME of the

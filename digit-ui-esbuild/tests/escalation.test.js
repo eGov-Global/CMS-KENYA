@@ -78,3 +78,12 @@ test("escalation advances the same additionalDetail keys the SLA escalation writ
   assert.strictEqual(escalationStamp({ additionalDetail: { escalationLevel: "2" }, assignees: [], now: 3 }).escalationLevel, 3);
   assert.strictEqual(escalationStamp({ additionalDetail: undefined, assignees: null, now: 4 }).escalatedFrom.length, 0);
 });
+
+test("the level follows the target state, whatever the stored counter says", () => {
+  // e.g. an employee REOPEN on an older bundle left escalationLevel 2 behind
+  const stale = { escalationLevel: 2 };
+  assert.strictEqual(escalationStamp({ additionalDetail: stale, assignees: [], targetState: "ESCALATEDLEVEL1", now: 1 }).escalationLevel, 1);
+  assert.strictEqual(escalationStamp({ additionalDetail: {}, assignees: [], targetState: "ESCALATEDLEVEL3", now: 1 }).escalationLevel, 3);
+  // a target not named ESCALATEDLEVEL<n> counts on from the stored level
+  assert.strictEqual(escalationStamp({ additionalDetail: { escalationLevel: 1 }, assignees: [], targetState: "SUPERVISOR_REVIEW", now: 1 }).escalationLevel, 2);
+});
