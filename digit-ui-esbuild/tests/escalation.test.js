@@ -14,7 +14,7 @@ const SRC = path.resolve(__dirname, "../products/pgr/src/utils/escalation.js");
 const { outputFiles } = esbuild.buildSync({ entryPoints: [SRC], bundle: true, write: false, format: "cjs", platform: "node", target: "es2018" });
 const mod = { exports: {} };
 vm.runInNewContext(outputFiles[0].text, { module: mod, exports: mod.exports });
-const { actingRoles, nextLevelRoles, isCurrentAssignee } = mod.exports;
+const { actingRoles, nextLevelRoles, isCurrentAssignee, escalationStamp } = mod.exports;
 
 // Bomet (bgrm, tenant bo) PGR workflow, with manual ESCALATE granted to each level's holders.
 const LME = ["PGR_LME"];
@@ -67,4 +67,14 @@ test("only the current assignee may escalate", () => {
   assert.strictEqual(isCurrentAssignee({ assignees, userUuid: "lme-b" }), false);
   assert.strictEqual(isCurrentAssignee({ assignees: null, userUuid: "lme-a" }), false);
   assert.strictEqual(isCurrentAssignee({ assignees, userUuid: undefined }), false);
+});
+
+test("escalation advances the same additionalDetail keys the SLA escalation writes", () => {
+  const first = escalationStamp({ additionalDetail: {}, assignees: [{ uuid: "lme-a" }], now: 1000 });
+  assert.deepStrictEqual(JSON.parse(JSON.stringify(first)), { escalationLevel: 1, lastEscalatedAt: 1000, escalatedFrom: ["lme-a"] });
+  const second = escalationStamp({ additionalDetail: { escalationLevel: 1, department: "HEALTH" }, assignees: [{ uuid: "dir-a" }], now: 2000 });
+  assert.strictEqual(second.escalationLevel, 2);
+  // string-typed levels (older JSON round-trips) still advance
+  assert.strictEqual(escalationStamp({ additionalDetail: { escalationLevel: "2" }, assignees: [], now: 3 }).escalationLevel, 3);
+  assert.strictEqual(escalationStamp({ additionalDetail: undefined, assignees: null, now: 4 }).escalatedFrom.length, 0);
 });

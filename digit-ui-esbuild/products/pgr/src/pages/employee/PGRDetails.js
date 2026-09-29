@@ -18,7 +18,7 @@ import { selectServiceDefsFromComplaintHierarchy } from "../../utils";
 import { isPiiMaskingEnabled } from "../../utils/piiMasking";
 import useReopenWindow from "../../hooks/pgr/useReopenWindow";
 import { findLatestAssigneeUuidByRole, findLatestAssigneeUuidByAnyRole } from "../../utils/workflowAssignee";
-import { isCurrentAssignee, nextLevelRoles } from "../../utils/escalation";
+import { escalationStamp, isCurrentAssignee, nextLevelRoles } from "../../utils/escalation";
 import useAutoAssignment from "../../hooks/pgr/useAutoAssignment";
 import { EV, trackE } from "../../utils/analytics";
 
@@ -479,10 +479,22 @@ const PGRDetails = () => {
     // Parse (object OR stringified) so stamping never discards existing keys
     // like supervisorName / serviceName that older flows stored as a string.
     const baseAdditionalDetail = parseAdditionalDetail(baseService?.additionalDetail);
+    const escalation =
+      selectedAction.action === "ESCALATE"
+        ? escalationStamp({
+            additionalDetail: baseAdditionalDetail,
+            assignees: workflowData?.ProcessInstances?.[0]?.assignes,
+            now: Date.now(),
+          })
+        : null;
     const updateRequest = {
-      service: assigneeDept
-        ? { ...baseService, additionalDetail: { ...baseAdditionalDetail, department: assigneeDept } }
-        : { ...baseService },
+      service:
+        assigneeDept || escalation
+          ? {
+              ...baseService,
+              additionalDetail: { ...baseAdditionalDetail, ...(assigneeDept ? { department: assigneeDept } : {}), ...escalation },
+            }
+          : { ...baseService },
       workflow: {
         action: selectedAction.action,
         assignes: assigneeUuid ? [assigneeUuid] : null,
@@ -630,7 +642,7 @@ const PGRDetails = () => {
 
   // Roles that should never appear in an assignee dropdown even if a workflow
   // state lists them (system or non-employee actors).
-  const NON_ASSIGNEE_ROLES = new Set(["CITIZEN", "AUTO_ESCALATE", "ANONYMOUS", "CMS_VIEWER"]);
+  const NON_ASSIGNEE_ROLES = new Set(["CITIZEN", "AUTO_ESCALATE", "ANONYMOUS", "CMS_VIEWER", "SYSTEM"]);
 
   // Compute the assignee role set for an action by looking at the *forward*
   // (non-self-looping) actions defined on the next state and unioning their
@@ -657,9 +669,13 @@ const PGRDetails = () => {
       assignees: workflowData?.ProcessInstances?.[0]?.assignes,
       userUuid: userInfo?.info?.uuid,
     });
+    // Manual ESCALATE is offered to the complaint's holder only, and only where
+    // there IS a next level: not on the top level's SLA self-loop, and not when
+    // no role remains above (the manual grant never reaches such a state, this
+    // keeps a mis-grant from submitting an owner-less escalation).
     return matchingState.actions
       ? matchingState.actions.filter((action) => action.roles.some((role) => userRoles.includes(role)))
-        .filter((action) => action.action !== "ESCALATE" || assignedToMe)
+        .filter((action) => action.action !== "ESCALATE" || (assignedToMe && action.nextState !== matchingState.uuid))
         .map((action) => {
           // Look up the target state so the modal can adapt generically (terminal → no assignee,
           // docUploadRequired → future doc capture) with no per-action code.
@@ -679,6 +695,7 @@ const PGRDetails = () => {
             uuid: action.uuid,
           };
         })
+        .filter((option) => option.action !== "ESCALATE" || option.assigneeRoles.length > 0)
       : [];
   };
 

@@ -1194,6 +1194,24 @@
         "locale": "default"
     },
     {
+        "code": "CS_ACTION_ESCALATE",
+        "message": "Escalate Complaint",
+        "module": "rainmaker-pgr",
+        "locale": "default"
+    },
+    {
+        "code": "ESCALATE_SUCCESSFULLY",
+        "message": "Escalated Successfully",
+        "module": "rainmaker-pgr",
+        "locale": "default"
+    },
+    {
+        "code": "WF_PGR_ESCALATE",
+        "message": "Escalated",
+        "module": "rainmaker-pgr",
+        "locale": "default"
+    },
+    {
         "code": "CS_COMMON_PGR_STATE_PENDINGATLME",
         "message": "Pending at last mile employee",
         "module": "rainmaker-pgr",
