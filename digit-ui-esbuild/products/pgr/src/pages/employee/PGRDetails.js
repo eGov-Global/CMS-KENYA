@@ -19,6 +19,7 @@ import { isPiiMaskingEnabled } from "../../utils/piiMasking";
 import useReopenWindow from "../../hooks/pgr/useReopenWindow";
 import { findLatestAssigneeUuidByRole, findLatestAssigneeUuidByAnyRole } from "../../utils/workflowAssignee";
 import { escalationStamp, isCurrentAssignee, nextLevelRoles } from "../../utils/escalation";
+import { mergeAdditionalDetail } from "../../utils/additionalDetail";
 import useAutoAssignment from "../../hooks/pgr/useAutoAssignment";
 import { EV, trackE } from "../../utils/analytics";
 
@@ -422,12 +423,6 @@ const PGRDetails = () => {
     // carried over from filing time. Only applied when an assignee with a
     // department is picked (REJECT/RESOLVE etc. leave additionalDetail untouched).
     const baseService = pgrData?.ServiceWrappers[0].service;
-    const assigneeDept = _data?.SelectedAssignee?.department;
-
-    // CCSD-2167 (employee side): for the route-back / terminal actions, resolve
-    // the assignee from the complaint's workflow history by role — the person
-    // who previously handled it — unless the officer explicitly picked someone.
-    const pickedUuid = _data?.SelectedAssignee?.uuid || null;
     const derivedRole = HISTORY_DERIVED_ASSIGNEE_ROLE[selectedAction.action];
     // Derive an owner only for actions whose modal OFFERS an assignee. REJECT
     // and any action into a terminal state (RESOLVE -> RESOLVED) show no
@@ -441,6 +436,13 @@ const PGRDetails = () => {
     const offersAssignee = actionConfig.formConfig.form.some((section) =>
       section.body.some((field) => field.key === "SelectedAssignee")
     );
+    // CCSD-2167 (employee side): for the route-back / terminal actions, resolve
+    // the assignee from the complaint's workflow history by role — the person
+    // who previously handled it — unless the officer explicitly picked someone.
+    // A pick only counts on a form that shows the picker: the draft can still
+    // carry one from another action, and it must not ride into REJECT/RESOLVE.
+    const pickedUuid = offersAssignee ? _data?.SelectedAssignee?.uuid || null : null;
+    const assigneeDept = offersAssignee ? _data?.SelectedAssignee?.department : undefined;
     let assigneeUuid = pickedUuid;
     if (!pickedUuid && offersAssignee) {
       // Search history at the COMPLAINT's tenant: its process instances live
@@ -497,18 +499,23 @@ const PGRDetails = () => {
     }
     // Parse (object OR stringified) so stamping never discards existing keys
     // like supervisorName / serviceName that older flows stored as a string.
-    const baseAdditionalDetail = parseAdditionalDetail(baseService?.additionalDetail);
+    // REOPEN starts a new lifecycle, so it drops the escalation bookkeeping —
+    // as the citizen reopen already does — or the next escalation would count
+    // on from the previous cycle's level.
+    const isReopen = selectedAction.action === "REOPEN";
+    const baseAdditionalDetail = mergeAdditionalDetail(baseService?.additionalDetail, {}, { resetEscalation: isReopen });
     const escalation =
       selectedAction.action === "ESCALATE"
         ? escalationStamp({
             additionalDetail: baseAdditionalDetail,
             assignees: workflowData?.ProcessInstances?.[0]?.assignes,
+            targetState: businessServiceData?.BusinessServices?.[0]?.states?.find((s) => s.uuid === selectedAction.nextState)?.state,
             now: Date.now(),
           })
         : null;
     const updateRequest = {
       service:
-        assigneeDept || escalation
+        assigneeDept || escalation || isReopen
           ? {
               ...baseService,
               additionalDetail: { ...baseAdditionalDetail, ...(assigneeDept ? { department: assigneeDept } : {}), ...escalation },
@@ -1058,6 +1065,14 @@ const PGRDetails = () => {
                 if (draftActionRef.current !== selected?.action) {
                   clearSessionFormData();
                   draftActionRef.current = selected?.action || null;
+                } else if (sessionFormData?.SelectedAssignee) {
+                  // Same action re-opened: keep the typed text, but not an
+                  // earlier assignee. The picker opens empty (or on its
+                  // pre-selection) and the modal submits the draft, so a kept
+                  // assignee would be sent — and pass the mandatory check —
+                  // without being shown.
+                  const { SelectedAssignee, ...rest } = sessionFormData;
+                  setSessionFormData(rest);
                 }
                 setSelectedAction(selected);
                 setOpenModal(true);
