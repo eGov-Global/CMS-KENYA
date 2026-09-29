@@ -153,8 +153,12 @@ const AssigneeComponent = ({ config, onSelect, formData }) => {
     if (isEmployeeDataLoading || !config?.key) return;
     if (formValue?.uuid && options.some((o) => o.uuid === formValue.uuid)) return;
     const preferred = preferredUuid ? options.find((o) => o.uuid === preferredUuid) : null;
-    if (preferred) onSelect(config.key, preferred);
-    else if (formValue) onSelect(config.key, undefined);
+    if (!preferred && !formValue) return;
+    // Deferred: with the staff list already cached this runs during mount,
+    // before the enclosing form Controller has registered the field (a child's
+    // effects run before its parent's), and a value set then is dropped.
+    const timer = setTimeout(() => onSelect(config.key, preferred || undefined), 0);
+    return () => clearTimeout(timer);
   }, [isEmployeeDataLoading, options, preferredUuid, formValue?.uuid]);
 
   const handleEmployeeSelect = (employee) => {
