@@ -19,6 +19,7 @@ import { isPiiMaskingEnabled } from "../../utils/piiMasking";
 import useReopenWindow from "../../hooks/pgr/useReopenWindow";
 import { findLatestAssigneeUuidByRole } from "../../utils/workflowAssignee";
 import { narrowToLastMile } from "../../utils/autoAssign";
+import { canTakeAction } from "../../utils/takeActionGate";
 import { EV, trackE } from "../../utils/analytics";
 
 // CCSD-2167 (employee side) — route-back / terminal actions derive their
@@ -628,21 +629,13 @@ const PGRDetails = () => {
   // action from real LME / GRO field users on naipepea (most of whom
   // are seeded with PGR_LME or GRO but no PGR_VIEWER). PGR_VIEWER is
   // a viewer credential, not a prerequisite to act.
-  const shouldShowActionButton = () => {
-    const userRoles = userInfo?.info?.roles?.map((role) => role.code) || [];
-    const currentState = workflowData?.ProcessInstances?.[0]?.state;
-    if (!currentState?.actions) return false;
-    // Nairobi product rule: Take Action shows ONLY to the employee the
-    // complaint is currently assigned to — in every state, with no role-based
-    // exception. An unassigned complaint therefore shows it to nobody. This is
-    // a UI gate only; pgr-services / workflow-v2 authorise by role, not by
-    // assignee. The citizen side is untouched.
-    const assignedTo = (workflowData?.ProcessInstances?.[0]?.assignes || []).map((a) => a?.uuid).filter(Boolean);
-    if (!assignedTo.includes(userInfo?.info?.uuid)) return false;
-    const allActionRoles = new Set();
-    currentState.actions.forEach((action) => (action.roles || []).forEach((r) => allActionRoles.add(r)));
-    return userRoles.some((r) => allActionRoles.has(r));
-  };
+  const shouldShowActionButton = () =>
+    canTakeAction({
+      state: workflowData?.ProcessInstances?.[0]?.state,
+      assignees: workflowData?.ProcessInstances?.[0]?.assignes,
+      userUuid: userInfo?.info?.uuid,
+      userRoles: userInfo?.info?.roles?.map((role) => role.code),
+    });
 
   // Display loader until required data loads
   if (isLoading || isMDMSLoading || isWorkflowLoading) return <Loader />;
@@ -778,13 +771,21 @@ const PGRDetails = () => {
                   // alongside the complainant name/mobile. The
                   // extendedAttributes.complainantAddress fallback already
                   // arrives masked, so the mask is idempotent for that branch.
-                  ...((pgrData?.ServiceWrappers?.[0]?.service?.citizen?.correspondenceAddress ||
+                  // address.street FIRST: it is where both create forms now write
+                  // the optional typed address (#21). The two legacy sources stay
+                  // as fallbacks so complaints filed before the change, and any
+                  // Mozambique complaint still using extendedAttributes, keep
+                  // rendering exactly as they did. Row is omitted entirely when
+                  // none of the three is set, so a blank address adds no row.
+                  ...((pgrData?.ServiceWrappers?.[0]?.service?.address?.street ||
+                      pgrData?.ServiceWrappers?.[0]?.service?.citizen?.correspondenceAddress ||
                       pgrData?.ServiceWrappers?.[0]?.service?.extendedAttributes?.complainantAddress)
                     ? [
                         {
                           inline: true,
                           label: t("ES_CREATECOMPLAINT_ADDRESS"),
                           value: maskIfConfidential(
+                            pgrData.ServiceWrappers[0].service.address?.street ||
                             pgrData.ServiceWrappers[0].service.citizen?.correspondenceAddress ||
                             pgrData.ServiceWrappers[0].service.extendedAttributes?.complainantAddress
                           ),
