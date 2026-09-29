@@ -38,6 +38,9 @@ import CreatePGRFlow from "./pages/citizen/Create/CreatePGRFlowV2";
 import PGRLandingEntry from "./pages/citizen/Landing/AppEntry";
 // Public privacy-policy page (shell-free), mounted by core at /<contextPath>/privacy-policy.
 import PGRPrivacyPolicyPage from "./pages/citizen/Landing/PrivacyPolicyPage";
+// Role-tiered employee home. Mounted shell-free by core App.js (same pattern
+// as PGRLandingPage), so upstream's EmployeeHome/Home.js stays untouched.
+import EmployeeHomeV2 from "./pages/employee/EmployeeHomeV2";
 
 
 export const PGRReducers = getRootReducer;
@@ -143,6 +146,7 @@ const componentsToRegister = {
   SelectImages,
   CreatePGRFlow: CreatePGRFlow,
   PGRLandingPage: PGRLandingEntry,
+  PGREmployeeHomeV2: EmployeeHomeV2,
   PGRPrivacyPolicy: PGRPrivacyPolicyPage,
 };
 

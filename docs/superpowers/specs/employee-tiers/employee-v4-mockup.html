@@ -1,0 +1,803 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Employee v4 — reference-inspired visual system</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  /* STRUCTURAL mockup. Colour is placeholder-neutral per instruction —
+     the real build inherits the tenant ThemeConfig. */
+  :root{
+    --ink:#1e2a32; --ink-2:#64748b; --line:#e4e9ee; --bg:#f4f7f9;
+    --card:#ffffff; --rail:#17313f; --rail-2:#cfe0ea; --accent:#2f6f8f;
+    --good:#2e7d5b; --warn:#b06a1f; --bad:#a83f3f; --chip:#eef3f6;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:Inter,system-ui,sans-serif;background:#dde5ea;color:var(--ink)}
+  .sheet{width:1500px;margin:0 auto;padding:26px 0 44px}
+
+  .caption{margin:34px 0 10px;padding:13px 17px;background:#fff;border-radius:8px;border-left:5px solid var(--rail)}
+  .caption h2{margin:0;font-size:17px;font-weight:700}
+  .caption .roles{margin-top:5px;font-size:11.5px;color:var(--ink-2);font-family:ui-monospace,Menlo,monospace}
+  .caption .pill{display:inline-block;margin-left:9px;padding:2px 10px;border-radius:99px;background:var(--chip);
+                 color:var(--accent);font-size:11px;font-weight:700;vertical-align:2px}
+
+  .app{border-radius:10px;overflow:hidden;box-shadow:0 3px 14px rgba(0,0,0,.13);background:var(--bg)}
+  .top{height:56px;background:var(--rail);display:flex;align-items:center;justify-content:space-between;padding:0 20px;color:#fff}
+  .top .brand{display:flex;align-items:center;gap:11px}
+  .top .crest{width:28px;height:28px;border-radius:50%;background:#fff;display:grid;place-items:center;color:var(--rail);font-size:10px;font-weight:700}
+  .top .bname{font-size:13.5px;font-weight:700;line-height:1.15}
+  .top .bsub{font-size:9.5px;opacity:.72;letter-spacing:.4px}
+  .top .right{display:flex;align-items:center;gap:22px;font-size:12px;opacity:.95}
+  .top .who{display:flex;align-items:center;gap:8px}
+  .top .av{width:26px;height:26px;border-radius:50%;background:rgba(255,255,255,.22)}
+
+  .shell{display:flex;min-height:520px}
+  /* --- labelled sidebar: the piece today's icon-only rail cannot do --- */
+  .side{width:212px;flex:0 0 212px;background:var(--rail);padding:14px 10px;display:flex;flex-direction:column}
+  .nav{display:flex;align-items:center;gap:11px;padding:10px 12px;border-radius:7px;color:var(--rail-2);font-size:13px}
+  .nav .gl{width:17px;height:17px;border-radius:4px;background:currentColor;opacity:.75}
+  .nav.on{background:rgba(255,255,255,.14);color:#fff;font-weight:600}
+  .side .foot{margin-top:auto;padding:12px;font-size:11.5px;color:var(--rail-2);line-height:1.5;border-top:1px solid rgba(255,255,255,.12)}
+
+  .main{flex:1;padding:18px 20px;overflow:hidden}
+  .cols{display:flex;gap:16px;align-items:flex-start}
+  .colL{flex:1;min-width:0}
+  .colR{width:330px;flex:0 0 330px}
+
+  /* --- greeting hero --- */
+  .hero{border-radius:12px;padding:20px 22px;margin-bottom:16px;position:relative;overflow:hidden;
+        background:linear-gradient(100deg,rgba(233,241,245,.97) 0%,rgba(240,247,250,.90) 46%,rgba(255,255,255,.30) 100%),
+                   url('/digit-ui/nairobi-home-banner.jpg') right center / cover no-repeat;
+        box-shadow:0 1px 3px rgba(20,40,55,.07)}
+  .hero h1{margin:2px 0 0;font-size:23px;font-weight:700}
+  .hero .hi{font-size:13px;color:var(--ink-2)}
+  .hero .sub{margin-top:5px;font-size:12.5px;color:var(--ink-2)}
+  .hero .art{display:none}
+  .filters{display:flex;gap:9px;margin-top:13px;position:relative}
+  .fl{background:#fff;border:1px solid var(--line);border-radius:7px;padding:7px 12px;font-size:12px;color:var(--ink-2);display:flex;align-items:center;gap:8px}
+  .fl b{color:var(--ink);font-weight:600}
+  .clear{color:var(--accent);font-size:12px;align-self:center;font-weight:600}
+
+  /* --- KPI stat row --- */
+  .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:13px;margin-bottom:16px}
+  .kpis.k3{grid-template-columns:repeat(3,1fr)}
+  .kpis.k2{grid-template-columns:repeat(2,1fr);max-width:640px}
+  .kpi{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:15px 16px;
+       box-shadow:0 1px 2px rgba(20,40,55,.05)}
+  .kpi.tint-a{background:linear-gradient(180deg,#f3f8fb,#fff)}
+  .kpi.tint-b{background:linear-gradient(180deg,#f2f9f5,#fff)}
+  .kpi.tint-c{background:linear-gradient(180deg,#fdf7ef,#fff)}
+  .kpi.tint-d{background:linear-gradient(180deg,#fdf3f3,#fff)}
+  .kpi .hd{display:flex;align-items:center;gap:10px;margin-bottom:9px}
+  .kpi .ic{width:32px;height:32px;border-radius:8px;background:var(--chip)}
+  .kpi .nm{font-size:12.5px;color:var(--ink-2);font-weight:500}
+  .kpi .v{font-size:27px;font-weight:700;line-height:1}
+  .kpi .d{font-size:11px;margin-top:5px;color:var(--ink-2)}
+  .kpi .d .up{color:var(--good);font-weight:600}
+  .kpi .d .dn{color:var(--bad);font-weight:600}
+  .kpi.mut .v{color:#b8c2c9}
+
+  .panel{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:15px 16px;margin-bottom:16px;
+         box-shadow:0 1px 2px rgba(20,40,55,.05)}
+  .panel h3{margin:0;font-size:14px;font-weight:700}
+  .panel .ps{font-size:11.5px;color:var(--ink-2);margin-top:2px}
+  .ph{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px}
+  .va{font-size:12px;color:var(--accent);font-weight:600}
+
+  /* --- quick actions --- */
+  .qa{display:grid;grid-template-columns:repeat(4,1fr);gap:11px}
+  .qa.q2{grid-template-columns:repeat(2,1fr);max-width:470px}
+  .qa.q3{grid-template-columns:repeat(3,1fr)}
+  .tile{border:1px solid var(--line);border-radius:9px;padding:13px;position:relative}
+  .tile .ic{width:32px;height:32px;border-radius:8px;background:var(--chip);margin-bottom:9px}
+  .tile .t{font-size:12.5px;font-weight:600}
+  .tile .s{font-size:10.5px;color:var(--ink-2);margin-top:3px;line-height:1.4}
+  .tile .ar{position:absolute;right:12px;top:13px;color:var(--ink-2);font-size:13px}
+
+  /* --- high priority strip --- */
+  .hp{display:grid;grid-template-columns:repeat(4,1fr);gap:11px}
+  .hpi{border:1px solid var(--line);border-radius:9px;padding:11px 13px;background:#fbfcfd}
+  .hpi .l{font-size:11px;color:var(--ink-2)}
+  .hpi .n{font-size:20px;font-weight:700;margin-top:3px}
+
+  /* --- right rail --- */
+  .donut{display:flex;align-items:center;gap:16px}
+  .ring{width:112px;height:112px;border-radius:50%;flex:0 0 112px;
+        background:conic-gradient(#8fb8cc 0 27%,#8fc7ae 27% 48%,#e0c08a 48% 65%,#b9a8cf 65% 78%,#d3dade 78% 100%);
+        display:grid;place-items:center;position:relative}
+  .ring::after{content:"";position:absolute;width:74px;height:74px;border-radius:50%;background:#fff}
+  .ring .rc{position:relative;z-index:1;text-align:center}
+  .ring .rn{font-size:19px;font-weight:700;line-height:1}
+  .ring .rl{font-size:9.5px;color:var(--ink-2)}
+  .legend{flex:1;font-size:11.5px}
+  .lg{display:flex;align-items:center;gap:8px;padding:3px 0}
+  .lg .sw{width:9px;height:9px;border-radius:50%}
+  .lg .nm{flex:1;color:var(--ink)}
+  .lg .n{font-weight:700}
+  .lg .p{color:var(--ink-2);width:34px;text-align:right}
+
+  table{border-collapse:collapse;width:100%;font-size:11.5px}
+  th,td{text-align:left;padding:7px 6px;border-bottom:1px solid #f1f4f6}
+  th{font-size:9.5px;text-transform:uppercase;letter-spacing:.5px;color:var(--ink-2)}
+  .st{font-size:9.5px;padding:2px 8px;border-radius:99px;background:var(--chip);color:var(--ink-2);font-weight:600}
+  .id{color:var(--accent);font-weight:600}
+
+  .ann{display:flex;gap:10px;padding:9px 0;border-bottom:1px solid #f1f4f6}
+  .ann .dot{width:8px;height:8px;border-radius:50%;background:var(--accent);margin-top:5px;flex:0 0 8px}
+  .ann .t{font-size:12px;font-weight:600}
+  .ann .s{font-size:10.5px;color:var(--ink-2);margin-top:2px}
+  .ann .d{font-size:10px;color:var(--ink-2);white-space:nowrap}
+
+  .ql{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid #f1f4f6;font-size:12.5px}
+  .ql .ic{width:26px;height:26px;border-radius:6px;background:var(--chip);flex:0 0 26px}
+  .ql .ar{margin-left:auto;color:var(--ink-2)}
+
+  .note{margin-top:11px;padding:11px 14px;background:#fff;border:1px dashed var(--line);border-radius:8px;
+        font-size:11.5px;color:var(--ink-2);line-height:1.7}
+  .note b{color:var(--ink)}
+  .flag{display:inline-block;padding:1px 7px;border-radius:4px;background:#fdf3e7;color:var(--warn);font-weight:700;font-size:10.5px}
+  .ok{display:inline-block;padding:1px 7px;border-radius:4px;background:#eaf5ef;color:var(--good);font-weight:700;font-size:10.5px}
+  /* sparkline + trend */
+  .spark{display:flex;align-items:flex-end;gap:2px;height:26px;margin-top:7px}
+  .spark i{flex:1;background:#cfe0ea;border-radius:1px;display:block}
+  /* SLA gauge */
+  .gauge{height:7px;border-radius:99px;background:#eef2f5;overflow:hidden;margin-top:8px}
+  .gauge span{display:block;height:100%;background:var(--good);border-radius:99px}
+  .gauge.warn span{background:var(--warn)}
+  /* ward heat list */
+  .heat{display:flex;align-items:center;gap:9px;padding:5px 0;font-size:11.5px}
+  .heat .nm{flex:1}
+  .heat .bar{width:92px;height:6px;border-radius:99px;background:#eef2f5;overflow:hidden}
+  .heat .bar span{display:block;height:100%;background:#9ec3d6}
+  .heat .n{width:26px;text-align:right;font-weight:700}
+  /* SLA countdown rows */
+  .risk{display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid #f1f4f6;font-size:11.5px}
+  .risk:last-child{border-bottom:0}
+  .risk .cd{font-weight:700;font-size:11px;padding:2px 8px;border-radius:99px;background:#fdecec;color:var(--bad)}
+  .risk .cd.soon{background:#fdf3e7;color:var(--warn)}
+  .risk .w{color:var(--ink-2)}
+  /* workload split */
+  .wl{display:flex;height:10px;border-radius:99px;overflow:hidden;margin:9px 0 7px}
+  .wl i{display:block;height:100%}
+  .wlk{display:flex;gap:14px;font-size:10.5px;color:var(--ink-2);flex-wrap:wrap}
+  .wlk b{color:var(--ink)}
+  /* search */
+  .omni{display:flex;align-items:center;gap:10px;background:#fff;border:1px solid var(--line);
+        border-radius:9px;padding:10px 13px;margin-bottom:14px;font-size:13px;color:var(--ink-2)}
+  .omni .kbd{margin-left:auto;font-size:10px;border:1px solid var(--line);border-radius:4px;padding:1px 6px}
+  /* ===== inbox redesign ===== */
+  .tabs{display:flex;gap:6px;margin-bottom:14px}
+  .tab{padding:8px 15px;border-radius:99px;font-size:12.5px;border:1px solid var(--line);background:#fff;color:var(--ink-2)}
+  .tab.on{background:var(--rail);color:#fff;border-color:var(--rail);font-weight:600}
+  .tab .c{margin-left:7px;font-size:10.5px;background:rgba(255,255,255,.22);padding:1px 7px;border-radius:99px}
+  .tab:not(.on) .c{background:var(--chip);color:var(--ink-2)}
+  .chips{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:12px}
+  .chip{font-size:11.5px;padding:5px 11px;border-radius:99px;border:1px solid var(--line);background:#fff;color:var(--ink-2)}
+  .chip.on{border-color:var(--accent);color:var(--accent);background:#f2f8fb;font-weight:600}
+  .chip .x{margin-left:6px;opacity:.6}
+  .row{display:flex;align-items:center;gap:13px;padding:12px 14px;border:1px solid var(--line);border-radius:10px;
+       background:#fff;margin-bottom:9px}
+  .row .sla{width:4px;align-self:stretch;border-radius:99px;background:var(--good)}
+  .row .sla.warn{background:var(--warn)} .row .sla.bad{background:var(--bad)}
+  .row .m{flex:1;min-width:0}
+  .row .t{font-size:13px;font-weight:600}
+  .row .s{font-size:11px;color:var(--ink-2);margin-top:2px}
+  .row .r{text-align:right;font-size:11px;color:var(--ink-2)}
+  .row .cd{font-weight:700;font-size:11.5px}
+  .row .cd.bad{color:var(--bad)} .row .cd.warn{color:var(--warn)}
+  .row .act{font-size:11.5px;color:var(--accent);font-weight:600;white-space:nowrap}
+  .more{text-align:center;font-size:12px;color:var(--accent);font-weight:600;padding:9px}
+  .drawer{font-size:12px;color:var(--accent);font-weight:600;display:flex;align-items:center;gap:7px}
+  /* ===== admin search ===== */
+  .scope{display:flex;gap:8px;align-items:center;font-size:11.5px;color:var(--ink-2);
+         background:#fdf7ef;border:1px solid #f0e2cc;border-radius:8px;padding:9px 12px;margin-bottom:13px}
+  .scope b{color:var(--warn)}
+  .sgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:11px;margin-bottom:13px}
+  .fld{font-size:11px;color:var(--ink-2)}
+  .fld .in{margin-top:5px;border:1px solid var(--line);border-radius:8px;padding:9px 11px;background:#fff;font-size:12.5px;color:var(--ink)}
+  /* ===== dashboard strip ===== */
+  .dgrid{display:grid;grid-template-columns:2fr 1fr;gap:14px}
+  .bars{display:flex;align-items:flex-end;gap:9px;height:130px;padding-top:8px}
+  .bars .b{flex:1;background:linear-gradient(180deg,#9ec3d6,#cfe0ea);border-radius:5px 5px 0 0;position:relative}
+  .bars .b i{position:absolute;bottom:-19px;left:0;right:0;text-align:center;font-size:9.5px;color:var(--ink-2);font-style:normal}
+  .mapbox{height:150px;border-radius:10px;border:1px solid var(--line);
+          background:linear-gradient(135deg,#eef4f7,#e3edf2);position:relative;overflow:hidden}
+  .pin{position:absolute;width:10px;height:10px;border-radius:50%;background:var(--bad);box-shadow:0 0 0 4px rgba(168,63,63,.15)}
+  /* ===== v4: reference-inspired visual system ===== */
+  /* semantic hues */
+  :root{
+    --h-blue:#2f7ed8; --h-blue-bg:#eaf2fd;
+    --h-green:#1f9d6b; --h-green-bg:#e7f6ef;
+    --h-amber:#e08b2b; --h-amber-bg:#fdf2e3;
+    --h-violet:#7c5cd6; --h-violet-bg:#f1ecfd;
+    --h-red:#d8483f;   --h-red-bg:#fdeceb;
+    --h-teal:#2196a6;  --h-teal-bg:#e6f5f7;
+  }
+  /* 1+2: medallion + tinted card body */
+  .med{width:46px;height:46px;border-radius:13px;display:grid;place-items:center;flex:0 0 46px}
+  .med svg{width:22px;height:22px;stroke-width:2;fill:none;stroke-linecap:round;stroke-linejoin:round}
+  .kpi{padding:18px 19px;border-radius:14px}
+  .kpi .hd{gap:13px;margin-bottom:13px;align-items:center}
+  .kpi .nm{font-size:13.5px;color:#4a5b66;font-weight:500}
+  .kpi .v{font-size:36px;letter-spacing:-.5px}        /* 5: bigger numbers */
+  .kpi .d{font-size:12px;margin-top:7px}
+  .kpi.c-blue{background:linear-gradient(180deg,var(--h-blue-bg),#fff)}
+  .kpi.c-green{background:linear-gradient(180deg,var(--h-green-bg),#fff)}
+  .kpi.c-amber{background:linear-gradient(180deg,var(--h-amber-bg),#fff)}
+  .kpi.c-violet{background:linear-gradient(180deg,var(--h-violet-bg),#fff)}
+  .kpi .med.m-blue{background:var(--h-blue-bg);color:var(--h-blue)}
+  .kpi .med.m-green{background:var(--h-green-bg);color:var(--h-green)}
+  .kpi .med.m-amber{background:var(--h-amber-bg);color:var(--h-amber)}
+  .kpi .med.m-violet{background:var(--h-violet-bg);color:var(--h-violet)}
+  .kpis{gap:18px;margin-bottom:22px}                   /* 5: rhythm */
+
+  /* 3: high-priority coloured tiles */
+  .hp{gap:14px}
+  .hpi{display:flex;align-items:center;gap:12px;padding:14px 15px;border-radius:13px;position:relative;border:1px solid transparent}
+  .hpi .med{width:40px;height:40px;border-radius:11px;flex:0 0 40px}
+  .hpi .med svg{width:19px;height:19px}
+  .hpi .tx{flex:1;min-width:0}
+  .hpi .l{font-size:11.5px;font-weight:500}
+  .hpi .n{font-size:24px;font-weight:700;margin-top:1px}
+  .hpi .ch{color:#b6c2ca;font-size:15px}
+  .hpi.p-red{background:var(--h-red-bg);border-color:#f7d9d6}
+  .hpi.p-red .med{background:#fff;color:var(--h-red)} .hpi.p-red .l{color:var(--h-red)} .hpi.p-red .n{color:var(--h-red)}
+  .hpi.p-amber{background:var(--h-amber-bg);border-color:#f7e5c9}
+  .hpi.p-amber .med{background:#fff;color:var(--h-amber)} .hpi.p-amber .l{color:var(--h-amber)} .hpi.p-amber .n{color:var(--h-amber)}
+  .hpi.p-violet{background:var(--h-violet-bg);border-color:#e3dafb}
+  .hpi.p-violet .med{background:#fff;color:var(--h-violet)} .hpi.p-violet .l{color:var(--h-violet)} .hpi.p-violet .n{color:var(--h-violet)}
+  .hpi.p-blue{background:var(--h-blue-bg);border-color:#d5e5fa}
+  .hpi.p-blue .med{background:#fff;color:var(--h-blue)} .hpi.p-blue .l{color:var(--h-blue)} .hpi.p-blue .n{color:var(--h-blue)}
+
+  /* 4: quick actions with medallions, 2 rows */
+  .qa{gap:14px}
+  .tile{padding:16px;border-radius:13px;display:flex;flex-direction:column;gap:11px}
+  .tile .t{font-size:13.5px}
+  .tile .s{font-size:11px}
+  .tile .ar{top:16px;right:14px;color:#b6c2ca}
+  .tile.secondary{background:#fbfcfd}
+  .tile .med.m-blue{background:var(--h-blue-bg);color:var(--h-blue)}
+  .tile .med.m-green{background:var(--h-green-bg);color:var(--h-green)}
+  .tile .med.m-violet{background:var(--h-violet-bg);color:var(--h-violet)}
+  .tile .med.m-amber{background:var(--h-amber-bg);color:var(--h-amber)}
+  .tile .med.m-teal{background:var(--h-teal-bg);color:var(--h-teal)}
+
+  /* 5: panel rhythm + section heading with icon */
+  .panel{padding:19px 20px;border-radius:14px;margin-bottom:18px}
+  .panel h3{font-size:15px}
+  .ph{margin-bottom:15px}
+  .sect{display:flex;align-items:center;gap:10px}
+  .sect .bolt{width:30px;height:30px;border-radius:9px;display:grid;place-items:center;background:var(--h-amber-bg);color:var(--h-amber);flex:0 0 30px}
+  .sect .bolt svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+
+  /* 6: saturated donut */
+  .ring{background:conic-gradient(#2f7ed8 0 27%,#1f9d6b 27% 48%,#e08b2b 48% 65%,#7c5cd6 65% 78%,#c3ccd3 78% 100%)}
+  .lg .nm{font-weight:500}
+
+  /* 7: semantic status pills */
+  .st.s-prog{background:var(--h-amber-bg);color:#a3661d}
+  .st.s-new{background:var(--h-blue-bg);color:#2361a8}
+  .st.s-res{background:var(--h-green-bg);color:#177a52}
+  .st.s-over{background:var(--h-red-bg);color:#b0362e}
+
+  /* 8: sidebar landscape */
+  .side .scape{margin-top:auto;position:relative;height:96px}
+  .side .scape svg{position:absolute;bottom:0;left:-10px;right:-10px;width:calc(100% + 20px)}
+  .side .motto{position:relative;z-index:1;padding:0 12px 10px;font-size:12px;color:#dbe8f0;line-height:1.5}
+  .side .motto b{color:#fff;font-weight:600}
+</style>
+</head>
+<body>
+<div class="sheet">
+
+<!-- ================= T1 ================= -->
+<div class="caption" id="c1">
+  <h2>Tier 1 — Oversight <span class="pill">sees beyond own department</span></h2>
+  <div class="roles">SUPERUSER · CMS_ADMIN · Ombudsman_Officer · OMBUDSMAN_OFFICER</div>
+</div>
+<div class="app" id="a1">
+  <div class="top">
+    <div class="brand"><span class="crest">NCC</span><div><div class="bname">NAIROBI CITY COUNTY</div><div class="bsub">Service · Transparency · Delivery</div></div></div>
+    <div class="right"><span>23 Sep 2026, 3:40 PM</span><span>English ▾</span>
+      <span class="who"><span class="av"></span><div><div style="font-size:12px;font-weight:600">A. Mwangi</div><div style="font-size:10px;opacity:.7">Ombudsman Officer</div></div></span></div>
+  </div>
+  <div class="shell">
+    <div class="side">
+      <div class="nav on"><span class="gl"></span>Dashboard</div>
+      <div class="nav"><span class="gl"></span>Search Complaints</div>
+      <div class="nav"><span class="gl"></span>All Departments</div>
+      <div class="nav"><span class="gl"></span>Reports</div>
+      <div class="nav"><span class="gl"></span>Settings</div>
+      <div class="scape"><svg viewBox="0 0 220 96" preserveAspectRatio="none"><path d="M0 96 L0 62 L38 34 L62 52 L92 22 L124 54 L152 40 L186 66 L220 48 L220 96 Z" fill="rgba(255,255,255,.07)"/><path d="M0 96 L0 76 L34 58 L70 74 L104 52 L140 76 L174 62 L220 80 L220 96 Z" fill="rgba(255,255,255,.05)"/></svg><div class="motto"><b>Let's Make</b><br>Nairobi Work</div></div>
+    </div>
+    <div class="main">
+      <div class="omni">🔎 Search by complaint no, mobile, ward or department…<span class="kbd">Ctrl K</span></div>
+      <div class="hero">
+        <div class="art"></div>
+        <div class="hi">Good Afternoon,</div>
+        <h1>Ombudsman Officer</h1>
+        <div class="sub">County-wide overview across all departments.</div>
+        <div class="filters">
+          <span class="fl">📅 <b>23 Aug – 23 Sep 2026</b> ▾</span>
+          <span class="fl">📍 <b>All Wards</b> ▾</span>
+          <span class="fl">📋 <b>All Departments</b> ▾</span>
+          <span class="clear">Clear All</span>
+        </div>
+      </div>
+      <div class="cols">
+        <div class="colL">
+          <div class="kpis">
+            <div class="kpi c-blue"><div class="hd"><span class="med m-blue"><svg viewBox="0 0 24 24" stroke="currentColor"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M8 13h8M8 17h5"/></svg></span><span class="nm">Total Complaints</span></div><div class="v">254</div><div class="d"><span class="up">▲ 12%</span> vs. previous 7 days</div></div>
+            <div class="kpi c-green"><div class="hd"><span class="med m-green"><svg viewBox="0 0 24 24" stroke="currentColor"><circle cx="12" cy="12" r="9"/><path d="M8.5 12.5l2.5 2.5 5-5.5"/></svg></span><span class="nm">Resolved</span></div><div class="v">182</div><div class="d"><span class="up">▲ 18%</span> vs. previous 7 days</div></div>
+            <div class="kpi c-amber"><div class="hd"><span class="med m-amber"><svg viewBox="0 0 24 24" stroke="currentColor"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></svg></span><span class="nm">In Progress</span></div><div class="v">58</div><div class="d"><span class="dn">▼ 5%</span> vs. previous 7 days</div></div>
+            <div class="kpi c-violet"><div class="hd"><span class="med m-violet"><svg viewBox="0 0 24 24" stroke="currentColor"><circle cx="12" cy="12" r="9"/><path d="M12 7.5v5M12 16.2v.3"/></svg></span><span class="nm">Overdue</span></div><div class="v">14</div><div class="d"><span class="up">▼ 32%</span> vs. previous 7 days</div></div>
+          </div>
+          <div class="panel">
+            <div class="ph"><div><h3>SLA compliance</h3><div class="ps">cl_sla_compliance_rate_count · 72 h target</div></div><span class="va">Reports →</span></div>
+            <div style="display:flex;gap:22px;align-items:flex-end">
+              <div style="flex:0 0 150px"><div style="font-size:26px;font-weight:700">71.6%</div>
+                <div class="gauge"><span style="width:71.6%"></span></div>
+                <div style="font-size:10.5px;color:var(--ink-2);margin-top:5px">182 of 254 resolved on time</div></div>
+              <div style="flex:1">
+                <div style="font-size:11px;color:var(--ink-2)">Created vs resolved · last 14 days <span style="font-size:10px">(cl_chart_over_time_created_daily)</span></div>
+                <div class="spark">
+                  <i style="height:38%"></i><i style="height:52%"></i><i style="height:44%"></i><i style="height:61%"></i>
+                  <i style="height:49%"></i><i style="height:72%"></i><i style="height:58%"></i><i style="height:66%"></i>
+                  <i style="height:81%"></i><i style="height:55%"></i><i style="height:69%"></i><i style="height:47%"></i>
+                  <i style="height:74%"></i><i style="height:60%"></i>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="panel">
+            <div class="ph"><div class="sect"><span class="bolt"><svg viewBox="0 0 24 24"><path d="M13 3L5 13.5h5.5L11 21l8-10.5h-5.5z"/></svg></span><div><h3>High Priority</h3><div class="ps">Your attention is needed</div></div></div><span class="va">View all (14) →</span></div>
+            <div class="hp">
+              <div class="hpi p-red"><span class="med"><svg viewBox="0 0 24 24" stroke="currentColor"><path d="M2 12s3.6-6.5 10-6.5S22 12 22 12s-3.6 6.5-10 6.5S2 12 2 12z"/><circle cx="12" cy="12" r="2.6"/></svg></span><div class="tx"><div class="l">Overdue Complaints</div><div class="n">14</div></div><span class="ch">›</span></div>
+              <div class="hpi p-amber"><span class="med"><svg viewBox="0 0 24 24" stroke="currentColor"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></svg></span><div class="tx"><div class="l">Pending &gt; 7 Days</div><div class="n">28</div></div><span class="ch">›</span></div>
+              <div class="hpi p-violet"><span class="med"><svg viewBox="0 0 24 24" stroke="currentColor"><path d="M12 19V6"/><path d="M6.5 11.5L12 6l5.5 5.5"/></svg></span><div class="tx"><div class="l">Escalated</div><div class="n">6</div></div><span class="ch">›</span></div>
+              <div class="hpi p-blue"><span class="med"><svg viewBox="0 0 24 24" stroke="currentColor"><path d="M20 11a8 8 0 1 0-2.3 6"/><path d="M20 5v6h-6"/></svg></span><div class="tx"><div class="l">Reopened</div><div class="n">3</div></div><span class="ch">›</span></div>
+            </div>
+          </div>
+          <div class="panel">
+            <div class="ph"><div class="sect"><span class="bolt"><svg viewBox="0 0 24 24"><path d="M13 3L5 13.5h5.5L11 21l8-10.5h-5.5z"/></svg></span><div><h3>Quick Actions</h3><div class="ps">Common tasks to help you work faster</div></div></div></div>
+            <div class="qa">
+              <div class="tile"><span class="ar">›</span><span class="med m-blue"><svg viewBox="0 0 24 24" stroke="currentColor"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg></span><div><div class="t">Search Complaints</div><div class="s">Find and view complaint details</div></div></div>
+              <div class="tile"><span class="ar">›</span><span class="med m-violet"><svg viewBox="0 0 24 24" stroke="currentColor"><path d="M12 3l7 3v5.5c0 4.3-3 7.7-7 9-4-1.3-7-4.7-7-9V6z"/><path d="M9.2 12.2l2 2 3.6-3.8"/></svg></span><div><div class="t">Admin Search</div><div class="s">Across all departments</div></div></div>
+              <div class="tile"><span class="ar">›</span><span class="med m-green"><svg viewBox="0 0 24 24" stroke="currentColor"><circle cx="12" cy="12" r="9"/><path d="M12 8.5v7M8.5 12h7"/></svg></span><div><div class="t">New Complaint</div><div class="s">Register on behalf of a citizen</div></div></div>
+              <div class="tile"><span class="ar">›</span><span class="med m-amber"><svg viewBox="0 0 24 24" stroke="currentColor"><path d="M5 19V11M12 19V5M19 19v-5"/></svg></span><div><div class="t">Reports</div><div class="s">Access reports and analytics</div></div></div>
+            </div>
+            <div class="qa" style="margin-top:14px">
+              <div class="tile secondary"><span class="ar">›</span><span class="med m-teal"><svg viewBox="0 0 24 24" stroke="currentColor"><circle cx="12" cy="9" r="3.4"/><path d="M5.5 19a6.5 6.5 0 0 1 13 0"/></svg></span><div><div class="t">My Complaints</div><div class="s">View your assigned complaints</div></div></div>
+              <div class="tile secondary"><span class="ar">›</span><span class="med m-violet"><svg viewBox="0 0 24 24" stroke="currentColor"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H19v15H6.5A2.5 2.5 0 0 0 4 20.5z"/><path d="M4 17.5h15"/></svg></span><div><div class="t">User Manual</div><div class="s">Guides &amp; documentation</div></div></div>
+              <div class="tile secondary"><span class="ar">›</span><span class="med m-blue"><svg viewBox="0 0 24 24" stroke="currentColor"><path d="M4 14v-2a8 8 0 0 1 16 0v2"/><path d="M4.5 14h2a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1h-1a1 1 0 0 1-1-1zM19.5 14h-2a1 1 0 0 0-1 1v3a1 1 0 0 0 1 1h1a1 1 0 0 0 1-1z"/></svg></span><div><div class="t">Help &amp; Support</div><div class="s">Get assistance</div></div></div>
+              <div class="tile secondary"><span class="ar">›</span><span class="med m-green"><svg viewBox="0 0 24 24" stroke="currentColor"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M8 13h8M8 17h5"/></svg></span><div><div class="t">Citizen Services</div><div class="s">View services &amp; schemes</div></div></div>
+            </div>
+          </div>
+        </div>
+        <div class="colR">
+          <div class="panel">
+            <div class="ph"><div><h3>Complaints by Department</h3></div><span class="va">›</span></div>
+            <div class="donut">
+              <div class="ring"><div class="rc"><div class="rn">254</div><div class="rl">Total</div></div></div>
+              <div class="legend">
+                <div class="lg"><span class="sw" style="background:#8fb8cc"></span><span class="nm">Water &amp; Sanitation</span><span class="n">68</span><span class="p">27%</span></div>
+                <div class="lg"><span class="sw" style="background:#8fc7ae"></span><span class="nm">Roads</span><span class="n">54</span><span class="p">21%</span></div>
+                <div class="lg"><span class="sw" style="background:#e0c08a"></span><span class="nm">Environment</span><span class="n">42</span><span class="p">17%</span></div>
+                <div class="lg"><span class="sw" style="background:#b9a8cf"></span><span class="nm">Urban Dev.</span><span class="n">34</span><span class="p">13%</span></div>
+                <div class="lg"><span class="sw" style="background:#d3dade"></span><span class="nm">Others</span><span class="n">56</span><span class="p">22%</span></div>
+              </div>
+            </div>
+          </div>
+          <div class="panel">
+            <div class="ph"><div><h3>Wards needing attention</h3><div class="ps">cl_chart_wards_by_sla</div></div><span class="va">›</span></div>
+            <div class="heat"><span class="nm">Dandora</span><span class="bar"><span style="width:88%"></span></span><span class="n">31</span></div>
+            <div class="heat"><span class="nm">Kibra · Laini Saba</span><span class="bar"><span style="width:71%"></span></span><span class="n">25</span></div>
+            <div class="heat"><span class="nm">Makadara · Viwandani</span><span class="bar"><span style="width:54%"></span></span><span class="n">19</span></div>
+            <div class="heat"><span class="nm">Eastleigh</span><span class="bar"><span style="width:33%"></span></span><span class="n">12</span></div>
+          </div>
+          <div class="panel">
+            <div class="ph"><div><h3>Breaching SLA soon</h3><div class="ps">cl_table_complaints_at_risk · officer capability</div></div></div>
+            <div class="risk"><span class="cd">2 h</span><span class="nm">NB-…-002061</span><span class="w">Water</span></div>
+            <div class="risk"><span class="cd soon">9 h</span><span class="nm">NB-…-002044</span><span class="w">Health</span></div>
+            <div class="risk"><span class="cd soon">14 h</span><span class="nm">NB-…-002038</span><span class="w">Roads</span></div>
+          </div>
+          <div class="panel">
+            <div class="ph"><div><h3>Recent Complaints</h3></div><span class="va">View all →</span></div>
+            <table>
+              <tr><th>Complaint no</th><th>Ward</th><th>Status</th></tr>
+              <tr><td class="id">NB-PGR-2026-09-002073</td><td>Makadara</td><td><span class="st s-prog">In progress</span></td></tr>
+              <tr><td class="id">NB-PGR-2026-09-002096</td><td>Kibra</td><td><span class="st s-new">New</span></td></tr>
+              <tr><td class="id">NB-PGR-2026-09-001775</td><td>Lang'ata</td><td><span class="st s-over">Overdue</span></td></tr>
+            </table>
+            <div style="margin-top:9px;font-size:10.5px;color:var(--warn)">
+              <span class="flag">PII DECISION</span> subject column removed — see note below.
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="note">
+  <b>Tier 1 gets:</b> county-wide KPIs with deltas · high-priority strip · Admin Search tile · department donut · recent complaints.
+  <br><b>Deliberately changed from the reference:</b> the Recent Complaints table drops the free-text <b>Subject</b> column.
+  A complaint subject can itself identify a complainant, and this page has no confidential-complaint gate.
+  <br><b>Still absent:</b> complainant names and phone numbers anywhere · export/CSV from the home surface.
+</div>
+
+<!-- ================= T2 ================= -->
+<div class="caption" id="c2">
+  <h2>Tier 2 — Casework <span class="pill">own department queue</span></h2>
+  <div class="roles">PGR_LME · GRO · CMS_SUPERVISOR · CMS_SCREENING_OFFICER · CMS_CASE_MANAGER · HEALTH/WATER/ADMIN_{DIRECTOR, CHIEF_OFFICER, CECM}</div>
+</div>
+<div class="app" id="a2">
+  <div class="top">
+    <div class="brand"><span class="crest">NCC</span><div><div class="bname">NAIROBI CITY COUNTY</div><div class="bsub">Service · Transparency · Delivery</div></div></div>
+    <div class="right"><span>23 Sep 2026, 3:40 PM</span><span>English ▾</span>
+      <span class="who"><span class="av"></span><div><div style="font-size:12px;font-weight:600">J. Kamau</div><div style="font-size:10px;opacity:.7">Health — Director</div></div></span></div>
+  </div>
+  <div class="shell">
+    <div class="side">
+      <div class="nav on"><span class="gl"></span>Dashboard</div>
+      <div class="nav"><span class="gl"></span>My Complaints</div>
+      <div class="nav"><span class="gl"></span>Search Complaints</div>
+      <div class="scape"><svg viewBox="0 0 220 96" preserveAspectRatio="none"><path d="M0 96 L0 62 L38 34 L62 52 L92 22 L124 54 L152 40 L186 66 L220 48 L220 96 Z" fill="rgba(255,255,255,.07)"/><path d="M0 96 L0 76 L34 58 L70 74 L104 52 L140 76 L174 62 L220 80 L220 96 Z" fill="rgba(255,255,255,.05)"/></svg><div class="motto"><b>Let's Make</b><br>Nairobi Work</div></div>
+    </div>
+    <div class="main">
+      <div class="hero">
+        <div class="art"></div>
+        <div class="hi">Good Afternoon,</div>
+        <h1>John Kamau</h1>
+        <div class="sub">Health department queue. Figures are scoped to your department.</div>
+        <div class="filters">
+          <span class="fl">📅 <b>23 Aug – 23 Sep 2026</b> ▾</span>
+          <span class="fl">📍 <b>All Wards</b> ▾</span>
+          <span class="clear">Clear All</span>
+        </div>
+      </div>
+      <div class="cols">
+        <div class="colL">
+          <div class="kpis k3">
+            <div class="kpi c-blue"><div class="hd"><span class="med m-blue"><svg viewBox="0 0 24 24" stroke="currentColor"><circle cx="12" cy="9" r="3.4"/><path d="M5.5 19a6.5 6.5 0 0 1 13 0"/></svg></span><span class="nm">Assigned to me</span></div><div class="v">12</div><div class="d">in Health</div></div>
+            <div class="kpi c-amber"><div class="hd"><span class="med m-amber"><svg viewBox="0 0 24 24" stroke="currentColor"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></svg></span><span class="nm">Overdue (mine)</span></div><div class="v">3</div><div class="d">past 72 h SLA</div></div>
+            <div class="kpi c-green"><div class="hd"><span class="med m-green"><svg viewBox="0 0 24 24" stroke="currentColor"><circle cx="12" cy="12" r="9"/><path d="M8.5 12.5l2.5 2.5 5-5.5"/></svg></span><span class="nm">Resolved this week</span></div><div class="v">9</div><div class="d">by me</div></div>
+          </div>
+          <div class="panel">
+            <div class="ph"><div><h3>Needs your attention</h3><div class="ps">Your cases only</div></div><span class="va">View all (3) →</span></div>
+            <div class="hp" style="grid-template-columns:repeat(3,1fr)">
+              <div class="hpi p-red"><span class="med"><svg viewBox="0 0 24 24" stroke="currentColor"><path d="M2 12s3.6-6.5 10-6.5S22 12 22 12s-3.6 6.5-10 6.5S2 12 2 12z"/><circle cx="12" cy="12" r="2.6"/></svg></span><div class="tx"><div class="l">Overdue</div><div class="n">3</div></div><span class="ch">›</span></div>
+              <div class="hpi p-amber"><span class="med"><svg viewBox="0 0 24 24" stroke="currentColor"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></svg></span><div class="tx"><div class="l">Pending &gt; 7 days</div><div class="n">5</div></div><span class="ch">›</span></div>
+              <div class="hpi p-blue"><span class="med"><svg viewBox="0 0 24 24" stroke="currentColor"><path d="M20 11a8 8 0 1 0-2.3 6"/><path d="M20 5v6h-6"/></svg></span><div class="tx"><div class="l">Reopened</div><div class="n">1</div></div><span class="ch">›</span></div>
+            </div>
+          </div>
+          <div class="panel">
+            <div class="ph"><div><h3>Due soonest</h3><div class="ps">your cases, ordered by time remaining</div></div><span class="va">My Complaints →</span></div>
+            <div class="risk"><span class="cd">4 h</span><span class="nm">NB-…-002073</span><span class="w">Makadara · Water pipe leakage</span></div>
+            <div class="risk"><span class="cd soon">11 h</span><span class="nm">NB-…-002051</span><span class="w">Kibra · Drainage blockage</span></div>
+            <div class="risk"><span class="cd soon">22 h</span><span class="nm">NB-…-002049</span><span class="w">Lang'ata · Water quality</span></div>
+          </div>
+          <div class="panel">
+            <div class="ph"><div><h3>My workload</h3><div class="ps">cl_chart_open_by_age</div></div></div>
+            <div class="wl">
+              <i style="width:42%;background:#9ec3d6"></i><i style="width:25%;background:#a9cfb9"></i>
+              <i style="width:18%;background:#e4c89a"></i><i style="width:15%;background:#d99b9b"></i>
+            </div>
+            <div class="wlk"><span><b>5</b> &lt; 1 day</span><span><b>3</b> 1–3 days</span><span><b>2</b> 3–7 days</span><span><b>2</b> &gt; 7 days</span></div>
+          </div>
+          <div class="panel">
+            <div class="ph"><div><h3>Quick Actions</h3></div></div>
+            <div class="qa q2">
+              <div class="tile"><span class="ar">›</span><span class="med m-blue"><svg viewBox="0 0 24 24" stroke="currentColor"><circle cx="12" cy="9" r="3.4"/><path d="M5.5 19a6.5 6.5 0 0 1 13 0"/></svg></span><div><div class="t">My Complaints</div><div class="s">Your assigned queue</div></div></div>
+              <div class="tile"><span class="ar">›</span><span class="med m-teal"><svg viewBox="0 0 24 24" stroke="currentColor"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg></span><div><div class="t">Search Complaints</div><div class="s">Within your department</div></div></div>
+            </div>
+          </div>
+        </div>
+        <div class="colR">
+          <div class="panel">
+            <div class="ph"><div><h3>My queue by status</h3></div></div>
+            <div class="donut">
+              <div class="ring" style="background:conic-gradient(#8fb8cc 0 50%,#e0c08a 50% 75%,#8fc7ae 75% 100%)"><div class="rc"><div class="rn">12</div><div class="rl">Mine</div></div></div>
+              <div class="legend">
+                <div class="lg"><span class="sw" style="background:#8fb8cc"></span><span class="nm">In progress</span><span class="n">6</span><span class="p">50%</span></div>
+                <div class="lg"><span class="sw" style="background:#e0c08a"></span><span class="nm">Overdue</span><span class="n">3</span><span class="p">25%</span></div>
+                <div class="lg"><span class="sw" style="background:#8fc7ae"></span><span class="nm">Awaiting info</span><span class="n">3</span><span class="p">25%</span></div>
+              </div>
+            </div>
+          </div>
+          <div class="panel">
+            <div class="ph"><div><h3>Announcements</h3></div><span class="va">View all</span></div>
+            <div class="ann"><span class="dot"></span><div style="flex:1"><div class="t">System maintenance</div><div class="s">The system will be down for…</div></div><span class="d">18 Sep</span></div>
+            <div class="ann" style="border-bottom:0"><span class="dot"></span><div style="flex:1"><div class="t">New complaint categories</div><div class="s">New categories are now available…</div></div><span class="d">12 Sep</span></div>
+            <div style="margin-top:8px;font-size:10.5px;color:var(--warn)"><span class="flag">NO BACKEND</span> announcements have no data source today.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="note">
+  <b>Same layout as T1, narrower content.</b> Sidebar loses "All Departments" and "Reports". KPIs become personal, not county-wide.
+  The donut shows <b>my queue by status</b>, never other departments. No Admin Search tile. No recent-complaints table —
+  a department officer reaches their cases through My Complaints.
+</div>
+
+<!-- ================= T3 ================= -->
+<div class="caption" id="c3">
+  <h2>Tier 3 — Narrow: intake <span class="pill">one job</span></h2>
+  <div class="roles">CSR · CMS_RECEPTION_OFFICER</div>
+</div>
+<div class="app" id="a3">
+  <div class="top">
+    <div class="brand"><span class="crest">NCC</span><div><div class="bname">NAIROBI CITY COUNTY</div><div class="bsub">Service · Transparency · Delivery</div></div></div>
+    <div class="right"><span>23 Sep 2026, 3:40 PM</span><span>English ▾</span>
+      <span class="who"><span class="av"></span><div><div style="font-size:12px;font-weight:600">A. Wanjiru</div><div style="font-size:10px;opacity:.7">Reception Officer</div></div></span></div>
+  </div>
+  <div class="shell">
+    <div class="side">
+      <div class="nav on"><span class="gl"></span>Home</div>
+      <div class="nav"><span class="gl"></span>New Complaint</div>
+      <div class="nav"><span class="gl"></span>Search Complaints</div>
+      <div class="scape"><svg viewBox="0 0 220 96" preserveAspectRatio="none"><path d="M0 96 L0 62 L38 34 L62 52 L92 22 L124 54 L152 40 L186 66 L220 48 L220 96 Z" fill="rgba(255,255,255,.07)"/><path d="M0 96 L0 76 L34 58 L70 74 L104 52 L140 76 L174 62 L220 80 L220 96 Z" fill="rgba(255,255,255,.05)"/></svg><div class="motto"><b>Let's Make</b><br>Nairobi Work</div></div>
+    </div>
+    <div class="main">
+      <div class="hero">
+        <div class="art"></div>
+        <div class="hi">Good Afternoon,</div>
+        <h1>Agnes Wanjiru</h1>
+        <div class="sub">Log a complaint for a citizen at the counter or on the phone.</div>
+      </div>
+      <div class="cols">
+        <div class="colL">
+          <div class="kpis k2">
+            <div class="kpi c-green"><div class="hd"><span class="med m-green"><svg viewBox="0 0 24 24" stroke="currentColor"><circle cx="12" cy="12" r="9"/><path d="M12 8.5v7M8.5 12h7"/></svg></span><span class="nm">Logged by me today</span></div><div class="v">6</div><div class="d">since 8:00 AM</div></div>
+            <div class="kpi c-blue"><div class="hd"><span class="med m-blue"><svg viewBox="0 0 24 24" stroke="currentColor"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M8 13h8M8 17h5"/></svg></span><span class="nm">Logged this week</span></div><div class="v">31</div><div class="d">by me</div></div>
+          </div>
+          <div class="panel">
+            <div class="ph"><div><h3>Quick Actions</h3></div></div>
+            <div class="qa q2">
+              <div class="tile" style="border-color:#bfe3d2;background:linear-gradient(180deg,#f0faf5,#fff)"><span class="ar">›</span><span class="med m-green"><svg viewBox="0 0 24 24" stroke="currentColor"><circle cx="12" cy="12" r="9"/><path d="M12 8.5v7M8.5 12h7"/></svg></span><div><div class="t">New Complaint</div><div class="s">Primary action — register for a citizen</div></div></div>
+              <div class="tile"><span class="ar">›</span><span class="med m-blue"><svg viewBox="0 0 24 24" stroke="currentColor"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg></span><div><div class="t">Search Complaints</div><div class="s">Look up a case reference</div></div></div>
+            </div>
+          </div>
+        </div>
+        <div class="colR">
+          <div class="panel" style="border-style:dashed">
+            <div class="ph"><div><h3>Resume draft</h3><div class="ps">existing session-draft feature</div></div></div>
+            <div style="font-size:12px">Unfinished complaint for <b>0722 ••• 418</b></div>
+            <div style="font-size:10.5px;color:var(--ink-2);margin-top:3px">Started 14 min ago · Water &amp; Sanitation</div>
+          </div>
+          <div class="panel">
+            <div class="ph"><div><h3>Logged today by channel</h3><div class="ps">cl_chart_open_by_channel</div></div></div>
+            <div class="wl"><i style="width:67%;background:#9ec3d6"></i><i style="width:33%;background:#a9cfb9"></i></div>
+            <div class="wlk"><span><b>4</b> Counter</span><span><b>2</b> Phone</span></div>
+          </div>
+          <div class="panel">
+            <div class="ph"><div><h3>Recently logged by me</h3></div></div>
+            <table>
+              <tr><th>Complaint no</th><th>Ward</th><th>Status</th></tr>
+              <tr><td class="id">NB-PGR-2026-09-002101</td><td>Makadara</td><td><span class="st s-new">New</span></td></tr>
+              <tr><td class="id">NB-PGR-2026-09-002099</td><td>Makadara</td><td><span class="st s-new">Assigned</span></td></tr>
+            </table>
+            <div style="margin-top:9px;font-size:10.5px;color:var(--ink-2)">Only cases this user logged — their own work, not a queue.</div>
+          </div>
+          <div class="panel">
+            <div class="ph"><div><h3>Quick Links</h3></div></div>
+            <div class="ql"><span class="ic"></span>User Manual<span class="ar">›</span></div>
+            <div class="ql" style="border-bottom:0"><span class="ic"></span>Help &amp; Support<span class="ar">›</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="note">
+  <b>Same shell, deliberately sparse.</b> Two KPIs about their own work, one dominant action, and a list of what they
+  personally logged. <b>Absent:</b> department or county totals · charts · high-priority strip · Admin Search ·
+  anything they cannot act on.
+  <br>A <b>CMS_VIEWER</b> gets this same shell with a READ-ONLY badge, the New Complaint tile removed, and every action affordance suppressed.
+</div>
+
+
+<!-- ================= INBOX ================= -->
+<div class="caption" id="c4">
+  <h2>Inbox — stripped and card-based <span class="pill">replaces the filter wall</span></h2>
+  <div class="roles">today: 11 checkboxes + 2 radios + 3 search fields, all visible at once, "No Results Found"</div>
+</div>
+<div class="app" id="a4">
+  <div class="top">
+    <div class="brand"><span class="crest">NCC</span><div><div class="bname">NAIROBI CITY COUNTY</div><div class="bsub">Service · Transparency · Delivery</div></div></div>
+    <div class="right"><span>23 Sep 2026, 4:22 PM</span><span>English ▾</span>
+      <span class="who"><span class="av"></span><div><div style="font-size:12px;font-weight:600">J. Kamau</div><div style="font-size:10px;opacity:.7">Health — Director</div></div></span></div>
+  </div>
+  <div class="shell">
+    <div class="side">
+      <div class="nav"><span class="gl"></span>Dashboard</div>
+      <div class="nav on"><span class="gl"></span>My Complaints</div>
+      <div class="nav"><span class="gl"></span>Search Complaints</div>
+      <div class="scape"><svg viewBox="0 0 220 96" preserveAspectRatio="none"><path d="M0 96 L0 62 L38 34 L62 52 L92 22 L124 54 L152 40 L186 66 L220 48 L220 96 Z" fill="rgba(255,255,255,.07)"/><path d="M0 96 L0 76 L34 58 L70 74 L104 52 L140 76 L174 62 L220 80 L220 96 Z" fill="rgba(255,255,255,.05)"/></svg><div class="motto"><b>Let's Make</b><br>Nairobi Work</div></div>
+    </div>
+    <div class="main">
+      <div class="omni">🔎 Complaint no, mobile or keyword…<span class="kbd">Ctrl K</span></div>
+      <div class="tabs">
+        <span class="tab on">Assigned to me <span class="c">12</span></span>
+        <span class="tab">My department <span class="c">48</span></span>
+        <span class="tab">Overdue <span class="c">3</span></span>
+        <span class="tab">Awaiting info <span class="c">3</span></span>
+      </div>
+      <div class="chips">
+        <span class="chip on">Open <span class="x">✕</span></span>
+        <span class="chip">Water &amp; Sanitation</span>
+        <span class="chip">Last 30 days</span>
+        <span class="chip">+ Add filter</span>
+        <span class="chip" style="margin-left:auto;border:0;background:transparent;color:var(--accent);font-weight:600">Saved views ▾</span>
+      </div>
+      <div class="row">
+        <span class="sla bad"></span>
+        <div class="m"><div class="t">NB-PGR-2026-09-002073 · Water pipe leakage</div>
+          <div class="s">Makadara · Viwandani · assigned to you · updated 2 h ago</div></div>
+        <div class="r"><div class="cd bad">4 h left</div><div>72 h SLA</div></div>
+        <span class="act">Open →</span>
+      </div>
+      <div class="row">
+        <span class="sla warn"></span>
+        <div class="m"><div class="t">NB-PGR-2026-09-002051 · Drainage blockage</div>
+          <div class="s">Kibra · Laini Saba · assigned to you · updated yesterday</div></div>
+        <div class="r"><div class="cd warn">11 h left</div><div>72 h SLA</div></div>
+        <span class="act">Open →</span>
+      </div>
+      <div class="row">
+        <span class="sla"></span>
+        <div class="m"><div class="t">NB-PGR-2026-09-002049 · Water quality concern</div>
+          <div class="s">Lang'ata · Karen · assigned to you · awaiting citizen response</div></div>
+        <div class="r"><div class="cd">2 d left</div><div>paused</div></div>
+        <span class="act">Open →</span>
+      </div>
+      <div class="more">Load 9 more ▾</div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px">
+        <span class="drawer">⚙ More filters (status, subtype, ward, date)</span>
+        <span style="font-size:11.5px;color:var(--ink-2)">Sorted by: <b style="color:var(--ink)">SLA urgency</b> ▾</span>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="note">
+  <b>Stripped:</b> the 11-checkbox status wall and the always-open search form move behind <b>More filters</b>.
+  <b>Added:</b> tabs with live counts · one-line filter chips · SLA colour bar and countdown per row · saved views ·
+  sort by urgency · progressive "load more" instead of a full-page table.
+  <br><b>Empty state</b> becomes actionable: "Nothing assigned to you — view My department (48)" rather than a bare illustration.
+  <br>Raw keys like <code>CS_COMMON_PGR_STATE_ESCALATEDLEVEL1</code> visible today must be seeded before this ships.
+</div>
+
+<!-- ================= ADMIN SEARCH ================= -->
+<div class="caption" id="c5">
+  <h2>Admin Search — Tier 1 only <span class="pill">cross-department</span></h2>
+  <div class="roles">SUPERUSER · CMS_ADMIN · (Ombudsman, once granted)</div>
+</div>
+<div class="app" id="a5">
+  <div class="top">
+    <div class="brand"><span class="crest">NCC</span><div><div class="bname">NAIROBI CITY COUNTY</div><div class="bsub">Service · Transparency · Delivery</div></div></div>
+    <div class="right"><span>23 Sep 2026, 4:22 PM</span><span>English ▾</span>
+      <span class="who"><span class="av"></span><div><div style="font-size:12px;font-weight:600">A. Mwangi</div><div style="font-size:10px;opacity:.7">Ombudsman Officer</div></div></span></div>
+  </div>
+  <div class="shell">
+    <div class="side">
+      <div class="nav"><span class="gl"></span>Dashboard</div>
+      <div class="nav"><span class="gl"></span>Search Complaints</div>
+      <div class="nav on"><span class="gl"></span>All Departments</div>
+      <div class="nav"><span class="gl"></span>Reports</div>
+      <div class="scape"><svg viewBox="0 0 220 96" preserveAspectRatio="none"><path d="M0 96 L0 62 L38 34 L62 52 L92 22 L124 54 L152 40 L186 66 L220 48 L220 96 Z" fill="rgba(255,255,255,.07)"/><path d="M0 96 L0 76 L34 58 L70 74 L104 52 L140 76 L174 62 L220 80 L220 96 Z" fill="rgba(255,255,255,.05)"/></svg><div class="motto"><b>Let's Make</b><br>Nairobi Work</div></div>
+    </div>
+    <div class="main">
+      <div class="scope">🛡 <span><b>Cross-department search.</b> Results span every department and are audit-logged. Identity fields stay masked.</span></div>
+      <div class="sgrid">
+        <div class="fld">Complaint no<div class="in">NB-PGR-…</div></div>
+        <div class="fld">Mobile no<div class="in">+254 ▾ ••• ••• •••</div></div>
+        <div class="fld">Department<div class="in">All departments ▾</div></div>
+        <div class="fld">Date range<div class="in">Last 30 days ▾</div></div>
+      </div>
+      <div class="chips">
+        <span class="chip on">Overdue only <span class="x">✕</span></span>
+        <span class="chip">+ Ward</span><span class="chip">+ Status</span><span class="chip">+ Channel</span>
+      </div>
+      <div class="row">
+        <span class="sla bad"></span>
+        <div class="m"><div class="t">NB-PGR-2026-09-002061</div>
+          <div class="s">Water &amp; Sanitation · Dandora · Director: assigned 4 d ago</div></div>
+        <div class="r"><div class="cd bad">Breached</div><div>+18 h over</div></div>
+        <span class="act">Open →</span>
+      </div>
+      <div class="row">
+        <span class="sla warn"></span>
+        <div class="m"><div class="t">NB-PGR-2026-09-002044</div>
+          <div class="s">Health · Kibra · escalated to Chief Officer</div></div>
+        <div class="r"><div class="cd warn">9 h left</div><div>escalated</div></div>
+        <span class="act">Open →</span>
+      </div>
+      <div style="font-size:11px;color:var(--ink-2);margin-top:10px">
+        Showing 2 of 31 · <span style="color:var(--accent);font-weight:600">Export is deliberately absent from this screen</span>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="note">
+  <b>Kept separate from the normal inbox</b> because it is the one genuinely cross-department surface.
+  A standing scope banner makes the wider reach explicit. No <b>Subject</b> column and no export, for the same
+  identity reasons as the home table.
+</div>
+
+<!-- ================= DASHBOARD ================= -->
+<div class="caption" id="c6">
+  <h2>Dashboard — stripped, with home as the entry point <span class="pill">Tier 1 / capability-gated</span></h2>
+  <div class="roles">today: 5 empty KPI tiles, 2 "No data" charts, a map and an Add-KPI builder, all at once</div>
+</div>
+<div class="app" id="a6">
+  <div class="top">
+    <div class="brand"><span class="crest">NCC</span><div><div class="bname">NAIROBI CITY COUNTY</div><div class="bsub">Service · Transparency · Delivery</div></div></div>
+    <div class="right"><span>23 Sep 2026, 4:22 PM</span><span>English ▾</span>
+      <span class="who"><span class="av"></span><div><div style="font-size:12px;font-weight:600">A. Mwangi</div><div style="font-size:10px;opacity:.7">Ombudsman Officer</div></div></span></div>
+  </div>
+  <div class="shell">
+    <div class="side">
+      <div class="nav on"><span class="gl"></span>Dashboard</div>
+      <div class="nav"><span class="gl"></span>Search Complaints</div>
+      <div class="nav"><span class="gl"></span>All Departments</div>
+      <div class="nav"><span class="gl"></span>Reports</div>
+      <div class="scape"><svg viewBox="0 0 220 96" preserveAspectRatio="none"><path d="M0 96 L0 62 L38 34 L62 52 L92 22 L124 54 L152 40 L186 66 L220 48 L220 96 Z" fill="rgba(255,255,255,.07)"/><path d="M0 96 L0 76 L34 58 L70 74 L104 52 L140 76 L174 62 L220 80 L220 96 Z" fill="rgba(255,255,255,.05)"/></svg><div class="motto"><b>Let's Make</b><br>Nairobi Work</div></div>
+    </div>
+    <div class="main">
+      <div class="hero" style="padding:16px 20px">
+        <div class="hi">Complaint Resolution Operations</div>
+        <h1 style="font-size:20px">All wards · last 30 days</h1>
+        <div class="filters">
+          <span class="fl">📅 <b>23 Aug – 23 Sep</b> ▾</span><span class="fl">📍 <b>All Wards</b> ▾</span>
+          <span class="fl">🏢 <b>All Departments</b> ▾</span><span class="clear">Reset</span>
+        </div>
+      </div>
+      <div class="kpis">
+        <div class="kpi tint-a"><div class="hd"><span class="ic"></span><span class="nm">Resolution rate</span></div><div class="v">71.6%</div><div class="d"><span class="up">▲ 4pp</span></div></div>
+        <div class="kpi tint-b"><div class="hd"><span class="ic"></span><span class="nm">Avg. resolution</span></div><div class="v">41 h</div><div class="d">against 72 h SLA</div></div>
+        <div class="kpi tint-c"><div class="hd"><span class="ic"></span><span class="nm">Breached SLA</span></div><div class="v">14</div><div class="d"><span class="up">▼ 32%</span></div></div>
+        <div class="kpi tint-d"><div class="hd"><span class="ic"></span><span class="nm">Reopen rate</span></div><div class="v">1.2%</div><div class="d">3 of 254</div></div>
+      </div>
+      <div class="dgrid">
+        <div class="panel">
+          <div class="ph"><div><h3>Created vs resolved</h3><div class="ps">cl_chart_over_time_created_daily · last 7 days</div></div><span class="va">Reports →</span></div>
+          <div class="bars">
+            <div class="b" style="height:54%"><i>Wed</i></div><div class="b" style="height:71%"><i>Thu</i></div>
+            <div class="b" style="height:48%"><i>Fri</i></div><div class="b" style="height:33%"><i>Sat</i></div>
+            <div class="b" style="height:28%"><i>Sun</i></div><div class="b" style="height:82%"><i>Mon</i></div>
+            <div class="b" style="height:66%"><i>Tue</i></div>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="ph"><div><h3>Where complaints cluster</h3><div class="ps">cl_map_ward_wow_current</div></div></div>
+          <div class="mapbox">
+            <span class="pin" style="left:30%;top:36%"></span><span class="pin" style="left:52%;top:55%"></span>
+            <span class="pin" style="left:44%;top:26%"></span><span class="pin" style="left:66%;top:44%"></span>
+            <span class="pin" style="left:38%;top:66%"></span>
+          </div>
+          <div style="font-size:10.5px;color:var(--ink-2);margin-top:8px">Dandora and Laini Saba account for 56 of 254.</div>
+        </div>
+      </div>
+      <div class="panel" style="margin-bottom:0">
+        <div class="ph"><div><h3>Go deeper</h3><div class="ps">the builder and the long tail of tiles live here, not on first paint</div></div></div>
+        <div class="qa q3">
+          <div class="tile"><span class="ar">›</span><span class="med m-blue"><svg viewBox="0 0 24 24" stroke="currentColor"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M8 13h8M8 17h5"/></svg></span><div><div class="t">Ward performance</div><div class="s">cl_table_ward_performance</div></div></div>
+          <div class="tile"><span class="ar">›</span><span class="med m-violet"><svg viewBox="0 0 24 24" stroke="currentColor"><circle cx="12" cy="9" r="3.4"/><path d="M5.5 19a6.5 6.5 0 0 1 13 0"/></svg></span><div><div class="t">Officer SLA</div><div class="s">officer capability only</div></div></div>
+          <div class="tile"><span class="ar">›</span><span class="med m-green"><svg viewBox="0 0 24 24" stroke="currentColor"><circle cx="12" cy="12" r="9"/><path d="M12 8.5v7M8.5 12h7"/></svg></span><div><div class="t">+ Add KPI</div><div class="s">build a custom tile</div></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="note">
+  <b>Stripped:</b> first paint drops from 5 tiles + 2 empty charts + map + builder to <b>4 KPIs and 2 charts that have data</b>.
+  The builder and the rarely-used tiles move behind <b>Go deeper</b>.
+  <br><b>Home becomes the entry point:</b> the home KPI strip deep-links here with the filter pre-applied, so the dashboard
+  is somewhere you arrive with a question, not a wall you land on.
+</div>
+
+</div>
+</body>
+</html>

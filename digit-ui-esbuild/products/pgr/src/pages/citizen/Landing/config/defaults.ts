@@ -44,7 +44,8 @@ export const DEFAULT_LANDING_CONFIG: ResolvedLandingConfig = {
   page: {
     code: "default",
     enabled: true,
-    showUtilityBar: false,
+    // nairobi.go.ke carries the help line in a strip above the nav; mirror it.
+    showUtilityBar: true,
     showWhatsAppFab: true,
   },
   sections: DEFAULT_LANDING_SECTIONS,
