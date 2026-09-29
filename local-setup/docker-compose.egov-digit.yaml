@@ -1547,6 +1547,11 @@ services:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/egov
       SPRING_DATASOURCE_USERNAME: egov
       SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-egov123}
+      # The pinned image predates the received channels the employee create
+      # form sends (email/inperson/letter/linhaverde, QA #26) and rejects them:
+      # "The source: inperson is not valid". Mirrors allowed.source in
+      # backend/pgr-services application.properties — keep the two in step.
+      ALLOWED_SOURCE: 'whatsapp,web,mobile,RB Bot,email,inperson,letter,linhaverde'
       SPRING_DATASOURCE_HIKARI_MAXIMUM_POOL_SIZE: "10"
       SPRING_DATASOURCE_HIKARI_MINIMUM_IDLE: "2"
       # Embedded Flyway off — pgr-services-migration (docker-compose.migrations.yml) owns this schema (#1586)
