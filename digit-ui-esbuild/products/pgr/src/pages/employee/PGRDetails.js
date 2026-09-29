@@ -1065,14 +1065,6 @@ const PGRDetails = () => {
                 if (draftActionRef.current !== selected?.action) {
                   clearSessionFormData();
                   draftActionRef.current = selected?.action || null;
-                } else if (sessionFormData?.SelectedAssignee) {
-                  // Same action re-opened: keep the typed text, but not an
-                  // earlier assignee. The picker opens empty (or on its
-                  // pre-selection) and the modal submits the draft, so a kept
-                  // assignee would be sent — and pass the mandatory check —
-                  // without being shown.
-                  const { SelectedAssignee, ...rest } = sessionFormData;
-                  setSessionFormData(rest);
                 }
                 setSelectedAction(selected);
                 setOpenModal(true);

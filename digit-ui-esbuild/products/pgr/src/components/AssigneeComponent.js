@@ -1,13 +1,11 @@
 import { useTranslation } from "react-i18next";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo } from "react";
 import { Dropdown, Loader } from "@egovernments/digit-ui-components";
 import { narrowByJurisdiction } from "../utils/autoAssign";
 import useFetchBoundaries from "../hooks/boundary/useFetchBoundaries";
 
-const AssigneeComponent = ({ config, onSelect, formState, defaultValues }) => {
+const AssigneeComponent = ({ config, onSelect, formData }) => {
   const { t } = useTranslation();
-  const [assignees, setAssignees] = useState([]);
-  const [selectedEmployee, setSelectedEmployee] = useState(null);
   const tenantId = Digit.ULBService.getCurrentTenantId();
   const hrmsContext = window?.globalConfigs?.getConfig("HRMS_CONTEXT_PATH") || "egov-hrms";
 
@@ -99,8 +97,9 @@ const AssigneeComponent = ({ config, onSelect, formState, defaultValues }) => {
   
   
 
-  // Update assignees when employee data changes
-  useEffect(() => {
+  // Eligible assignees, derived in render so the list and the selection below
+  // are always computed from the same data.
+  const assignees = useMemo(() => {
     if (employeeData?.Employees?.length > 0) {
       // Screening officer (allDepartments): NO department filter — list every
       // department's assignable employees (transformData groups them by
@@ -132,23 +131,35 @@ const AssigneeComponent = ({ config, onSelect, formState, defaultValues }) => {
         boundaryRoots: boundaryData?.[0]?.boundary,
         tenantId,
       });
-      setAssignees(transformData(candidates));
+      return transformData(candidates);
     }
-  }, [employeeData, department, allDepartments, localityCode, boundaryData, tenantId]);
+    return [];
+  }, [employeeData, department, allDepartments, localityCode, boundaryData, tenantId, t]);
+  const options = useMemo(() => assignees.flatMap((group) => group.options), [assignees]);
 
-  // Handle employee selection
-  const handleEmployeeSelect = (employee) => {
-    setSelectedEmployee(employee);
-    if (employee && config?.key) {
-      onSelect(config.key, employee);
-    }
-  };
+  // The selection IS the form's value: the action modal submits the form
+  // (its session draft), so the dropdown must show exactly that. A separate
+  // local copy drifted from it — the form resets to the draft after this
+  // component's effects run, and a value kept from an earlier opening was
+  // submitted without being shown.
+  const formValue = formData?.[config?.key];
+  const selectedEmployee = options.find((o) => o.uuid === formValue?.uuid) || null;
 
+  // Keep the value eligible: an empty value takes the pre-selection (when that
+  // person is in the list); a value not in this list — kept from another state
+  // or action — is replaced by it or cleared, so the mandatory check stops a
+  // submit instead of sending someone the officer cannot see.
   useEffect(() => {
-    if (selectedEmployee || !preferredUuid) return;
-    const preferred = assignees.flatMap((group) => group.options).find((o) => o.uuid === preferredUuid);
-    if (preferred) handleEmployeeSelect(preferred);
-  }, [assignees, preferredUuid]);
+    if (isEmployeeDataLoading || !config?.key) return;
+    if (formValue?.uuid && options.some((o) => o.uuid === formValue.uuid)) return;
+    const preferred = preferredUuid ? options.find((o) => o.uuid === preferredUuid) : null;
+    if (preferred) onSelect(config.key, preferred);
+    else if (formValue) onSelect(config.key, undefined);
+  }, [isEmployeeDataLoading, options, preferredUuid, formValue?.uuid]);
+
+  const handleEmployeeSelect = (employee) => {
+    if (employee && config?.key) onSelect(config.key, employee);
+  };
 
 
   if (error) return <div>{t("CS_COMMON_EMPLOYEE_FETCH_ERROR")}</div>;
