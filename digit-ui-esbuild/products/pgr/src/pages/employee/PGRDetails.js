@@ -18,6 +18,7 @@ import { selectServiceDefsFromComplaintHierarchy } from "../../utils";
 import { isPiiMaskingEnabled } from "../../utils/piiMasking";
 import useReopenWindow from "../../hooks/pgr/useReopenWindow";
 import { findLatestAssigneeUuidByRole, findLatestAssigneeUuidByAnyRole } from "../../utils/workflowAssignee";
+import { escalationStamp, isCurrentAssignee, nextLevelRoles } from "../../utils/escalation";
 import useAutoAssignment from "../../hooks/pgr/useAutoAssignment";
 import { EV, trackE } from "../../utils/analytics";
 
@@ -306,6 +307,19 @@ const PGRDetails = () => {
   // reopen flows use. Tier 3 of the no-pick assignee derivation below.
   const autoAssignment = useAutoAssignment(complaintTenantId);
 
+  // The logged-in officer's HRMS record, for the escalation pre-selection
+  // (reportingTo). Same query as the create form's, so usually a cache hit.
+  const hrmsContext = window?.globalConfigs?.getConfig("HRMS_CONTEXT_PATH") || "egov-hrms";
+  const { data: currentEmployeeData } = Digit.Hooks.useCustomAPIHook({
+    url: `/${hrmsContext}/employees/_search`,
+    params: { tenantId, uuids: userInfo?.info?.uuid },
+    changeQueryName: `hrms-current-employee-${userInfo?.info?.uuid}`,
+    options: { staleTime: 5 * 60 * 1000, cacheTime: 10 * 60 * 1000 },
+    config: { enabled: !!userInfo?.info?.uuid },
+  });
+  const myAssignments = currentEmployeeData?.Employees?.[0]?.assignments || [];
+  const myReportingTo = (myAssignments.find((a) => a?.isCurrentAssignment) || myAssignments[0])?.reportingTo;
+
   // Automatically dismiss toast messages after 3 seconds
   useEffect(() => {
     if (toast?.show) {
@@ -328,7 +342,9 @@ const PGRDetails = () => {
   // When the scoped department has no eligible employee, AssigneeComponent now
   // says so explicitly instead of rendering an empty dropdown — staffing gaps
   // surface as a clear message, not as an ownerless complaint.
-  const isAssigneeMandatory = (action) => action?.action === "ASSIGN";
+  // Manual ESCALATE is mandatory too: with no pick, the no-pick derivation
+  // below keeps the PREVIOUS holder — the officer escalating it.
+  const isAssigneeMandatory = (action) => action?.action === "ASSIGN" || action?.action === "ESCALATE";
 
   // Prepare and submit the update complaint request
   const handleActionSubmit = async (_data) => {
@@ -463,10 +479,22 @@ const PGRDetails = () => {
     // Parse (object OR stringified) so stamping never discards existing keys
     // like supervisorName / serviceName that older flows stored as a string.
     const baseAdditionalDetail = parseAdditionalDetail(baseService?.additionalDetail);
+    const escalation =
+      selectedAction.action === "ESCALATE"
+        ? escalationStamp({
+            additionalDetail: baseAdditionalDetail,
+            assignees: workflowData?.ProcessInstances?.[0]?.assignes,
+            now: Date.now(),
+          })
+        : null;
     const updateRequest = {
-      service: assigneeDept
-        ? { ...baseService, additionalDetail: { ...baseAdditionalDetail, department: assigneeDept } }
-        : { ...baseService },
+      service:
+        assigneeDept || escalation
+          ? {
+              ...baseService,
+              additionalDetail: { ...baseAdditionalDetail, ...(assigneeDept ? { department: assigneeDept } : {}), ...escalation },
+            }
+          : { ...baseService },
       workflow: {
         action: selectedAction.action,
         assignes: assigneeUuid ? [assigneeUuid] : null,
@@ -598,6 +626,9 @@ const PGRDetails = () => {
             department,
             allDepartments,
             localityCode,
+            // Escalation pre-selects the officer the escalating employee reports
+            // to (HRMS reportingTo) — where the SLA escalation would send it.
+            preferredUuid: selectedAction?.action === "ESCALATE" ? myReportingTo : undefined,
             // Filestore is tenant-scoped — the uploader must write to the
             // COMPLAINT's tenant so the attachment renders later (the display
             // side fetches at service.tenantId).
@@ -611,7 +642,7 @@ const PGRDetails = () => {
 
   // Roles that should never appear in an assignee dropdown even if a workflow
   // state lists them (system or non-employee actors).
-  const NON_ASSIGNEE_ROLES = new Set(["CITIZEN", "AUTO_ESCALATE", "ANONYMOUS", "CMS_VIEWER"]);
+  const NON_ASSIGNEE_ROLES = new Set(["CITIZEN", "AUTO_ESCALATE", "ANONYMOUS", "CMS_VIEWER", "SYSTEM"]);
 
   // Compute the assignee role set for an action by looking at the *forward*
   // (non-self-looping) actions defined on the next state and unioning their
@@ -634,12 +665,22 @@ const PGRDetails = () => {
     const matchingState = businessServiceResponse?.states?.find((state) => state.uuid === currentState?.uuid);
     if (!matchingState) return [];
     const userRoles = userInfo?.info?.roles?.map((role) => role.code) || [];
+    const assignedToMe = isCurrentAssignee({
+      assignees: workflowData?.ProcessInstances?.[0]?.assignes,
+      userUuid: userInfo?.info?.uuid,
+    });
+    // Manual ESCALATE is offered to the complaint's holder only, and only where
+    // there IS a next level: not on the top level's SLA self-loop, and not when
+    // no role remains above (the manual grant never reaches such a state, this
+    // keeps a mis-grant from submitting an owner-less escalation).
     return matchingState.actions
       ? matchingState.actions.filter((action) => action.roles.some((role) => userRoles.includes(role)))
+        .filter((action) => action.action !== "ESCALATE" || (assignedToMe && action.nextState !== matchingState.uuid))
         .map((action) => {
           // Look up the target state so the modal can adapt generically (terminal → no assignee,
           // docUploadRequired → future doc capture) with no per-action code.
           const nextStateData = businessServiceResponse?.states?.find((s) => s.uuid === action.nextState);
+          const nextStateRoles = computeAssigneeRoles(action.nextState, businessServiceResponse);
           return {
             action: action.action,
             // Raw workflow action code, shown as-is — the WF_PGR_* keys hold past-tense
@@ -647,12 +688,14 @@ const PGRDetails = () => {
             name: action.action,
             roles: action.roles,
             nextState: action.nextState,
-            assigneeRoles: computeAssigneeRoles(action.nextState, businessServiceResponse),
+            assigneeRoles:
+              action.action === "ESCALATE" ? nextLevelRoles({ currentState: matchingState, nextStateRoles }) : nextStateRoles,
             isTerminal: !!nextStateData?.isTerminateState,
             docUploadRequired: !!nextStateData?.docUploadRequired,
             uuid: action.uuid,
           };
         })
+        .filter((option) => option.action !== "ESCALATE" || option.assigneeRoles.length > 0)
       : [];
   };
 
