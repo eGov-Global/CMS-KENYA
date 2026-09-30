@@ -20,6 +20,7 @@ import useReopenWindow from "../../hooks/pgr/useReopenWindow";
 import { findLatestAssigneeUuidByRole, findLatestAssigneeUuidByAnyRole } from "../../utils/workflowAssignee";
 import { escalationStamp, isCurrentAssignee, nextLevelRoles } from "../../utils/escalation";
 import { mergeAdditionalDetail } from "../../utils/additionalDetail";
+import { isConfirmationAction } from "../../utils/withdraw";
 import useAutoAssignment from "../../hooks/pgr/useAutoAssignment";
 import { EV, trackE } from "../../utils/analytics";
 
@@ -102,14 +103,19 @@ const buildActionFormConfig = ({ action, assigneeRoles = [], isTerminal = false,
   // attach a file just to ask a question is wrong, so the attachment is
   // optional for this action regardless of the target state's flag.
   const ATTACHMENT_OPTIONAL_ACTIONS = ["AWAITINGINFORMATION"];
-  body.push({
-    type: "component",
-    isMandatory: !!docUploadRequired && !ATTACHMENT_OPTIONAL_ACTIONS.includes(action),
-    component: "PGRActionUploadComponent",
-    key: "SelectedDocuments",
-    label: "CS_COMMON_ATTACHMENTS",
-    populators: { name: "SelectedDocuments" },
-  });
+  // WITHDRAW closes the complaint on the complainant's behalf: the modal is a
+  // confirmation (message + reason), with nothing to attach.
+  const isConfirmation = isConfirmationAction(action);
+  if (!isConfirmation) {
+    body.push({
+      type: "component",
+      isMandatory: !!docUploadRequired && !ATTACHMENT_OPTIONAL_ACTIONS.includes(action),
+      component: "PGRActionUploadComponent",
+      key: "SelectedDocuments",
+      label: "CS_COMMON_ATTACHMENTS",
+      populators: { name: "SelectedDocuments" },
+    });
+  }
   body.push({
     type: "textarea",
     isMandatory: true,
@@ -118,7 +124,12 @@ const buildActionFormConfig = ({ action, assigneeRoles = [], isTerminal = false,
     populators: { name: "SelectedComments", maxLength: 1000, validation: { required: true }, error: "CORE_COMMON_REQUIRED_ERRMSG" },
   });
   return {
-    label: { heading: `CS_ACTION_${action}`, cancel: "CS_COMMON_CANCEL", submit: "CS_COMMON_SUBMIT" },
+    label: {
+      heading: `CS_ACTION_${action}`,
+      cancel: "CS_COMMON_CANCEL",
+      submit: isConfirmation ? `CS_COMMON_${action}` : "CS_COMMON_SUBMIT",
+    },
+    ...(isConfirmation ? { description: `CS_${action}_CONFIRM_MESSAGE` } : {}),
     form: [{ body }],
   };
 };
