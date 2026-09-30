@@ -17,9 +17,7 @@ const AssigneeComponent = ({ config, onSelect, formState, defaultValues }) => {
   // `localityCode` is the complaint's leaf boundary — the jurisdiction axis
   // Bomet routes on (department + jurisdiction). Absent on tenants that route
   // by department alone, which leaves the jurisdiction gate a no-op.
-  // `preferredUuid` (escalation) is pre-selected when that person is in the
-  // filtered list; otherwise the officer picks as usual.
-  const { roles = [], department, allDepartments, localityCode, preferredUuid } = config?.populators || {};
+  const { roles = [], department, allDepartments, localityCode } = config?.populators || {};
 
   // Jurisdiction coverage is a property of the boundary TREE (an officer
   // assigned the sub-county covers every ward beneath it), so the filter needs
@@ -111,8 +109,7 @@ const AssigneeComponent = ({ config, onSelect, formState, defaultValues }) => {
       const unscoped = allDepartments || !department || department === "NA";
       const filtered = employeeData.Employees.filter((e) => {
         const d = e?.assignments?.[0]?.department;
-        // Deactivated staff can't take a complaint (pgr-services rejects them).
-        if (!d || !e?.user?.uuid || e?.isActive === false) return false;
+        if (!d || !e?.user?.uuid) return false;
         return unscoped ? true : d === department;
       });
       // Then by JURISDICTION, the second axis Bomet routes on: an officer with
@@ -143,13 +140,7 @@ const AssigneeComponent = ({ config, onSelect, formState, defaultValues }) => {
       onSelect(config.key, employee);
     }
   };
-
-  useEffect(() => {
-    if (selectedEmployee || !preferredUuid) return;
-    const preferred = assignees.flatMap((group) => group.options).find((o) => o.uuid === preferredUuid);
-    if (preferred) handleEmployeeSelect(preferred);
-  }, [assignees, preferredUuid]);
-
+  
 
   if (error) return <div>{t("CS_COMMON_EMPLOYEE_FETCH_ERROR")}</div>;
   if (isEmployeeDataLoading) return <Loader />;

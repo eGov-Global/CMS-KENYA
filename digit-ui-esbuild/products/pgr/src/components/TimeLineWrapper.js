@@ -20,11 +20,6 @@ const maskName = (name) => (name ? MASKED : name);
 const maskPhone = (phone) => (phone ? MASKED : phone);
 const isCitizenActor = (person) =>
   Array.isArray(person?.roles) && person.roles.some((r) => (r?.code || r) === "CITIZEN");
-// For hiding staff from citizens, the user TYPE decides: an employee can also
-// hold the CITIZEN role (one does on Bomet) and must still be hidden. Records
-// without a type fall back to the role check.
-const isEmployeePerson = (person) =>
-  !!person && (person.type ? person.type !== "CITIZEN" : !isCitizenActor(person));
 
 // QA #19: maskEmployeeContacts — set by the EMPLOYEE details page —
 // masks every non-citizen actor's name and mobile in the timeline (the
@@ -247,11 +242,10 @@ const TimelineWrapper = ({ businessId, isWorkFlowLoading, workflowData, labelPre
                 // (maskConfidential is kept as a prop for compatibility but the
                 // citizen actor no longer depends on it.)
                 //
-                // The MASKING sits behind the PGR_PII_MASKING deploy switch —
+                // All of it sits behind the PGR_PII_MASKING deploy switch —
                 // Kenya/Bomet runs no confidentiality programme and shows
                 // identities in clear (see utils/piiMasking.js). This is the
                 // single enforcement point, so callers' props need no gating.
-                // Hiding staff from the citizen view (hideThis) does not.
                 const piiMasking = isPiiMaskingEnabled();
                 const isEmployeeActor = personRecord && !isCitizenActor(personRecord);
                 const maskThis =
@@ -259,10 +253,8 @@ const TimelineWrapper = ({ businessId, isWorkFlowLoading, workflowData, labelPre
                   (isCitizenActor(personRecord) ||
                     (maskEmployeeContacts && isEmployeeActor));
                 // QA #19 part 1: citizen view drops employee identity lines
-                // entirely (hide, not mask). NOT behind the masking switch: that
-                // switch is about masking PII, while this is a rule for what
-                // citizens see at all — Bomet (masking off) needs it too (UAT).
-                const hideThis = hideEmployeeContacts && isEmployeePerson(personRecord);
+                // entirely (hide, not mask).
+                const hideThis = piiMasking && hideEmployeeContacts && isEmployeeActor;
                 const mobile = isAssigningAction(instance?.action) ? assignee?.mobileNumber : instance?.assigner?.mobileNumber;
                 // The backend already masks the mobile per viewer privilege
                 // ("Contact Details: *****0104"). Mirror that decision onto the
@@ -282,7 +274,7 @@ const TimelineWrapper = ({ businessId, isWorkFlowLoading, workflowData, labelPre
                 // the same rules as any other employee identity on this row.
                 const escalatedToLine = (() => {
                   if (instance?.action !== "ESCALATE" || !assignee?.name) return null;
-                  if (hideEmployeeContacts && isEmployeePerson(assignee)) return null;
+                  if (piiMasking && hideEmployeeContacts && !isCitizenActor(assignee)) return null;
                   const shouldMask =
                     piiMasking &&
                     (isCitizenActor(assignee) || (maskEmployeeContacts && !isCitizenActor(assignee)));
