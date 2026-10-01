@@ -8,6 +8,7 @@ import org.egov.pgr.config.PGRConfiguration;
 import org.egov.pgr.repository.PGRRepository;
 import org.egov.pgr.repository.ServiceRequestRepository;
 import org.egov.pgr.util.HRMSUtil;
+import org.egov.pgr.util.ActionWindow;
 import org.egov.pgr.util.MDMSUtils;
 import org.egov.pgr.web.models.*;
 import org.egov.pgr.web.models.boundary.Boundary;
@@ -87,9 +88,10 @@ public class ServiceRequestValidator {
         if(CollectionUtils.isEmpty(serviceWrappers))
             throw new CustomException("INVALID_UPDATE","The record that you are trying to update does not exists");
 
-        // Re-open eligibility (authorization + deadline) must be checked against the
-        // persisted record, so fetch it first and pass it in — never trust the request body.
-        validateReOpen(request, serviceWrappers.get(0).getService());
+        // Time-limited actions (REOPEN, WITHDRAW, …): eligibility (authorization + deadline) must be
+        // checked against the persisted record, so fetch it first and pass it in — never trust the
+        // request body.
+        validateActionWindow(request, serviceWrappers.get(0).getService());
 
         // TO DO
 
@@ -207,39 +209,46 @@ public class ServiceRequestValidator {
 
 
     /**
-     * Validates that a re-open action is permitted. Both the owner check and the
-     * time-window check are evaluated against the persisted record (fetched from the
-     * repository) rather than the incoming request body, because the request payload is
-     * fully client-controlled — a caller could otherwise forge the accountId or a fresh
-     * lastModifiedTime and bypass the reopen deadline via a direct API call.
+     * Validates a time-limited workflow action (REOPEN, WITHDRAW, or any action configured in
+     * MDMS RAINMAKER-PGR.UIConstants.actionWindows — see {@link MDMSUtils#getActionWindow}).
+     * Actions with no window configured pass straight through; which states and roles may take an
+     * action at all stays the workflow's job.
      *
-     * The window itself comes from MDMS (RAINMAKER-PGR.UIConstants.REOPENSLA) — the same
-     * knob the UI gates on — so the window is configurable per tenant and the UI guard and
-     * this server-side check can never drift apart (issue #925).
+     * For a windowed action:
+     *  - a citizen may act only on their own complaint;
+     *  - the action is refused once {@code now - measuredFrom > window}, where measuredFrom is the
+     *    rule's timestamp (createdTime = filing, or lastModifiedTime), with the rule's message.
      *
-     * @param request        the update request (used only for action + logged-in user)
+     * Both checks read the persisted record (fetched from the repository) rather than the incoming
+     * request body, because the payload is fully client-controlled — a caller could otherwise forge
+     * the accountId or a fresh timestamp and bypass the deadline via a direct API call. The window
+     * comes from MDMS, the same value the UI gates on, so the UI guard and this server-side check
+     * cannot drift apart (issue #925).
+     *
+     * @param request          the update request (used only for action + logged-in user)
      * @param persistedService the current record as stored in the DB (source of truth)
      */
-    private void validateReOpen(ServiceRequest request, Service persistedService){
+    private void validateActionWindow(ServiceRequest request, Service persistedService){
 
-        if(!request.getWorkflow().getAction().equalsIgnoreCase(PGR_WF_REOPEN))
-            return;
-
+        String action = request.getWorkflow() == null ? null : request.getWorkflow().getAction();
         RequestInfo requestInfo = request.getRequestInfo();
+
+        Optional<ActionWindow> window = mdmsUtils.getActionWindow(requestInfo, persistedService.getTenantId(), action);
+        if (window.isEmpty())
+            return;
 
         if(requestInfo.getUserInfo().getType().equalsIgnoreCase(USERTYPE_CITIZEN)){
             if(!requestInfo.getUserInfo().getUuid().equalsIgnoreCase(persistedService.getAccountId()))
-                throw new CustomException("INVALID_ACTION","Not authorized to re-open the complain");
+                throw new CustomException("INVALID_ACTION", window.get().notOwnerMessage() != null
+                        ? window.get().notOwnerMessage()
+                        : "Not authorized to " + window.get().action().toLowerCase() + " the complaint");
         }
 
-        if(persistedService.getAuditDetails() == null || persistedService.getAuditDetails().getLastModifiedTime() == null)
-            throw new CustomException("INVALID_ACTION","Complaint is closed");
-
-        Long lastModifiedTime = persistedService.getAuditDetails().getLastModifiedTime();
-        long reopenWindow = mdmsUtils.getReopenWindowMillis(requestInfo, persistedService.getTenantId());
-
-        if(System.currentTimeMillis()-lastModifiedTime > reopenWindow)
-            throw new CustomException("INVALID_ACTION","Complaint is closed");
+        Long startTime = window.get().measuredFrom().read(persistedService.getAuditDetails());
+        if (startTime == null || System.currentTimeMillis() - startTime > window.get().windowMillis())
+            throw new CustomException("INVALID_ACTION", window.get().message() != null
+                    ? window.get().message()
+                    : "The time allowed to " + window.get().action().toLowerCase() + " this complaint has expired");
 
     }
 
