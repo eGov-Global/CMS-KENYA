@@ -26,6 +26,7 @@ import ComplaintPhotos from "../../components/ComplaintPhotos";
 import ComplaintLocationMap from "../../components/ComplaintLocationMap";
 import { buildExtendedAttributeRows, useExtendedAttributeOrder } from "../../components/PgrExtendedAttributesView";
 import StarRated from "../../components/timelineInstances/StarRated";
+import ReceiptActions from "../../components/ReceiptActions";
 
 // Terminal (non-active) states across standard PGR *and* the mz.igsae CMS workflow.
 // CANCELLED / CLOSEDAFTER* are CMS terminals; without them CANCELLED wrongly showed
@@ -162,7 +163,12 @@ function WorkflowComponent({ complaintDetails, id }) {
   // mz.igsae CMS workflow) with no hardcoded status list, replacing the legacy
   // status-ordered <TimeLine>.
   const { isLoading: isWorkFlowLoading, data: workflowData, revalidate } = Digit.Hooks.useCustomAPIHook({
-    url: "/egov-workflow-v2/egov-wf/process/_search",
+    // The chronology comes through pgr-services' filtered endpoint — same
+    // response shape as the workflow API, but employee comments, attachments
+    // and identities are stripped SERVER-SIDE for the citizen instead of only
+    // being hidden by TimelineWrapper (the raw workflow API returned everything
+    // to the citizen's token).
+    url: "/pgr-services/v2/request/_chronology",
     params: { tenantId, history: true, businessIds: id },
     changeQueryName: id,
   });
@@ -259,6 +265,9 @@ function WorkflowComponent({ complaintDetails, id }) {
       // QA #19 part 1 (sheet v4): the citizen must not see which employee
       // handled the complaint — employee name + contact lines are omitted.
       hideEmployeeContacts
+      // Internal department comments (assign, escalate, reassign, …) stay
+      // internal; the citizen reads the resolving / rejecting comment only.
+      citizenCommentActions={["RESOLVE", "REJECT"]}
     />
   );
 }
@@ -394,6 +403,11 @@ const ComplaintDetailsPage = () => {
           {tr(`${LOCALIZATION_KEY.CS_HEADER}_COMPLAINT_SUMMARY`, "Complaint Summary")}
         </h1>
         {status ? <StatusPill status={status} t={t} /> : null}
+        {!isLoading && complaintDetails?.service ? (
+          <div style={{ marginLeft: "auto" }}>
+            <ReceiptActions complaintDetails={complaintDetails} />
+          </div>
+        ) : null}
       </header>
       <div
         style={{

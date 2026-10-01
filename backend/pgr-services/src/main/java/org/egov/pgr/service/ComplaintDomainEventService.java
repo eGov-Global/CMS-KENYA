@@ -144,9 +144,13 @@ public class ComplaintDomainEventService {
         data.put("complaintNo", service.getServiceRequestId());
         data.put("status", service.getApplicationStatus());
         data.put("serviceName", getServiceName(service));
-        data.put("citizenName", getCitizenName(request));
+        // Event data reaches employee-audience templates too; a confidential complaint keeps
+        // the complainant out of it (delivery to the citizen uses the stakeholder list).
+        boolean confidential = service.getExtendedAttributes() != null
+                && service.getExtendedAttributes().getIsConfidentialSafe();
+        data.put("citizenName", confidential ? null : getCitizenName(request));
         data.put("departmentName", getDepartmentName(service));
-        data.put("mobileNumber", buildFullMobile(request.getService().getCitizen()));
+        data.put("mobileNumber", confidential ? null : buildFullMobile(request.getService().getCitizen()));
         data.put("submittedDate", getSubmittedDate(service));
         data.put("assigneeName", getAssigneeName(request));
         data.put("assigneeDesignation", getAssigneeDesignation(request));

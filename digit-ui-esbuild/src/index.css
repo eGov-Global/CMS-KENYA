@@ -99,21 +99,105 @@
   .pgr-map-bar { flex-direction: column; }
 }
 
+/* ── PGR public landing page: type ───────────────────────────────────────── */
+/* Roboto Condensed comes from Google Fonts with display=swap and only starts
+   downloading once the page has rendered, so on a slow phone the reader is
+   already scrolling when it lands. Swapping from an unscaled fallback re-wrapped
+   every paragraph and moved the lower sections by up to ~790 px. These faces
+   scale a local sans to the condensed face's average advance width (measured on
+   the landing copy), so lines break in nearly the same places before and after
+   the swap. A local() miss falls through to the next family — no worse than
+   before. Bold gets its own face because Arial Bold runs wider than its ratio. */
+@font-face {
+  font-family: "pgrl-condensed-fallback";
+  src: local("Roboto"), local("Roboto Regular"), local("Roboto-Regular");
+  font-weight: 400;
+  size-adjust: 90%;
+}
+@font-face {
+  font-family: "pgrl-condensed-fallback";
+  src: local("Roboto Bold"), local("Roboto-Bold");
+  font-weight: 700;
+  size-adjust: 90%;
+}
+@font-face {
+  font-family: "pgrl-condensed-fallback-arial";
+  src: local("Arial"), local("ArialMT"), local("Helvetica"), local("Liberation Sans"), local("LiberationSans");
+  font-weight: 400;
+  size-adjust: 88%;
+}
+@font-face {
+  font-family: "pgrl-condensed-fallback-arial";
+  src: local("Arial Bold"), local("Arial-BoldMT"), local("Helvetica Bold"), local("Liberation Sans Bold"), local("LiberationSans-Bold");
+  font-weight: 700;
+  size-adjust: 84%;
+}
+.pgrl-font {
+  font-family: "Roboto Condensed", "pgrl-condensed-fallback", "pgrl-condensed-fallback-arial", Roboto, system-ui, -apple-system, sans-serif;
+}
+
 /* ── PGR public landing page: motion ─────────────────────────────────────── */
-/* Sections carry `pgrl-reveal`; useReveal() adds `data-pgrl-in` when they
-   scroll into view. Children with `pgrl-reveal-item` stagger by --pgrl-i.
+/* Sections carry `pgrl-reveal`; useReveal() marks each `pgrl-reveal-item`
+   `data-pgrl-in` as the item itself scrolls into view, and sets --pgrl-d (its
+   rank among the items arriving with it) so a lone item never waits behind
+   the ones above it. The section only gets `data-pgrl-in` from the hook's
+   fallback, which shows every item at once; without --pgrl-d the authored
+   --pgrl-i order applies. Hidden states are always scoped under
+   `.pgrl-reveal`, so nothing can stay hidden outside the hook's reach.
    Everything here is off under prefers-reduced-motion — content is simply
    visible, no movement. */
 .pgrl-reveal .pgrl-reveal-item {
   opacity: 0;
-  transform: translateY(14px);
+  transform: translateY(18px);
   transition: opacity 560ms cubic-bezier(0.22, 1, 0.36, 1), transform 560ms cubic-bezier(0.22, 1, 0.36, 1);
-  transition-delay: calc(var(--pgrl-i, 0) * 70ms);
+  transition-delay: calc(var(--pgrl-d, var(--pgrl-i, 0)) * 70ms);
 }
-.pgrl-reveal[data-pgrl-in] .pgrl-reveal-item {
+.pgrl-reveal[data-pgrl-in] .pgrl-reveal-item,
+.pgrl-reveal .pgrl-reveal-item[data-pgrl-in] {
   opacity: 1;
   transform: none;
 }
+/* Section eyebrow dash grows in from the left once its heading is in. */
+.pgrl-dash { transform-origin: left center; }
+.pgrl-reveal .pgrl-dash {
+  transform: scaleX(0);
+  transition: transform 640ms cubic-bezier(0.22, 1, 0.36, 1) 220ms;
+}
+.pgrl-reveal[data-pgrl-in] .pgrl-dash,
+.pgrl-reveal .pgrl-reveal-item[data-pgrl-in] .pgrl-dash { transform: none; }
+/* How it works: a gold tab draws across the top of each step card in turn,
+   so the six read as one progression, and the faint numeral pops in as its
+   tab lands. The tab is inset from the card edges, so the card needs no
+   overflow clipping — long pt_MZ words keep spilling visibly, not cut off. */
+.pgrl-step-bar { transform-origin: left center; }
+.pgrl-reveal .pgrl-step-bar {
+  transform: scaleX(0);
+  transition: transform 420ms cubic-bezier(0.22, 1, 0.36, 1);
+  transition-delay: calc(var(--pgrl-d, var(--pgrl-i, 0)) * 150ms + 250ms);
+}
+.pgrl-reveal .pgrl-step-num {
+  opacity: 0;
+  transform: scale(0.6);
+  transition: opacity 320ms ease-out, transform 480ms cubic-bezier(0.34, 1.56, 0.64, 1);
+  transition-delay: calc(var(--pgrl-d, var(--pgrl-i, 0)) * 150ms + 450ms);
+}
+.pgrl-reveal[data-pgrl-in] .pgrl-step-bar,
+.pgrl-reveal .pgrl-reveal-item[data-pgrl-in] .pgrl-step-bar,
+.pgrl-reveal[data-pgrl-in] .pgrl-step-num,
+.pgrl-reveal .pgrl-reveal-item[data-pgrl-in] .pgrl-step-num {
+  opacity: 1;
+  transform: none;
+}
+/* Gold swoosh behind the closing band draws itself once the band is in —
+   the same gesture as the hero wave. */
+.pgrl-reveal .pgrl-trace {
+  stroke-dasharray: 1000;
+  stroke-dashoffset: 1000;
+  transition: stroke-dashoffset 1.4s cubic-bezier(0.22, 1, 0.36, 1) 350ms;
+}
+.pgrl-reveal .pgrl-trace + .pgrl-trace { transition-delay: 550ms; }
+.pgrl-reveal[data-pgrl-in] .pgrl-trace,
+.pgrl-reveal .pgrl-reveal-item[data-pgrl-in] .pgrl-trace { stroke-dashoffset: 0; }
 /* Hero entrance: runs once on load, no observer needed. */
 @keyframes pgrl-rise {
   from { opacity: 0; transform: translateY(16px); }
@@ -123,6 +207,43 @@
   animation: pgrl-rise 700ms cubic-bezier(0.22, 1, 0.36, 1) both;
   animation-delay: calc(var(--pgrl-i, 0) * 90ms);
 }
+/* Hero eyebrow dash: the section dash's growth, on load. */
+@keyframes pgrl-grow-x { from { transform: scaleX(0); } }
+.pgrl-rise .pgrl-dash { animation: pgrl-grow-x 640ms cubic-bezier(0.22, 1, 0.36, 1) 320ms both; }
+/* Hand-lettered hero tagline lands with a small overshoot, like a stamp. Its
+   tilt rides in --pgrl-tilt: a Tailwind rotate on the same element would be
+   wiped by the animation's own transform (it was, under pgrl-rise). */
+@keyframes pgrl-pop {
+  from { opacity: 0; transform: rotate(var(--pgrl-tilt, 0deg)) scale(0.82); }
+  to   { opacity: 1; transform: rotate(var(--pgrl-tilt, 0deg)); }
+}
+.pgrl-pop {
+  transform: rotate(var(--pgrl-tilt, 0deg));
+  animation: pgrl-pop 620ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  animation-delay: calc(var(--pgrl-i, 0) * 90ms);
+}
+/* Primary hero CTA: a soft gold halo swells and fades three times once the
+   hero has settled, then rests. The ring is a box-shadow on a pseudo-element
+   animated only by transform/opacity — compositor-only, and a box-shadow adds
+   no scrollable overflow around a full-width phone button. A placeholder
+   (disabled) link never pulses. */
+@keyframes pgrl-pulse {
+  0%       { opacity: 0; transform: scale(0.94); }
+  20%      { opacity: 1; }
+  70%, 100% { opacity: 0; transform: scale(1.06); }
+}
+.pgrl-pulse { position: relative; }
+.pgrl-pulse::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  box-shadow: 0 0 0 6px hsl(var(--pgrl-accent) / 0.5);
+  opacity: 0;
+  pointer-events: none;
+  animation: pgrl-pulse 2.2s cubic-bezier(0.22, 1, 0.36, 1) 1.6s 3;
+}
+.pgrl-pulse[aria-disabled]::after { animation: none; }
 /* Slow drift on the hero photograph — 40 s, barely perceptible, gives the
    page life without drawing the eye. */
 @keyframes pgrl-drift {
@@ -133,10 +254,45 @@
 /* Card hover lift, shared by the type / channel / step cards. */
 .pgrl-lift { transition: transform 220ms ease, box-shadow 220ms ease; }
 .pgrl-lift:hover { transform: translateY(-3px); box-shadow: 0 14px 30px -12px rgba(11, 45, 30, 0.28); }
+/* A card that is also a reveal item (the steps): the revealed state's
+   `transform: none` out-ranks the lift, and its stagger delay would lag the
+   hover — so these lift on the independent `translate` property instead. */
+.pgrl-reveal .pgrl-reveal-item.pgrl-lift {
+  transition: opacity 560ms cubic-bezier(0.22, 1, 0.36, 1), transform 560ms cubic-bezier(0.22, 1, 0.36, 1), translate 220ms ease, box-shadow 220ms ease;
+  transition-delay: calc(var(--pgrl-d, var(--pgrl-i, 0)) * 70ms), calc(var(--pgrl-d, var(--pgrl-i, 0)) * 70ms), 0s, 0s;
+}
+.pgrl-reveal .pgrl-reveal-item.pgrl-lift:hover { translate: 0 -3px; }
+/* Card icon tiles: a springy nudge while the card is hovered or focused.
+   Pointer devices only — on touch, :hover sticks after a tap and would leave
+   the tile tilted. */
+.pgrl-icon { transition: transform 320ms cubic-bezier(0.34, 1.56, 0.64, 1); }
+@media (hover: hover) {
+  .pgrl-lift:hover .pgrl-icon { transform: scale(1.08) rotate(-6deg); }
+}
+.pgrl-lift:focus-visible .pgrl-icon { transform: scale(1.08) rotate(-6deg); }
 @media (prefers-reduced-motion: reduce) {
   .pgrl-reveal .pgrl-reveal-item { opacity: 1; transform: none; transition: none; }
-  .pgrl-rise, .pgrl-drift { animation: none; }
+  .pgrl-rise, .pgrl-drift, .pgrl-rise .pgrl-dash, .pgrl-pop { animation: none; }
+  .pgrl-pulse::after { animation: none; }
   .pgrl-lift, .pgrl-lift:hover { transform: none; transition: none; }
+  .pgrl-reveal .pgrl-reveal-item.pgrl-lift { transition: none; }
+  .pgrl-reveal .pgrl-reveal-item.pgrl-lift:hover { translate: none; }
+  .pgrl-reveal .pgrl-dash,
+  .pgrl-reveal .pgrl-step-bar,
+  .pgrl-reveal .pgrl-step-num { opacity: 1; transform: none; transition: none; }
+  .pgrl-reveal .pgrl-trace { stroke-dashoffset: 0; transition: none; }
+  .pgrl-icon,
+  .pgrl-lift:hover .pgrl-icon,
+  .pgrl-lift:focus-visible .pgrl-icon { transform: none; transition: none; }
+}
+/* Print: a section the reader never scrolled to has not been revealed yet —
+   print it anyway (the helpline numbers are the likeliest thing to print). */
+@media print {
+  .pgrl-reveal .pgrl-reveal-item,
+  .pgrl-reveal .pgrl-step-num { opacity: 1; transform: none; }
+  .pgrl-reveal .pgrl-dash,
+  .pgrl-reveal .pgrl-step-bar { transform: none; }
+  .pgrl-reveal .pgrl-trace { stroke-dashoffset: 0; }
 }
 
 /* ── Sign-in backdrops (Nai Pepea) ───────────────────────────────────────── */

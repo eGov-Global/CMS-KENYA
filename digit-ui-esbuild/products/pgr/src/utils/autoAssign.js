@@ -21,9 +21,10 @@
 // ComplaintHierarchy leaf share). `additionalDetail.department` as written by
 // the backend on create holds the department display NAME — never match on it.
 
-// Mirrors PGRDetails' NON_ASSIGNEE_ROLES, plus SYSTEM — the actor the Nairobi
-// workflow puts on its auto-ESCALATE actions. System / non-employee actors that
-// a workflow state may list but that must never receive an assignment.
+// Mirrors PGRDetails' NON_ASSIGNEE_ROLES (which also drops the CMS_VIEWER
+// read-only role) — SYSTEM is the actor the Nairobi workflow puts on its
+// auto-ESCALATE actions. System / non-employee actors that a workflow state may
+// list but that must never receive an assignment.
 const NON_ASSIGNEE_ROLES = new Set(["CITIZEN", "AUTO_ESCALATE", "ANONYMOUS", "SYSTEM"]);
 
 // The last-mile role a NEW complaint is assigned to. deriveAssigneeRoles reads

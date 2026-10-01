@@ -16,6 +16,7 @@ import { HeroSection } from "../components/HeroSection";
 import { TypesSection } from "../components/TypesSection";
 import { HowItWorksSection } from "../components/HowItWorksSection";
 import { ChannelsSection } from "../components/ChannelsSection";
+import { HelplinesSection } from "../components/HelplinesSection";
 import { PrivacySection } from "../components/PrivacySection";
 import { NewsSection } from "../components/NewsSection";
 import { InstitutionsSection } from "../components/InstitutionsSection";
@@ -27,6 +28,7 @@ import {
   MANIFESTATION_TYPES,
   HOW_STEPS,
   CHANNELS,
+  HELPLINES,
   INSTITUTIONS,
   NAV_ITEMS,
   NewsItem,
@@ -124,6 +126,11 @@ export const SECTION_REGISTRY: Record<string, SectionEntry> = {
       personImageUrl: ctx.personImageUrl,
       section: withItems(s, CHANNELS, ctx.routes),
     }),
+  },
+  helplines: {
+    Component: HelplinesSection,
+    slot: "main",
+    buildProps: (s, ctx) => ({ routes: ctx.routes, section: withItems(s, HELPLINES, ctx.routes) }),
   },
   privacy: {
     Component: PrivacySection,

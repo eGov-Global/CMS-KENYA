@@ -56,7 +56,7 @@ export function ChannelsSection({ routes, orbImageUrl, personImageUrl, section }
       tone="surface"
       decor={
         orbImageUrl ? (
-          <PhotoOrb src={orbImageUrl} tagline={c("ORB_TAGLINE")} tone="gold" className="mr-2 hidden w-44 sm:block lg:mr-6 lg:w-60" />
+          <PhotoOrb src={orbImageUrl} tagline={c("ORB_TAGLINE")} tone="gold" className="mr-3 hidden w-44 sm:block lg:mr-6 lg:w-60" />
         ) : undefined
       }
     >
@@ -77,7 +77,7 @@ export function ChannelsSection({ routes, orbImageUrl, personImageUrl, section }
                 <div className="flex items-center justify-between gap-2">
                   <span
                     aria-hidden
-                    className="flex h-12 w-12 items-center justify-center rounded-xl bg-[hsl(var(--pgrl-primary)/0.1)] text-[hsl(var(--pgrl-primary))]"
+                    className="pgrl-icon flex h-12 w-12 items-center justify-center rounded-xl bg-[hsl(var(--pgrl-primary)/0.1)] text-[hsl(var(--pgrl-primary))]"
                   >
                     <Icon className="h-6 w-6" />
                   </span>
@@ -125,7 +125,7 @@ export function ChannelsSection({ routes, orbImageUrl, personImageUrl, section }
           aria-label={c("CAROUSEL_PREV")}
           onClick={() => nudge(-1)}
           className={cn(
-            "absolute left-0 top-1/2 z-10 m-0 flex h-9 w-9 -translate-y-1/2 cursor-pointer items-center justify-center rounded-full",
+            "absolute left-0 top-1/2 z-10 m-0 flex h-11 w-11 -translate-y-1/2 cursor-pointer items-center justify-center rounded-full",
             "border border-solid border-[hsl(var(--pgrl-line))] bg-[hsl(var(--pgrl-surface))] text-[hsl(var(--pgrl-ink-soft))] shadow-md",
             FOCUS_RING
           )}
@@ -172,7 +172,7 @@ export function ChannelsSection({ routes, orbImageUrl, personImageUrl, section }
           aria-label={c("CAROUSEL_NEXT")}
           onClick={() => nudge(1)}
           className={cn(
-            "absolute right-0 top-1/2 z-10 m-0 flex h-9 w-9 -translate-y-1/2 cursor-pointer items-center justify-center rounded-full",
+            "absolute right-0 top-1/2 z-10 m-0 flex h-11 w-11 -translate-y-1/2 cursor-pointer items-center justify-center rounded-full",
             "border border-solid border-[hsl(var(--pgrl-line))] bg-[hsl(var(--pgrl-surface))] text-[hsl(var(--pgrl-ink-soft))] shadow-md",
             FOCUS_RING
           )}
@@ -208,7 +208,7 @@ export function ChannelsSection({ routes, orbImageUrl, personImageUrl, section }
             <h3 className="m-0 text-2xl font-bold leading-tight tracking-tight text-[hsl(var(--pgrl-on-primary))] md:text-3xl">
               {c("FINAL_TITLE")}
             </h3>
-            <p className="mb-0 mt-3 text-base leading-relaxed text-[hsl(var(--pgrl-on-primary)/0.82)] md:text-lg">
+            <p className="mb-0 mt-3 max-w-[56ch] text-base leading-relaxed text-[hsl(var(--pgrl-on-primary)/0.82)] md:text-lg">
               {c("FINAL_TEXT")}
             </p>
           </div>

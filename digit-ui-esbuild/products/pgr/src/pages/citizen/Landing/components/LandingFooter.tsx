@@ -98,15 +98,16 @@ function BrandMark({ id }: { id: SocialId }) {
 }
 
 // !important text colors: see CtaLink.tsx — legacy anchor rule collision.
+// 44 px rows on phones (thumbs on a stacked list); the denser 32 px from md up.
 const FOOT_LINK = cn(
-  "inline-flex min-h-[32px] items-center text-sm !text-[hsl(var(--pgrl-on-primary)/0.78)] no-underline",
+  "inline-flex min-h-[44px] items-center text-sm !text-[hsl(var(--pgrl-on-primary)/0.78)] no-underline md:min-h-[32px]",
   "hover:!text-[hsl(var(--pgrl-accent))] motion-safe:transition-colors",
   FOCUS_RING_DARK
 );
 const FOOT_MUTED = "text-[hsl(var(--pgrl-on-primary)/0.62)]";
 const FOOT_HEAD = "m-0 text-xs font-bold uppercase tracking-[0.14em] text-[hsl(var(--pgrl-on-primary))]";
 const SOCIAL_BTN = cn(
-  "inline-flex h-10 w-10 items-center justify-center rounded-full no-underline",
+  "inline-flex h-11 w-11 items-center justify-center rounded-full no-underline",
   "bg-[hsl(var(--pgrl-on-primary)/0.1)] !text-[hsl(var(--pgrl-on-primary))]",
   "hover:bg-[hsl(var(--pgrl-accent))] hover:!text-[hsl(var(--pgrl-deep))]",
   "motion-safe:transition-colors",
@@ -180,11 +181,21 @@ export function LandingFooter({ routes, logoUrl, emblemUrl, section }: LandingFo
           <address className="not-italic">
             <p className={FOOT_HEAD}>{c("FOOTER_CONTACT")}</p>
             <ul className="m-0 mt-4 flex list-none flex-col gap-2 p-0 text-sm">
+              {/* One link per number: a single link over both dialled only the first. */}
               <li className="m-0 p-0">
                 <span className={FOOT_MUTED}>{c("CONTACT_HOTLINE")}: </span>
-                <a href={`tel:${CONTACT.hotline}`} className={FOOT_LINK}>
-                  {CONTACT.hotlineDisplay}
-                </a>
+                {CONTACT.hotlines.map((line, i) => (
+                  <React.Fragment key={line.tel}>
+                    {i > 0 && (
+                      <span aria-hidden className={FOOT_MUTED}>
+                        {" · "}
+                      </span>
+                    )}
+                    <a href={`tel:${line.tel}`} className={cn(FOOT_LINK, "whitespace-nowrap")}>
+                      {line.display}
+                    </a>
+                  </React.Fragment>
+                ))}
               </li>
               <li className="m-0 p-0">
                 <span className={FOOT_MUTED}>{c("CONTACT_EMAIL")}: </span>

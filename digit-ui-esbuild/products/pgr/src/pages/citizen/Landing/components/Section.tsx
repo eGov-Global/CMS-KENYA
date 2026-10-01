@@ -1,10 +1,10 @@
 // Shared section shell: spacing, container width, landmark labelling and the
 // heading treatment. Every section renders through it so the page stays even.
 //
-// Also owns the scroll-reveal: the shell observes itself (useReveal) and the
-// children opt in per element with `pgrl-reveal-item` + `--pgrl-i` for the
-// stagger order. The CSS lives in src/index.css and is inert under
-// prefers-reduced-motion.
+// Also owns the scroll-reveal: the shell's useReveal watches the children that
+// opt in with `pgrl-reveal-item` (+ `--pgrl-i` for the stagger order) and
+// reveals each as it scrolls into view. The CSS lives in src/index.css and is
+// inert under prefers-reduced-motion.
 
 import * as React from "react";
 import { cn } from "@egovernments/digit-ui-components-v2";
@@ -69,7 +69,7 @@ export function Section({ id, code, eyebrow, title, intro, action, decor, dots, 
             <div className="min-w-0 flex-1 basis-[12rem]">
               {eyebrow && (
                 <p className="m-0 mb-3 flex items-center gap-2 text-xs font-bold uppercase tracking-[0.18em] text-[hsl(var(--pgrl-primary))]">
-                  <span aria-hidden className="inline-block h-[3px] w-6 rounded-full bg-[hsl(var(--pgrl-accent))]" />
+                  <span aria-hidden className="pgrl-dash inline-block h-[3px] w-6 rounded-full bg-[hsl(var(--pgrl-accent))]" />
                   {eyebrow}
                 </p>
               )}
@@ -79,8 +79,10 @@ export function Section({ id, code, eyebrow, title, intro, action, decor, dots, 
               >
                 {title}
               </h2>
+              {/* 56ch: Roboto Condensed is narrow, so rem widths let intros
+                  run to ~95 characters a line; this holds them near 70. */}
               {intro && (
-                <p className="mb-0 mt-4 max-w-2xl text-base leading-relaxed text-[hsl(var(--pgrl-ink-soft))] md:text-lg">
+                <p className="mb-0 mt-4 max-w-[56ch] text-base leading-relaxed text-[hsl(var(--pgrl-ink-soft))] md:text-lg">
                   {intro}
                 </p>
               )}
