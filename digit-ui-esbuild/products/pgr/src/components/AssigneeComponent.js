@@ -1,13 +1,11 @@
 import { useTranslation } from "react-i18next";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo } from "react";
 import { Dropdown, Loader } from "@egovernments/digit-ui-components";
 import { narrowByJurisdiction } from "../utils/autoAssign";
 import useFetchBoundaries from "../hooks/boundary/useFetchBoundaries";
 
-const AssigneeComponent = ({ config, onSelect, formState, defaultValues }) => {
+const AssigneeComponent = ({ config, onSelect, formData }) => {
   const { t } = useTranslation();
-  const [assignees, setAssignees] = useState([]);
-  const [selectedEmployee, setSelectedEmployee] = useState(null);
   const tenantId = Digit.ULBService.getCurrentTenantId();
   const hrmsContext = window?.globalConfigs?.getConfig("HRMS_CONTEXT_PATH") || "egov-hrms";
 
@@ -17,7 +15,9 @@ const AssigneeComponent = ({ config, onSelect, formState, defaultValues }) => {
   // `localityCode` is the complaint's leaf boundary — the jurisdiction axis
   // Bomet routes on (department + jurisdiction). Absent on tenants that route
   // by department alone, which leaves the jurisdiction gate a no-op.
-  const { roles = [], department, allDepartments, localityCode } = config?.populators || {};
+  // `preferredUuid` (escalation) is pre-selected when that person is in the
+  // filtered list; otherwise the officer picks as usual.
+  const { roles = [], department, allDepartments, localityCode, preferredUuid } = config?.populators || {};
 
   // Jurisdiction coverage is a property of the boundary TREE (an officer
   // assigned the sub-county covers every ward beneath it), so the filter needs
@@ -97,8 +97,9 @@ const AssigneeComponent = ({ config, onSelect, formState, defaultValues }) => {
   
   
 
-  // Update assignees when employee data changes
-  useEffect(() => {
+  // Eligible assignees, derived in render so the list and the selection below
+  // are always computed from the same data.
+  const assignees = useMemo(() => {
     if (employeeData?.Employees?.length > 0) {
       // Screening officer (allDepartments): NO department filter — list every
       // department's assignable employees (transformData groups them by
@@ -109,7 +110,8 @@ const AssigneeComponent = ({ config, onSelect, formState, defaultValues }) => {
       const unscoped = allDepartments || !department || department === "NA";
       const filtered = employeeData.Employees.filter((e) => {
         const d = e?.assignments?.[0]?.department;
-        if (!d || !e?.user?.uuid) return false;
+        // Deactivated staff can't take a complaint (pgr-services rejects them).
+        if (!d || !e?.user?.uuid || e?.isActive === false) return false;
         return unscoped ? true : d === department;
       });
       // Then by JURISDICTION, the second axis Bomet routes on: an officer with
@@ -129,18 +131,40 @@ const AssigneeComponent = ({ config, onSelect, formState, defaultValues }) => {
         boundaryRoots: boundaryData?.[0]?.boundary,
         tenantId,
       });
-      setAssignees(transformData(candidates));
+      return transformData(candidates);
     }
-  }, [employeeData, department, allDepartments, localityCode, boundaryData, tenantId]);
+    return [];
+  }, [employeeData, department, allDepartments, localityCode, boundaryData, tenantId, t]);
+  const options = useMemo(() => assignees.flatMap((group) => group.options), [assignees]);
 
-  // Handle employee selection
+  // The selection IS the form's value: the action modal submits the form
+  // (its session draft), so the dropdown must show exactly that. A separate
+  // local copy drifted from it — the form resets to the draft after this
+  // component's effects run, and a value kept from an earlier opening was
+  // submitted without being shown.
+  const formValue = formData?.[config?.key];
+  const selectedEmployee = options.find((o) => o.uuid === formValue?.uuid) || null;
+
+  // Keep the value eligible: an empty value takes the pre-selection (when that
+  // person is in the list); a value not in this list — kept from another state
+  // or action — is replaced by it or cleared, so the mandatory check stops a
+  // submit instead of sending someone the officer cannot see.
+  useEffect(() => {
+    if (isEmployeeDataLoading || !config?.key) return;
+    if (formValue?.uuid && options.some((o) => o.uuid === formValue.uuid)) return;
+    const preferred = preferredUuid ? options.find((o) => o.uuid === preferredUuid) : null;
+    if (!preferred && !formValue) return;
+    // Deferred: with the staff list already cached this runs during mount,
+    // before the enclosing form Controller has registered the field (a child's
+    // effects run before its parent's), and a value set then is dropped.
+    const timer = setTimeout(() => onSelect(config.key, preferred || undefined), 0);
+    return () => clearTimeout(timer);
+  }, [isEmployeeDataLoading, options, preferredUuid, formValue?.uuid]);
+
   const handleEmployeeSelect = (employee) => {
-    setSelectedEmployee(employee);
-    if (employee && config?.key) {
-      onSelect(config.key, employee);
-    }
+    if (employee && config?.key) onSelect(config.key, employee);
   };
-  
+
 
   if (error) return <div>{t("CS_COMMON_EMPLOYEE_FETCH_ERROR")}</div>;
   if (isEmployeeDataLoading) return <Loader />;
