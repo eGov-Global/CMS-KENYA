@@ -101,6 +101,12 @@ public class PGRConfiguration {
     @Value("${pgr.complain.idle.time}")
     private Long complainMaxIdleTime;
 
+    // Deployment-level default action windows (JSON list of rules), used for any action a
+    // tenant's MDMS UIConstants.actionWindows does not list, and while MDMS is unavailable.
+    // See application.properties and MDMSUtils#getActionWindow.
+    @Value("${pgr.action.windows.defaults:[]}")
+    private String actionWindowDefaults;
+
     @Value("${pgr.kafka.create.topic}")
     private String createTopic;
 
