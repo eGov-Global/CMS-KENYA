@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { ActionBar, SubmitBar, ArrowLeft, ArrowForward } from "@egovernments/digit-ui-react-components";
 import { Button } from "@egovernments/digit-ui-components";
 import { PanelCard } from "@egovernments/digit-ui-components";
+import ReceiptActions from "./ReceiptActions";
 
 const Response = () => {
   const { t } = useTranslation();
@@ -25,7 +26,12 @@ const Response = () => {
         customIcon=""
         description={t(state?.description)}
         footerChildren={[
-          <Button label={t(`PGR_CREATE_ANOTHER_COMPLAIN`)} onClick={
+          // Receipt for the complainant the officer just filed for (download /
+          // print / share); it loads the created record itself by id.
+          ...(state?.responseId
+            ? [<ReceiptActions key="receipt" complaintId={state.responseId} tenantId={Digit.ULBService.getCurrentTenantId()} />]
+            : []),
+          <Button key="another" label={t(`PGR_CREATE_ANOTHER_COMPLAIN`)} onClick={
             () => {
               history.push(`/${window.contextPath}/employee/pgr/create-complaint`);
             }
