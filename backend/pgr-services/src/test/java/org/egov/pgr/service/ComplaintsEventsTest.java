@@ -20,6 +20,7 @@ import org.mockito.junit.MockitoJUnitRunner;
 import java.util.*;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertNotNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -103,6 +104,23 @@ public class ComplaintsEventsTest {
         verify(complaintDomainEventService).publishWorkflowTransitionEvent(eq(request), eq("PENDINGFORASSIGNMENT"));
         verify(producer).push("pb.amritsar", "update-pgr-request", request);
         verify(producer).push("pb.amritsar", "inbox-pgr-events", request);
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    public void shouldKeepTheComplainantOutOfConfidentialEventData() {
+        ServiceRequest eventRequest = buildRequest("ASSIGN", "PENDINGATLME", "pb.amritsar");
+        ExtendedAttributes ext = new ExtendedAttributes();
+        ext.setIsConfidential(true);
+        eventRequest.getService().setExtendedAttributes(ext);
+
+        domainEventService.publishWorkflowTransitionEvent(eventRequest, "PENDINGFORASSIGNMENT");
+
+        ArgumentCaptor<Object> payloadCaptor = ArgumentCaptor.forClass(Object.class);
+        verify(producer).push(eq("pb.amritsar"), eq("complaints.domain.events"), payloadCaptor.capture());
+        Map<String, Object> data = (Map<String, Object>) ((Map<String, Object>) payloadCaptor.getValue()).get("data");
+        assertNull(data.get("citizenName"));
+        assertNull(data.get("mobileNumber"));
     }
 
     @Test
