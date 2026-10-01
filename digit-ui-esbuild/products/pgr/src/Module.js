@@ -4,40 +4,44 @@ import { useRouteMatch } from "react-router-dom";
 import { default as EmployeeApp } from "./pages/employee";
 import PGRCard from "./components/PGRCard";
 import EmployeeTopBarV2 from "./components/EmployeeTopBarV2";
-import PGRAdminSearch from "./pages/employee/AdminSearch";
+import { lazyPage } from "./utils/lazyLoad";
 import { overrideHooks, updateCustomConfigs } from "./utils";
 import { ProviderContext } from "./utils/context";
 import BoundaryComponent from "./components/BoundaryComponent";
 import OnlyMyComplaintsFilter from "./components/OnlyMyComplaintsFilter";
 import ComplaintHierarchyComponent from "./components/ComplaintHierarchyComponent";
 import PGRDatePicker from "./components/PGRDatePicker";
-import PGRDetails from "./pages/employee/PGRDetails";
 import TimelineWrapper from "./components/TimeLineWrapper";
 import AssigneeComponent from "./components/AssigneeComponent";
 import VerificationDocsComponent from "./components/VerificationDocsComponent";
 import ActionUploadComponent from "./components/ActionUploadComponent";
 import ChannelChipsComponent from "./components/ChannelChipsComponent";
 import PGRSearchInbox from "./pages/employee/PGRInbox";
-import CreateComplaint from "./pages/employee/CreateComplaint";
 import Response from "./components/Response";
 import BreadCrumbs from "./components/BreadCrumbs";
 import CitizenApp from "./pages/citizen";
 import getRootReducer from "./redux/reducers";
 import { ComplaintsList } from "./pages/citizen/ComplaintsList";
-import ComplaintDetailsPage from "./pages/citizen/ComplaintDetails";
 import SelectRating from "./pages/citizen/Rating/SelectRating";
 import ResponseCitizen from "./pages/citizen/Response";
-import GeoLocations from "./components/GeoLocations";
 import SelectAddress from "../../pgr/src/pages/citizen/Create/Steps/SelectAddress";
 import SelectImages from "../../pgr/src/pages/citizen/Create/Steps/SelectImages";
 // CreatePGRFlow now points at the v2 (Tailwind + shadcn-style) implementation.
 // FormExplorer.js remains in the tree for one release as a safety rollback —
 // can be deleted once v2 is verified on naipepea.
-import CreatePGRFlow from "./pages/citizen/Create/CreatePGRFlowV2";
-// Public landing page (shell-free), mounted by core at /<contextPath>/landing.
-import PGRLandingEntry from "./pages/citizen/Landing/AppEntry";
-// Public privacy-policy page (shell-free), mounted by core at /<contextPath>/privacy-policy.
-import PGRPrivacyPolicyPage from "./pages/citizen/Landing/PrivacyPolicyPage";
+// Route-level code splitting (utils/lazyLoad): these screens and the map
+// stack (Leaflet / MapLibre) they carry download on first visit, not with the
+// inbox. The registry keys below are unchanged, so callers notice nothing.
+const PGRDetails = lazyPage(() => import("./pages/employee/PGRDetails"), "pgr-employee-details");
+const CreateComplaint = lazyPage(() => import("./pages/employee/CreateComplaint"), "pgr-employee-create");
+const PGRAdminSearch = lazyPage(() => import("./pages/employee/AdminSearch"), "pgr-admin-search");
+const ComplaintDetailsPage = lazyPage(() => import("./pages/citizen/ComplaintDetails"), "pgr-citizen-details");
+const GeoLocations = lazyPage(() => import("./components/GeoLocations"), "pgr-map");
+const CreatePGRFlow = lazyPage(() => import("./pages/citizen/Create/CreatePGRFlowV2"), "pgr-citizen-create");
+// Public landing + privacy pages (shell-free), mounted by core at
+// /<contextPath>/landing and /<contextPath>/privacy-policy.
+const PGRLandingEntry = lazyPage(() => import("./pages/citizen/Landing/AppEntry"), "pgr-landing");
+const PGRPrivacyPolicyPage = lazyPage(() => import("./pages/citizen/Landing/PrivacyPolicyPage"), "pgr-privacy");
 // Role-tiered employee home. Mounted shell-free by core App.js (same pattern
 // as PGRLandingPage), so upstream's EmployeeHome/Home.js stays untouched.
 import EmployeeHomeV2 from "./pages/employee/EmployeeHomeV2";
