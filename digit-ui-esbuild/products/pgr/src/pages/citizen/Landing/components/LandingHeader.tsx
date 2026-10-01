@@ -14,9 +14,9 @@
 // The <header> itself is the sticky box (not an inner <nav>): sticky
 // positioning is constrained to the parent, so a sticky child of a static
 // header would have zero travel and never stick. The element also carries
-// font-condensed explicitly — the vendored legacy CSS has a bare
-// `header { font-family: ... }` element rule that direct-targets the element,
-// so the masthead states its family rather than relying on inheritance.
+// the landing font stack (pgrl-font) explicitly — the vendored legacy CSS has a
+// bare `header { font-family: ... }` element rule that direct-targets the
+// element, so the masthead states its family rather than relying on inheritance.
 //
 // In-shell mounting: if the page renders under an app chrome with its own
 // fixed topbar, set `--pgrl-nav-offset` (e.g. "82px") so the bar pins below it
@@ -76,7 +76,7 @@ export function LandingHeader({ routes, emblemUrl, navItems, code }: LandingHead
     <header
       data-pgrl-code={code}
       className={cn(
-        "sticky top-[var(--pgrl-nav-offset,0px)] z-40 font-condensed",
+        "pgrl-font sticky top-[var(--pgrl-nav-offset,0px)] z-40",
         // Translucent + blur: the hero photo shows faintly through as it
         // scrolls under; falls back to a solid bar where backdrop-filter is
         // unsupported (the alpha is high enough to stay legible either way).
@@ -89,10 +89,13 @@ export function LandingHeader({ routes, emblemUrl, navItems, code }: LandingHead
       {/* flex-wrap: on mobile the nav drops to its own full-width row below
           the brand; on md it sits inline, right-aligned. */}
       <div className={cn(CONTAINER, "flex min-h-[64px] flex-wrap items-center justify-between gap-x-4")}>
+        {/* Phones: capped to leave room for the menu button, so a longer
+            name (a translation, enlarged system text) wraps inside the brand
+            instead of dropping the button to a row of its own. */}
         <LandingLink
           to={routes.HOME}
           className={cn(
-            "flex items-center gap-3 py-2 no-underline",
+            "flex max-w-[calc(100%-3.75rem)] items-center gap-3 py-2 no-underline md:max-w-none",
             "!text-[hsl(var(--pgrl-ink))]",
             FOCUS_RING,
             "rounded-[var(--pgrl-radius)]"
@@ -193,15 +196,17 @@ export function LandingHeader({ routes, emblemUrl, navItems, code }: LandingHead
                       className={cn(
                         "relative flex min-h-[48px] items-center px-4 text-[15px] font-semibold no-underline md:min-h-[64px]",
                         "motion-safe:transition-colors",
-                        // The state bar. Always present, transparent when idle,
-                        // so turning it on never reflows the row.
+                        // The state bar. Always present, collapsed when idle and
+                        // grown from the centre on hover (transform only), so
+                        // turning it on never reflows the row.
                         "after:absolute after:inset-x-4 after:bottom-0 after:h-[3px] after:rounded-t-full after:content-['']",
+                        "motion-safe:after:transition-transform motion-safe:after:duration-200",
                         FOCUS_RING,
                         // ! beats legacy overrides.css a:not(...):not(...) color rule
                         active
                           ? "!text-[hsl(var(--pgrl-primary))] after:bg-[hsl(var(--pgrl-primary))]"
-                          : "!text-[hsl(var(--pgrl-ink-soft))] after:bg-transparent " +
-                              "hover:!text-[hsl(var(--pgrl-primary))] hover:after:bg-[hsl(var(--pgrl-primary)/0.45)]"
+                          : "!text-[hsl(var(--pgrl-ink-soft))] after:scale-x-0 after:bg-[hsl(var(--pgrl-primary)/0.45)] " +
+                              "hover:!text-[hsl(var(--pgrl-primary))] hover:after:scale-x-100"
                       )}
                     >
                       {label}

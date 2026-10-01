@@ -28,8 +28,9 @@ export interface UtilityBarProps {
 
 // !important text colors: legacy overrides.css `a:not(.digit-button):not(.button)`
 // (0-2-1, plus a :hover variant at 0-3-1) outranks scoped utilities otherwise.
+// Targets fill the strip's full 44 px height (it was 36 px of link in 4 px padding).
 const UTIL_LINK =
-  "inline-flex min-h-[36px] items-center gap-1.5 no-underline !text-[hsl(var(--pgrl-on-primary))] hover:!text-[hsl(var(--pgrl-accent))] motion-safe:transition-colors " +
+  "inline-flex min-h-[44px] items-center gap-1.5 no-underline !text-[hsl(var(--pgrl-on-primary))] hover:!text-[hsl(var(--pgrl-accent))] motion-safe:transition-colors " +
   FOCUS_RING_DARK;
 
 export function UtilityBar({ routes, languages, onLanguageChange }: UtilityBarProps) {
@@ -47,7 +48,7 @@ export function UtilityBar({ routes, languages, onLanguageChange }: UtilityBarPr
   return (
     // role=region: aria-label on a generic div is ignored by assistive tech
     <div role="region" aria-label={c("ARIA_UTILITY")} className="bg-[hsl(var(--pgrl-primary))] text-xs sm:text-sm">
-      <div className={cn(CONTAINER, "flex min-h-[36px] items-center justify-between gap-3 py-1")}>
+      <div className={cn(CONTAINER, "flex min-h-[44px] items-center justify-between gap-3")}>
         <p className="m-0 hidden items-center gap-2 text-[hsl(var(--pgrl-on-primary)/0.85)] sm:flex">
           <span className="font-semibold uppercase tracking-wide">{c("GOV_NAME")}</span>
           <span aria-hidden className="text-[hsl(var(--pgrl-on-primary)/0.4)]">
@@ -73,7 +74,7 @@ export function UtilityBar({ routes, languages, onLanguageChange }: UtilityBarPr
                   aria-pressed={isActive(lng.code)}
                   onClick={() => changeLanguage(lng.code)}
                   className={cn(
-                    "m-0 min-h-[36px] cursor-pointer border-0 bg-transparent px-1.5 font-semibold",
+                    "m-0 min-h-[44px] cursor-pointer border-0 bg-transparent px-1.5 font-semibold",
                     "motion-safe:transition-colors",
                     FOCUS_RING_DARK,
                     isActive(lng.code)

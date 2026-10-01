@@ -15,7 +15,6 @@ import { MANIFESTATION_TYPES } from "../content";
 import { useLandingCopy } from "../useLandingCopy";
 import { sectionDomId } from "../config/resolve";
 import { LandingRoutes } from "../routes";
-import { FOCUS_RING } from "../tokens";
 import type { LandingSectionConfig } from "../config/types";
 
 export interface TypesSectionProps {
@@ -71,20 +70,22 @@ export function TypesSection({ routes, section }: TypesSectionProps) {
               >
                 <span
                   aria-hidden
-                  className="flex h-12 w-12 items-center justify-center rounded-xl motion-safe:transition-transform group-hover:scale-105"
+                  className="pgrl-icon flex h-12 w-12 items-center justify-center rounded-xl"
                   style={{ backgroundColor: `hsl(var(${accentVar}) / 0.12)`, color: `hsl(var(${accentVar}))` }}
                 >
                   <Icon className="h-6 w-6" />
                 </span>
 
                 <h3 className="mb-0 mt-4 text-base font-bold leading-snug text-[hsl(var(--pgrl-ink))] sm:mt-5 sm:text-lg">
-                  {/* Stretched link: one big click target, single tab stop. */}
+                  {/* Stretched link: one big click target, single tab stop. The
+                      focus ring is drawn on the stretched ::after so it outlines
+                      the whole card, not the (often wrapped) title text. */}
                   <LandingLink
                     to={type.href ?? routes[type.route]}
                     className={
-                      "!text-inherit no-underline after:absolute after:inset-0 after:content-[''] " +
-                      "rounded-[var(--pgrl-radius)] " +
-                      FOCUS_RING
+                      "!text-inherit no-underline after:absolute after:inset-0 after:rounded-2xl after:content-[''] " +
+                      "focus-visible:outline-none focus-visible:after:ring-2 focus-visible:after:ring-[hsl(var(--pgrl-ring))] " +
+                      "focus-visible:after:ring-offset-2"
                     }
                   >
                     {c(type.titleKey, type.titleKeyDefault)}

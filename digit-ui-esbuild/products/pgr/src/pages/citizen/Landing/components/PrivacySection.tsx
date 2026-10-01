@@ -44,10 +44,10 @@ export function PrivacySection({ routes, section }: PrivacySectionProps) {
           <ShieldCheck className="h-7 w-7" />
         </span>
         <div className="max-w-3xl">
-          <p className="m-0 text-base font-semibold leading-relaxed text-[hsl(var(--pgrl-ink))] md:text-lg">
+          <p className="m-0 max-w-[56ch] text-base font-semibold leading-relaxed text-[hsl(var(--pgrl-ink))] md:text-lg">
             {c(section?.bodyKey, "PRIVACY_P1")}
           </p>
-          <p className="mb-0 mt-3 text-sm leading-relaxed text-[hsl(var(--pgrl-ink-soft))] md:text-base">
+          <p className="mb-0 mt-3 max-w-[56ch] text-sm leading-relaxed text-[hsl(var(--pgrl-ink-soft))] md:text-base">
             {c(section?.subtitleKey, "PRIVACY_P2")}
           </p>
         </div>
