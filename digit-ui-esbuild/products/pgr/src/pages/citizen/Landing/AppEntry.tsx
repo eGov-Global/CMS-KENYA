@@ -16,9 +16,8 @@ import type { LandingRoutes } from "./routes";
 // `navigation` section with a media.imageId still overrides this.
 import nairobiEmblem from "./assets/nairobi-emblem.png";
 import nairobiFooterLogo from "./assets/nairobi-footer-logo.png";
-// Photography (Wikimedia Commons, see assets/CREDITS.md): Uhuru Park for the
-// hero in two cuts (phones get the 960 px one), the dawn skyline behind the
-// closing call to action.
+// Photography (see assets/CREDITS.md): the County's customer-service centre for
+// the hero; Wikimedia Commons photos for the closing band and portrait.
 import nairobiHero from "./assets/nairobi-hero.jpg";
 import nairobiHeroSm from "./assets/nairobi-hero-sm.jpg";
 import nairobiBand from "./assets/nairobi-band.jpg";
