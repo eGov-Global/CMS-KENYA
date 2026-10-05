@@ -571,6 +571,24 @@ export const printComplaintReceipt = (model) => {
   return tab ? "tab" : false;
 };
 
+/**
+ * Open the receipt as a PDF in the browser's viewer. Pass a tab opened
+ * synchronously in the click handler (`window.open("", "_blank")`) so the
+ * popup blocker sees a user gesture even though drawing the PDF is async;
+ * without one a fresh tab is attempted. Returns false when no tab could be
+ * used so the caller can fall back to a download.
+ */
+export const openComplaintReceipt = (model, tab) => {
+  const url = buildComplaintReceipt(model).output("bloburl");
+  if (tab && !tab.closed) {
+    tab.location.replace(url);
+  } else if (!openTab(url)) {
+    return false;
+  }
+  setTimeout(() => URL.revokeObjectURL(url), 60000);
+  return true;
+};
+
 // window.open with the "noopener" feature returns null BY SPEC even when the
 // tab opened, which would read as a blocked popup — detach the opener by hand.
 const openTab = (url) => {

@@ -1462,6 +1462,16 @@ button[class*="toast-close"] svg,
   color: var(--color-text-primary, #363636) !important;
 }
 
+/* Receipt share-sheet options (components/ReceiptActions.js): plain tiles, no
+ * vendor hover lift or press transform. */
+.pgr-share-sheet__option,
+.pgr-share-sheet__option:hover,
+.pgr-share-sheet__option:active,
+.pgr-share-sheet__option:focus {
+  box-shadow: none !important;
+  transform: none !important;
+}
+
 /* Emoji-rating options on /citizen/pgr/rate (components/EmojiRating.js) — the
  * generic button rules below add a hover drop-shadow and a press transform that
  * would replace the option's own selected ring. Pin both: no vendor lift, and the
