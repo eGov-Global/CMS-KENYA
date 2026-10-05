@@ -88,3 +88,14 @@ test("a repeat tap does not download a second copy", async () => {
   assert.equal(await shareReceipt({ ...h, alreadyDownloaded: true }), "downloaded-copied");
   assert.deepEqual(h.downloads, []);
 });
+
+test("share links carry the complaint text and tracking URL, encoded, for email / WhatsApp / SMS", async () => {
+  const { buildShareLinks } = await import("../products/pgr/src/utils/receiptShare.js");
+  const l = buildShareLinks({ subject: "Complaint Receipt X-1", text: "Complaint X-1 filed with Bomet. Track it here:", url: "https://h/digit-ui/citizen/pgr/complaints/X-1" });
+  assert.ok(l.email.startsWith("mailto:?subject=Complaint%20Receipt%20X-1&body="));
+  assert.match(decodeURIComponent(l.email.split("&body=")[1]), /^Complaint X-1 filed with Bomet\. Track it here:\nhttps:\/\/h\//);
+  assert.equal(l.whatsapp, "https://wa.me/?text=" + encodeURIComponent("Complaint X-1 filed with Bomet. Track it here: https://h/digit-ui/citizen/pgr/complaints/X-1"));
+  assert.ok(l.sms.startsWith("sms:?&body=Complaint%20X-1"));
+  assert.equal(l.message, "Complaint X-1 filed with Bomet. Track it here: https://h/digit-ui/citizen/pgr/complaints/X-1");
+  assert.equal(buildShareLinks({ subject: "S", text: "", url: "" }).message, "");
+});

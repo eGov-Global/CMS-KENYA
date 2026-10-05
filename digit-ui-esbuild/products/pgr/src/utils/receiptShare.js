@@ -43,3 +43,21 @@ export async function shareReceipt({ nav, makeFile, download, title, text, url, 
   }
   return "downloaded";
 }
+
+const enc = encodeURIComponent;
+
+/**
+ * Deep links for the channels the share sheet lists. Each carries the complaint
+ * number + tracking link as text (an email/SMS/WhatsApp link cannot attach a
+ * file; the PDF travels via "More apps" or Download). `sms:?&body=` is the form
+ * both Android and iOS accept.
+ */
+export function buildShareLinks({ subject, text, url }) {
+  const line = [text, url].filter(Boolean).join(" ");
+  return {
+    email: `mailto:?subject=${enc(subject || "")}&body=${enc([text, url].filter(Boolean).join("\n"))}`,
+    whatsapp: `https://wa.me/?text=${enc(line)}`,
+    sms: `sms:?&body=${enc(line)}`,
+    message: line,
+  };
+}
