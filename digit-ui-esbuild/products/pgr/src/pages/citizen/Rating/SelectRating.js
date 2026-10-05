@@ -3,7 +3,6 @@ import { useDispatch } from "react-redux";
 import { useParams, useHistory } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useQueryClient } from "react-query";
-import { Star } from "lucide-react";
 import {
   Card,
   Field,
@@ -17,6 +16,7 @@ import { updateComplaints } from "../../../redux/actions/index";
 import { mergeAdditionalDetail } from "../../../utils/additionalDetail";
 import { findLatestAssigneeUuidByRole } from "../../../utils/workflowAssignee";
 import { EV, trackE, trackApiError } from "../../../utils/analytics";
+import { EmojiRatingInput } from "../../../components/EmojiRating";
 
 // i18n fallback — when a translation key is unavailable, surface the
 // English copy instead of leaving a raw constant on screen.
@@ -34,67 +34,6 @@ const FEEDBACK_OPTIONS = [
   { key: "CS_FEEDBACK_OTHERS", fallback: "Other" },
 ];
 
-/**
- * Star-rating row — five buttons with a Lucide Star icon, brand-tinted
- * fill on selection. Hover preview gives visual feedback before commit.
- * Replaces the legacy <Rating /> from digit-ui-react-components which
- * shipped its own non-themed glyphs.
- */
-function StarRow({ value, onChange }) {
-  const [hover, setHover] = useState(0);
-  const active = hover || value;
-  return (
-    <div
-      role="radiogroup"
-      aria-label="rating"
-      style={{ display: "flex", gap: "8px" }}
-    >
-      {[1, 2, 3, 4, 5].map((i) => {
-        const lit = i <= active;
-        return (
-          <button
-            key={i}
-            type="button"
-            role="radio"
-            aria-checked={value === i}
-            aria-label={`${i} star${i === 1 ? "" : "s"}`}
-            onClick={() => onChange(i)}
-            onMouseEnter={() => setHover(i)}
-            onMouseLeave={() => setHover(0)}
-            className="v2-rating-star"
-            style={{
-              padding: 4,
-              border: 0,
-              background: "transparent",
-              cursor: "pointer",
-              lineHeight: 0,
-            }}
-          >
-            <Star
-              size={36}
-              strokeWidth={1.5}
-              style={{
-                color: lit
-                  ? "var(--color-button-primary-bg-default, var(--color-primary-2, #FEC931))"
-                  : "var(--color-border, #d6d5d4)",
-                fill: lit
-                  ? "var(--color-button-primary-bg-default, var(--color-primary-2, #FEC931))"
-                  : "transparent",
-                transition: "color 120ms ease-out, fill 120ms ease-out",
-              }}
-            />
-          </button>
-        );
-      })}
-    </div>
-  );
-}
-
-/**
- * Native checkbox styled to read with the v2 surface — brand-tinted
- * accent on check, theme border, matching the file-complaint form's
- * input rhythm so the rating page doesn't feel like a different app.
- */
 function FeedbackCheckbox({ checked, onChange, label }) {
   return (
     <label
@@ -275,7 +214,11 @@ const SelectRating = ({ parentRoute }) => {
             )}
             required
           >
-            <StarRow value={rating} onChange={setRating} />
+            <EmojiRatingInput
+              value={rating}
+              onChange={setRating}
+              label={tr(t, "CS_COMPLAINT_RATE_TEXT", "Overall, how satisfied are you with the handling of your complaint?")}
+            />
             {submitError ? (
               <p
                 role="alert"
@@ -301,13 +244,7 @@ const SelectRating = ({ parentRoute }) => {
               "What did we do well? (Select all that apply) (optional)"
             )}
           >
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
-                gap: "4px",
-              }}
-            >
+            <div className="pgr-rate-feedback-grid">
               {FEEDBACK_OPTIONS.map((o) => (
                 <FeedbackCheckbox
                   key={o.key}

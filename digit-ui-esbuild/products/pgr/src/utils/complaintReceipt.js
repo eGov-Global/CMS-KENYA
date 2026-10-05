@@ -579,33 +579,51 @@ const openTab = (url) => {
 };
 
 /**
- * Share the receipt: the PDF itself where the device can share files (Android
- * Chrome → WhatsApp etc.), otherwise the text + tracking link through the
- * native share sheet, otherwise copied to the clipboard. Returns which of the
- * three happened so the caller can tell the user; a share sheet the user
- * dismissed surfaces as the AbortError the Web Share API throws.
+ * Share the receipt. Where the device can share files (Android Chrome, iOS
+ * Safari -> WhatsApp, mail, ...) the PDF itself goes into the native share
+ * sheet with the tracking link in the message. Everywhere else the PDF is
+ * downloaded first - the citizen always ends up holding the document - and the
+ * link is then offered through the share sheet or, failing that, the clipboard.
+ * Returns what happened so the caller can word the confirmation:
+ *   "file" | "downloaded-shared" | "downloaded-copied" | "downloaded".
+ * A file share the user dismissed surfaces as the AbortError the Web Share API
+ * throws (nothing was saved, so there is nothing to confirm).
  */
 export const shareComplaintReceipt = async (model, { title, text, url }) => {
   const nav = typeof navigator !== "undefined" ? navigator : null;
+  const message = [text, url].filter(Boolean).join(" ");
   if (nav?.share) {
     try {
       const blob = buildComplaintReceipt(model).output("blob");
       const file = new File([blob], receiptFileName(model), { type: "application/pdf" });
       if (nav.canShare?.({ files: [file] })) {
-        await nav.share({ files: [file], title, text });
+        await nav.share({ files: [file], title, text: message });
         return "file";
       }
     } catch (e) {
       // Cancelled, or the activation window is spent: a second share() would fail too.
       if (e?.name === "AbortError" || e?.name === "NotAllowedError") throw e;
-      // fall through to a text share — the PDF is still one tap away via Download
+      // fall through: the PDF still reaches the citizen through the download below
     }
-    await nav.share({ title, text, url });
-    return "text";
+  }
+  downloadComplaintReceipt(model);
+  if (nav?.share) {
+    try {
+      await nav.share({ title, text, url });
+      return "downloaded-shared";
+    } catch (e) {
+      // The PDF is already saved; a dismissed sheet is not an error worth showing.
+      if (e?.name === "AbortError" || e?.name === "NotAllowedError") return "downloaded";
+      throw e;
+    }
   }
   if (nav?.clipboard?.writeText) {
-    await nav.clipboard.writeText([text, url].filter(Boolean).join(" "));
-    return "copied";
+    try {
+      await nav.clipboard.writeText(message);
+      return "downloaded-copied";
+    } catch (e) {
+      return "downloaded";
+    }
   }
-  return "unsupported";
+  return "downloaded";
 };

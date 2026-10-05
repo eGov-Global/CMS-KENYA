@@ -25,8 +25,9 @@ export const RECEIPT_ACTION_FALLBACKS = {
   share: "Share",
   shareRetry: "Sharing was interrupted — tap Share again.",
   shareText: "Complaint {id} filed with {tenant}. Track it here:",
-  copied: "Link copied — paste it anywhere to share.",
-  unavailable: "Sharing is not available on this device — download the receipt instead.",
+  downloaded: "Receipt PDF saved to your downloads — attach it where you share. The tracking link is in the share text.",
+  downloadedCopied: "Receipt PDF saved to your downloads and tracking link copied — attach the PDF where you share it.",
+  unavailable: "Sharing isn't available here — the receipt PDF was saved to your downloads instead.",
 };
 
 const ALL_ACTIONS = ["download", "print", "share"];
@@ -192,8 +193,11 @@ const ReceiptActionsReady = ({ complaintDetails, actions, variant, className }) 
             .replace("{id}", id)
             .replace("{tenant}", model.tenantName || "");
           const result = await shareComplaintReceipt(model, { title: `${tr("PGR_RECEIPT_TITLE", RECEIPT_FALLBACKS.title)} ${id}`, text, url: trackingUrl(id) });
-          if (result === "copied") setNotice({ tone: "info", text: tr("PGR_RECEIPT_SHARE_COPIED", RECEIPT_ACTION_FALLBACKS.copied) });
-          if (result === "unsupported") setNotice({ tone: "info", text: tr("PGR_RECEIPT_SHARE_UNAVAILABLE", RECEIPT_ACTION_FALLBACKS.unavailable) });
+          // Without native file sharing the PDF has just been downloaded - say so,
+          // and whether the tracking link went to the share sheet or the clipboard.
+          if (result === "downloaded-shared") setNotice({ tone: "info", text: tr("PGR_RECEIPT_SHARE_DOWNLOADED", RECEIPT_ACTION_FALLBACKS.downloaded) });
+          if (result === "downloaded-copied") setNotice({ tone: "info", text: tr("PGR_RECEIPT_SHARE_DOWNLOADED_COPIED", RECEIPT_ACTION_FALLBACKS.downloadedCopied) });
+          if (result === "downloaded") setNotice({ tone: "info", text: tr("PGR_RECEIPT_SHARE_UNAVAILABLE", RECEIPT_ACTION_FALLBACKS.unavailable) });
         }
       } catch (e) {
         if (e?.name === "AbortError") {

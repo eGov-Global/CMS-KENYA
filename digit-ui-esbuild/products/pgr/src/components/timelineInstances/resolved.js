@@ -1,7 +1,7 @@
 import React from "react";
 import { ActionLinks, CheckPoint } from "@egovernments/digit-ui-react-components";
 import { Link } from "react-router-dom";
-import StarRated from "./StarRated";
+import { EmojiRatingBadge } from "../EmojiRating";
 import { useTranslation } from "react-i18next";
 import Reopen from "./reopen";
 //const GetTranslatedAction = (action, t) => t(`CS_COMMON_${action}`);
@@ -12,12 +12,12 @@ const Resolved = ({ action, nextActions,complaintDetails, ComplainMaxIdleTime, r
   // Render the rating display whenever `rating` is present, regardless of
   // workflow.action — after a citizen submits their rating, workflow.action
   // transitions away from "RATE" (to something like "" / "REOPEN" depending
-  // on backend), and the previous code only rendered <StarRated/> inside the
+  // on backend), and the previous code only rendered <EmojiRatingBadge/> inside the
   // `action === "RATE"` branch — so the stars vanished once the workflow
   // moved on. Hoist the render so it appears in every branch when rating
   // is set (closes egovernments/CCRS#473 reopen).
   const ratingDisplay = rating ? (
-    <StarRated text={t("CS_ADDCOMPLAINT_YOU_RATED")} rating={rating} />
+    <EmojiRatingBadge text={t("CS_ADDCOMPLAINT_YOU_RATED")} rating={rating} />
   ) : null;
 
   const lastModifiedTime = complaintDetails?.service?.auditDetails?.lastModifiedTime;

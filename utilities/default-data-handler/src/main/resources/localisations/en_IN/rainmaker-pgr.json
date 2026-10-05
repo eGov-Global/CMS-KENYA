@@ -8353,7 +8353,7 @@
     },
     {
         "code": "PGR_RECEIPT_SHARE_UNAVAILABLE",
-        "message": "Sharing is not available on this device — download the receipt instead.",
+        "message": "Sharing isn't available here — the receipt PDF was saved to your downloads instead.",
         "module": "rainmaker-pgr",
         "locale": "en_IN"
     },
@@ -8402,6 +8402,48 @@
     {
         "code": "PGR_RECEIPT_SHARE_RETRY",
         "message": "Sharing was interrupted — tap Share again.",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "CS_RATING_LABEL_1",
+        "message": "Very unhappy",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "CS_RATING_LABEL_2",
+        "message": "Unhappy",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "CS_RATING_LABEL_3",
+        "message": "Okay",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "CS_RATING_LABEL_4",
+        "message": "Happy",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "CS_RATING_LABEL_5",
+        "message": "Very happy",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "PGR_RECEIPT_SHARE_DOWNLOADED",
+        "message": "Receipt PDF saved to your downloads — attach it where you share. The tracking link is in the share text.",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "PGR_RECEIPT_SHARE_DOWNLOADED_COPIED",
+        "message": "Receipt PDF saved to your downloads and tracking link copied — attach the PDF where you share it.",
         "module": "rainmaker-pgr",
         "locale": "en_IN"
     }
