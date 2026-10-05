@@ -2,6 +2,7 @@ package org.egov.pgr.repository.rowmapper;
 
 import org.egov.pgr.config.PGRConfiguration;
 import org.egov.pgr.policy.PgrSearchScope;
+import org.egov.pgr.util.ServiceRequestIdFormat;
 import org.egov.pgr.web.models.RequestSearchCriteria;
 import org.egov.tracer.model.CustomException;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -123,9 +124,11 @@ public class PGRQueryBuilder {
         }
 
         if (criteria.getServiceRequestId() != null) {
+            // Complaints filed before the idgen padding was dropped still carry the zeros, so match both spellings.
+            Set<String> serviceRequestIdVariants = ServiceRequestIdFormat.searchVariants(criteria.getServiceRequestId());
             addClauseIfRequired(preparedStmtList, builder);
-            builder.append(" ser.serviceRequestId=? ");
-            preparedStmtList.add(criteria.getServiceRequestId());
+            builder.append(" ser.serviceRequestId IN (").append(createQuery(serviceRequestIdVariants)).append(")");
+            addToPreparedStatement(preparedStmtList, serviceRequestIdVariants);
         }
 
         Set<String> ids = criteria.getIds();

@@ -76,6 +76,13 @@ public class PGRConfiguration {
     @Value("${egov.idgen.pgr.serviceRequestId.format}")
     private String serviceRequestIdGenFormat;
 
+    // egov-idgen always expands [SEQ_*] with a six-digit zero pad, which no format string can turn
+    // off. Deployments that want bare complaint numbers (BNG-2026-125 rather than BNG-2026-000125)
+    // opt in here. Defaults to off so an existing deployment's numbering cannot change shape on a
+    // redeploy; only the generated id is affected - search always accepts both spellings.
+    @Value("${egov.idgen.pgr.serviceRequestId.strip-sequence-padding:false}")
+    private Boolean stripServiceRequestIdSequencePadding;
+
     //Workflow Config
     @Value("${pgr.business.codes}")
     private List<String> businessServiceList;
