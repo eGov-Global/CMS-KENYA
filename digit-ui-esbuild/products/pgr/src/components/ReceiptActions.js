@@ -6,7 +6,7 @@
 // utils/complaintReceipt), so Download works on a dropped connection. The only
 // network call is the optional tenant logo, fetched with a short timeout and
 // omitted on failure. Share opens an inline sheet: open the PDF, Email,
-// WhatsApp, SMS (phones), copy the tracking link, download, and "More apps"
+// WhatsApp, SMS (phones), copy the tracking link, and "More apps"
 // (the device's native share sheet, which carries the PDF itself).
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -29,7 +29,7 @@ export const RECEIPT_ACTION_FALLBACKS = {
   sms: "SMS",
   copy: "Copy link",
   more: "More apps",
-  hint: "Email, WhatsApp and SMS send the complaint number and tracking link. Use More apps or Download to send the PDF itself.",
+  hint: "Email, WhatsApp and SMS send the complaint number and tracking link. To send the PDF itself use More apps, or Download Application above.",
   shareRetry: "Sharing was interrupted — tap again.",
   shareText: "Complaint {id} filed with {tenant}. Track it here:",
   copied: "Link copied — paste it anywhere to share.",
@@ -255,7 +255,6 @@ const ReceiptActionsReady = ({ complaintDetails, actions, variant, className }) 
     { key: "whatsapp", icon: MessageCircle, label: tr("PGR_RECEIPT_SHARE_WHATSAPP", RECEIPT_ACTION_FALLBACKS.whatsapp), href: share.links.whatsapp, external: true },
     coarsePointer && { key: "sms", icon: MessageSquare, label: tr("PGR_RECEIPT_SHARE_SMS", RECEIPT_ACTION_FALLBACKS.sms), href: share.links.sms },
     canCopy && { key: "copy", icon: Link2, label: tr("PGR_RECEIPT_SHARE_COPY", RECEIPT_ACTION_FALLBACKS.copy), onClick: () => run("copy") },
-    { key: "download", icon: Download, label: tr("PGR_RECEIPT_DOWNLOAD", RECEIPT_FALLBACKS.downloadLabel), onClick: () => run("download") },
     canNativeShare && { key: "more", icon: Share2, label: tr("PGR_RECEIPT_SHARE_MORE", RECEIPT_ACTION_FALLBACKS.more), onClick: () => run("more") },
   ].filter(Boolean);
 

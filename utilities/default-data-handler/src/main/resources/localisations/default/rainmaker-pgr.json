@@ -7735,7 +7735,7 @@
     },
     {
         "code": "PGR_RECEIPT_SHARE_HINT",
-        "message": "Email, WhatsApp and SMS send the complaint number and tracking link. Use More apps or Download to send the PDF itself.",
+        "message": "Email, WhatsApp and SMS send the complaint number and tracking link. To send the PDF itself use More apps, or Download Application above.",
         "module": "rainmaker-pgr",
         "locale": "default"
     },
