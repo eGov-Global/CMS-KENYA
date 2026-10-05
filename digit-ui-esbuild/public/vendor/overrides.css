@@ -1462,21 +1462,32 @@ button[class*="toast-close"] svg,
   color: var(--color-text-primary, #363636) !important;
 }
 
-/* Rating-star buttons on /citizen/pgr/rate — strip every vendor button
- * affordance (box-shadow on hover, focus ring, default bg). Only the
- * star icon's color/fill should react to hover; the button frame
- * stays invisible. */
-.v2-rating-star,
-.v2-rating-star:hover,
-.v2-rating-star:active,
-.v2-rating-star:focus,
-.v2-rating-star:focus-visible {
-  background: transparent !important;
-  background-color: transparent !important;
-  border: 0 !important;
+/* Receipt share-sheet options (components/ReceiptActions.js): plain tiles, no
+ * vendor hover lift or press transform. */
+.pgr-share-sheet__option,
+.pgr-share-sheet__option:hover,
+.pgr-share-sheet__option:active,
+.pgr-share-sheet__option:focus {
   box-shadow: none !important;
-  outline: none !important;
   transform: none !important;
+}
+
+/* Emoji-rating options on /citizen/pgr/rate (components/EmojiRating.js) — the
+ * generic button rules below add a hover drop-shadow and a press transform that
+ * would replace the option's own selected ring. Pin both: no vendor lift, and the
+ * selected ring survives hover/press. */
+.pgr-emoji-rating__option,
+.pgr-emoji-rating__option:hover,
+.pgr-emoji-rating__option:active,
+.pgr-emoji-rating__option:focus {
+  box-shadow: none !important;
+  transform: none !important;
+}
+.pgr-emoji-rating__option.is-active,
+.pgr-emoji-rating__option.is-active:hover,
+.pgr-emoji-rating__option.is-active:active,
+.pgr-emoji-rating__option.is-active:focus {
+  box-shadow: inset 0 0 0 1px var(--color-primary-1, var(--color-primary-main, #c84c0e)) !important;
 }
 
 /* `.back-btn2` ships with `margin-bottom: 16px` from vendor; we used to

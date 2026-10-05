@@ -5,39 +5,44 @@
 // The PDF is drawn locally from data already in memory (see
 // utils/complaintReceipt), so Download works on a dropped connection. The only
 // network call is the optional tenant logo, fetched with a short timeout and
-// omitted on failure. Share hands the PDF to the native share sheet where the
-// device supports file sharing, otherwise the complaint number + tracking link.
+// omitted on failure. Share opens an inline sheet: open the PDF, Email,
+// WhatsApp, SMS (phones), copy the tracking link, and "More apps"
+// (the device's native share sheet, which carries the PDF itself).
 
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Download, Printer, Share2 } from "lucide-react";
+import { Download, FileText, Link2, Mail, MessageCircle, MessageSquare, Printer, Share2 } from "lucide-react";
 import { Button } from "@egovernments/digit-ui-components-v2";
-
 import { RECEIPT_FALLBACKS } from "../utils/receiptCopy";
+import { buildShareLinks } from "../utils/receiptShare";
 import useComplaintReceiptModel from "../hooks/pgr/useComplaintReceiptModel";
 
-// jsPDF (and the drawing code) is a separate chunk fetched on the first click —
-// most sessions never download a receipt. Cached by the module system after that.
 const loadReceipt = () => import("../utils/complaintReceipt");
 
 export const RECEIPT_ACTION_FALLBACKS = {
   print: "Print Receipt",
   share: "Share",
-  shareRetry: "Sharing was interrupted — tap Share again.",
+  shareVia: "Share receipt via",
+  openPdf: "Open PDF",
+  email: "Email",
+  whatsapp: "WhatsApp",
+  sms: "SMS",
+  copy: "Copy link",
+  more: "More apps",
+  hint: "Email, WhatsApp and SMS send the complaint number and tracking link. To send the PDF itself use More apps, or Download Application above.",
+  shareRetry: "Sharing was interrupted — tap again.",
   shareText: "Complaint {id} filed with {tenant}. Track it here:",
-  downloaded: "Receipt PDF saved to your downloads — attach it where you share. The tracking link is in the share text.",
-  downloadedCopied: "Receipt PDF saved to your downloads and tracking link copied — attach the PDF where you share it.",
-  unavailable: "Sharing isn't available here — the receipt PDF was saved to your downloads instead.",
+  copied: "Link copied — paste it anywhere to share.",
+  copyFailed: "Could not copy the link on this device.",
+  downloaded: "The receipt PDF is also in your downloads.",
+  downloadedCopied: "Receipt PDF saved to your downloads; tracking link copied.",
+  downloadedOnly: "Receipt PDF saved to your downloads.",
+  popupBlocked: "The browser blocked the PDF tab — the receipt was downloaded instead.",
 };
 
 const ALL_ACTIONS = ["download", "print", "share"];
-
-// Logos are cached per URL for the session: the detail page and the success
-// screen would otherwise refetch the same image on every click.
 const logoCache = new Map();
 
-// dd/MM/yyyy HH:mm, deliberately locale-neutral (the platform's time helper
-// emits an English AM/PM suffix).
 const stampNow = () => {
   const now = new Date();
   const pad = (n) => String(n).padStart(2, "0");
@@ -61,6 +66,23 @@ const trackingUrl = (id) => {
   return `${window.location.origin}${path}`;
 };
 
+/** Human tenant name for the receipt and the share text (never the bare code). */
+const resolveTenant = (tenantCode, tr) => {
+  const initData = Digit.SessionStorage.get("initData") || {};
+  const stateInfo = initData.stateInfo || {};
+  const tenant = (initData.tenants || []).find((x) => x?.code === tenantCode);
+  const nameIsCode = (n) => !n || String(n).trim().toLowerCase() === String(tenantCode || "").trim().toLowerCase();
+  const tenantName =
+    (tenant?.name && !nameIsCode(tenant.name) ? tenant.name : "") ||
+    (tenant?.city?.name && !nameIsCode(tenant.city.name) ? tenant.city.name : "") ||
+    (tenant?.i18nKey ? tr(tenant.i18nKey, "") : "") ||
+    (stateInfo?.name && !nameIsCode(stateInfo.name) ? stateInfo.name : "") ||
+    tenant?.name ||
+    stateInfo?.name ||
+    "";
+  return { tenantName, helpline: tenant?.contactNumber || "", logoUrl: stateInfo?.logoUrl };
+};
+
 /**
  * Outer shell: resolves the complaint record (fetching it when only an id was
  * given) and mounts the buttons only once the record exists, so the inner
@@ -76,7 +98,6 @@ const ReceiptActions = ({
   className,
 }) => {
   const { t } = useTranslation();
-
   const shouldFetch = !providedDetails && !!complaintId;
   const { complaintDetails: fetchedDetails, revalidate } = Digit.Hooks.pgr.useComplaintDetails({
     tenantId: tenantId || Digit.ULBService.getCurrentTenantId(),
@@ -85,12 +106,8 @@ const ReceiptActions = ({
   });
   const complaintDetails = providedDetails || fetchedDetails || null;
 
-  // Right after a create the complaint is not yet searchable (persistence is
-  // asynchronous), so the first fetch legitimately resolves EMPTY and
-  // react-query caches it as a success. Re-poll with backoff until the record
-  // appears; give up quietly after that (buttons stay disabled). The attempt
-  // counter is state, not a ref: react-query hands back the SAME empty object
-  // on every refetch, so nothing else would re-run this effect.
+  // Right after submit the search can lag the write by a moment: poll a few
+  // times, backing off, until the record is there.
   const [attempt, setAttempt] = useState(0);
   useEffect(() => {
     if (!shouldFetch || complaintDetails?.service || !fetchedDetails || attempt >= 5) return undefined;
@@ -99,8 +116,6 @@ const ReceiptActions = ({
       setAttempt((n) => n + 1);
     }, 1200 * (attempt + 1));
     return () => clearTimeout(timer);
-    // revalidate is a fresh closure each render; the attempt counter paces the loop
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [shouldFetch, fetchedDetails, complaintDetails?.service, attempt]);
 
   if (!complaintDetails?.service) {
@@ -120,18 +135,10 @@ const ReceiptActionsReady = ({ complaintDetails, actions, variant, className }) 
   const { t } = useTranslation();
   const [busy, setBusy] = useState(null); // which action is running
   const [notice, setNotice] = useState(null); // { tone: "error" | "info", text }
-
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const downloadedRef = useRef(false); // a repeat share must not save a second copy
+  const firstOptionRef = useRef(null);
   const { service, details, classification, extendedRows } = useComplaintReceiptModel(complaintDetails);
-
-  // The receipt chunk and the tenant logo are fetched as soon as the user shows
-  // intent (hover / focus / touch) rather than on the click itself: the Web
-  // Share API must be called inside the click's user-activation window, and a
-  // slow link would otherwise spend it on downloading jsPDF.
-  const prefetch = useCallback(() => {
-    loadReceipt().catch(() => {});
-    const logoUrl = (Digit.SessionStorage.get("initData") || {}).stateInfo?.logoUrl;
-    if (logoUrl) getLogo(logoUrl).catch(() => {});
-  }, []);
 
   const tr = useCallback(
     (key, fallback) => {
@@ -141,70 +148,91 @@ const ReceiptActionsReady = ({ complaintDetails, actions, variant, className }) 
     [t]
   );
 
-  // Everything the PDF needs beyond the complaint itself. The complaint's own
-  // tenant is the authority that owns it — not necessarily the user's home
-  // city on a multi-authority deployment. Some seeds set the tenant `name` to
-  // its CODE ("bo"), which would print as a meaningless header, so fall through
-  // to the localized i18nKey and then the state name.
+  const prefetch = useCallback(() => {
+    loadReceipt().catch(() => {});
+    const { logoUrl } = resolveTenant(service?.tenantId, tr);
+    if (logoUrl) getLogo(logoUrl).catch(() => {});
+  }, [service?.tenantId, tr]);
+
+  const id = service?.serviceRequestId || "";
+  const share = useMemo(() => {
+    const { tenantName } = resolveTenant(service?.tenantId, tr);
+    const subject = `${tr("PGR_RECEIPT_TITLE", RECEIPT_FALLBACKS.title)} ${id}`;
+    const text = tr("PGR_RECEIPT_SHARE_TEXT", RECEIPT_ACTION_FALLBACKS.shareText).replace("{id}", id).replace("{tenant}", tenantName || "");
+    const url = trackingUrl(id);
+    return { subject, text, url, links: buildShareLinks({ subject, text, url }) };
+  }, [service?.tenantId, id, tr]);
+
   const prepareModel = useCallback(async () => {
-    const initData = Digit.SessionStorage.get("initData") || {};
-    const stateInfo = initData.stateInfo || {};
-    const tenantCode = service?.tenantId;
-    const tenant = (initData.tenants || []).find((x) => x?.code === tenantCode);
-    const nameIsCode = (n) => !n || String(n).trim().toLowerCase() === String(tenantCode || "").trim().toLowerCase();
-    const tenantName =
-      (tenant?.name && !nameIsCode(tenant.name) ? tenant.name : "") ||
-      (tenant?.city?.name && !nameIsCode(tenant.city.name) ? tenant.city.name : "") ||
-      (tenant?.i18nKey ? tr(tenant.i18nKey, "") : "") ||
-      (stateInfo?.name && !nameIsCode(stateInfo.name) ? stateInfo.name : "") ||
-      tenant?.name ||
-      stateInfo?.name ||
-      "";
-    const logoDataUri = await getLogo(stateInfo?.logoUrl);
-    return {
-      service,
-      details,
-      classification,
-      extendedRows,
-      tenantName,
-      logoDataUri,
-      helpline: tenant?.contactNumber || "",
-      generatedOn: stampNow(),
-      t,
-      tr,
-    };
+    const { tenantName, helpline, logoUrl } = resolveTenant(service?.tenantId, tr);
+    const logoDataUri = await getLogo(logoUrl);
+    return { service, details, classification, extendedRows, tenantName, logoDataUri, helpline, generatedOn: stampNow(), t, tr };
   }, [service, details, classification, extendedRows, t, tr]);
+
+  const nav = typeof navigator !== "undefined" ? navigator : null;
+  const canNativeShare = typeof nav?.share === "function";
+  const canCopy = typeof nav?.clipboard?.writeText === "function";
+  const coarsePointer = typeof window !== "undefined" && !!window.matchMedia?.("(pointer: coarse)")?.matches;
+
+  const rootRef = useRef(null);
+  const sheetId = `pgr-share-sheet-${id || "receipt"}`;
+  useEffect(() => {
+    if (!sheetOpen) return undefined;
+    prefetch();
+    firstOptionRef.current?.focus();
+    // Escape closes the sheet from anywhere on the page (an option that disabled
+    // itself while busy may have dropped focus to <body>) and hands focus back to Share.
+    const onKey = (e) => {
+      if (e.key !== "Escape") return;
+      setSheetOpen(false);
+      rootRef.current?.querySelector(`[aria-controls="${sheetId}"]`)?.focus();
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [sheetOpen, prefetch, sheetId]);
 
   const run = useCallback(
     async (action) => {
       if (busy) return;
       setBusy(action);
       setNotice(null);
+      // Opened synchronously, inside the click, so the popup blocker sees the gesture.
+      const tab = action === "open" ? window.open("", "_blank") : null;
+      if (tab) tab.opener = null;
       try {
-        const [{ downloadComplaintReceipt, printComplaintReceipt, shareComplaintReceipt }, model] = await Promise.all([loadReceipt(), prepareModel()]);
+        if (action === "copy") {
+          await nav.clipboard.writeText(share.links.message);
+          setNotice({ tone: "info", text: tr("PGR_RECEIPT_SHARE_COPIED", RECEIPT_ACTION_FALLBACKS.copied) });
+          return;
+        }
+        const [{ downloadComplaintReceipt, printComplaintReceipt, openComplaintReceipt, shareComplaintReceipt }, model] = await Promise.all([loadReceipt(), prepareModel()]);
         if (action === "download") {
           downloadComplaintReceipt(model);
+          downloadedRef.current = true;
         } else if (action === "print") {
-          // A popup blocker is the one failure a user can't see — hand them the file instead.
           if (printComplaintReceipt(model) === false) downloadComplaintReceipt(model);
-        } else if (action === "share") {
-          const id = service?.serviceRequestId || "";
-          const text = tr("PGR_RECEIPT_SHARE_TEXT", RECEIPT_ACTION_FALLBACKS.shareText)
-            .replace("{id}", id)
-            .replace("{tenant}", model.tenantName || "");
-          const result = await shareComplaintReceipt(model, { title: `${tr("PGR_RECEIPT_TITLE", RECEIPT_FALLBACKS.title)} ${id}`, text, url: trackingUrl(id) });
-          // Without native file sharing the PDF has just been downloaded - say so,
-          // and whether the tracking link went to the share sheet or the clipboard.
+        } else if (action === "open") {
+          if (openComplaintReceipt(model, tab) === false) {
+            downloadComplaintReceipt(model);
+            downloadedRef.current = true;
+            setNotice({ tone: "info", text: tr("PGR_RECEIPT_POPUP_BLOCKED", RECEIPT_ACTION_FALLBACKS.popupBlocked) });
+          }
+        } else if (action === "more") {
+          const result = await shareComplaintReceipt(model, { title: share.subject, text: share.text, url: share.url, alreadyDownloaded: downloadedRef.current });
+          if (result.startsWith("downloaded")) downloadedRef.current = true;
+          // Without native file sharing the PDF went to the downloads folder - say so,
+          // and whether the tracking link reached the share sheet or the clipboard.
           if (result === "downloaded-shared") setNotice({ tone: "info", text: tr("PGR_RECEIPT_SHARE_DOWNLOADED", RECEIPT_ACTION_FALLBACKS.downloaded) });
           if (result === "downloaded-copied") setNotice({ tone: "info", text: tr("PGR_RECEIPT_SHARE_DOWNLOADED_COPIED", RECEIPT_ACTION_FALLBACKS.downloadedCopied) });
-          if (result === "downloaded") setNotice({ tone: "info", text: tr("PGR_RECEIPT_SHARE_UNAVAILABLE", RECEIPT_ACTION_FALLBACKS.unavailable) });
+          if (result === "downloaded") setNotice({ tone: "info", text: tr("PGR_RECEIPT_SHARE_DOWNLOADED_ONLY", RECEIPT_ACTION_FALLBACKS.downloadedOnly) });
         }
       } catch (e) {
-        if (e?.name === "AbortError") {
-          // The user closed the share sheet — not an error.
+        if (tab && !tab.closed) tab.close();
+        if (action === "copy") {
+          setNotice({ tone: "info", text: tr("PGR_RECEIPT_SHARE_COPY_FAILED", RECEIPT_ACTION_FALLBACKS.copyFailed) });
+        } else if (e?.name === "AbortError") {
+          // the user dismissed the native sheet: nothing to say
         } else if (e?.name === "NotAllowedError") {
-          // The click's activation window expired before the share sheet opened
-          // (slow chunk / logo fetch). Everything is cached now; a second tap works.
           setNotice({ tone: "info", text: tr("PGR_RECEIPT_SHARE_RETRY", RECEIPT_ACTION_FALLBACKS.shareRetry) });
         } else {
           setNotice({ tone: "error", text: tr("PGR_RECEIPT_ERROR", RECEIPT_FALLBACKS.errorLabel) });
@@ -213,27 +241,67 @@ const ReceiptActionsReady = ({ complaintDetails, actions, variant, className }) 
         setBusy(null);
       }
     },
-    [busy, prepareModel, service?.serviceRequestId, tr]
+    [busy, nav, prepareModel, share, tr]
   );
 
   const buttons = {
-    download: { icon: Download, label: tr("PGR_RECEIPT_DOWNLOAD", RECEIPT_FALLBACKS.downloadLabel) },
-    print: { icon: Printer, label: tr("PGR_RECEIPT_PRINT", RECEIPT_ACTION_FALLBACKS.print) },
-    share: { icon: Share2, label: tr("PGR_RECEIPT_SHARE", RECEIPT_ACTION_FALLBACKS.share) },
+    download: { icon: Download, label: tr("PGR_RECEIPT_DOWNLOAD", RECEIPT_FALLBACKS.downloadLabel), onClick: () => run("download") },
+    print: { icon: Printer, label: tr("PGR_RECEIPT_PRINT", RECEIPT_ACTION_FALLBACKS.print), onClick: () => run("print") },
+    share: { icon: Share2, label: tr("PGR_RECEIPT_SHARE", RECEIPT_ACTION_FALLBACKS.share), onClick: () => setSheetOpen((o) => !o) },
   };
+  const options = [
+    { key: "open", icon: FileText, label: tr("PGR_RECEIPT_OPEN_PDF", RECEIPT_ACTION_FALLBACKS.openPdf), onClick: () => run("open") },
+    { key: "email", icon: Mail, label: tr("PGR_RECEIPT_SHARE_EMAIL", RECEIPT_ACTION_FALLBACKS.email), href: share.links.email },
+    { key: "whatsapp", icon: MessageCircle, label: tr("PGR_RECEIPT_SHARE_WHATSAPP", RECEIPT_ACTION_FALLBACKS.whatsapp), href: share.links.whatsapp, external: true },
+    coarsePointer && { key: "sms", icon: MessageSquare, label: tr("PGR_RECEIPT_SHARE_SMS", RECEIPT_ACTION_FALLBACKS.sms), href: share.links.sms },
+    canCopy && { key: "copy", icon: Link2, label: tr("PGR_RECEIPT_SHARE_COPY", RECEIPT_ACTION_FALLBACKS.copy), onClick: () => run("copy") },
+    canNativeShare && { key: "more", icon: Share2, label: tr("PGR_RECEIPT_SHARE_MORE", RECEIPT_ACTION_FALLBACKS.more), onClick: () => run("more") },
+  ].filter(Boolean);
 
   return (
-    <div className={className} style={{ display: "flex", flexDirection: "column", gap: "6px", alignItems: "flex-start" }}>
+    <div ref={rootRef} className={className} style={{ display: "flex", flexDirection: "column", gap: "6px", alignItems: "flex-start" }}>
       <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }} onPointerEnter={prefetch} onFocusCapture={prefetch} onTouchStart={prefetch}>
         {actions.filter((a) => buttons[a]).map((a) => {
-          const { icon: Icon, label } = buttons[a];
+          const { icon: Icon, label, onClick } = buttons[a];
+          const extra = a === "share" ? { "aria-expanded": sheetOpen, "aria-controls": sheetId } : {};
           return (
-            <Button key={a} variant={variant} type="button" onClick={() => run(a)} loading={busy === a} disabled={!!busy && busy !== a} leading={<Icon className="h-4 w-4" />}>
+            <Button key={a} variant={variant} type="button" onClick={onClick} loading={busy === a} disabled={!!busy && busy !== a} leading={<Icon className="h-4 w-4" />} {...extra}>
               {label}
             </Button>
           );
         })}
       </div>
+      {sheetOpen ? (
+        <div
+          id={sheetId}
+          className="pgr-share-sheet"
+          role="group"
+          aria-labelledby={`${sheetId}-title`}
+        >
+          <p id={`${sheetId}-title`} className="pgr-share-sheet__title">{tr("PGR_RECEIPT_SHARE_VIA", RECEIPT_ACTION_FALLBACKS.shareVia)}</p>
+          <div className="pgr-share-sheet__grid">
+            {options.map((o, i) => {
+              const Icon = o.icon;
+              const inner = (
+                <>
+                  <Icon aria-hidden="true" />
+                  <span>{o.label}</span>
+                </>
+              );
+              return o.href ? (
+                <a key={o.key} ref={i === 0 ? firstOptionRef : undefined} className="pgr-share-sheet__option" data-share={o.key} href={o.href} target={o.external ? "_blank" : undefined} rel={o.external ? "noopener noreferrer" : undefined}>
+                  {inner}
+                </a>
+              ) : (
+                <button key={o.key} ref={i === 0 ? firstOptionRef : undefined} type="button" className="pgr-share-sheet__option" data-share={o.key} onClick={o.onClick} disabled={!!busy} aria-busy={busy === o.key || undefined}>
+                  {inner}
+                </button>
+              );
+            })}
+          </div>
+          <p className="pgr-share-sheet__hint">{tr("PGR_RECEIPT_SHARE_HINT", RECEIPT_ACTION_FALLBACKS.hint)}</p>
+        </div>
+      ) : null}
       {notice ? (
         <p role={notice.tone === "error" ? "alert" : "status"} className={notice.tone === "error" ? "m-0 text-sm text-destructive" : "m-0 text-sm text-muted-foreground"}>
           {notice.text}

@@ -29,6 +29,7 @@ import { jsPDF } from "jspdf";
 
 import { complaintLabel, COMPLAINT_LABEL_PREFIX } from "./complaintLabel";
 import { RECEIPT_FALLBACKS } from "./receiptCopy";
+import { shareReceipt } from "./receiptShare";
 
 const PAGE_W = 210;
 const MARGIN_L = 15;
@@ -570,6 +571,24 @@ export const printComplaintReceipt = (model) => {
   return tab ? "tab" : false;
 };
 
+/**
+ * Open the receipt as a PDF in the browser's viewer. Pass a tab opened
+ * synchronously in the click handler (`window.open("", "_blank")`) so the
+ * popup blocker sees a user gesture even though drawing the PDF is async;
+ * without one a fresh tab is attempted. Returns false when no tab could be
+ * used so the caller can fall back to a download.
+ */
+export const openComplaintReceipt = (model, tab) => {
+  const url = buildComplaintReceipt(model).output("bloburl");
+  if (tab && !tab.closed) {
+    tab.location.replace(url);
+  } else if (!openTab(url)) {
+    return false;
+  }
+  setTimeout(() => URL.revokeObjectURL(url), 60000);
+  return true;
+};
+
 // window.open with the "noopener" feature returns null BY SPEC even when the
 // tab opened, which would read as a blocked popup — detach the opener by hand.
 const openTab = (url) => {
@@ -579,51 +598,20 @@ const openTab = (url) => {
 };
 
 /**
- * Share the receipt. Where the device can share files (Android Chrome, iOS
- * Safari -> WhatsApp, mail, ...) the PDF itself goes into the native share
- * sheet with the tracking link in the message. Everywhere else the PDF is
- * downloaded first - the citizen always ends up holding the document - and the
- * link is then offered through the share sheet or, failing that, the clipboard.
- * Returns what happened so the caller can word the confirmation:
- *   "file" | "downloaded-shared" | "downloaded-copied" | "downloaded".
- * A file share the user dismissed surfaces as the AbortError the Web Share API
- * throws (nothing was saved, so there is nothing to confirm).
+ * Share the receipt (see utils/receiptShare for the decision tree). The PDF is
+ * drawn at most once per tap, whether it ends up in the share sheet or in the
+ * downloads folder; `alreadyDownloaded` lets a repeat tap skip the download.
  */
-export const shareComplaintReceipt = async (model, { title, text, url }) => {
-  const nav = typeof navigator !== "undefined" ? navigator : null;
-  const message = [text, url].filter(Boolean).join(" ");
-  if (nav?.share) {
-    try {
-      const blob = buildComplaintReceipt(model).output("blob");
-      const file = new File([blob], receiptFileName(model), { type: "application/pdf" });
-      if (nav.canShare?.({ files: [file] })) {
-        await nav.share({ files: [file], title, text: message });
-        return "file";
-      }
-    } catch (e) {
-      // Cancelled, or the activation window is spent: a second share() would fail too.
-      if (e?.name === "AbortError" || e?.name === "NotAllowedError") throw e;
-      // fall through: the PDF still reaches the citizen through the download below
-    }
-  }
-  downloadComplaintReceipt(model);
-  if (nav?.share) {
-    try {
-      await nav.share({ title, text, url });
-      return "downloaded-shared";
-    } catch (e) {
-      // The PDF is already saved; a dismissed sheet is not an error worth showing.
-      if (e?.name === "AbortError" || e?.name === "NotAllowedError") return "downloaded";
-      throw e;
-    }
-  }
-  if (nav?.clipboard?.writeText) {
-    try {
-      await nav.clipboard.writeText(message);
-      return "downloaded-copied";
-    } catch (e) {
-      return "downloaded";
-    }
-  }
-  return "downloaded";
+export const shareComplaintReceipt = async (model, { title, text, url, alreadyDownloaded = false }) => {
+  let doc = null;
+  const getDoc = () => (doc = doc || buildComplaintReceipt(model));
+  return shareReceipt({
+    nav: typeof navigator !== "undefined" ? navigator : null,
+    makeFile: () => new File([getDoc().output("blob")], receiptFileName(model), { type: "application/pdf" }),
+    download: () => getDoc().save(receiptFileName(model)),
+    title,
+    text,
+    url,
+    alreadyDownloaded,
+  });
 };

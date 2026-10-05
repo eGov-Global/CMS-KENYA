@@ -34,6 +34,11 @@ const FEEDBACK_OPTIONS = [
   { key: "CS_FEEDBACK_OTHERS", fallback: "Other" },
 ];
 
+/**
+ * Native checkbox styled to read with the v2 surface — brand-tinted
+ * accent on check, theme border, matching the file-complaint form's
+ * input rhythm so the rating page doesn't feel like a different app.
+ */
 function FeedbackCheckbox({ checked, onChange, label }) {
   return (
     <label
@@ -218,9 +223,13 @@ const SelectRating = ({ parentRoute }) => {
               value={rating}
               onChange={setRating}
               label={tr(t, "CS_COMPLAINT_RATE_TEXT", "Overall, how satisfied are you with the handling of your complaint?")}
+              required
+              invalid={submitError}
+              describedBy="rating-error"
             />
             {submitError ? (
               <p
+                id="rating-error"
                 role="alert"
                 style={{
                   marginTop: 8,

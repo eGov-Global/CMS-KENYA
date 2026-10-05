@@ -8353,7 +8353,7 @@
     },
     {
         "code": "PGR_RECEIPT_SHARE_UNAVAILABLE",
-        "message": "Sharing isn't available here — the receipt PDF was saved to your downloads instead.",
+        "message": "Sharing is not available on this device — download the receipt instead.",
         "module": "rainmaker-pgr",
         "locale": "en_IN"
     },
@@ -8437,13 +8437,79 @@
     },
     {
         "code": "PGR_RECEIPT_SHARE_DOWNLOADED",
-        "message": "Receipt PDF saved to your downloads — attach it where you share. The tracking link is in the share text.",
+        "message": "The receipt PDF is also in your downloads.",
         "module": "rainmaker-pgr",
         "locale": "en_IN"
     },
     {
         "code": "PGR_RECEIPT_SHARE_DOWNLOADED_COPIED",
-        "message": "Receipt PDF saved to your downloads and tracking link copied — attach the PDF where you share it.",
+        "message": "Receipt PDF saved to your downloads; tracking link copied.",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "PGR_RECEIPT_SHARE_DOWNLOADED_ONLY",
+        "message": "Receipt PDF saved to your downloads.",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "PGR_RECEIPT_SHARE_VIA",
+        "message": "Share receipt via",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "PGR_RECEIPT_OPEN_PDF",
+        "message": "Open PDF",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "PGR_RECEIPT_SHARE_EMAIL",
+        "message": "Email",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "PGR_RECEIPT_SHARE_WHATSAPP",
+        "message": "WhatsApp",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "PGR_RECEIPT_SHARE_SMS",
+        "message": "SMS",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "PGR_RECEIPT_SHARE_COPY",
+        "message": "Copy link",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "PGR_RECEIPT_SHARE_MORE",
+        "message": "More apps",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "PGR_RECEIPT_SHARE_HINT",
+        "message": "Email, WhatsApp and SMS send the complaint number and tracking link. To send the PDF itself use More apps, or Download Application above.",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "PGR_RECEIPT_SHARE_COPY_FAILED",
+        "message": "Could not copy the link on this device.",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "PGR_RECEIPT_POPUP_BLOCKED",
+        "message": "The browser blocked the PDF tab — the receipt was downloaded instead.",
         "module": "rainmaker-pgr",
         "locale": "en_IN"
     }
