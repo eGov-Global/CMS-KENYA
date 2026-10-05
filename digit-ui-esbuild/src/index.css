@@ -468,3 +468,11 @@ body:has(.citizen-form-wrapper) .citizen {
   .pgr-share-sheet { padding: 10px; }
   .pgr-share-sheet__grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
 }
+
+/* ---- Employee complaint-success: receipt actions row under the result panel (components/Response.js) ---- */
+.pgr-receipt-row {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 12px 24px;
+  margin-top: 16px; padding: 16px 24px;
+  background: #fff; border-radius: 4px; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.16);
+}
+.pgr-receipt-row__label { margin: 0; font-size: 0.875rem; font-weight: 600; color: var(--color-text-secondary, #505a5f); }
