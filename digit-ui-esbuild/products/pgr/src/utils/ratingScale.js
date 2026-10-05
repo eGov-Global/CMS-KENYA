@@ -22,3 +22,16 @@ export const ratingLabel = (t, value) => {
   const step = ratingStep(value);
   return step ? trRating(t, step.key, step.fallback) : "";
 };
+
+/**
+ * Keyboard navigation of the radio group (WAI-ARIA radio pattern): Right/Down =
+ * next, Left/Up = previous, Home/End = first/last, clamped to the scale. Returns
+ * null for keys the group does not handle.
+ */
+export const nextRatingForKey = (key, current) => {
+  const max = RATING_SCALE.length;
+  const from = Math.min(max, Math.max(1, Number(current) || 1));
+  const moves = { ArrowRight: from + 1, ArrowDown: from + 1, ArrowLeft: from - 1, ArrowUp: from - 1, Home: 1, End: max };
+  if (!(key in moves)) return null;
+  return Math.min(max, Math.max(1, moves[key]));
+};

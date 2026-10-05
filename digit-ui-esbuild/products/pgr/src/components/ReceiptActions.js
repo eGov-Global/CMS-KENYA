@@ -6,9 +6,10 @@
 // utils/complaintReceipt), so Download works on a dropped connection. The only
 // network call is the optional tenant logo, fetched with a short timeout and
 // omitted on failure. Share hands the PDF to the native share sheet where the
-// device supports file sharing, otherwise the complaint number + tracking link.
+// device supports file sharing; everywhere else the PDF is downloaded first and
+// the tracking link is then offered via the share sheet or the clipboard.
 
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Download, Printer, Share2 } from "lucide-react";
 import { Button } from "@egovernments/digit-ui-components-v2";
@@ -25,9 +26,9 @@ export const RECEIPT_ACTION_FALLBACKS = {
   share: "Share",
   shareRetry: "Sharing was interrupted — tap Share again.",
   shareText: "Complaint {id} filed with {tenant}. Track it here:",
-  downloaded: "Receipt PDF saved to your downloads — attach it where you share. The tracking link is in the share text.",
-  downloadedCopied: "Receipt PDF saved to your downloads and tracking link copied — attach the PDF where you share it.",
-  unavailable: "Sharing isn't available here — the receipt PDF was saved to your downloads instead.",
+  downloaded: "The receipt PDF is also in your downloads.",
+  downloadedCopied: "Receipt PDF saved to your downloads; tracking link copied.",
+  downloadedOnly: "Receipt PDF saved to your downloads.",
 };
 
 const ALL_ACTIONS = ["download", "print", "share"];
@@ -120,6 +121,7 @@ const ReceiptActionsReady = ({ complaintDetails, actions, variant, className }) 
   const { t } = useTranslation();
   const [busy, setBusy] = useState(null); // which action is running
   const [notice, setNotice] = useState(null); // { tone: "error" | "info", text }
+  const downloadedRef = useRef(false); // a repeat Share must not save a second copy
 
   const { service, details, classification, extendedRows } = useComplaintReceiptModel(complaintDetails);
 
@@ -184,6 +186,7 @@ const ReceiptActionsReady = ({ complaintDetails, actions, variant, className }) 
         const [{ downloadComplaintReceipt, printComplaintReceipt, shareComplaintReceipt }, model] = await Promise.all([loadReceipt(), prepareModel()]);
         if (action === "download") {
           downloadComplaintReceipt(model);
+          downloadedRef.current = true;
         } else if (action === "print") {
           // A popup blocker is the one failure a user can't see — hand them the file instead.
           if (printComplaintReceipt(model) === false) downloadComplaintReceipt(model);
@@ -192,12 +195,18 @@ const ReceiptActionsReady = ({ complaintDetails, actions, variant, className }) 
           const text = tr("PGR_RECEIPT_SHARE_TEXT", RECEIPT_ACTION_FALLBACKS.shareText)
             .replace("{id}", id)
             .replace("{tenant}", model.tenantName || "");
-          const result = await shareComplaintReceipt(model, { title: `${tr("PGR_RECEIPT_TITLE", RECEIPT_FALLBACKS.title)} ${id}`, text, url: trackingUrl(id) });
-          // Without native file sharing the PDF has just been downloaded - say so,
-          // and whether the tracking link went to the share sheet or the clipboard.
+          const result = await shareComplaintReceipt(model, {
+            title: `${tr("PGR_RECEIPT_TITLE", RECEIPT_FALLBACKS.title)} ${id}`,
+            text,
+            url: trackingUrl(id),
+            alreadyDownloaded: downloadedRef.current,
+          });
+          if (result.startsWith("downloaded")) downloadedRef.current = true;
+          // Without native file sharing the PDF went to the downloads folder - say so,
+          // and whether the tracking link reached the share sheet or the clipboard.
           if (result === "downloaded-shared") setNotice({ tone: "info", text: tr("PGR_RECEIPT_SHARE_DOWNLOADED", RECEIPT_ACTION_FALLBACKS.downloaded) });
           if (result === "downloaded-copied") setNotice({ tone: "info", text: tr("PGR_RECEIPT_SHARE_DOWNLOADED_COPIED", RECEIPT_ACTION_FALLBACKS.downloadedCopied) });
-          if (result === "downloaded") setNotice({ tone: "info", text: tr("PGR_RECEIPT_SHARE_UNAVAILABLE", RECEIPT_ACTION_FALLBACKS.unavailable) });
+          if (result === "downloaded") setNotice({ tone: "info", text: tr("PGR_RECEIPT_SHARE_DOWNLOADED_ONLY", RECEIPT_ACTION_FALLBACKS.downloadedOnly) });
         }
       } catch (e) {
         if (e?.name === "AbortError") {

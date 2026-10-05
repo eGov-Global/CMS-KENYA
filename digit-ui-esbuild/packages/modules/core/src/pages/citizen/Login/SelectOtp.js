@@ -131,11 +131,8 @@ const SelectOtp = ({
   userType = "citizen",
   canSubmit,
 }) => {
-  // 3 minutes: SMS delivery on the pilot networks can take well over a minute,
-  // and an early "Resend" produces a second OTP that invalidates the first.
-  // Per-deployment override via globalConfigs OTP_RESEND_COOLDOWN_SECS.
-  const RESEND_COOLDOWN_SECS = Number(window?.globalConfigs?.getConfig?.("OTP_RESEND_COOLDOWN_SECS")) || 180;
-  // m:ss — "3:00", "1:25", "0:07". With a minutes-long cooldown a raw seconds
+  const RESEND_COOLDOWN_SECS = 180;
+  // m:ss — "3:00", "1:25", "0:07". With a 3-minute cooldown a raw seconds
   // count ("120 segundos") reads poorly; a clock face needs no unit word,
   // which also spares a per-locale "seconds" suffix.
   const formatTimeLeft = (secs) => `${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, "0")}`;

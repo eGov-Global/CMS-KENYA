@@ -22,3 +22,17 @@ test("ratingLabel prefers the seeded message and falls back to English when the 
   assert.equal(ratingLabel(seeded, 1), "Very unhappy");
   assert.equal(ratingLabel(seeded, 9), "");
 });
+
+test("keyboard: Right/Down move to the next face, Left/Up to the previous, Home/End jump, clamped at the ends", async () => {
+  const { nextRatingForKey } = await import("../products/pgr/src/utils/ratingScale.js");
+  assert.equal(nextRatingForKey("ArrowRight", 1), 2);
+  assert.equal(nextRatingForKey("ArrowDown", 2), 3);
+  assert.equal(nextRatingForKey("ArrowLeft", 3), 2);
+  assert.equal(nextRatingForKey("ArrowUp", 3), 2);
+  assert.equal(nextRatingForKey("ArrowLeft", 1), 1);
+  assert.equal(nextRatingForKey("ArrowRight", 5), 5);
+  assert.equal(nextRatingForKey("Home", 4), 1);
+  assert.equal(nextRatingForKey("End", 2), 5);
+  assert.equal(nextRatingForKey("ArrowRight", 0), 2, "nothing chosen yet: the focused first face moves to the second");
+  assert.equal(nextRatingForKey("Tab", 3), null);
+});
