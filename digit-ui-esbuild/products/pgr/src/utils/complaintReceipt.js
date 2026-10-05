@@ -589,6 +589,9 @@ export const openComplaintReceipt = (model, tab) => {
   return true;
 };
 
+/** Open an already-built receipt blob URL in a new tab (synchronously, inside a click). Returns the tab or null when blocked. */
+export const openReceiptUrl = (url) => openTab(url);
+
 // window.open with the "noopener" feature returns null BY SPEC even when the
 // tab opened, which would read as a blocked popup — detach the opener by hand.
 const openTab = (url) => {

@@ -179,9 +179,43 @@ const ReceiptActionsReady = ({ complaintDetails, actions, variant, className }) 
 
   const rootRef = useRef(null);
   const sheetId = `pgr-share-sheet-${id || "receipt"}`;
+
+  // The PDF for "Open PDF" is drawn as soon as the sheet opens, so the click can
+  // open the finished blob URL synchronously - the only way every browser allows
+  // a new tab (navigating a blank popup afterwards is not reliable everywhere).
+  const pdfRef = useRef({ url: null, promise: null });
+  const ensurePdfUrl = useCallback(() => {
+    if (pdfRef.current.url) return Promise.resolve(pdfRef.current.url);
+    if (!pdfRef.current.promise) {
+      pdfRef.current.promise = Promise.all([loadReceipt(), prepareModel()])
+        .then(([{ buildComplaintReceipt }, model]) => {
+          const url = buildComplaintReceipt(model).output("bloburl");
+          pdfRef.current.url = url;
+          return url;
+        })
+        .catch((e) => {
+          pdfRef.current.promise = null;
+          throw e;
+        });
+    }
+    return pdfRef.current.promise;
+  }, [prepareModel]);
+  useEffect(() => {
+    // A new/updated complaint record invalidates the drawn receipt.
+    const ref = pdfRef.current;
+    ref.url = null;
+    ref.promise = null;
+    return () => {
+      if (ref.url) URL.revokeObjectURL(ref.url);
+      ref.url = null;
+      ref.promise = null;
+    };
+  }, [service]);
+
   useEffect(() => {
     if (!sheetOpen) return undefined;
     prefetch();
+    ensurePdfUrl().catch(() => {});
     firstOptionRef.current?.focus();
     // Escape closes the sheet from anywhere on the page (an option that disabled
     // itself while busy may have dropped focus to <body>) and hands focus back to Share.
@@ -192,16 +226,32 @@ const ReceiptActionsReady = ({ complaintDetails, actions, variant, className }) 
     };
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
-  }, [sheetOpen, prefetch, sheetId]);
+  }, [sheetOpen, prefetch, ensurePdfUrl, sheetId]);
 
   const run = useCallback(
     async (action) => {
       if (busy) return;
       setBusy(action);
       setNotice(null);
-      // Opened synchronously, inside the click, so the popup blocker sees the gesture.
-      const tab = action === "open" ? window.open("", "_blank") : null;
-      if (tab) tab.opener = null;
+      // Opened synchronously, inside the click, so the popup blocker sees the gesture:
+      // straight onto the prebuilt PDF when it is ready, else a blank tab that is
+      // navigated once the PDF exists.
+      let tab = null;
+      if (action === "open") {
+        const ready = pdfRef.current.url;
+        if (ready) {
+          const { openReceiptUrl, downloadComplaintReceipt } = await loadReceipt();
+          if (!openReceiptUrl(ready)) {
+            downloadComplaintReceipt(await prepareModel());
+            downloadedRef.current = true;
+            setNotice({ tone: "info", text: tr("PGR_RECEIPT_POPUP_BLOCKED", RECEIPT_ACTION_FALLBACKS.popupBlocked) });
+          }
+          setBusy(null);
+          return;
+        }
+        tab = window.open("", "_blank");
+        if (tab) tab.opener = null;
+      }
       try {
         if (action === "copy") {
           await nav.clipboard.writeText(share.links.message);
