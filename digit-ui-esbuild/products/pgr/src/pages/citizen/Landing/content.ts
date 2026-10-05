@@ -100,7 +100,7 @@ export const LANDING_COPY = {
   HERO_TRUST_CASE_NUMBER: { en: "Unique case number" },
   HERO_TRUST_NOTIFICATIONS: { en: "SMS acknowledgement with your case number" },
   HERO_CHANNELS_LABEL: { en: "Also available through:" },
-  HERO_PHOTO_CAPTION: { en: "Uhuru Park and the city centre, Nairobi" },
+  HERO_PHOTO_CAPTION: { en: "Nairobi City County customer-service centre" },
   // Hand-lettered tagline over the hero photo and on the phone photo card.
   HERO_SCRIPT: { en: "A Cleaner, Greener Nairobi" },
   // Speech bubble on the circular photos beside the steps and channels.
