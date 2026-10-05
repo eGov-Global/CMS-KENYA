@@ -261,6 +261,8 @@ interface StepShellProps {
 // Consolidated 3-step wizard (was 6 screens). Each step groups what used to be
 // separate screens so the citizen reaches Submit in far fewer taps:
 //   complaint — "what is it about?" (related-to dispatcher) + the complaint type
+//               + the optional free-text address (UAT ask: describe the spot
+//               while describing the issue)
 //   where     — map pin + ward (auto-cascaded from the pin) + landmark
 //   details   — description + dynamic category fields + photos + consents → submit
 const STEPS = [
@@ -1399,7 +1401,9 @@ function InlineSpinner() {
 // the logged-in citizen's profile (name + address editable per complaint). The
 // values travel in extendedAttributes (complainantName/complainantAddress), so
 // editing them never round-trips through the user service.
-// Optional free-text address, shown on EVERY tenant.
+// Optional free-text address, shown on EVERY tenant — its own card on step 1,
+// right under the complaint type (Nairobi UAT: the citizen describes the spot
+// while describing the issue; the map pin and ward follow on step 2).
 //
 // Kept separate from ReporterDetailsCard: that card's three fields (name /
 // address / email) travel in extendedAttributes and are therefore unusable on
@@ -1407,22 +1411,22 @@ function InlineSpinner() {
 // service.address.street, a first-class column every tenant persists, so the
 // citizen and employee create forms can offer the same optional address and
 // both details pages can render it (#21).
-function AddressCardFields({ data, patch, t }: StepBodyProps) {
+function AddressCard({ data, patch, t }: StepBodyProps) {
+  const label = tr(t, "ES_CREATECOMPLAINT_ADDRESS", "Address");
   return (
-    <div className="space-y-2" style={{ marginTop: "1rem" }}>
-      <Field label={tr(t, "ES_CREATECOMPLAINT_ADDRESS", "Address")} htmlFor="complaint-address">
-        <Input
-          id="complaint-address"
-          data-matomo-mask
-          maxLength={300}
-          value={data.street ?? ""}
-          onChange={(e) => patch({ street: e.target.value })}
-        />
-        <FieldHelp>
-          {tr(t, "CS_ADDRESS_HELP", "Optional — a nearby building, plot or description to help the officer find the spot.")}
-        </FieldHelp>
-      </Field>
-    </div>
+    <StepShell
+      title={label}
+      description={tr(t, "CS_ADDRESS_HELP", "Optional — a nearby building, plot or description to help the officer find the spot.")}
+    >
+      <Input
+        id="complaint-address"
+        aria-label={label}
+        data-matomo-mask
+        maxLength={300}
+        value={data.street ?? ""}
+        onChange={(e) => patch({ street: e.target.value })}
+      />
+    </StepShell>
   );
 }
 
@@ -1519,7 +1523,14 @@ function StepComplaint(props: StepBodyProps) {
           Until then, don't collect what we cannot keep. */}
       {hasDispatcher ? <ReporterDetailsCard {...props} /> : null}
       {showType ? (
-        catalogueLoading ? <InlineSpinner /> : <Step0Type {...props} />
+        catalogueLoading ? (
+          <InlineSpinner />
+        ) : (
+          <>
+            <Step0Type {...props} />
+            <AddressCard {...props} />
+          </>
+        )
       ) : (
         <EmptyStateCard t={t} />
       )}
@@ -1528,7 +1539,8 @@ function StepComplaint(props: StepBodyProps) {
 }
 
 // Step 2 — "Where": ONE unified card with the map (left, larger) and Location
-// details (right). flex-wrap stacks them on mobile (no Tailwind md: needed).
+// details (right: ward cascade + landmark; the free-text address lives on
+// step 1). flex-wrap stacks them on mobile (no Tailwind md: needed).
 // align-items:flex-start keeps the form pinned top-right beside the capped map.
 function StepWhere(props: StepBodyProps) {
   return (
@@ -1544,7 +1556,6 @@ function StepWhere(props: StepBodyProps) {
           </div>
           <div style={{ flex: "2 1 300px", minWidth: 0 }}>
             <Step2Location {...props} />
-            <AddressCardFields {...props} />
           </div>
         </div>
       </Card>
