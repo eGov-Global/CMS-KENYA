@@ -1,7 +1,7 @@
 import React from "react";
 import { ActionLinks, CheckPoint } from "@egovernments/digit-ui-react-components";
 import { Link } from "react-router-dom";
-import StarRated from "./StarRated";
+import { EmojiRatingBadge } from "../EmojiRating";
 import { useTranslation } from "react-i18next";
 import Reopen from "./reopen";
 //const GetTranslatedAction = (action, t) => t(`CS_COMMON_${action}`);
@@ -11,11 +11,11 @@ const Rejected = ({ action, nextActions, complaintDetails, ComplainMaxIdleTime, 
 
   // Render the rating display whenever `rating` is present, regardless of
   // workflow.action — same fix as resolved.js. After rating, action moves
-  // away from "RATE" and the previous code only rendered <StarRated/> in
+  // away from "RATE" and the previous code only rendered <EmojiRatingBadge/> in
   // the RATE branch, so stars vanished (closes egovernments/CCRS#473
   // reopen).
   const ratingDisplay = rating ? (
-    <StarRated text={t("CS_ADDCOMPLAINT_YOU_RATED")} rating={rating} />
+    <EmojiRatingBadge text={t("CS_ADDCOMPLAINT_YOU_RATED")} rating={rating} />
   ) : null;
 
   const lastModifiedTime = complaintDetails?.service?.auditDetails?.lastModifiedTime;

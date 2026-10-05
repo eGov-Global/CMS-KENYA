@@ -25,7 +25,7 @@ import useReopenWindow from "../../hooks/pgr/useReopenWindow";
 import ComplaintPhotos from "../../components/ComplaintPhotos";
 import ComplaintLocationMap from "../../components/ComplaintLocationMap";
 import { buildExtendedAttributeRows, useExtendedAttributeOrder } from "../../components/PgrExtendedAttributesView";
-import StarRated from "../../components/timelineInstances/StarRated";
+import { EmojiRatingBadge } from "../../components/EmojiRating";
 import ReceiptActions from "../../components/ReceiptActions";
 
 // Terminal (non-active) states across standard PGR *and* the mz.igsae CMS workflow.
@@ -216,12 +216,12 @@ function WorkflowComponent({ complaintDetails, id }) {
     .filter((a) => a !== "REOPEN" || reopenWindowOpen);
 
   // Rendered INSIDE the current-state timeline row (legacy-checkpoint parity):
-  // action buttons while actions are open; the given star rating once rated.
+  // action buttons while actions are open; the given rating once rated.
   const rating = complaintDetails?.service?.rating;
   const currentStateChildren =
     rating || citizenActions.length > 0 ? (
       <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "0.75rem", marginTop: "0.5rem" }}>
-        {rating ? <StarRated text={t("CS_ADDCOMPLAINT_YOU_RATED")} rating={rating} /> : null}
+        {rating ? <EmojiRatingBadge text={t("CS_ADDCOMPLAINT_YOU_RATED")} rating={rating} /> : null}
         {citizenActions
           .filter((action) => !(rating && action === "RATE"))
           .map((action) => {
