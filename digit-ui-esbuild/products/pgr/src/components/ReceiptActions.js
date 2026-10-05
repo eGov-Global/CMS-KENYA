@@ -41,6 +41,9 @@ export const RECEIPT_ACTION_FALLBACKS = {
 };
 
 const ALL_ACTIONS = ["download", "print", "share"];
+// The v2 utilities only apply under `.v2-scope` (tailwind.config.ts `important`). Legacy
+// employee screens (e.g. the complaint-success panel) have no such ancestor, so carry it here.
+const scoped = (className) => ["v2-scope", className].filter(Boolean).join(" ");
 const logoCache = new Map();
 
 const stampNow = () => {
@@ -121,7 +124,7 @@ const ReceiptActions = ({
   if (!complaintDetails?.service) {
     const label = t("PGR_RECEIPT_DOWNLOAD");
     return (
-      <div className={className}>
+      <div className={scoped(className)}>
         <Button variant={variant} type="button" disabled leading={<Download className="h-4 w-4" />}>
           {label === "PGR_RECEIPT_DOWNLOAD" ? RECEIPT_FALLBACKS.downloadLabel : label}
         </Button>
@@ -259,7 +262,7 @@ const ReceiptActionsReady = ({ complaintDetails, actions, variant, className }) 
   ].filter(Boolean);
 
   return (
-    <div ref={rootRef} className={className} style={{ display: "flex", flexDirection: "column", gap: "6px", alignItems: "flex-start" }}>
+    <div ref={rootRef} className={scoped(className)} style={{ display: "flex", flexDirection: "column", gap: "6px", alignItems: "flex-start" }}>
       <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }} onPointerEnter={prefetch} onFocusCapture={prefetch} onTouchStart={prefetch}>
         {actions.filter((a) => buttons[a]).map((a) => {
           const { icon: Icon, label, onClick } = buttons[a];
