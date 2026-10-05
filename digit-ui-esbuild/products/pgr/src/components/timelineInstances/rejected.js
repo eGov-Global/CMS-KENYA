@@ -11,7 +11,7 @@ const Rejected = ({ action, nextActions, complaintDetails, ComplainMaxIdleTime, 
 
   // Render the rating display whenever `rating` is present, regardless of
   // workflow.action — same fix as resolved.js. After rating, action moves
-  // away from "RATE" and the previous code only rendered <EmojiRatingBadge/> in
+  // away from "RATE" and the previous code only rendered the rating badge in
   // the RATE branch, so stars vanished (closes egovernments/CCRS#473
   // reopen).
   const ratingDisplay = rating ? (

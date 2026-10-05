@@ -12,7 +12,7 @@ const Resolved = ({ action, nextActions,complaintDetails, ComplainMaxIdleTime, r
   // Render the rating display whenever `rating` is present, regardless of
   // workflow.action — after a citizen submits their rating, workflow.action
   // transitions away from "RATE" (to something like "" / "REOPEN" depending
-  // on backend), and the previous code only rendered <EmojiRatingBadge/> inside the
+  // on backend), and the previous code only rendered the rating badge inside the
   // `action === "RATE"` branch — so the stars vanished once the workflow
   // moved on. Hoist the render so it appears in every branch when rating
   // is set (closes egovernments/CCRS#473 reopen).

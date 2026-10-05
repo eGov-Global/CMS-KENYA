@@ -7591,7 +7591,7 @@
     },
     {
         "code": "PGR_RECEIPT_SHARE_UNAVAILABLE",
-        "message": "Sharing isn't available here — the receipt PDF was saved to your downloads instead.",
+        "message": "Sharing is not available on this device — download the receipt instead.",
         "module": "rainmaker-pgr",
         "locale": "default"
     },
@@ -7675,13 +7675,19 @@
     },
     {
         "code": "PGR_RECEIPT_SHARE_DOWNLOADED",
-        "message": "Receipt PDF saved to your downloads — attach it where you share. The tracking link is in the share text.",
+        "message": "The receipt PDF is also in your downloads.",
         "module": "rainmaker-pgr",
         "locale": "default"
     },
     {
         "code": "PGR_RECEIPT_SHARE_DOWNLOADED_COPIED",
-        "message": "Receipt PDF saved to your downloads and tracking link copied — attach the PDF where you share it.",
+        "message": "Receipt PDF saved to your downloads; tracking link copied.",
+        "module": "rainmaker-pgr",
+        "locale": "default"
+    },
+    {
+        "code": "PGR_RECEIPT_SHARE_DOWNLOADED_ONLY",
+        "message": "Receipt PDF saved to your downloads.",
         "module": "rainmaker-pgr",
         "locale": "default"
     }
