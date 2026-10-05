@@ -18,9 +18,10 @@ import { selectServiceDefsFromComplaintHierarchy } from "../../utils";
 import { isPiiMaskingEnabled } from "../../utils/piiMasking";
 import useReopenWindow from "../../hooks/pgr/useReopenWindow";
 import { findLatestAssigneeUuidByRole } from "../../utils/workflowAssignee";
-import { narrowToLastMile } from "../../utils/autoAssign";
+import { LAST_MILE_ROLE, narrowToLastMile } from "../../utils/autoAssign";
 import { canTakeAction } from "../../utils/takeActionGate";
 import { EV, trackE } from "../../utils/analytics";
+import ReceiptActions from "../../components/ReceiptActions";
 
 // CCSD-2167 (employee side) — route-back / terminal actions derive their
 // assignee from the complaint's OWN workflow history, exactly like the citizen
@@ -309,7 +310,10 @@ const PGRDetails = () => {
 
   // Fetch workflow details
   const { isLoading: isWorkflowLoading, data: workflowData, revalidate: workFlowRevalidate } = Digit.Hooks.useCustomAPIHook({
-    url: "/egov-workflow-v2/egov-wf/process/_search",
+    // Filtered chronology (pgr-services): same shape as the workflow API, but
+    // on a confidential complaint the complainant's identity inside the actor
+    // blocks is masked server-side for uncleared employees.
+    url: "/pgr-services/v2/request/_chronology",
     params: { tenantId: complaintTenantId, history: true, businessIds: id },
     config: { enabled: !!pgrData },
     changeQueryName: id,
@@ -378,7 +382,11 @@ const PGRDetails = () => {
   // An LME reassign must name the officer: without a pick there is nobody to
   // hand the complaint to, and the no-pick derivation would re-select the
   // current holder, making the action a silent no-op.
-  const isAssigneeMandatory = (action) => action?.action === "ASSIGN" || isLmeReassign(action);
+  // A manual ESCALATE is a hand-off to the tier above: without a pick the
+  // complaint would sit at the escalated state in nobody's inbox (the "My" tab
+  // is assignee-driven).
+  const isAssigneeMandatory = (action) =>
+    action?.action === "ASSIGN" || action?.action === "ESCALATE" || isLmeReassign(action);
 
   // Prepare and submit the update complaint request
   const handleActionSubmit = async (_data) => {
@@ -590,13 +598,13 @@ const PGRDetails = () => {
 
   // Roles that should never appear in an assignee dropdown even if a workflow
   // state lists them (system or non-employee actors).
-  const NON_ASSIGNEE_ROLES = new Set(["CITIZEN", "AUTO_ESCALATE", "ANONYMOUS", "CMS_VIEWER"]);
+  const NON_ASSIGNEE_ROLES = new Set(["CITIZEN", "AUTO_ESCALATE", "ANONYMOUS", "CMS_VIEWER", "SYSTEM"]);
 
   // Compute the assignee role set for an action by looking at the *forward*
   // (non-self-looping) actions defined on the next state and unioning their
   // roles. Self-loops like ESCALATE / SLA_ESCALATE / COMMENT add noise (e.g.
   // GRO showing up in a PENDINGATLME assignment dropdown), so we exclude them.
-  // System roles (CITIZEN, AUTO_ESCALATE, ANONYMOUS) are filtered out too.
+  // System / non-employee roles (NON_ASSIGNEE_ROLES) are filtered out too.
   //
   // Finally narrowed to the last-mile role when the state has one: on Nairobi
   // the escalation tiers (CHIEF_OFFICER, CECM) may also act at PENDINGATLME,
@@ -604,14 +612,23 @@ const PGRDetails = () => {
   // the tiers above receive a complaint only by escalation. Transitions whose
   // target has no PGR_LME actor (REASSIGN → GRO queue, the CMS workflow) are
   // unchanged.
-  const computeAssigneeRoles = (nextStateUuid, businessServiceResponse) => {
+  const computeAssigneeRoles = (nextStateUuid, businessServiceResponse, action) => {
     const nextState = businessServiceResponse?.states?.find((s) => s.uuid === nextStateUuid);
     if (!nextState?.actions) return [];
     const forwardActions = nextState.actions.filter((act) => act.nextState && act.nextState !== nextStateUuid);
     const source = forwardActions.length > 0 ? forwardActions : nextState.actions; // fall back if no forward actions
     const set = new Set();
     source.forEach((act) => (act.roles || []).forEach((r) => set.add(r)));
-    return narrowToLastMile([...set].filter((r) => !NON_ASSIGNEE_ROLES.has(r)));
+    const roles = [...set].filter((r) => !NON_ASSIGNEE_ROLES.has(r));
+    if (action === "ESCALATE") {
+      // A manual ESCALATE hands the complaint UP: offer the escalated state's
+      // actors minus the last-mile role — directors still act there, but
+      // escalating to a peer director is no escalation. A single-tier workflow
+      // keeps the full set so someone can still be picked.
+      const above = roles.filter((r) => r !== LAST_MILE_ROLE);
+      return above.length > 0 ? above : roles;
+    }
+    return narrowToLastMile(roles);
   };
 
   // Get list of valid actions for current user and state
@@ -633,7 +650,7 @@ const PGRDetails = () => {
             name: action.action,
             roles: action.roles,
             nextState: action.nextState,
-            assigneeRoles: computeAssigneeRoles(action.nextState, businessServiceResponse),
+            assigneeRoles: computeAssigneeRoles(action.nextState, businessServiceResponse, action.action),
             isTerminal: !!nextStateData?.isTerminateState,
             docUploadRequired: !!nextStateData?.docUploadRequired,
             uuid: action.uuid,
@@ -679,20 +696,13 @@ const PGRDetails = () => {
 
   // CCSD-2130: confidential complaints must not expose the complainant.
   //
-  // The backend ALREADY masks service.extendedAttributes on these — verified
-  // against a live confidential complaint: complainantName / witnessName /
-  // witnessAddress / witnessNote all come back "****". What it does NOT mask is
-  // the service.citizen block, which pgr-services enriches from egov-user on
-  // every search and where every attribute is defaultVisibility PLAIN — so
-  // name, mobileNumber and correspondenceAddress arrive in clear.
-  //
-  // This masks exactly those citizen-derived rows, matching the backend's own
-  // "****" convention so the two sources read consistently. It is a DISPLAY
-  // control only: the values are still present in the API response, so the
-  // durable fix is backend masking gated on CONFIDENTIAL_COMPLAINT_VIEWER (the
-  // role ComplaintTemplateType.allowedViewerRoles already names but which does
-  // not yet exist). Tracked separately — do not treat this as enforcement.
-  // Gated on the PGR_PII_MASKING deploy switch (utils/piiMasking.js): Kenya/
+  // pgr-services masks both service.extendedAttributes and the service.citizen
+  // block (name, mobile, e-mail, address, account link) for every caller who is
+  // neither the complainant nor a cleared viewer, so the values below already
+  // arrive as "****". This display-side mask is kept for the fields that can
+  // still reach the client in clear from other services (e.g. the typed
+  // correspondenceAddress when it comes via a user-service lookup) and for
+  // older backends. It is gated on the PGR_PII_MASKING deploy switch —
   // Bomet runs no confidentiality programme and shows the complainant in clear.
   const isConfidentialComplaint =
     isPiiMaskingEnabled() && complaintService?.extendedAttributes?.isConfidential === true;
@@ -704,8 +714,15 @@ const PGRDetails = () => {
   return (
     <div className="v2-pgr-details v2-scope">
       {/* Header */}
-      <header className="v2-employee-page-header">
+      <header className="v2-employee-page-header" style={{ display: "flex", alignItems: "center", gap: "16px", flexWrap: "wrap" }}>
         <h1>{t("CS_COMPLAINT_DETAILS_COMPLAINT_DETAILS")}</h1>
+        {complaintService?.serviceRequestId ? (
+          <ReceiptActions
+            className="ml-auto"
+            complaintId={complaintService.serviceRequestId}
+            tenantId={complaintService.tenantId || tenantId}
+          />
+        ) : null}
       </header>
 
       {/* Complaint Summary Card */}

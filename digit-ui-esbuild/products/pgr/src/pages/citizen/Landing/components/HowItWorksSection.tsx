@@ -38,21 +38,26 @@ export function HowItWorksSection({ orbImageUrl, section }: HowItWorksSectionPro
               <li
                 key={step.id ?? step.titleKey ?? i}
                 className={
-                  "pgrl-reveal-item pgrl-lift m-0 flex flex-col gap-2 rounded-2xl border border-solid " +
+                  "pgrl-reveal-item pgrl-lift relative m-0 flex flex-col gap-2 rounded-2xl border border-solid " +
                   "border-[hsl(var(--pgrl-primary)/0.08)] bg-[hsl(var(--pgrl-surface))] p-3 sm:gap-4 sm:p-5"
                 }
                 style={revealIndex(i + 1)}
               >
+                {/* Progress tab: draws in step by step as the cards reveal. */}
+                <span
+                  aria-hidden
+                  className="pgrl-step-bar absolute inset-x-3 top-0 h-[3px] rounded-b-full bg-[hsl(var(--pgrl-accent))] sm:inset-x-5"
+                />
                 <div className="flex items-start justify-between gap-2">
                   <span
                     aria-hidden
-                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[hsl(var(--pgrl-primary)/0.1)] text-[hsl(var(--pgrl-primary))] sm:h-11 sm:w-11 sm:rounded-xl"
+                    className="pgrl-icon flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[hsl(var(--pgrl-primary)/0.1)] text-[hsl(var(--pgrl-primary))] sm:h-11 sm:w-11 sm:rounded-xl"
                   >
                     <Icon className="h-4 w-4 sm:h-5 sm:w-5" />
                   </span>
                   <span
                     aria-hidden
-                    className="text-2xl font-bold leading-none tracking-tight text-[hsl(var(--pgrl-primary)/0.16)] sm:text-4xl"
+                    className="pgrl-step-num text-2xl font-bold leading-none tracking-tight text-[hsl(var(--pgrl-primary)/0.16)] sm:text-4xl"
                   >
                     {String(i + 1).padStart(2, "0")}
                   </span>

@@ -18,6 +18,7 @@ import { useTranslation } from "react-i18next";
 import { useHistory } from "react-router-dom";
 import { formPayloadToCreateComplaint } from "../../../utils";
 import { fieldsFromSchema, deriveCaseRelatedTo } from "../../../utils/extendedAttributes";
+import { compareLabels } from "../../../utils/sortByLabel";
 
 const CreateComplaintForm = ({
   createComplaintConfig,      // Form configuration for Create Complaint screen
@@ -201,9 +202,9 @@ const CreateComplaintForm = ({
 
     // Flat complaint types carry no configurator-authored order, so present
     // them A–Z by their displayed label (`menuPathName`) for an easy-to-scan,
-    // searchable dropdown (CCRS#941). The hierarchy picker keeps its own
-    // `order` and is unaffected.
-    return uniqueItems.sort((a, b) => (a?.menuPathName || "").localeCompare(b?.menuPathName || ""));
+    // searchable dropdown (CCRS#941). The hierarchy picker sorts the same way
+    // (ComplaintHierarchyComponent).
+    return uniqueItems.sort((a, b) => compareLabels(a?.menuPathName, b?.menuPathName));
   }
 
   function getSubTypesByDepartment(baseItem, allItems) {
@@ -214,11 +215,12 @@ const CreateComplaintForm = ({
     }
 
     // Sub-types in the flat flow have no configurator order either, so sort
-    // them A–Z by their displayed label (`i18nKey`, with a `name` fallback)
-    // for the searchable dropdown (CCRS#941).
+    // them A–Z by the label the dropdown shows — the TRANSLATED i18nKey, not
+    // the raw key, which orders by code rather than by name (CCRS#941, UAT).
+    const label = (item) => (item?.i18nKey ? t(item.i18nKey) : item?.name) || "";
     return allItems
       .filter(item => item.department === baseItem.department)
-      .sort((a, b) => (a?.i18nKey || a?.name || "").localeCompare(b?.i18nKey || b?.name || ""));
+      .sort((a, b) => compareLabels(label(a), label(b)));
   }
 
 

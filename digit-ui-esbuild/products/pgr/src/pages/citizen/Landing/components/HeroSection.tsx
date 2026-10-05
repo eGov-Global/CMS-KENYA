@@ -8,9 +8,10 @@
 // deep-green surface. Text is always white-on-green; the gradient is what
 // guarantees contrast whatever the photo looks like.
 //
-// Slow networks: the <img> is `fetchpriority="high"` and carries a `srcSet`
-// so phones download the small cut; the drift animation is CSS-only and
-// switched off under prefers-reduced-motion, as is every other movement here.
+// Slow networks: the <img> is `fetchpriority="high"` and phones download the
+// small portrait cut through a <picture> source; the drift animation is
+// CSS-only and switched off under prefers-reduced-motion, as is every other
+// movement here.
 
 import * as React from "react";
 import { Send, Search, Lock, Hash, Bell, MapPin, Leaf, FileText, Users, Clock, FolderOpen } from "lucide-react";
@@ -45,16 +46,20 @@ const STATS = [
 function StatCard({ icon: Icon, value, label }: { icon: React.ComponentType<any>; value: string; label: string }) {
   const { ref, text } = useCountUp<HTMLElement>(value);
   return (
-    <div className="pgrl-lift flex items-center gap-3 rounded-2xl border border-solid border-[hsl(var(--pgrl-line))] bg-[hsl(var(--pgrl-surface))] p-4 shadow-[0_18px_40px_-24px_rgba(11,45,30,0.35)] md:gap-4 md:p-5">
+    // Icon above the figure on phones: side by side, the tile left the label a
+    // ~70 px column at 360 px and it broke over four lines.
+    <div className="pgrl-lift flex flex-col items-start gap-3 rounded-2xl border border-solid border-[hsl(var(--pgrl-line))] bg-[hsl(var(--pgrl-surface))] p-4 shadow-[0_18px_40px_-24px_rgba(11,45,30,0.35)] sm:flex-row sm:items-center md:gap-4 md:p-5">
       <span
         aria-hidden
-        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[hsl(var(--pgrl-tint))] text-[hsl(var(--pgrl-primary))]"
+        className="pgrl-icon flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[hsl(var(--pgrl-tint))] text-[hsl(var(--pgrl-primary))] sm:h-11 sm:w-11 sm:rounded-xl"
       >
-        <Icon className="h-5 w-5" />
+        <Icon className="h-4 w-4 sm:h-5 sm:w-5" />
       </span>
       <div className="flex min-w-0 flex-col">
         <dd ref={ref} className="order-1 m-0 text-2xl font-bold leading-none tracking-tight text-[hsl(var(--pgrl-ink))] md:text-3xl">
-          {text}
+          {/* The count-up is decoration: assistive tech reads the final figure at once. */}
+          <span aria-hidden>{text}</span>
+          <span className="sr-only">{value}</span>
         </dd>
         <dt className="order-2 m-0 mt-1 text-xs leading-snug text-[hsl(var(--pgrl-ink-soft))] md:text-sm">{label}</dt>
       </div>
@@ -91,16 +96,24 @@ export function HeroSection({ routes, imageUrl, imageSmallUrl, section }: HeroSe
             scale must never spill, while the stat cards below overlap freely. */}
         <div aria-hidden className="absolute inset-0 -z-10 overflow-hidden">
           {imageUrl && (
-            <img
-              src={imageUrl}
-              srcSet={imageSmallUrl ? `${imageSmallUrl} 760w, ${imageUrl} 1800w` : undefined}
-              sizes="100vw"
-              alt=""
-              // @ts-expect-error fetchpriority is not in React 17's typings; browsers read the lowercase attribute.
-              fetchpriority="high"
-              className="pgrl-drift absolute inset-0 h-full w-full object-cover object-[68%_45%]"
-            />
+            // The small cut is a different crop (portrait), so it is chosen by
+            // viewport, not by srcSet width: with w-descriptors a 3x phone took
+            // the 1800 px landscape file for its portrait box.
+            <picture>
+              {imageSmallUrl && <source media="(max-width: 767px)" srcSet={imageSmallUrl} />}
+              <img
+                src={imageUrl}
+                alt=""
+                // @ts-expect-error fetchpriority is not in React 17's typings; browsers read the lowercase attribute.
+                fetchpriority="high"
+                className="pgrl-drift absolute inset-0 h-full w-full object-cover object-[68%_45%]"
+              />
+            </picture>
           )}
+          {/* Below lg the copy runs (nearly) the full width, into the side the
+              gradient leaves clear for the photo, so the photo is dimmed
+              throughout — the right end of the copy measured ~3.3:1 at 360 px. */}
+          <div className="absolute inset-0 bg-[hsl(var(--pgrl-deep)/0.55)] lg:hidden" />
           {/* Solid green on the text side, thinning to the right so the city
               shows; a light top/bottom fade keeps the chips and wave legible. */}
           <div
@@ -119,7 +132,7 @@ export function HeroSection({ routes, imageUrl, imageSmallUrl, section }: HeroSe
               className="pgrl-rise m-0 flex items-center gap-2 text-xs font-bold uppercase tracking-[0.18em] text-[hsl(var(--pgrl-accent))]"
               style={revealIndex(0)}
             >
-              <span aria-hidden className="inline-block h-[3px] w-6 rounded-full bg-[hsl(var(--pgrl-accent))]" />
+              <span aria-hidden className="pgrl-dash inline-block h-[3px] w-6 rounded-full bg-[hsl(var(--pgrl-accent))]" />
               {c(section?.bodyKey, "HERO_EYEBROW")}
             </p>
 
@@ -133,19 +146,26 @@ export function HeroSection({ routes, imageUrl, imageSmallUrl, section }: HeroSe
             </h1>
 
             <p
-              className="pgrl-rise mb-0 mt-5 max-w-xl text-base leading-relaxed text-[hsl(var(--pgrl-on-primary)/0.88)] sm:text-lg"
+              className="pgrl-rise mb-0 mt-5 max-w-[56ch] text-base leading-relaxed text-[hsl(var(--pgrl-on-primary)/0.88)] sm:text-lg"
               style={revealIndex(2)}
             >
               {c(section?.subtitleKey, "HERO_LEDE")}
             </p>
 
             <div className="pgrl-rise mt-7 flex flex-col gap-3 sm:flex-row sm:items-center" style={revealIndex(3)}>
+              {/* The halo (pgrl-pulse) marks the page's one primary ask — keep
+                  it off every other CTA. The plane lifts off on hover. */}
               <CtaLink
                 to={routes.REGISTER_COMPLAINT}
                 variant="accent"
                 size="lg"
-                leading={<Send aria-hidden className="h-5 w-5" />}
-                className="w-full !rounded-full sm:w-auto"
+                leading={
+                  <Send
+                    aria-hidden
+                    className="h-5 w-5 motion-safe:transition-transform motion-safe:group-hover/cta:-translate-y-0.5 motion-safe:group-hover/cta:translate-x-0.5"
+                  />
+                }
+                className="pgrl-pulse w-full !rounded-full sm:w-auto"
               >
                 {c("HERO_CTA_SUBMIT")}
               </CtaLink>
@@ -186,11 +206,13 @@ export function HeroSection({ routes, imageUrl, imageSmallUrl, section }: HeroSe
 
           {/* Hand-lettered tagline: in flow under the copy on phones, over the
               photo from md up. Decorative — the eyebrow and headline already
-              carry the message for assistive tech. */}
+              carry the message for assistive tech. On phones its height is
+              fixed at Caveat's two lines: the cursive fallback wraps to three,
+              and the late swap moved everything below by ~28 px. */}
           {script && (
             <p
               aria-hidden
-              className="pgrl-script pgrl-rise relative m-0 ml-auto mt-6 w-max max-w-[11rem] rotate-[-6deg] text-right text-3xl font-semibold leading-[0.95] text-[hsl(var(--pgrl-accent))] drop-shadow-[0_2px_8px_rgba(0,0,0,0.45)] md:absolute md:bottom-28 md:right-[6%] md:mt-0 md:max-w-[12rem] md:rotate-[-8deg] md:text-5xl lg:bottom-32 lg:max-w-[14rem]"
+              className="pgrl-script pgrl-pop relative m-0 ml-auto mt-6 h-20 w-max max-w-[11rem] text-right text-3xl font-semibold leading-[0.95] text-[hsl(var(--pgrl-accent))] drop-shadow-[0_2px_8px_rgba(0,0,0,0.45)] [--pgrl-tilt:-6deg] md:absolute md:bottom-28 md:right-[6%] md:mt-0 md:h-auto md:max-w-[12rem] md:text-5xl md:[--pgrl-tilt:-8deg] lg:bottom-32 lg:max-w-[14rem]"
               style={revealIndex(6)}
             >
               <Leaf className="mb-1 ml-auto h-6 w-6 rotate-[30deg] md:h-8 md:w-8" />
@@ -199,7 +221,9 @@ export function HeroSection({ routes, imageUrl, imageSmallUrl, section }: HeroSe
           )}
 
           {imageUrl && caption && (
-            <p className="absolute right-4 top-3 m-0 hidden text-[11px] text-[hsl(var(--pgrl-on-primary)/0.55)] lg:block">
+            // Backed by a deep-green chip: bare, the caption sat on bright sky
+            // at ~2:1.
+            <p className="absolute right-4 top-3 m-0 hidden rounded-full bg-[hsl(var(--pgrl-deep)/0.7)] px-2.5 py-0.5 text-[11px] text-[hsl(var(--pgrl-on-primary)/0.9)] lg:block">
               {caption}
             </p>
           )}

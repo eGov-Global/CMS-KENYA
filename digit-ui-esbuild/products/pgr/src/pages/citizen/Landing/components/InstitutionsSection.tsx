@@ -58,7 +58,7 @@ export function InstitutionsSection({ routes, photoUrl, section }: InstitutionsS
             >
               <span
                 aria-hidden
-                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[hsl(var(--pgrl-primary)/0.1)] text-[hsl(var(--pgrl-primary))]"
+                className="pgrl-icon flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[hsl(var(--pgrl-primary)/0.1)] text-[hsl(var(--pgrl-primary))]"
               >
                 <MapPin className="h-5 w-5" />
               </span>
@@ -79,9 +79,11 @@ export function InstitutionsSection({ routes, photoUrl, section }: InstitutionsS
       <div className="mt-8 flex flex-col gap-6 md:hidden">
         <div className="pgrl-reveal-item relative mx-auto w-64" style={revealIndex(items.length + 1)}>
           <SkylineIllustration />
+          {/* Centred with auto margins, not -translate-x-1/2: the float's
+              keyframes own `transform` and would wipe the translate. */}
           <span
             aria-hidden
-            className="pgrl-float absolute left-1/2 top-0 flex h-12 w-12 -translate-x-1/2 items-center justify-center rounded-full bg-[hsl(var(--pgrl-primary))] text-[hsl(var(--pgrl-on-primary))] shadow-lg"
+            className="pgrl-float absolute inset-x-0 top-0 mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-[hsl(var(--pgrl-primary))] text-[hsl(var(--pgrl-on-primary))] shadow-lg"
           >
             <MapPin className="h-6 w-6" />
           </span>

@@ -146,12 +146,13 @@ export function PhotoOrb({ src, tagline, tone = "green", className }: PhotoOrbPr
   );
 }
 
-/** Thin gold arc used behind the closing band and the footer. */
+/** Thin gold arc used behind the closing band and the footer. Inside a
+ *  reveal section the arcs draw themselves in (CSS `pgrl-trace`). */
 export function Swoosh({ className }: { className?: string }) {
   return (
     <svg aria-hidden viewBox="0 0 600 200" preserveAspectRatio="none" className={cn("block", className)}>
-      <path d="M-20 170 C160 60 380 220 620 40" fill="none" stroke={A} strokeWidth="2" strokeOpacity="0.55" />
-      <path d="M-20 196 C200 90 400 250 620 70" fill="none" stroke={A} strokeWidth="1.5" strokeOpacity="0.3" />
+      <path d="M-20 170 C160 60 380 220 620 40" fill="none" stroke={A} strokeWidth="2" strokeOpacity="0.55" pathLength="1000" className="pgrl-trace" />
+      <path d="M-20 196 C200 90 400 250 620 70" fill="none" stroke={A} strokeWidth="1.5" strokeOpacity="0.3" pathLength="1000" className="pgrl-trace" />
     </svg>
   );
 }

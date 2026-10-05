@@ -91,8 +91,12 @@ async function build() {
     bundle: true,
     outdir: path.resolve(__dirname, "build"),
     publicPath: PUBLIC_PATH,
-    splitting: false,
-    format: "iife",
+    // ES modules + splitting so dynamic import() (see products/pgr/src/utils/
+    // lazyLoad.js) yields real on-demand chunks instead of being inlined into
+    // one 9 MB file. Shared code between chunks is hoisted automatically.
+    splitting: true,
+    format: "esm",
+    chunkNames: "chunks/[name]-[hash]",
     target: ["es2018"],
     minify: true,
     sourcemap: false,
@@ -188,6 +192,14 @@ async function build() {
   // Generate one HTML shell per entry, each linking only its OWN bundles.
   for (const spec of ENTRIES) generateHTML(result, spec);
 
+  // ESBUILD_METAFILE=1 writes the bundle analysis (what ended up in which chunk)
+  // next to the build dir, never inside it — build/ is shipped as-is.
+  if (process.env.ESBUILD_METAFILE) {
+    const metaPath = path.resolve(__dirname, "build-meta.json");
+    fs.writeFileSync(metaPath, JSON.stringify(result.metafile));
+    console.log(`Bundle metafile: ${metaPath}`);
+  }
+
   // Copy public assets to build (recursively — excludes the source index.html,
   // which is regenerated above, and walks subdirs like public/vendor/).
   function copyRecursive(src, dest) {
@@ -247,7 +259,9 @@ function generateHTML(result, { entry, template, output }) {
     (f) => f.endsWith(".css") && path.basename(f, ".css") === stem
   );
 
-  const scriptTag = `  <script src="${PUBLIC_PATH}${path.basename(jsOut)}"></script>`;
+  // type="module": required by the ESM build; also defers execution until the
+  // document is parsed, which is what the old end-of-body script achieved.
+  const scriptTag = `  <script type="module" src="${PUBLIC_PATH}${path.basename(jsOut)}"></script>`;
   const linkTag = cssOut
     ? `  <link rel="stylesheet" href="${PUBLIC_PATH}${path.basename(cssOut)}">`
     : "";

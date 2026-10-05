@@ -50,9 +50,8 @@ test("GRO ASSIGN (first assignment and after a send-back) lists only PGR_LME hol
   }
 });
 
-test("the picker's own role set (it keeps SYSTEM) narrows the same way", () => {
-  // PGRDetails' NON_ASSIGNEE_ROLES does not drop SYSTEM, so its union for
-  // PENDINGATLME is the four officer roles plus SYSTEM.
+test("the picker's own role set narrows the same way even if a system role slips in", () => {
+  // PGRDetails' NON_ASSIGNEE_ROLES drops SYSTEM too; narrowing must not depend on it.
   same(narrowToLastMile(["CECM", "CHIEF_OFFICER", "DIRECTOR", "PGR_LME", "SYSTEM"]), ["PGR_LME"]);
 });
 

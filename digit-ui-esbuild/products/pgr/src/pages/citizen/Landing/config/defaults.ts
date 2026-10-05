@@ -27,6 +27,8 @@ export const DEFAULT_LANDING_SECTIONS: LandingSectionConfig[] = [
   row("types", "types", 40),
   row("steps", "steps", 50),
   row("channels", "channels", 60),
+  // Emergency helpline numbers (Nairobi UAT) — right after the ways to reach us.
+  row("helplines", "helplines", 65),
   row("privacy", "privacy", 70),
   // Parked until there are real County Updates to show — the seeded cards are
   // placeholders. NewsSection + its registry entry are untouched, so restoring
