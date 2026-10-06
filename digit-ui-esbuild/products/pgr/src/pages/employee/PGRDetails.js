@@ -18,6 +18,9 @@ import { selectServiceDefsFromComplaintHierarchy } from "../../utils";
 import { isPiiMaskingEnabled } from "../../utils/piiMasking";
 import useReopenWindow from "../../hooks/pgr/useReopenWindow";
 import { findLatestAssigneeUuidByRole, findLatestAssigneeUuidByAnyRole } from "../../utils/workflowAssignee";
+import { escalationStamp, isCurrentAssignee, nextLevelRoles } from "../../utils/escalation";
+import { mergeAdditionalDetail } from "../../utils/additionalDetail";
+import { isConfirmationAction } from "../../utils/withdraw";
 import useAutoAssignment from "../../hooks/pgr/useAutoAssignment";
 import { EV, trackE } from "../../utils/analytics";
 
@@ -100,14 +103,19 @@ const buildActionFormConfig = ({ action, assigneeRoles = [], isTerminal = false,
   // attach a file just to ask a question is wrong, so the attachment is
   // optional for this action regardless of the target state's flag.
   const ATTACHMENT_OPTIONAL_ACTIONS = ["AWAITINGINFORMATION"];
-  body.push({
-    type: "component",
-    isMandatory: !!docUploadRequired && !ATTACHMENT_OPTIONAL_ACTIONS.includes(action),
-    component: "PGRActionUploadComponent",
-    key: "SelectedDocuments",
-    label: "CS_COMMON_ATTACHMENTS",
-    populators: { name: "SelectedDocuments" },
-  });
+  // WITHDRAW closes the complaint on the complainant's behalf: the modal is a
+  // confirmation (message + reason), with nothing to attach.
+  const isConfirmation = isConfirmationAction(action);
+  if (!isConfirmation) {
+    body.push({
+      type: "component",
+      isMandatory: !!docUploadRequired && !ATTACHMENT_OPTIONAL_ACTIONS.includes(action),
+      component: "PGRActionUploadComponent",
+      key: "SelectedDocuments",
+      label: "CS_COMMON_ATTACHMENTS",
+      populators: { name: "SelectedDocuments" },
+    });
+  }
   body.push({
     type: "textarea",
     isMandatory: true,
@@ -116,7 +124,12 @@ const buildActionFormConfig = ({ action, assigneeRoles = [], isTerminal = false,
     populators: { name: "SelectedComments", maxLength: 1000, validation: { required: true }, error: "CORE_COMMON_REQUIRED_ERRMSG" },
   });
   return {
-    label: { heading: `CS_ACTION_${action}`, cancel: "CS_COMMON_CANCEL", submit: "CS_COMMON_SUBMIT" },
+    label: {
+      heading: `CS_ACTION_${action}`,
+      cancel: "CS_COMMON_CANCEL",
+      submit: isConfirmation ? `CS_COMMON_${action}` : "CS_COMMON_SUBMIT",
+    },
+    ...(isConfirmation ? { description: `CS_${action}_CONFIRM_MESSAGE` } : {}),
     form: [{ body }],
   };
 };
@@ -138,6 +151,25 @@ const PGRDetails = () => {
   // Persist session data for complaint update
   const UpdateComplaintSession = Digit.Hooks.useSessionStorage("COMPLAINT_UPDATE", {});
   const [sessionFormData, setSessionFormData, clearSessionFormData] = UpdateComplaintSession;
+
+  // #75: the Take Action draft lives under ONE session key shared by every
+  // complaint, and only a successful submit cleared it — so text typed into a
+  // popup that was closed unsubmitted reappeared on the next complaint. This
+  // page is also a single component instance reused across complaints (route
+  // complaint-details/:id), so the hook's first-render read alone can't scope
+  // it. A draft now belongs to one complaint and one action:
+  //  - arriving at a complaint (in-app navigation, a typed URL, a new visit)
+  //    starts with an empty draft;
+  //  - picking a DIFFERENT action discards the draft, so an abandoned popup's
+  //    text — or its SelectedAssignee, which the modal submits along with the
+  //    rest of the draft — cannot ride into another action's payload.
+  // Re-opening the SAME action on the same complaint keeps what was typed, so
+  // an accidental close still does not lose the text.
+  const draftActionRef = useRef(null);
+  useEffect(() => {
+    draftActionRef.current = null;
+    clearSessionFormData();
+  }, [id]);
 
   // Service definitions (leaf complaint types) adapted from the single
   // RAINMAKER-PGR.ComplaintHierarchy master — drives department + category
@@ -306,6 +338,19 @@ const PGRDetails = () => {
   // reopen flows use. Tier 3 of the no-pick assignee derivation below.
   const autoAssignment = useAutoAssignment(complaintTenantId);
 
+  // The logged-in officer's HRMS record, for the escalation pre-selection
+  // (reportingTo). Same query as the create form's, so usually a cache hit.
+  const hrmsContext = window?.globalConfigs?.getConfig("HRMS_CONTEXT_PATH") || "egov-hrms";
+  const { data: currentEmployeeData } = Digit.Hooks.useCustomAPIHook({
+    url: `/${hrmsContext}/employees/_search`,
+    params: { tenantId, uuids: userInfo?.info?.uuid },
+    changeQueryName: `hrms-current-employee-${userInfo?.info?.uuid}`,
+    options: { staleTime: 5 * 60 * 1000, cacheTime: 10 * 60 * 1000 },
+    config: { enabled: !!userInfo?.info?.uuid },
+  });
+  const myAssignments = currentEmployeeData?.Employees?.[0]?.assignments || [];
+  const myReportingTo = (myAssignments.find((a) => a?.isCurrentAssignment) || myAssignments[0])?.reportingTo;
+
   // Automatically dismiss toast messages after 3 seconds
   useEffect(() => {
     if (toast?.show) {
@@ -328,7 +373,9 @@ const PGRDetails = () => {
   // When the scoped department has no eligible employee, AssigneeComponent now
   // says so explicitly instead of rendering an empty dropdown — staffing gaps
   // surface as a clear message, not as an ownerless complaint.
-  const isAssigneeMandatory = (action) => action?.action === "ASSIGN";
+  // Manual ESCALATE is mandatory too: with no pick, the no-pick derivation
+  // below keeps the PREVIOUS holder — the officer escalating it.
+  const isAssigneeMandatory = (action) => action?.action === "ASSIGN" || action?.action === "ESCALATE";
 
   // Prepare and submit the update complaint request
   const handleActionSubmit = async (_data) => {
@@ -387,12 +434,6 @@ const PGRDetails = () => {
     // carried over from filing time. Only applied when an assignee with a
     // department is picked (REJECT/RESOLVE etc. leave additionalDetail untouched).
     const baseService = pgrData?.ServiceWrappers[0].service;
-    const assigneeDept = _data?.SelectedAssignee?.department;
-
-    // CCSD-2167 (employee side): for the route-back / terminal actions, resolve
-    // the assignee from the complaint's workflow history by role — the person
-    // who previously handled it — unless the officer explicitly picked someone.
-    const pickedUuid = _data?.SelectedAssignee?.uuid || null;
     const derivedRole = HISTORY_DERIVED_ASSIGNEE_ROLE[selectedAction.action];
     // Derive an owner only for actions whose modal OFFERS an assignee. REJECT
     // and any action into a terminal state (RESOLVE -> RESOLVED) show no
@@ -406,6 +447,13 @@ const PGRDetails = () => {
     const offersAssignee = actionConfig.formConfig.form.some((section) =>
       section.body.some((field) => field.key === "SelectedAssignee")
     );
+    // CCSD-2167 (employee side): for the route-back / terminal actions, resolve
+    // the assignee from the complaint's workflow history by role — the person
+    // who previously handled it — unless the officer explicitly picked someone.
+    // A pick only counts on a form that shows the picker: the draft can still
+    // carry one from another action, and it must not ride into REJECT/RESOLVE.
+    const pickedUuid = offersAssignee ? _data?.SelectedAssignee?.uuid || null : null;
+    const assigneeDept = offersAssignee ? _data?.SelectedAssignee?.department : undefined;
     let assigneeUuid = pickedUuid;
     if (!pickedUuid && offersAssignee) {
       // Search history at the COMPLAINT's tenant: its process instances live
@@ -462,11 +510,28 @@ const PGRDetails = () => {
     }
     // Parse (object OR stringified) so stamping never discards existing keys
     // like supervisorName / serviceName that older flows stored as a string.
-    const baseAdditionalDetail = parseAdditionalDetail(baseService?.additionalDetail);
+    // REOPEN starts a new lifecycle, so it drops the escalation bookkeeping —
+    // as the citizen reopen already does — or the next escalation would count
+    // on from the previous cycle's level.
+    const isReopen = selectedAction.action === "REOPEN";
+    const baseAdditionalDetail = mergeAdditionalDetail(baseService?.additionalDetail, {}, { resetEscalation: isReopen });
+    const escalation =
+      selectedAction.action === "ESCALATE"
+        ? escalationStamp({
+            additionalDetail: baseAdditionalDetail,
+            assignees: workflowData?.ProcessInstances?.[0]?.assignes,
+            targetState: businessServiceData?.BusinessServices?.[0]?.states?.find((s) => s.uuid === selectedAction.nextState)?.state,
+            now: Date.now(),
+          })
+        : null;
     const updateRequest = {
-      service: assigneeDept
-        ? { ...baseService, additionalDetail: { ...baseAdditionalDetail, department: assigneeDept } }
-        : { ...baseService },
+      service:
+        assigneeDept || escalation || isReopen
+          ? {
+              ...baseService,
+              additionalDetail: { ...baseAdditionalDetail, ...(assigneeDept ? { department: assigneeDept } : {}), ...escalation },
+            }
+          : { ...baseService },
       workflow: {
         action: selectedAction.action,
         assignes: assigneeUuid ? [assigneeUuid] : null,
@@ -598,6 +663,9 @@ const PGRDetails = () => {
             department,
             allDepartments,
             localityCode,
+            // Escalation pre-selects the officer the escalating employee reports
+            // to (HRMS reportingTo) — where the SLA escalation would send it.
+            preferredUuid: selectedAction?.action === "ESCALATE" ? myReportingTo : undefined,
             // Filestore is tenant-scoped — the uploader must write to the
             // COMPLAINT's tenant so the attachment renders later (the display
             // side fetches at service.tenantId).
@@ -611,7 +679,7 @@ const PGRDetails = () => {
 
   // Roles that should never appear in an assignee dropdown even if a workflow
   // state lists them (system or non-employee actors).
-  const NON_ASSIGNEE_ROLES = new Set(["CITIZEN", "AUTO_ESCALATE", "ANONYMOUS", "CMS_VIEWER"]);
+  const NON_ASSIGNEE_ROLES = new Set(["CITIZEN", "AUTO_ESCALATE", "ANONYMOUS", "CMS_VIEWER", "SYSTEM"]);
 
   // Compute the assignee role set for an action by looking at the *forward*
   // (non-self-looping) actions defined on the next state and unioning their
@@ -634,12 +702,22 @@ const PGRDetails = () => {
     const matchingState = businessServiceResponse?.states?.find((state) => state.uuid === currentState?.uuid);
     if (!matchingState) return [];
     const userRoles = userInfo?.info?.roles?.map((role) => role.code) || [];
+    const assignedToMe = isCurrentAssignee({
+      assignees: workflowData?.ProcessInstances?.[0]?.assignes,
+      userUuid: userInfo?.info?.uuid,
+    });
+    // Manual ESCALATE is offered to the complaint's holder only, and only where
+    // there IS a next level: not on the top level's SLA self-loop, and not when
+    // no role remains above (the manual grant never reaches such a state, this
+    // keeps a mis-grant from submitting an owner-less escalation).
     return matchingState.actions
       ? matchingState.actions.filter((action) => action.roles.some((role) => userRoles.includes(role)))
+        .filter((action) => action.action !== "ESCALATE" || (assignedToMe && action.nextState !== matchingState.uuid))
         .map((action) => {
           // Look up the target state so the modal can adapt generically (terminal → no assignee,
           // docUploadRequired → future doc capture) with no per-action code.
           const nextStateData = businessServiceResponse?.states?.find((s) => s.uuid === action.nextState);
+          const nextStateRoles = computeAssigneeRoles(action.nextState, businessServiceResponse);
           return {
             action: action.action,
             // Raw workflow action code, shown as-is — the WF_PGR_* keys hold past-tense
@@ -647,12 +725,14 @@ const PGRDetails = () => {
             name: action.action,
             roles: action.roles,
             nextState: action.nextState,
-            assigneeRoles: computeAssigneeRoles(action.nextState, businessServiceResponse),
+            assigneeRoles:
+              action.action === "ESCALATE" ? nextLevelRoles({ currentState: matchingState, nextStateRoles }) : nextStateRoles,
             isTerminal: !!nextStateData?.isTerminateState,
             docUploadRequired: !!nextStateData?.docUploadRequired,
             uuid: action.uuid,
           };
         })
+        .filter((option) => option.action !== "ESCALATE" || option.assigneeRoles.length > 0)
       : [];
   };
 
@@ -992,6 +1072,10 @@ const PGRDetails = () => {
                     });
                     return;
                   }
+                }
+                if (draftActionRef.current !== selected?.action) {
+                  clearSessionFormData();
+                  draftActionRef.current = selected?.action || null;
                 }
                 setSelectedAction(selected);
                 setOpenModal(true);
