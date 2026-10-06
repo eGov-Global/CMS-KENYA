@@ -315,9 +315,26 @@
 /* Phone-width channel carousel: scroll-snap row without a visible scrollbar. */
 .pgrl-scroll { scrollbar-width: none; -ms-overflow-style: none; }
 .pgrl-scroll::-webkit-scrollbar { display: none; }
+/* Editorial layout (Bomet): the hero photo frame settles in from the right
+   on load; the how-it-works timeline draws itself down once its first step is
+   in view; the service rows' arrows slide on hover. */
+@keyframes pgrl-arch {
+  from { opacity: 0; transform: translateX(28px) rotate(1.5deg); }
+  to   { opacity: 1; transform: none; }
+}
+.pgrl-arch { animation: pgrl-arch 900ms cubic-bezier(0.22, 1, 0.36, 1) 180ms both; }
+.pgrl-tl-fill { transform-origin: top center; }
+.pgrl-reveal .pgrl-tl-fill {
+  transform: scaleY(0);
+  transition: transform 1.6s cubic-bezier(0.22, 1, 0.36, 1) 250ms;
+}
+.pgrl-reveal[data-pgrl-in] .pgrl-tl-fill,
+.pgrl-reveal .pgrl-reveal-item[data-pgrl-in] .pgrl-tl-fill { transform: none; }
 @media (prefers-reduced-motion: reduce) {
   .pgrl-float { animation: none; }
   .pgrl-draw { animation: none; stroke-dashoffset: 0; }
+  .pgrl-arch { animation: none; }
+  .pgrl-reveal .pgrl-tl-fill { transform: none; transition: none; }
 }
 
 /* ---- PGR emoji rating: citizen rate page + "You rated" badges (components/EmojiRating.js) ---- */

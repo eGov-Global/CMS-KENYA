@@ -28,6 +28,7 @@ import { useLandingConfig } from "./config/useLandingConfig";
 import { useLandingMessages } from "./config/useLandingMessages";
 import { usePreviewBridge, PreviewBridge } from "./config/usePreviewBridge";
 import { LandingRenderer } from "./LandingRenderer";
+import type { LandingLayout } from "./config/sectionRegistry";
 
 export interface PGRLandingPageProps {
   /** Override any destination — see LandingRoutes for the full map. */
@@ -62,6 +63,9 @@ export interface PGRLandingPageProps {
   /** Force the top utility bar on/off (else the LandingPageConfig toggle
    *  governs; default off). */
   showUtilityBar?: boolean;
+  /** Page layout (composition only — same config, copy and routes). Default
+   *  "classic"; LandingPageConfig.theme.layout overrides per tenant. */
+  layout?: LandingLayout;
   className?: string;
 }
 
@@ -143,6 +147,7 @@ export default PGRLandingPage;
 export { DEFAULT_LANDING_ROUTES, mergeRoutes } from "./routes";
 export type { LandingRoutes } from "./routes";
 export { DEFAULT_LANDING_TOKENS } from "./tokens";
+export type { LandingLayout } from "./config/sectionRegistry";
 export type { LandingTokens } from "./tokens";
 export { DEFAULT_NEWS, LANDING_COPY } from "./content";
 export type { NewsItem, LandingCopyKey } from "./content";

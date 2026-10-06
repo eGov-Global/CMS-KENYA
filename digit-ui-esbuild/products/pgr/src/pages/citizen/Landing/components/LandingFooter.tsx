@@ -25,7 +25,7 @@ export interface LandingFooterProps {
   section?: LandingSectionConfig;
 }
 
-interface FooterGroup {
+export interface FooterGroup {
   titleKey: LandingCopyKey;
   links: Array<{ labelKey: LandingCopyKey; route: keyof LandingRoutes; external?: boolean }>;
   taglineKey?: LandingCopyKey;
@@ -35,7 +35,7 @@ interface FooterGroup {
 // rendered inert: a greyed-out "Page being configured" row reads as an
 // unfinished site to a citizen. Uncomment each one as the county supplies the
 // destination and the matching route in routes.ts stops being "#".
-const GROUPS: FooterGroup[] = [
+export const FOOTER_GROUPS: FooterGroup[] = [
   {
     titleKey: "GOV_NAME",
     links: [
@@ -87,9 +87,9 @@ const BRAND_PATHS: Record<SocialId, string> = {
     "M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z",
 };
 
-type SocialId = (typeof SOCIAL_LINKS)[number]["id"];
+export type SocialId = (typeof SOCIAL_LINKS)[number]["id"];
 
-function BrandMark({ id }: { id: SocialId }) {
+export function BrandMark({ id }: { id: SocialId }) {
   return (
     <svg viewBox="0 0 24 24" aria-hidden focusable="false" className="h-4 w-4" fill="currentColor">
       <path d={BRAND_PATHS[id]} />
@@ -155,7 +155,7 @@ export function LandingFooter({ routes, logoUrl, emblemUrl, section }: LandingFo
         </div>
 
         <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:col-span-9 lg:grid-cols-4">
-          {GROUPS.map((group) => (
+          {FOOTER_GROUPS.map((group) => (
             <nav key={group.titleKey} aria-label={c(group.titleKey)}>
               <p className={FOOT_HEAD}>{c(group.titleKey)}</p>
               <ul className="m-0 mt-4 flex list-none flex-col gap-1 p-0">

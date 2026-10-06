@@ -74,7 +74,8 @@ works with zero translations seeded), and the compiled Tailwind CSS from
 | `emblemUrl` | none | County emblem in the masthead (falls back to a glyph). |
 | `languages` | `en_IN` | Language switcher options (`{ code, label }`). |
 | `onLanguageChange` | platform localization service | Override for locale switching. |
-| `tokens` | Nairobi green & gold | Design-token overrides (HSL triples — see `tokens.ts`). |
+| `tokens` | Bomet blue (`tokens.ts`) | Design-token overrides (HSL triples — see `tokens.ts`). |
+| `layout` | `classic` | Page composition: `classic` (the Bonga Nai page) or `editorial` (the Bomet Feedback Hub: split hero on a light page, figures band, service rows, timeline, dark channels band, helpline strip, light footer). Same config, copy keys, routes and media either way; `LandingPageConfig.theme.layout` in MDMS overrides it per tenant. Components live in `variants/<layout>/`. |
 | `showWhatsAppFab` | `true` | Floating WhatsApp action; renders nothing while the route is `"#"`. |
 | `showUtilityBar` | `false` | Top gov strip (hotline, phone, language, sign-in). |
 

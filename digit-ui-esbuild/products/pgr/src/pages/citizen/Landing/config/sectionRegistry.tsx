@@ -34,8 +34,9 @@ import {
   NewsItem,
 } from "../content";
 import { LandingRoutes } from "../routes";
-import { buildRichItems, safeMediaSrc } from "./resolve";
-import type { LandingMediaConfig, LandingSectionConfig } from "./types";
+import { buildRichItems, mediaUrl, withItems } from "./resolve";
+import type { LandingSectionConfig } from "./types";
+import { EDITORIAL_SECTIONS } from "../variants/editorial";
 
 export type Slot = "header" | "main" | "footer";
 
@@ -62,19 +63,7 @@ export interface SectionEntry {
   buildProps: (section: LandingSectionConfig, ctx: RenderCtx) => Record<string, any>;
 }
 
-/** media.imageId as a direct URL passes through (see safeMediaSrc); a bare
- *  filestore id is left for the P2 media phase and ignored here, so the
- *  section falls back to its default (no image). */
-function mediaUrl(media?: LandingMediaConfig): string | undefined {
-  return safeMediaSrc(media?.imageId);
-}
 
-/** section with its items normalised to the rich runtime shape (or left absent
- *  so the leaf uses its default array). */
-const withItems = (s: LandingSectionConfig, def: any[], routes: LandingRoutes): LandingSectionConfig => ({
-  ...s,
-  items: buildRichItems(s.items, def, routes as unknown as Record<string, string>) as any,
-});
 
 export const SECTION_REGISTRY: Record<string, SectionEntry> = {
   navigation: {
@@ -172,7 +161,25 @@ export const SECTION_REGISTRY: Record<string, SectionEntry> = {
   },
 };
 
-export function getEntry(type?: string): SectionEntry | undefined {
+/** Page layouts. "classic" is the registry above (the Bonga Nai page);
+ *  "editorial" (the Bomet Feedback Hub) swaps in the components under
+ *  variants/editorial for the types it restyles and keeps the rest. A layout
+ *  changes composition only: every section still reads the same config rows,
+ *  copy keys, routes and media, so the Builder and the seeds are shared. */
+export type LandingLayout = "classic" | "editorial";
+
+export const LANDING_LAYOUTS: readonly LandingLayout[] = ["classic", "editorial"];
+
+const LAYOUT_OVERRIDES: Record<LandingLayout, Partial<Record<string, SectionEntry>>> = {
+  classic: {},
+  editorial: EDITORIAL_SECTIONS,
+};
+
+export function isLandingLayout(v: unknown): v is LandingLayout {
+  return typeof v === "string" && (LANDING_LAYOUTS as readonly string[]).includes(v);
+}
+
+export function getEntry(type?: string, layout: LandingLayout = "classic"): SectionEntry | undefined {
   if (!type) return undefined;
-  return SECTION_REGISTRY[type];
+  return LAYOUT_OVERRIDES[layout]?.[type] ?? SECTION_REGISTRY[type];
 }

@@ -21,6 +21,10 @@ import bometFooterLogo from "./assets/bomet-footer-logo.jpg";
 // the orb props are set to "" so those sections render without a photo instead
 // of cropping the wide hero into circles. The palette comes from tokens.ts
 // (Bomet defaults) and the MDMS theme; no per-entry override needed.
+//
+// `layout="editorial"`: Bomet's own composition (split hero over a light page,
+// a figures band, service rows, a timeline, a dark channels band, a helpline
+// strip, a light footer) — the sibling Bonga Nai page keeps "classic".
 import bometHero from "./assets/bomet-hero.webp";
 import bometHeroSm from "./assets/bomet-hero-sm.webp";
 
@@ -50,6 +54,7 @@ export function PGRLandingEntry() {
       bandImageUrl={bometHero}
       stepsOrbImageUrl=""
       channelsOrbImageUrl=""
+      layout="editorial"
     />
   );
 }

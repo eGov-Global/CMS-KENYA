@@ -4,6 +4,9 @@
     "enabled": true,
     "defaultLocale": "pt_PT",
     "showWhatsAppFab": true,
-    "showUtilityBar": true
+    "showUtilityBar": true,
+    "theme": {
+      "layout": "editorial"
+    }
   }
 ]
