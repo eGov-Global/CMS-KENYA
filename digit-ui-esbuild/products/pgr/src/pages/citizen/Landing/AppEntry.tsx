@@ -11,23 +11,44 @@
 import * as React from "react";
 import PGRLandingPage from "./index";
 import type { LandingRoutes } from "./routes";
+import type { LandingTokens } from "./tokens";
 // Tenant branding belongs to the deployment entry, not the reusable page:
 // esbuild's `file` loader emits the asset and returns its URL. An MDMS
 // `navigation` section with a media.imageId still overrides this.
-import nairobiEmblem from "./assets/nairobi-emblem.png";
-import nairobiFooterLogo from "./assets/nairobi-footer-logo.png";
-// Photography (see assets/CREDITS.md): the County's customer-service centre for
-// the hero; Wikimedia Commons photos for the closing band and portrait.
-import nairobiHero from "./assets/nairobi-hero.jpg";
-import nairobiHeroSm from "./assets/nairobi-hero-sm.jpg";
-import nairobiBand from "./assets/nairobi-band.jpg";
-// Resident portrait in the closing band (Commons, CC BY-SA 4.0 — see
-// CREDITS.md). Swap for a county-supplied photo when one is available.
-import nairobiPerson from "./assets/nairobi-person.jpg";
-// Square cuts for the circular photo orbs. Reusing the wide hero/band photos
-// meant a 1.9 image in a 1.0 box — object-fit:cover threw away ~47% of it.
-import nairobiOrbSteps from "./assets/nairobi-orb-steps.jpg";
-import nairobiOrbChannels from "./assets/nairobi-orb-channels.jpg";
+import bometLogo from "./assets/bomet-logo.jpg";
+import bometFooterLogo from "./assets/bomet-footer-logo.jpg";
+// The county highlands already shipped as the sign-in backdrop, re-cut to the
+// hero's two sizes (see assets/CREDITS.md). No portrait or orb photography yet:
+// those sections render their photo-less variants until the County supplies some.
+import bometHero from "./assets/bomet-hero.jpg";
+import bometHeroSm from "./assets/bomet-hero-sm.jpg";
+
+// Bomet palette: the live theme's county blue (primary #1565A8, accent #1B85D2,
+// text #1D2433). The shipped defaults are Nairobi green; the MDMS theme still
+// overrides the roles applyTheme bridges at runtime, these cover the rest —
+// text on the accent, the tints and the four service-area hues.
+const BOMET_TOKENS: Partial<LandingTokens> = {
+  primary: "207 78% 37%",       // #1565A8
+  primaryHover: "208 80% 29%",  // #0F4F85
+  secondary: "207 77% 46%",     // #1B85D2
+  deep: "209 72% 18%",          // #0D324F  footer, closing band, hero scrim base
+  accent: "207 77% 46%",        // #1B85D2  primary CTAs; white text reads 4.6:1
+  accentHover: "207 80% 38%",   // #146AAE
+  onPrimary: "0 0% 100%",
+  onAccent: "0 0% 100%",
+  ink: "222 27% 16%",           // #1D2433
+  inkSoft: "218 12% 40%",       // #5A6372
+  surface: "0 0% 100%",
+  page: "210 25% 98%",          // #F7F9FB
+  line: "212 18% 89%",          // #DDE3EA
+  ring: "207 78% 37%",
+  tint: "208 70% 94%",          // #E5F0FA  soft blue band / icon tiles
+  tintGold: "208 70% 94%",      // no gold in the Bomet palette: same soft blue
+  typeComplaint: "207 78% 37%", // Health Services — county blue
+  typePetition: "192 62% 32%",  // Water & Sanitation — teal
+  typeGrievance: "222 32% 32%", // Administration & Governance — slate
+  typeReport: "207 77% 46%",
+};
 
 export function PGRLandingEntry() {
   const ctx = (typeof window !== "undefined" && (window as any)?.contextPath) || "digit-ui";
@@ -47,14 +68,12 @@ export function PGRLandingEntry() {
   return (
     <PGRLandingPage
       routes={routes}
-      emblemUrl={nairobiEmblem}
-      footerLogoUrl={nairobiFooterLogo}
-      heroImageUrl={nairobiHero}
-      heroImageSmallUrl={nairobiHeroSm}
-      bandImageUrl={nairobiBand}
-      personImageUrl={nairobiPerson}
-      stepsOrbImageUrl={nairobiOrbSteps}
-      channelsOrbImageUrl={nairobiOrbChannels}
+      emblemUrl={bometLogo}
+      footerLogoUrl={bometFooterLogo}
+      heroImageUrl={bometHero}
+      heroImageSmallUrl={bometHeroSm}
+      bandImageUrl={bometHero}
+      tokens={BOMET_TOKENS}
     />
   );
 }

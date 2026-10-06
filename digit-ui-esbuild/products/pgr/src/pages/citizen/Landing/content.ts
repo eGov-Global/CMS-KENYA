@@ -5,29 +5,25 @@
 //   2. Built-in copy below (`en`; other locales come from seeded MDMS keys).
 //   3. The raw key (never expected to surface).
 //
-// ── Deployment: Nairobi City County Government, Kenya ("Bonga Nai") ──
-// Portal renamed from "Nai Pepea" to "Bonga Nai" (September 2026); the BRD
-// still carries the launch name.
-// Every factual claim below comes from the Nai Pepea Business Requirements
-// Document (BRD Draft V0.1, September 2026; NCCG / eGov Global / Smart Nairobi /
-// World Bank) and the county's public website (nairobi.go.ke — contacts):
-//   • Pilot scope       — Makadara and Kibra Sub-Counties; 9 wards identified.
-//   • Pilot departments — Urban Development & Planning, Environment / Green
-//     Nairobi, Finance & Economic Planning, Boroughs & Sub-County Administration
-//     (escalation contacts confirmed); a 17-department catalog is configured.
-//   • Intake            — self-service web portal (name + mobile, no National
-//     ID), call agents logging calls manually, counter employees at ward /
-//     sub-county offices. English only in Phase 1. WhatsApp is registered but
-//     NOT a live channel.
-//   • Case number       — issued at submission, on screen and by SMS
-//     (proposed format NP-YYYY-0000001).
-//   • Routing           — Customer Service assigns each case to the Department
-//     Representative or the Director of the concerned department.
-//   • Escalation        — 72 hours for the first assignee, then automatic:
-//     Director (+24 h) → Chief Officer (+24 h) → CECM (final tier).
-//   • Notifications     — SMS on registration, assignment, escalation,
-//     resolution and closure (e-mail fallback while the gateway is pending).
-// Do NOT add a claim here that the BRD does not support — this is the
+// ── Deployment: County Government of Bomet, Kenya ("Bomet Feedback Hub") ──
+// Every factual claim below is taken from the county's own onboarding workbook
+// ("Bomet Feedback Hub: Project Plan & Tracker", tabs: Boundary Hierarchy,
+// Complaint Workflow, Departments, Complaint Types - Administration /
+// Health / Water & Sanitation, Employee Details, Assumptions):
+//   • Pilot departments  — Health, Water & Sanitation (Assumptions 8.1).
+//     Administration complaint types are configured too, so it is listed third.
+//   • Boundary hierarchy — County > Sub-County > Ward: 5 sub-counties, 25 wards.
+//   • Routing            — citizen picks type, sub-type, sub-county and ward;
+//     Health + Administration route to the Sub-County Administrator, Water &
+//     Sanitation to the Department Director.
+//   • Escalation         — on SLA breach: Sub-County Administrator → Department
+//     Director → Chief Officer → CECM.
+//   • SLAs               — per sub-type, 1 day (unsafe water) to 30 days
+//     (corruption, procurement, HR discipline).
+//   • Intake             — portal (name + phone, no National ID), call-centre
+//     agents logging calls manually, counter staff per pilot ward; SMS
+//     acknowledgement via the county gateway.
+// Do NOT add a claim here that the workbook does not support — this is the
 // public-facing promise of the service.
 //
 // News defaults are placeholders; production deployments pass real items via
@@ -35,9 +31,9 @@
 
 import type * as React from "react";
 import {
-  Building2,
-  Leaf,
-  Coins,
+  Stethoscope,
+  Droplets,
+  Scale,
   Landmark,
   Send,
   Hash,
@@ -51,7 +47,6 @@ import {
   MapPin,
   ShieldAlert,
   Siren,
-  Flame,
 } from "lucide-react";
 import type { LandingRoutes } from "./routes";
 
@@ -60,17 +55,20 @@ export type IconComponent = React.ComponentType<{ className?: string; "aria-hidd
 
 export const LANDING_COPY = {
   // Chrome ------------------------------------------------------------------
-  GOV_NAME: { en: "Nairobi City County Government" },
-  PORTAL_NAME: { en: "Bonga Nai" },
-  ORG_NAMES: { en: "Office of the County Chief Officer · Public Participation, Citizen Engagement and Customer Service" },
-  FOOTER_ORG: { en: "Nairobi City County Government" },
+  GOV_NAME: { en: "County Government of Bomet" },
+  PORTAL_NAME: { en: "Bomet Feedback Hub" },
+  // Two-line wordmark in the header/footer lockup (replaces the one-line PORTAL_NAME there).
+  WORDMARK_LINE1: { en: "Bomet" },
+  WORDMARK_LINE2: { en: "Feedback Hub" },
+  ORG_NAMES: { en: "Office of the Ombudsman · Health · Water & Sanitation" },
+  FOOTER_ORG: { en: "County Government of Bomet" },
   TAGLINE: { en: "You report it. The County acts on it." },
-  // The county's own slogan, as carried on its crest.
-  MOTTO_VALUES: { en: "Let's Make Nairobi Work" },
+  // The county's own motto, as carried on the crest.
+  MOTTO_VALUES: { en: "The Greatest Good For The Greatest Number" },
   SKIP_LINK: { en: "Skip to main content" },
-  UTILITY_PHONE_LABEL: { en: "Nairobi City County Government" },
-  UTILITY_GREEN_LINE: { en: "County Help Line" },
-  UTILITY_GREEN_LINE_FREE: { en: "Call agents log your complaint for you" },
+  UTILITY_PHONE_LABEL: { en: "County Government of Bomet" },
+  UTILITY_GREEN_LINE: { en: "County Call Centre" },
+  UTILITY_GREEN_LINE_FREE: { en: "Mon–Fri, two shifts" },
   LOGIN: { en: "Sign in" },
   ARIA_LANGUAGE: { en: "Language" },
   ARIA_UTILITY: { en: "Service information" },
@@ -87,113 +85,73 @@ export const LANDING_COPY = {
   NAV_CONTACTS: { en: "Contacts" },
 
   // Hero -----------------------------------------------------------------—--
-  HERO_EYEBROW: { en: "Nairobi City County Government · Kenya" },
-  HERO_TITLE: { en: "Bonga Nai" },
+  HERO_EYEBROW: { en: "County Government of Bomet · Kenya" },
+  HERO_TITLE: { en: "Bomet Feedback Hub" },
   HERO_PILOT_NOTICE: {
     en:
-      "Pilot phase: complaints are handled for six Sub-Counties — Makadara, Lang'ata, Kibra, Kasarani, Embakasi North and Kamukunji. Other parts of Nairobi will follow as the service scales up to all 85 wards.",
+      "Pilot phase: complaints are handled for Health and Water & Sanitation in all five sub-counties, Sotik, Chepalungu, Bomet East, Bomet Central and Konoin.",
   },
   HERO_LEDE: {
     en:
-      "Bonga Nai means speak up, Nairobi. Report a problem with a county service, get a case number within seconds, and follow it until it is resolved. Every case is assigned to an officer in the responsible department and escalated automatically if it misses its deadline.",
+      "Report a problem with a county service, get a case number, and follow it until it is resolved. Every case is routed to the officer responsible for your ward, and escalated automatically if it misses its deadline.",
   },
   HERO_CTA_SUBMIT: { en: "Report an Issue" },
   HERO_CTA_TRACK: { en: "Track a Complaint" },
-  HERO_TRUST_CONFIDENTIAL: { en: "No National ID needed, just your name and mobile number" },
+  HERO_TRUST_CONFIDENTIAL: { en: "No National ID needed, just your name and phone number" },
   HERO_TRUST_CASE_NUMBER: { en: "Unique case number" },
   HERO_TRUST_NOTIFICATIONS: { en: "SMS acknowledgement with your case number" },
   HERO_CHANNELS_LABEL: { en: "Also available through:" },
-  HERO_PHOTO_CAPTION: { en: "Nairobi City County customer-service centre" },
-  // Hand-lettered tagline over the hero photo and on the phone photo card.
-  HERO_SCRIPT: { en: "A Cleaner, Greener Nairobi" },
-  // Speech bubble on the circular photos beside the steps and channels.
-  ORB_TAGLINE: { en: "Your Voice Matters" },
-  // Headline figures under the hero — every one from the BRD (§1, §3, §5.2, §6).
-  STAT_SUBCOUNTIES_VALUE: { en: "6" },
-  STAT_SUBCOUNTIES_LABEL: { en: "pilot sub-counties" },
-  STAT_WARDS_VALUE: { en: "17" },
-  STAT_WARDS_LABEL: { en: "wards in the pilot" },
-  STAT_SLA_VALUE: { en: "72 h" },
-  STAT_SLA_LABEL: { en: "to resolve, then automatic escalation" },
-  STAT_DEPARTMENTS_VALUE: { en: "17" },
-  STAT_DEPARTMENTS_LABEL: { en: "departments in the complaint catalogue" },
-  HERO_CHANNEL_APP: { en: "Counter desks at ward and sub-county offices" },
+  HERO_CHANNEL_APP: { en: "Counter desks in the pilot wards" },
   HERO_CHANNEL_WA: { en: "SMS case updates" },
-  HERO_CHANNEL_LINE: { en: "County help line" },
+  HERO_CHANNEL_LINE: { en: "County call centre" },
 
   // Service areas ("types" section) -------------------------------------—--
-  TYPES_EYEBROW: { en: "Service areas" },
   TYPES_TITLE: { en: "What You Can Report" },
   TYPES_INTRO: {
     en:
-      "Pick the department your complaint is about, then choose a complaint type, a sub-type and your ward. That is what routes the case to the right officer and starts its deadline.",
+      "Pick the service your complaint is about. You then choose a category, a sub-category and your ward. That is what routes the case to the right officer and sets its deadline.",
   },
-  TYPE_URBAN_TITLE: { en: "Urban Development & Planning" },
-  TYPE_URBAN_DESC: {
+  TYPE_HEALTH_TITLE: { en: "Health Services" },
+  TYPE_HEALTH_DESC: {
     en:
-      "Illegal construction, planning permit delays, and other development-control issues in your ward. Illegal construction cases carry a 72-hour deadline; permit delays 48 hours.",
+      "Maternal and newborn emergencies, ambulance delays, drug stock-outs, oxygen and equipment failures, staff absence or conduct, long waiting times, facility sanitation, referral delays, SHA service denial, illegal charges. Emergency categories carry deadlines of one to five days.",
   },
-  TYPE_ENVIRONMENT_TITLE: { en: "Environment / Green Nairobi" },
-  TYPE_ENVIRONMENT_DESC: {
+  TYPE_WATER_TITLE: { en: "Water & Sanitation" },
+  TYPE_WATER_DESC: {
     en:
-      "Illegal dumping, water contamination and other environmental hazards. Water contamination is a 24-hour case; illegal dumping 48 hours.",
+      "Contaminated or unsafe water, pipe leaks and low pressure, sewer and manhole overflows, water outages, billing and meter disputes, broken kiosks and boreholes, blocked drains and flooding. Unsafe water is a one-day case.",
   },
-  TYPE_FINANCE_TITLE: { en: "Finance & Economic Planning" },
-  TYPE_FINANCE_DESC: {
+  TYPE_ADMIN_TITLE: { en: "Administration & Governance" },
+  TYPE_ADMIN_DESC: {
     en:
-      "Incorrect billing, payments not reflected, land rates disputes and clearances, illegal clamping and parking ticket disputes. Illegal clamping is a 4-hour case.",
-  },
-  TYPE_BOROUGHS_TITLE: { en: "Boroughs & Sub-County Administration" },
-  TYPE_BOROUGHS_DESC: {
-    en:
-      "Market stall disputes, illegal hawking and other matters handled by your Sub-County Administrator and the Borough Managers.",
+      "Staff misconduct, corruption and bribery, abuse of office, procurement and tender irregularities, exclusion from public participation, stalled or poor-quality projects, unanswered information requests, public nuisance.",
   },
   TYPE_CTA: { en: "Report an issue" },
 
   // How it works -----------------------------------------------------------
-  HOW_EYEBROW: { en: "From report to resolution" },
   HOW_TITLE: { en: "How It Works" },
   HOW_STEP_LABEL: { en: "Step" },
-  HOW_STEP_1: { en: "Report through this portal, the county help line or a counter desk" },
-  HOW_STEP_2: { en: "Receive your case number on screen and by SMS" },
-  HOW_STEP_3: { en: "Customer Service assigns it to the responsible department" },
-  HOW_STEP_4: { en: "The officer investigates and resolves it within 72 hours" },
+  HOW_STEP_1: { en: "Report through the portal, the call centre or a counter desk" },
+  HOW_STEP_2: { en: "Receive your case number by SMS" },
+  HOW_STEP_3: { en: "The Ombudsman's Office routes it to your sub-county" },
+  HOW_STEP_4: { en: "The responsible officer works the case" },
   HOW_STEP_5: { en: "A missed deadline escalates the case automatically" },
   HOW_STEP_6: { en: "You confirm the outcome and rate the service" },
   HOW_NOTE_TITLE: { en: "Who handles your case, and what happens if it stalls" },
   HOW_NOTE_NOTIFY: {
     en:
-      "Customer Service assigns every case to the Director of the department concerned, who is directly responsible for resolving it.",
+      "Health and Administration cases go to the Sub-County Administrator for your area. Water & Sanitation cases go to the Department Director for the whole county.",
   },
   HOW_NOTE_RECORD: {
     en:
-      "If the 72-hour deadline passes without a resolution, the case moves up on its own: Director → Chief Officer (24 more hours) → County Executive Committee Member (CECM), the final tier.",
+      "If the deadline passes without a resolution, the case moves up on its own: Sub-County Administrator → Department Director → Chief Officer → County Executive Committee Member (CECM).",
   },
   HOW_NOTE_CHANNELS: {
     en:
-      "You are notified by SMS when your case is registered, assigned, escalated, resolved and closed. The same deadline applies to every complaint, whichever channel you used.",
+      "Deadlines are set per category: one day for unsafe water, two days for a sewer overflow, seven days for a water outage or absent staff, and up to 30 days for corruption and procurement cases.",
   },
-
-  // Emergency helplines ------------------------------------------------—---
-  HELPLINES_EYEBROW: { en: "Emergency" },
-  HELPLINES_TITLE: { en: "Emergency Helplines" },
-  HELPLINES_INTRO: {
-    en: "For emergencies call the services below directly — this portal is for county service complaints, not emergencies.",
-  },
-  HELPLINE_POLICE_TITLE: { en: "Police" },
-  HELPLINE_POLICE_DESC: { en: "Crime, accidents and threats to safety" },
-  HELPLINE_AMBULANCE_TITLE: { en: "Ambulance" },
-  HELPLINE_AMBULANCE_DESC: { en: "Medical emergencies" },
-  HELPLINE_FIRE_TITLE: { en: "Fire & Rescue" },
-  HELPLINE_FIRE_DESC: { en: "Fire, flooding and rescue" },
-  HELPLINE_COUNTY_TITLE: { en: "County Help Line" },
-  HELPLINE_COUNTY_DESC: { en: "County services and the Disaster Management & Coordination help line — call agents log your complaint for you" },
-  HELPLINE_DISASTER_TITLE: { en: "Disaster Management" },
-  HELPLINE_DISASTER_DESC: { en: "Building collapse, major incidents" },
-  HELPLINES_CALL: { en: "Call" },
 
   // Channels -----------------------------------------------------------—---
-  CHANNELS_EYEBROW: { en: "Channels" },
   CHANNELS_TITLE: { en: "Ways to Reach Us" },
   CHANNELS_INTRO: {
     en:
@@ -202,45 +160,41 @@ export const LANDING_COPY = {
   CHANNEL_WEB_TITLE: { en: "This Portal" },
   CHANNEL_WEB_DESC: {
     en:
-      "Register with your name and mobile number, no National ID required. Submit, attach photos or documents, and see the full history of your case.",
+      "Register with your name and phone number, no National ID required. Submit, attach photos, and see the full history of your case.",
   },
   CHANNEL_WEB_CTA: { en: "Report an issue" },
   CHANNEL_WEB_BADGE: { en: "You are here" },
-  CHANNEL_LINE_TITLE: { en: "County Help Line" },
+  CHANNEL_LINE_TITLE: { en: "County Call Centre" },
   CHANNEL_LINE_DESC: {
     en:
-      "Call agents log your complaint while you are on the call and read your case number back to you. Two shifts, every working day.",
+      "Agents log your complaint while you are on the call and read your case number back to you. Two shifts, Monday to Friday.",
   },
-  CHANNEL_LINE_CTA: { en: "Call the help line" },
-  CAROUSEL_PREV: { en: "Previous channels" },
-  CAROUSEL_NEXT: { en: "Next channels" },
+  CHANNEL_LINE_CTA: { en: "Call the centre" },
   CHANNEL_INPERSON_TITLE: { en: "Counter Desks" },
   CHANNEL_INPERSON_DESC: {
     en:
-      "Counter employees at ward and sub-county offices log walk-in complaints for you and hand over your case reference before you leave.",
+      "County counter staff in the pilot wards log walk-in complaints for you and hand over a written case reference before you leave.",
   },
-  CHANNEL_INPERSON_CTA: { en: "Find a desk" },
   CHANNEL_SMS_TITLE: { en: "SMS Updates" },
   CHANNEL_SMS_DESC: {
     en:
       "When your complaint is registered you get an SMS with your case number, then further SMS as its status changes. No smartphone or data needed.",
   },
   // Retained key: referenced directly by WhatsAppFab, which renders nothing
-  // while the WHATSAPP route is "#" (WhatsApp is registered but not a live
-  // Phase 1 channel for Bonga Nai).
+  // while the WHATSAPP route is "#" (WhatsApp is not a Bomet pilot channel).
   CHANNEL_WA_CTA: { en: "Chat on WhatsApp" },
 
   // Privacy ------------------------------------------------------------—---
-  CHANNEL_SMS_CTA: { en: "Track your case" },
-  PRIVACY_EYEBROW: { en: "Privacy & data" },
   PRIVACY_TITLE: { en: "Your Privacy and Your Data" },
   PRIVACY_P1: {
     en:
-      "Nairobi City County Government protects the personal information you submit in line with the Data Protection Act, 2019.",
+      "The County Government of Bomet protects the personal information you submit in line with the Data Protection Act, 2019.",
   },
+  // No identity-shielding exists in the product (no create-flow field, no
+  // backend flag), so this states only what the service actually does.
   PRIVACY_P2: {
     en:
-      "Your details are used to register, route and resolve your complaint and to send you SMS updates. They are seen only by the department and officer handling your case and by Customer Service in its oversight role, and are not shared with unauthorised third parties.",
+      "Your details are used to register, route and resolve your complaint and to send you SMS updates. They are seen by the authorised county officers handling your case and are not shared with unauthorised third parties.",
   },
   PRIVACY_LINK: { en: "Read the Privacy Notice" },
 
@@ -248,19 +202,19 @@ export const LANDING_COPY = {
   PRIVACY_PAGE_TITLE: { en: "Privacy Notice" },
   PRIVACY_PAGE_P1: {
     en:
-      "Bonga Nai is operated by the Nairobi City County Government through the Office of the County Chief Officer for Public Participation, Citizen Engagement and Customer Service. We are committed to protecting your privacy and to handling your personal information securely, transparently and in line with the Data Protection Act, 2019.",
+      "The Bomet Feedback Hub is operated by the County Government of Bomet. We are committed to protecting your privacy and to handling your personal information securely, transparently and in line with the Data Protection Act, 2019.",
   },
   PRIVACY_PAGE_P2: {
     en:
-      "When you report an issue you consent to the collection and processing of the information you provide so that your complaint can be registered, routed, investigated and resolved. This includes your name, mobile number, the ward and location of the issue, the complaint category and sub-type, your description of the problem, the date of the event, and any photographs or documents you choose to attach. Registration does not require a National ID.",
+      "When you report an issue you consent to the collection and processing of the information you provide so that your complaint can be registered, routed, investigated and resolved. This includes your name, phone number, the ward and location of the issue, the complaint category, your description of the problem, and any photographs or documents you choose to attach. Registration does not require a National ID.",
   },
   PRIVACY_PAGE_P3: {
     en:
-      "Your information is accessed only by the authorised county officers responsible for handling your complaint — the department and officer the case is assigned to and the officers in its escalation chain — and by Customer Service in its oversight capacity. It is not shared with unauthorised third parties and is never used for commercial or marketing purposes. The portal does not currently offer anonymous or identity-shielded reporting: the officers handling your complaint can see the name and mobile number you registered with.",
+      "Your information is accessed only by authorised county officers responsible for handling your complaint, the Office of the Ombudsman, the sub-county administrators, and the department officers in the escalation chain. It is not shared with unauthorised third parties and is never used for commercial or marketing purposes. The portal does not currently offer anonymous or identity-shielded reporting: the officers handling your complaint can see the name and phone number you registered with.",
   },
   PRIVACY_PAGE_P4: {
     en:
-      "Your mobile number is used to send case notifications by SMS. Technical information such as device data, IP address and system usage may also be collected to keep the service secure and working properly. All communication with the service is encrypted, access is controlled by role, and every access, assignment and status change is recorded in an audit log.",
+      "Your phone number is used to send case notifications by SMS. Technical information such as device data, IP address and system usage may also be collected to keep the service secure and working properly. We apply appropriate technical and organisational safeguards against unauthorised access, alteration, disclosure or loss.",
   },
   PRIVACY_PAGE_P5: {
     en:
@@ -273,24 +227,17 @@ export const LANDING_COPY = {
   NEWS_VIEW_ALL: { en: "See all updates" },
 
   // Areas covered ("institutions" section) -----------------------------—---
-  INST_EYEBROW: { en: "Pilot geography" },
-  // Footer wordmark, two lines, set in type beside the crest.
-  WORDMARK_LINE1: { en: "Nairobi" },
-  WORDMARK_LINE2: { en: "City County" },
   INST_TITLE: { en: "Areas We Cover" },
-  INST_INTRO: { en: "Bonga Nai starts in six sub-counties, 17 wards in all. Every ward listed here has counter staff and an assigned department contact." },
-  INST_MAKADARA_TITLE: { en: "Makadara Sub-County" },
-  INST_MAKADARA_DESC: { en: "Wards: Viwandani · Harambee · Makongeni · Maringo/Hamza" },
-  INST_LANGATA_TITLE: { en: "Lang'ata Sub-County" },
-  INST_LANGATA_DESC: { en: "Wards: Karen · Nairobi West · Mugumo-ini · South C · Nyayo Highrise" },
-  INST_KIBRA_TITLE: { en: "Kibra Sub-County" },
-  INST_KIBRA_DESC: { en: "Wards: Laini Saba · Lindi · Makina · Woodley/Kenyatta Golf Course · Sarang'ombe" },
-  INST_KASARANI_TITLE: { en: "Kasarani Sub-County" },
-  INST_KASARANI_DESC: { en: "Ward: Ruai" },
-  INST_EMBAKASI_NORTH_TITLE: { en: "Embakasi North Sub-County" },
-  INST_EMBAKASI_NORTH_DESC: { en: "Ward: Dandora" },
-  INST_KAMUKUNJI_TITLE: { en: "Kamukunji Sub-County" },
-  INST_KAMUKUNJI_DESC: { en: "Ward: Eastleigh" },
+  INST_SOTIK_TITLE: { en: "Sotik Sub-County" },
+  INST_SOTIK_DESC: { en: "Wards: Ndanai/Abosi · Chemagel · Kipsonoi · Rongena/Manaret · Kapletundo" },
+  INST_CHEPALUNGU_TITLE: { en: "Chepalungu Sub-County" },
+  INST_CHEPALUNGU_DESC: { en: "Wards: Kong'asis · Nyangores · Sigor · Chebunyo · Siongiroi" },
+  INST_BOMET_EAST_TITLE: { en: "Bomet East Sub-County" },
+  INST_BOMET_EAST_DESC: { en: "Wards: Merigi · Kembu · Longisa · Kipreres · Chemaner" },
+  INST_BOMET_CENTRAL_TITLE: { en: "Bomet Central Sub-County" },
+  INST_BOMET_CENTRAL_DESC: { en: "Wards: Silibwet Township · Nadaraweta · Singorwet · Chesoen · Mutarakwa" },
+  INST_KONOIN_TITLE: { en: "Konoin Sub-County" },
+  INST_KONOIN_DESC: { en: "Wards: Chepchabas · Kimulot · Mogogosiek · Boito · Embomos" },
 
   // Final CTA ----------------------------------------------------------—---
   FINAL_TITLE: { en: "Have a complaint about a county service?" },
@@ -308,7 +255,7 @@ export const LANDING_COPY = {
   FOOTER_PORTAL_WEB: { en: "This Portal" },
   FOOTER_ANDROID: { en: "Counter Desks" },
   FOOTER_WHATSAPP: { en: "SMS Updates" },
-  FOOTER_GREEN_LINE: { en: "County Help Line" },
+  FOOTER_GREEN_LINE: { en: "County Call Centre" },
   FOOTER_FAQ: { en: "Frequently Asked Questions" },
   FOOTER_CITIZEN_LOGIN: { en: "Citizen Sign in" },
   FOOTER_EMPLOYEE_LOGIN: { en: "County Staff Access" },
@@ -316,7 +263,7 @@ export const LANDING_COPY = {
   FOOTER_TERMS: { en: "Terms of Use" },
   FOOTER_ACCESSIBILITY: { en: "Accessibility" },
   FOOTER_CONTACT: { en: "Contact the County" },
-  CONTACT_HOTLINE: { en: "Help Line" },
+  CONTACT_HOTLINE: { en: "Hotline" },
   CONTACT_EMAIL: { en: "Email" },
   CONTACT_POST: { en: "Postal Address" },
   FOOTER_FOLLOW: { en: "Follow the County" },
@@ -324,13 +271,52 @@ export const LANDING_COPY = {
   SOCIAL_X: { en: "X (formerly Twitter)" },
   SOCIAL_YOUTUBE: { en: "YouTube" },
   FOOTER_COPYRIGHT: {
-    en: "Bonga Nai · Nairobi City County Government. All rights reserved.",
+    en: "Bomet Feedback Hub · County Government of Bomet. All rights reserved.",
   },
 
   // Misc ---------------------------------------------------------------—---
   FAB_LABEL: { en: "Chat with us" },
   PLACEHOLDER_PENDING: { en: "Page being configured" },
   EXTERNAL_LINK_NOTE: { en: "opens in a new window" },
+
+  // --- keys introduced by the enhanced landing (photo hero, stats, helplines, section eyebrows) ---
+  HERO_PHOTO_CAPTION: { en: "Bomet County highlands" },
+  HERO_SCRIPT: { en: "The Greatest Good For The Greatest Number" },
+  ORB_TAGLINE: { en: "Your Voice Matters" },
+  STAT_SUBCOUNTIES_VALUE: { en: "5" },
+  STAT_SUBCOUNTIES_LABEL: { en: "sub-counties, county-wide" },
+  STAT_WARDS_VALUE: { en: "25" },
+  STAT_WARDS_LABEL: { en: "wards covered" },
+  STAT_SLA_VALUE: { en: "1–30 days" },
+  STAT_SLA_LABEL: { en: "deadline per category, then automatic escalation" },
+  STAT_DEPARTMENTS_VALUE: { en: "3" },
+  STAT_DEPARTMENTS_LABEL: { en: "service areas you can report on" },
+  TYPES_EYEBROW: { en: "Service areas" },
+  HOW_EYEBROW: { en: "From report to resolution" },
+  CHANNELS_EYEBROW: { en: "Channels" },
+  CAROUSEL_PREV: { en: "Previous channels" },
+  CAROUSEL_NEXT: { en: "Next channels" },
+  CHANNEL_INPERSON_CTA: { en: "Find a desk" },
+  CHANNEL_SMS_CTA: { en: "Track your case" },
+  HELPLINES_EYEBROW: { en: "Emergency" },
+  HELPLINES_TITLE: { en: "Emergency and Help Lines" },
+  HELPLINES_INTRO: {
+    en:
+      "In an emergency call the national lines first. For a county service, the County Call Centre logs the complaint for you and reads your case number back.",
+  },
+  HELPLINE_POLICE_TITLE: { en: "Police" },
+  HELPLINE_POLICE_DESC: { en: "Crime, accidents and threats to safety" },
+  HELPLINE_AMBULANCE_TITLE: { en: "Ambulance" },
+  HELPLINE_AMBULANCE_DESC: { en: "Medical emergencies" },
+  HELPLINE_COUNTY_TITLE: { en: "County Call Centre" },
+  HELPLINE_COUNTY_DESC: { en: "County services — call agents log your complaint for you, Monday to Friday, two shifts" },
+  HELPLINES_CALL: { en: "Call" },
+  PRIVACY_EYEBROW: { en: "Privacy & data" },
+  INST_EYEBROW: { en: "Where we work" },
+  INST_INTRO: {
+    en:
+      "The Feedback Hub runs in all five sub-counties of Bomet, 25 wards in all. Health and Administration cases go to your Sub-County Administrator; Water & Sanitation cases go to the Department Director for the whole county.",
+  },
 } as const;
 
 export type LandingCopyKey = keyof typeof LANDING_COPY;
@@ -353,13 +339,11 @@ export type LandingCopyKey = keyof typeof LANDING_COPY;
 // only ever dial the first. The BRD's dedicated Nai Pepea call-centre number
 // is not yet assigned; until it is, the county's published help line is used.
 export const CONTACT = {
-  hotline: "+254725624489",
-  hotlines: [
-    { tel: "+254725624489", display: "+254 725 624 489" },
-    { tel: "+254202224281", display: "020 222 4281" },
-  ],
-  email: "info@nairobi.go.ke",
-  poBox: "City Hall, P.O. Box 30075-00100, Nairobi, Kenya",
+  hotline: "+254746036036",
+  hotlineDisplay: "0746 036 036",
+  hotlines: [{ tel: "+254746036036", display: "0746 036 036" }],
+  email: "info@bomet.go.ke",
+  poBox: "P.O. Box 19-20400, Bomet, Kenya",
 } as const;
 
 export interface SocialLink {
@@ -373,8 +357,9 @@ export interface SocialLink {
 // county also runs an Instagram account (nairobi_citycountygovernment); the
 // footer has no Instagram mark yet, so it is not listed.
 export const SOCIAL_LINKS: SocialLink[] = [
-  { id: "facebook", labelKey: "SOCIAL_FACEBOOK", href: "https://www.facebook.com/countyGovernment047/" },
-  { id: "x", labelKey: "SOCIAL_X", href: "https://twitter.com/047County" },
+  { id: "facebook", labelKey: "SOCIAL_FACEBOOK", href: "https://www.facebook.com/036Bomet" },
+  { id: "x", labelKey: "SOCIAL_X", href: "https://x.com/036Bometcounty" },
+  { id: "youtube", labelKey: "SOCIAL_YOUTUBE", href: "https://www.youtube.com/@GPSBometCounty" },
 ];
 
 export interface NavItem {
@@ -402,10 +387,9 @@ export interface ManifestationType {
 // `id` is the department code from ansible/nairobi-mdms (resolve.ts inherits
 // icon/accent from the matching default item by code).
 export const MANIFESTATION_TYPES: ManifestationType[] = [
-  { id: "DEPT_06", icon: Building2, titleKey: "TYPE_URBAN_TITLE", descKey: "TYPE_URBAN_DESC", accentVar: "--pgrl-type-complaint", route: "REGISTER_COMPLAINT" },
-  { id: "DEPT_07", icon: Leaf, titleKey: "TYPE_ENVIRONMENT_TITLE", descKey: "TYPE_ENVIRONMENT_DESC", accentVar: "--pgrl-type-petition", route: "REGISTER_COMPLAINT" },
-  { id: "DEPT_03", icon: Coins, titleKey: "TYPE_FINANCE_TITLE", descKey: "TYPE_FINANCE_DESC", accentVar: "--pgrl-type-grievance", route: "REGISTER_COMPLAINT" },
-  { id: "DEPT_10", icon: Landmark, titleKey: "TYPE_BOROUGHS_TITLE", descKey: "TYPE_BOROUGHS_DESC", accentVar: "--pgrl-type-report", route: "REGISTER_COMPLAINT" },
+  { id: "HealthServices", icon: Stethoscope, titleKey: "TYPE_HEALTH_TITLE", descKey: "TYPE_HEALTH_DESC", accentVar: "--pgrl-type-complaint", route: "REGISTER_COMPLAINT" },
+  { id: "WaterandSewage", icon: Droplets, titleKey: "TYPE_WATER_TITLE", descKey: "TYPE_WATER_DESC", accentVar: "--pgrl-type-petition", route: "REGISTER_COMPLAINT" },
+  { id: "Administration", icon: Scale, titleKey: "TYPE_ADMIN_TITLE", descKey: "TYPE_ADMIN_DESC", accentVar: "--pgrl-type-grievance", route: "REGISTER_COMPLAINT" },
 ];
 
 export interface HowStep {
@@ -439,7 +423,6 @@ export interface ChannelItem {
 export const CHANNELS: ChannelItem[] = [
   { id: "web", icon: Globe, titleKey: "CHANNEL_WEB_TITLE", descKey: "CHANNEL_WEB_DESC", ctaKey: "CHANNEL_WEB_CTA", route: "REGISTER_COMPLAINT", badgeKey: "CHANNEL_WEB_BADGE" },
   { id: "callcentre", icon: Phone, titleKey: "CHANNEL_LINE_TITLE", descKey: "CHANNEL_LINE_DESC", ctaKey: "CHANNEL_LINE_CTA", route: "GREEN_LINE" },
-  // In-page jump to the "Areas We Cover" section (its DOM id from sectionDomId).
   { id: "counter", icon: MapPin, titleKey: "CHANNEL_INPERSON_TITLE", descKey: "CHANNEL_INPERSON_DESC", ctaKey: "CHANNEL_INPERSON_CTA", href: "#pgr-landing-institutions" },
   { id: "sms", icon: Bell, titleKey: "CHANNEL_SMS_TITLE", descKey: "CHANNEL_SMS_DESC", ctaKey: "CHANNEL_SMS_CTA", route: "TRACK_COMPLAINT" },
 ];
@@ -465,21 +448,12 @@ export interface HelplineItem {
 // line (0725 624 489 / 020 222 4281) — so there is no separate disaster card.
 // Override any card via the MDMS LandingSection items (labelKey / descKey /
 // navigationUrl "tel:…").
+// Kenya's national emergency numbers, then the county line (CONTACT). No
+// county fire brigade line is published for Bomet, so none is listed.
 export const HELPLINES: HelplineItem[] = [
   { id: "police", icon: ShieldAlert, titleKey: "HELPLINE_POLICE_TITLE", descKey: "HELPLINE_POLICE_DESC", href: "tel:999", numberDisplay: "999" },
   { id: "ambulance", icon: Siren, titleKey: "HELPLINE_AMBULANCE_TITLE", descKey: "HELPLINE_AMBULANCE_DESC", href: "tel:112", numberDisplay: "112" },
-  // Nairobi City County Fire Brigade (nairobi.go.ke/emergency-services): the
-  // two county fire lines plus the toll-free short code.
-  {
-    id: "fire", icon: Flame, titleKey: "HELPLINE_FIRE_TITLE", descKey: "HELPLINE_FIRE_DESC",
-    href: "tel:+254202222181", numberDisplay: "020 222 2181",
-    numbers: [
-      { tel: "+254202222181", display: "020 222 2181" },
-      { tel: "+254202344599", display: "020 234 4599" },
-      { tel: "1508", display: "1508 (toll-free)" },
-    ],
-  },
-  { id: "county", icon: Phone, titleKey: "HELPLINE_COUNTY_TITLE", descKey: "HELPLINE_COUNTY_DESC", href: `tel:${CONTACT.hotline}`, numberDisplay: CONTACT.hotlines[0].display, numbers: CONTACT.hotlines },
+  { id: "county", icon: Phone, titleKey: "HELPLINE_COUNTY_TITLE", descKey: "HELPLINE_COUNTY_DESC", href: `tel:${CONTACT.hotline}`, numberDisplay: CONTACT.hotlineDisplay },
 ];
 
 export interface InstitutionItem {
@@ -490,14 +464,11 @@ export interface InstitutionItem {
 
 // County > Sub-County > Ward — the pilot geography from BRD §6.1.
 export const INSTITUTIONS: InstitutionItem[] = [
-  // Order follows the BRD's ward table (§6.1): the four multi-ward
-  // sub-counties first, then the three single-ward ones.
-  { id: "makadara", icon: Landmark, titleKey: "INST_MAKADARA_TITLE", descKey: "INST_MAKADARA_DESC" },
-  { id: "langata", icon: Landmark, titleKey: "INST_LANGATA_TITLE", descKey: "INST_LANGATA_DESC" },
-  { id: "kibra", icon: Landmark, titleKey: "INST_KIBRA_TITLE", descKey: "INST_KIBRA_DESC" },
-  { id: "kasarani", icon: Landmark, titleKey: "INST_KASARANI_TITLE", descKey: "INST_KASARANI_DESC" },
-  { id: "embakasi-north", icon: Landmark, titleKey: "INST_EMBAKASI_NORTH_TITLE", descKey: "INST_EMBAKASI_NORTH_DESC" },
-  { id: "kamukunji", icon: Landmark, titleKey: "INST_KAMUKUNJI_TITLE", descKey: "INST_KAMUKUNJI_DESC" },
+  { id: "sotik", icon: Landmark, titleKey: "INST_SOTIK_TITLE", descKey: "INST_SOTIK_DESC" },
+  { id: "chepalungu", icon: Landmark, titleKey: "INST_CHEPALUNGU_TITLE", descKey: "INST_CHEPALUNGU_DESC" },
+  { id: "bomet-east", icon: Landmark, titleKey: "INST_BOMET_EAST_TITLE", descKey: "INST_BOMET_EAST_DESC" },
+  { id: "bomet-central", icon: Landmark, titleKey: "INST_BOMET_CENTRAL_TITLE", descKey: "INST_BOMET_CENTRAL_DESC" },
+  { id: "konoin", icon: Landmark, titleKey: "INST_KONOIN_TITLE", descKey: "INST_KONOIN_DESC" },
 ];
 
 export interface NewsItem {
@@ -519,36 +490,36 @@ export interface NewsItem {
 // `news` prop before go-live.
 export const DEFAULT_NEWS: NewsItem[] = [
   {
-    id: "pilot-scope",
+    id: "pilot-departments",
     dateLabel: "Pilot phase",
-    dateTime: "2026-09-01",
+    dateTime: "2026-08-01",
     tag: "Programme",
-    title: "Bonga Nai opens in Makadara and Kibra",
+    title: "Feedback Hub opens with Health and Water & Sanitation",
     excerpt:
-      "The pilot covers two sub-counties and nine wards, with complaint types configured for 17 county departments so the service can scale without re-configuration.",
-    source: "Nairobi City County Government",
+      "The pilot covers two departments across all five sub-counties. Administration complaint categories are configured and follow the same routing and escalation rules.",
+    source: "County Government of Bomet",
     href: "#",
   },
   {
-    id: "help-line",
+    id: "call-centre",
     dateLabel: "Pilot phase",
-    dateTime: "2026-09-01",
-    tag: "Help Line",
-    title: "Call agents log complaints on your behalf",
+    dateTime: "2026-08-01",
+    tag: "Call Centre",
+    title: "Call centre agents log complaints on your behalf",
     excerpt:
-      "Agents working two shifts capture your name, mobile number, ward, category and description, then read your case number back to you before the call ends.",
-    source: "Nairobi City County Government",
+      "Agents working two shifts capture your name, phone number, ward, category and description, then read your case number back to you before the call ends.",
+    source: "County Government of Bomet",
     href: "#",
   },
   {
     id: "counter-desks",
     dateLabel: "Pilot phase",
-    dateTime: "2026-09-01",
+    dateTime: "2026-08-01",
     tag: "Counter Desks",
-    title: "Counter desks accept walk-in complaints at ward and sub-county offices",
+    title: "Counter desks accept walk-in complaints in the pilot wards",
     excerpt:
-      "Counter employees register your complaint in the same system and hand you your case reference, so a visit in person is tracked exactly like an online report.",
-    source: "Nairobi City County Government",
+      "Counter staff register your complaint in the same system and hand you a written case reference, so a visit in person is tracked exactly like an online report.",
+    source: "County Government of Bomet",
     href: "#",
   },
 ];

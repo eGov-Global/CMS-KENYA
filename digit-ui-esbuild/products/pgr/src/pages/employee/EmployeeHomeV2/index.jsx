@@ -125,9 +125,9 @@ const Sidebar = ({ items, active, onNavigate, tr, open, onClose, topOffset }) =>
         <path d="M0 96 L0 76 L34 58 L70 74 L104 52 L140 76 L174 62 L220 80 L220 96 Z" fill="hsl(var(--pgrl-on-primary)/0.05)" />
       </svg>
       <p className="relative m-0 px-3 pb-2.5 text-xs leading-relaxed text-[hsl(var(--pgrl-on-primary)/0.8)]">
-        <b className="font-semibold text-[hsl(var(--pgrl-on-primary))]">{tr("PGR_HOME_MOTTO_1", "Let's Make")}</b>
+        <b className="font-semibold text-[hsl(var(--pgrl-on-primary))]">{tr("PGR_HOME_MOTTO_1", "The Greatest Good")}</b>
         <br />
-        {tr("PGR_HOME_MOTTO_2", "Nairobi Work")}
+        {tr("PGR_HOME_MOTTO_2", "For The Greatest Number")}
       </p>
     </div>
     </aside>
@@ -434,7 +434,7 @@ export const EmployeeHomeV2 = () => {
             {/* greeting hero over the county photograph */}
             <section
               className="pgrl-rise relative mb-4 overflow-hidden rounded-2xl p-5 md:p-6"
-              style={{ background: "linear-gradient(100deg, hsl(var(--pgrl-tint)/0.97) 0%, hsl(var(--pgrl-tint)/0.9) 46%, hsl(var(--pgrl-surface)/0.3) 100%), url('/digit-ui/nairobi-home-banner.jpg') right center / cover no-repeat" }}
+              style={{ background: "linear-gradient(100deg, hsl(var(--pgrl-tint)/0.97) 0%, hsl(var(--pgrl-tint)/0.9) 46%, hsl(var(--pgrl-surface)/0.3) 100%), url('/digit-ui/brand/bomet-login-bg-1280.webp') right center / cover no-repeat" }}
             >
               <p className="m-0 text-[13px] text-[hsl(var(--pgrl-ink-soft))]">{tr("PGR_HOME_GREETING", "Good day,")}</p>
               <h1 className="mb-0 mt-1 text-2xl font-bold tracking-tight text-[hsl(var(--pgrl-ink))]">{name}</h1>
