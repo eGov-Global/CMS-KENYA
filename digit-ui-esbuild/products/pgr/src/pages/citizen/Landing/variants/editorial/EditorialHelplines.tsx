@@ -1,6 +1,7 @@
-// Emergency numbers as one strip (Bomet): three cells divided by hairlines,
-// the number set as the largest text on the page after the headline, and each
-// cell dials its number. Content and the tel: rules match the classic section.
+// Emergency numbers as one strip (Bomet): three cells under a rule with a
+// brand tick, the number set as the largest text on the page after the
+// headline, and each cell dials its number. Content and the tel: rules match
+// the classic section.
 
 import * as React from "react";
 import { Phone } from "lucide-react";
@@ -28,12 +29,13 @@ interface Line {
   numbers: Array<{ href: string; display: string }>;
 }
 
-// Hairlines between cells live on the <li>s: stacked rows get a top rule,
-// the sm+ strip a left rule, and the first cell none.
+// Each cell opens with a rule and a short brand tick, the same device as the
+// sub-county columns, so the strip reads as one row without hairlines hanging
+// between cells of different heights.
 const ROW =
-  "m-0 border-0 border-t border-solid border-[hsl(var(--pgrl-line))] p-0 first:border-t-0 " +
-  "sm:border-l sm:border-t-0 sm:first:border-l-0";
-const CELL = "flex h-full flex-col gap-2 px-1 py-6 sm:px-6 sm:py-7 sm:first:pl-0";
+  "relative m-0 border-0 border-t-2 border-solid border-[hsl(var(--pgrl-line))] p-0 " +
+  "before:absolute before:-top-[2px] before:left-0 before:h-[2px] before:w-12 before:bg-[hsl(var(--pgrl-primary))] before:content-['']";
+const CELL = "flex h-full flex-col gap-2 pt-5 pb-2";
 // nowrap: a number broken across lines gets misdialled.
 const NUMBER = "whitespace-nowrap text-4xl font-extrabold leading-none tracking-tight md:text-5xl";
 
@@ -81,7 +83,7 @@ export function EditorialHelplines({ section }: EditorialHelplinesProps = {}) {
       intro={c(section?.subtitleKey, "HELPLINES_INTRO")}
       tone="surface"
     >
-      <ul className={cn("m-0 grid list-none grid-cols-1 p-0", lines.length >= 3 ? "sm:grid-cols-3" : "sm:grid-cols-2")}>
+      <ul className={cn("m-0 grid list-none grid-cols-1 gap-x-8 gap-y-6 p-0", lines.length >= 3 ? "sm:grid-cols-3" : "sm:grid-cols-2")}>
         {lines.map(({ key, Icon, title, desc, numbers }, i) => (
           <li key={key} className={cn("pgrl-reveal-item", ROW)} style={revealIndex(i + 1)}>
             {numbers.length === 1 ? (
