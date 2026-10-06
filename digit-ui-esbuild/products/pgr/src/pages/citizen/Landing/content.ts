@@ -59,7 +59,7 @@ export const LANDING_COPY = {
   PORTAL_NAME: { en: "Bomet Feedback Hub" },
   // Two-line wordmark in the header/footer lockup (replaces the one-line PORTAL_NAME there).
   WORDMARK_LINE1: { en: "Bomet" },
-  WORDMARK_LINE2: { en: "Feedback Hub" },
+  WORDMARK_LINE2: { en: "County Government" },
   ORG_NAMES: { en: "Office of the Ombudsman · Health · Water & Sanitation" },
   FOOTER_ORG: { en: "County Government of Bomet" },
   TAGLINE: { en: "You report it. The County acts on it." },
