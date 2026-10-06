@@ -68,7 +68,8 @@ export const LANDING_COPY = {
   SKIP_LINK: { en: "Skip to main content" },
   UTILITY_PHONE_LABEL: { en: "County Government of Bomet" },
   UTILITY_GREEN_LINE: { en: "County Call Centre" },
-  UTILITY_GREEN_LINE_FREE: { en: "Mon–Fri, two shifts" },
+  // No operating-hours note: the county has not published call-centre hours.
+  UTILITY_GREEN_LINE_FREE: { en: "" },
   LOGIN: { en: "Sign in" },
   ARIA_LANGUAGE: { en: "Language" },
   ARIA_UTILITY: { en: "Service information" },
@@ -167,7 +168,7 @@ export const LANDING_COPY = {
   CHANNEL_LINE_TITLE: { en: "County Call Centre" },
   CHANNEL_LINE_DESC: {
     en:
-      "Agents log your complaint while you are on the call and read your case number back to you. Two shifts, Monday to Friday.",
+      "Agents log your complaint while you are on the call and read your case number back to you.",
   },
   CHANNEL_LINE_CTA: { en: "Call the centre" },
   CHANNEL_INPERSON_TITLE: { en: "Counter Desks" },
@@ -309,7 +310,7 @@ export const LANDING_COPY = {
   HELPLINE_AMBULANCE_TITLE: { en: "Ambulance" },
   HELPLINE_AMBULANCE_DESC: { en: "Medical emergencies" },
   HELPLINE_COUNTY_TITLE: { en: "County Call Centre" },
-  HELPLINE_COUNTY_DESC: { en: "County services — call agents log your complaint for you, Monday to Friday, two shifts" },
+  HELPLINE_COUNTY_DESC: { en: "County services — call agents log your complaint for you" },
   HELPLINES_CALL: { en: "Call" },
   PRIVACY_EYEBROW: { en: "Privacy & data" },
   INST_EYEBROW: { en: "Where we work" },
@@ -498,7 +499,7 @@ export const DEFAULT_NEWS: NewsItem[] = [
     tag: "Call Centre",
     title: "Call centre agents log complaints on your behalf",
     excerpt:
-      "Agents working two shifts capture your name, phone number, ward, category and description, then read your case number back to you before the call ends.",
+      "Agents capture your name, phone number, ward, category and description, then read your case number back to you before the call ends.",
     source: "County Government of Bomet",
     href: "#",
   },

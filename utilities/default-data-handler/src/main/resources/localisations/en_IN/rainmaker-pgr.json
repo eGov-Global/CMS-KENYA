@@ -7560,12 +7560,6 @@
         "locale": "en_IN"
     },
     {
-        "code": "PGR_LANDING_UTILITY_GREEN_LINE_FREE",
-        "message": "Mon–Fri, two shifts",
-        "module": "rainmaker-pgr",
-        "locale": "en_IN"
-    },
-    {
         "code": "PGR_LANDING_LOGIN",
         "message": "Sign in",
         "module": "rainmaker-pgr",
@@ -7933,7 +7927,7 @@
     },
     {
         "code": "PGR_LANDING_CHANNEL_LINE_DESC",
-        "message": "Agents log your complaint while you are on the call and read your case number back to you. Two shifts, Monday to Friday.",
+        "message": "Agents log your complaint while you are on the call and read your case number back to you.",
         "module": "rainmaker-pgr",
         "locale": "en_IN"
     },
@@ -8911,7 +8905,7 @@
     },
     {
         "code": "PGR_LANDING_HELPLINE_COUNTY_DESC",
-        "message": "County services — call agents log your complaint for you, Monday to Friday, two shifts",
+        "message": "County services — call agents log your complaint for you",
         "module": "rainmaker-pgr",
         "locale": "en_IN"
     },

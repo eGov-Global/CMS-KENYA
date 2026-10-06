@@ -56,7 +56,10 @@ export function UtilityBar({ routes, languages, onLanguageChange }: UtilityBarPr
           </span>
           <a href={routes.GREEN_LINE} className={UTIL_LINK}>
             {c("UTILITY_GREEN_LINE")}
-            <span className="text-[hsl(var(--pgrl-on-primary)/0.6)]">({c("UTILITY_GREEN_LINE_FREE")})</span>
+            {/* Optional note after the line's name (hours, "toll-free"); a deployment with nothing to say leaves the key blank. */}
+            {c("UTILITY_GREEN_LINE_FREE") && (
+              <span className="text-[hsl(var(--pgrl-on-primary)/0.6)]">({c("UTILITY_GREEN_LINE_FREE")})</span>
+            )}
           </a>
         </p>
 
