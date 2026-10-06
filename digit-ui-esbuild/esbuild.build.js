@@ -113,6 +113,7 @@ async function build() {
       ".png": "file",
       ".jpg": "file",
       ".jpeg": "file",
+      ".webp": "file",
       ".gif": "file",
       ".svg": "file",
     },

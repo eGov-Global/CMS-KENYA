@@ -66,7 +66,7 @@
     "type": "news",
     "order": 80,
     "status": "PUBLISHED",
-    "enabled": true,
+    "enabled": false,
     "titleKey": "PGR_LANDING_NEWS_TITLE"
   },
   {
@@ -82,7 +82,7 @@
     "type": "cta",
     "order": 100,
     "status": "PUBLISHED",
-    "enabled": true,
+    "enabled": false,
     "titleKey": "PGR_LANDING_FINAL_CTA_TITLE"
   },
   {

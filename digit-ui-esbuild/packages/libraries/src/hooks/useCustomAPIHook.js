@@ -91,7 +91,7 @@ const useCustomAPIHook = ({
     }
   };
 
-  const { isLoading, data, isFetching, refetch } = useQuery(queryKey, fetchData, {
+  const { isLoading, data, isFetching, isError, error, refetch } = useQuery(queryKey, fetchData, {
     // When persisting to IndexedDB, also hold it in-memory for the session so a
     // re-mount doesn't refetch; otherwise keep the prior 1s/5s defaults.
     cacheTime: options?.cacheTime || (idbTtlSecs ? idbTtlSecs * 1000 : 1000),
@@ -105,6 +105,8 @@ const useCustomAPIHook = ({
   return {
     isLoading,
     isFetching,
+    isError,
+    error,
     data,
     refetch,
     revalidate: () => {

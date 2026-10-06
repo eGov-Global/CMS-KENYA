@@ -45,7 +45,7 @@ const INTAKE_ROLES = ["CSR", "CMS_RECEPTION_OFFICER"];
 // TICKET_REPORT_VIEWER is the same shape (report access, no queue actions).
 const READ_ONLY_ROLES = ["CMS_VIEWER", "PGR_VIEWER", "TICKET_REPORT_VIEWER"];
 
-// Everything else that can work a queue. Nairobi's HRMS provisions the rungs
+// Everything else that can work a queue. The county HRMS provisions the rungs
 // as BARE codes — DIRECTOR (the LME), CHIEF_OFFICER and CECM (escalation) —
 // with the department carried by the assignment, not the role name; the
 // <DEPT>_* variants are kept for tenants that encode the department in the
@@ -63,7 +63,7 @@ const CASEWORK_ROLES = [
 
 /**
  * The platform helper is tenant-EXACT: a role held at the state tenant (`ke`)
- * does not match while the user operates on a city tenant (`ke.nairobi`).
+ * does not match while the user operates on a city tenant (`ke.bomet`).
  * That is the normal DIGIT pattern for cross-city admin roles, so a
  * state-level SUPERUSER would silently drop a tier. Match case-insensitively
  * and accept a role held at an ancestor tenant.
@@ -75,7 +75,7 @@ const holdsRole = (wanted = []) => {
   return (user?.info?.roles || []).some((r) => {
     if (!want.includes(String(r?.code || "").toLowerCase())) return false;
     const held = String(r?.tenantId || "");
-    // exact tenant, or held at an ancestor ("ke" covers "ke.nairobi")
+    // exact tenant, or held at an ancestor ("ke" covers "ke.bomet")
     return !held || held === current || current.startsWith(`${held}.`);
   });
 };

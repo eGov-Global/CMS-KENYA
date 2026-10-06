@@ -321,15 +321,25 @@ const PGRDetails = () => {
   const { mutate: UpdateComplaintMutation } = Digit.Hooks.pgr.usePGRUpdate(complaintTenantId);
 
   // Fetch workflow details
-  const { isLoading: isWorkflowLoading, data: workflowData, revalidate: workFlowRevalidate } = Digit.Hooks.useCustomAPIHook({
-    // Filtered chronology (pgr-services): same shape as the workflow API, but
-    // on a confidential complaint the complainant's identity inside the actor
-    // blocks is masked server-side for uncleared employees.
+  // Timeline through pgr-services' filtered chronology (masks a confidential
+  // complainant inside the actor blocks for uncleared employees). If that
+  // endpoint is missing or not yet granted on this deployment, fall back to the
+  // raw workflow history rather than leaving the timeline and Take Action blank.
+  const { isLoading: isChronologyLoading, data: chronologyData, isError: chronologyFailed, revalidate: chronologyRevalidate } = Digit.Hooks.useCustomAPIHook({
     url: "/pgr-services/v2/request/_chronology",
     params: { tenantId: complaintTenantId, history: true, businessIds: id },
-    config: { enabled: !!pgrData },
-    changeQueryName: id,
+    config: { enabled: !!pgrData, retry: false },
+    changeQueryName: `${id}-chronology`,
   });
+  const { isLoading: isFallbackLoading, data: fallbackWorkflowData, revalidate: fallbackRevalidate } = Digit.Hooks.useCustomAPIHook({
+    url: "/egov-workflow-v2/egov-wf/process/_search",
+    params: { tenantId: complaintTenantId, history: true, businessIds: id },
+    config: { enabled: !!pgrData && chronologyFailed },
+    changeQueryName: `${id}-workflow-fallback`,
+  });
+  const workflowData = chronologyFailed ? fallbackWorkflowData : chronologyData;
+  const isWorkflowLoading = chronologyFailed ? isFallbackLoading : isChronologyLoading;
+  const workFlowRevalidate = chronologyFailed ? fallbackRevalidate : chronologyRevalidate;
 
   // Fetch business service metadata
   const { isLoading: isBusinessServiceLoading, data: businessServiceData } = Digit.Hooks.useCustomAPIHook({

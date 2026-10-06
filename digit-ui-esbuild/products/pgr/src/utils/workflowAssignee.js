@@ -1,5 +1,5 @@
 import { WorkflowService } from "../services/workflow/Workflow";
-import { latestParticipantByRole, pickReopenAssignee } from "./workflowHistory";
+import { latestParticipantByRole } from "./workflowHistory";
 
 const rolesOf = (user) => ((user && Array.isArray(user.roles)) ? user.roles : []).map((r) => r && r.code).filter(Boolean);
 
@@ -75,18 +75,3 @@ export const findLatestAssigneeUuidByAnyRole = async (stateCode, businessId, rol
   return null;
 };
 
-/**
- * Who a citizen reopen goes back to, from one history fetch (see
- * pickReopenAssignee for the order). Null when the history names nobody or
- * the fetch fails; the caller then routes by department.
- *
- * @param {string} stateCode
- * @param {string} businessId
- * @param {{ targetStates: string[], reopenRoles: string[] }} opts
- * @returns {Promise<string|null>}
- */
-export const findReopenAssignee = async (stateCode, businessId, opts) => {
-  if (!stateCode || !businessId) return null;
-  const instances = await fetchHistory(stateCode, businessId, "routing the reopen by department instead");
-  return instances ? pickReopenAssignee(instances, opts) : null;
-};

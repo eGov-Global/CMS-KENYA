@@ -167,16 +167,27 @@ function WorkflowComponent({ complaintDetails, id }) {
   // renders whatever states a BusinessService defines (standard PGR *and* the
   // mz.igsae CMS workflow) with no hardcoded status list, replacing the legacy
   // status-ordered <TimeLine>.
-  const { isLoading: isWorkFlowLoading, data: workflowData, revalidate } = Digit.Hooks.useCustomAPIHook({
-    // The chronology comes through pgr-services' filtered endpoint — same
-    // response shape as the workflow API, but employee comments, attachments
-    // and identities are stripped SERVER-SIDE for the citizen instead of only
-    // being hidden by TimelineWrapper (the raw workflow API returned everything
-    // to the citizen's token).
+  // The chronology comes through pgr-services' filtered endpoint — same
+  // response shape as the workflow API, but employee comments, attachments
+  // and identities are stripped SERVER-SIDE for the citizen instead of only
+  // being hidden by TimelineWrapper. If the endpoint is missing or not yet
+  // granted on this deployment, fall back to the raw workflow history (the
+  // wrapper still hides staff identity) rather than leaving the page blank.
+  const { isLoading: isChronologyLoading, data: chronologyData, isError: chronologyFailed, revalidate: chronologyRevalidate } = Digit.Hooks.useCustomAPIHook({
     url: "/pgr-services/v2/request/_chronology",
     params: { tenantId, history: true, businessIds: id },
-    changeQueryName: id,
+    config: { retry: false },
+    changeQueryName: `${id}-chronology`,
   });
+  const { isLoading: isFallbackLoading, data: fallbackWorkflowData, revalidate: fallbackRevalidate } = Digit.Hooks.useCustomAPIHook({
+    url: "/egov-workflow-v2/egov-wf/process/_search",
+    params: { tenantId, history: true, businessIds: id },
+    config: { enabled: chronologyFailed },
+    changeQueryName: `${id}-workflow-fallback`,
+  });
+  const workflowData = chronologyFailed ? fallbackWorkflowData : chronologyData;
+  const isWorkFlowLoading = chronologyFailed ? isFallbackLoading : isChronologyLoading;
+  const revalidate = chronologyFailed ? fallbackRevalidate : chronologyRevalidate;
 
   // Reopen window, from RAINMAKER-PGR.UIConstants.REOPENSLA via useReopenWindow
   // — the same master pgr-services reads in validateReOpen(), so the UI guard
@@ -293,7 +304,7 @@ function WorkflowComponent({ complaintDetails, id }) {
         hideEmployeeContacts
         // Internal department comments (assign, escalate, reassign, …) stay
         // internal; the citizen reads the resolving / rejecting comment only.
-        citizenCommentActions={["RESOLVE", "REJECT"]}
+        citizenCommentActions={CITIZEN_COMMENT_ACTIONS}
       />
       {withdrawPopup.open ? (
         <WithdrawComplaintPopup
@@ -307,6 +318,11 @@ function WorkflowComponent({ complaintDetails, id }) {
     </>
   );
 }
+
+// Internal department comments (assign, escalate, reassign, …) stay internal;
+// the citizen reads the resolving / rejecting comment only. Module-level so the
+// timeline wrapper's effect does not re-run on every render.
+const CITIZEN_COMMENT_ACTIONS = ["RESOLVE", "REJECT"];
 
 const ComplaintDetailsPage = () => {
   const { t } = useTranslation();

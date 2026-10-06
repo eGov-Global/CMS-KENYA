@@ -434,7 +434,7 @@ export const EmployeeHomeV2 = () => {
             {/* greeting hero over the county photograph */}
             <section
               className="pgrl-rise relative mb-4 overflow-hidden rounded-2xl p-5 md:p-6"
-              style={{ background: "linear-gradient(100deg, hsl(var(--pgrl-tint)/0.97) 0%, hsl(var(--pgrl-tint)/0.9) 46%, hsl(var(--pgrl-surface)/0.3) 100%), url('/digit-ui/brand/bomet-login-bg-1280.webp') right center / cover no-repeat" }}
+              style={{ background: `linear-gradient(100deg, hsl(var(--pgrl-tint)/0.97) 0%, hsl(var(--pgrl-tint)/0.9) 46%, hsl(var(--pgrl-surface)/0.3) 100%), url('/${window?.contextPath || "digit-ui"}/brand/bomet-login-bg-1280.webp') right center / cover no-repeat` }}
             >
               <p className="m-0 text-[13px] text-[hsl(var(--pgrl-ink-soft))]">{tr("PGR_HOME_GREETING", "Good day,")}</p>
               <h1 className="mb-0 mt-1 text-2xl font-bold tracking-tight text-[hsl(var(--pgrl-ink))]">{name}</h1>

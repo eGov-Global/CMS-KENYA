@@ -194,7 +194,7 @@ export const LANDING_COPY = {
   // backend flag), so this states only what the service actually does.
   PRIVACY_P2: {
     en:
-      "Your details are used to register, route and resolve your complaint and to send you SMS updates. They are seen by the authorised county officers handling your case and are not shared with unauthorised third parties.",
+      "Your details are used to register, route and resolve your complaint and to send you SMS updates. They are seen by the authorised county officers handling your case and are not shared with unauthorised third parties. If you tick \"Keep my details confidential\" when you report, your name and phone number are hidden from the officers working the case; only staff cleared to view confidential complaints can see them.",
   },
   PRIVACY_LINK: { en: "Read the Privacy Notice" },
 
@@ -210,7 +210,7 @@ export const LANDING_COPY = {
   },
   PRIVACY_PAGE_P3: {
     en:
-      "Your information is accessed only by authorised county officers responsible for handling your complaint, the Office of the Ombudsman, the sub-county administrators, and the department officers in the escalation chain. It is not shared with unauthorised third parties and is never used for commercial or marketing purposes. The portal does not currently offer anonymous or identity-shielded reporting: the officers handling your complaint can see the name and phone number you registered with.",
+      "Your information is accessed only by authorised county officers responsible for handling your complaint, the Office of the Ombudsman, the sub-county administrators, and the department officers in the escalation chain. It is not shared with unauthorised third parties and is never used for commercial or marketing purposes. A complaint you mark as confidential hides your name and phone number from the officers working it; only staff cleared to view confidential complaints can see them.",
   },
   PRIVACY_PAGE_P4: {
     en:
@@ -327,17 +327,15 @@ export type LandingCopyKey = keyof typeof LANDING_COPY;
 
 // County contact details ----------------------------------------------------
 //
-// Taken from the county's public website (nairobi.go.ke header and footer,
-// 2026-09-22). Deliberately NOT i18n copy: a phone number, an email address
+// Taken from the county's public website (bomet.go.ke header and footer).
+// Deliberately NOT i18n copy: a phone number, an email address
 // and a postal address read identically in every language.
 //
 // `hotline` is the single source of truth for the number — routes.ts builds
 // GREEN_LINE/PHONE from it, so editing it here also updates every help-line
-// CTA (utility bar, channels section, footer). Keep it digits-only. Where the
-// numbers are shown on screen, use `hotlines`: the county publishes a mobile
-// and a landline, and each is its own tel: link — one link over both could
-// only ever dial the first. The BRD's dedicated Nai Pepea call-centre number
-// is not yet assigned; until it is, the county's published help line is used.
+// CTA (utility bar, channels section, footer). Keep it in tel: form. Where
+// the numbers are shown on screen, use `hotlines` (one tel: link each); Bomet
+// publishes a single call-centre line.
 export const CONTACT = {
   hotline: "+254746036036",
   hotlineDisplay: "0746 036 036",
@@ -353,9 +351,7 @@ export interface SocialLink {
   href: string;
 }
 
-// Official Nairobi City County accounts, as linked from nairobi.go.ke. The
-// county also runs an Instagram account (nairobi_citycountygovernment); the
-// footer has no Instagram mark yet, so it is not listed.
+// Official County Government of Bomet accounts, as linked from bomet.go.ke.
 export const SOCIAL_LINKS: SocialLink[] = [
   { id: "facebook", labelKey: "SOCIAL_FACEBOOK", href: "https://www.facebook.com/036Bomet" },
   { id: "x", labelKey: "SOCIAL_X", href: "https://x.com/036Bometcounty" },
@@ -383,9 +379,8 @@ export interface ManifestationType {
   route: keyof LandingRoutes;
 }
 
-// The four pilot departments with confirmed escalation contacts (BRD §3, §6.2).
-// `id` is the department code from ansible/nairobi-mdms (resolve.ts inherits
-// icon/accent from the matching default item by code).
+// The service areas a citizen can report on. `id` is the complaint-type code
+// (resolve.ts inherits icon/accent from the matching default item by code).
 export const MANIFESTATION_TYPES: ManifestationType[] = [
   { id: "HealthServices", icon: Stethoscope, titleKey: "TYPE_HEALTH_TITLE", descKey: "TYPE_HEALTH_DESC", accentVar: "--pgrl-type-complaint", route: "REGISTER_COMPLAINT" },
   { id: "WaterandSewage", icon: Droplets, titleKey: "TYPE_WATER_TITLE", descKey: "TYPE_WATER_DESC", accentVar: "--pgrl-type-petition", route: "REGISTER_COMPLAINT" },
@@ -441,13 +436,8 @@ export interface HelplineItem {
   numbers?: ReadonlyArray<{ tel: string; display: string }>;
 }
 
-// Emergency helplines shown on the landing page (Nairobi UAT). 999 / 112 are
-// Kenya's national emergency numbers; the fire card carries the Nairobi City
-// County Fire Brigade lines and the county card the county help line, which
-// nairobi.go.ke also lists as the Disaster Management & Coordination help
-// line (0725 624 489 / 020 222 4281) — so there is no separate disaster card.
-// Override any card via the MDMS LandingSection items (labelKey / descKey /
-// navigationUrl "tel:…").
+// Emergency helplines shown on the landing page. Override any card via the
+// MDMS LandingSection items (labelKey / descKey / navigationUrl "tel:…").
 // Kenya's national emergency numbers, then the county line (CONTACT). No
 // county fire brigade line is published for Bomet, so none is listed.
 export const HELPLINES: HelplineItem[] = [
@@ -457,6 +447,7 @@ export const HELPLINES: HelplineItem[] = [
 ];
 
 export interface InstitutionItem {
+  id?: string;
   icon: IconComponent;
   titleKey: LandingCopyKey;
   descKey: LandingCopyKey;

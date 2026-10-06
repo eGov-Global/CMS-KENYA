@@ -31,8 +31,8 @@ const isEmployeePerson = (person) =>
 // QA #19 part 1 (sheet v4): hideEmployeeContacts — set by the CITIZEN details
 // page — OMITS employee name and contact lines entirely (the citizen must not
 // see who handled the complaint). Citizen actors' own entries stay visible.
-// Unlike masking, this does not depend on the PGR_PII_MASKING switch: Nairobi
-// runs with masking off and still must not show staff identities to citizens.
+// Unlike masking, this does not depend on the PGR_PII_MASKING switch: a tenant
+// running with masking off must still not show staff identities to citizens.
 // citizenCommentActions — when set, a row's comment is shown only for those
 // actions (plus the citizen's own rows): internal department comments stay
 // internal; the resolving / rejecting comment reaches the citizen.

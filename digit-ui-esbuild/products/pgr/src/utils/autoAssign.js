@@ -22,8 +22,8 @@
 // the backend on create holds the department display NAME — never match on it.
 
 // Mirrors PGRDetails' NON_ASSIGNEE_ROLES (which also drops the CMS_VIEWER
-// read-only role) — SYSTEM is the actor the Nairobi workflow puts on its
-// auto-ESCALATE actions. System / non-employee actors that a workflow state may
+// read-only role) — SYSTEM is the actor an auto-escalating workflow puts
+// on its ESCALATE actions. System / non-employee actors that a workflow state may
 // list but that must never receive an assignment.
 const NON_ASSIGNEE_ROLES = new Set(["CITIZEN", "AUTO_ESCALATE", "ANONYMOUS", "SYSTEM"]);
 
@@ -35,10 +35,7 @@ const NON_ASSIGNEE_ROLES = new Set(["CITIZEN", "AUTO_ESCALATE", "ANONYMOUS", "SY
 // receive it only via escalation. narrowToLastMile keeps just PGR_LME when the
 // workflow has one, and otherwise returns the derived set unchanged so a
 // single-tier tenant that routes straight to a viewer still resolves someone.
-// Used for create-time assignment and by the manual assignee picker
-// (PGRDetails), the employee-side reopen included. The citizen reopen does not
-// narrow: it matches the PREVIOUS holder, who legitimately may have been a
-// viewer.
+// Used by create-time assignment (useAutoAssignment).
 export const LAST_MILE_ROLE = "PGR_LME";
 
 export const narrowToLastMile = (roles) =>
@@ -78,51 +75,6 @@ const rolesActingOn = (states, nextRef) => {
 };
 
 /**
- * Assignable roles for taking `action` from the complaint's CURRENT state
- * (`status` = applicationStatus or state name): the roles that can act on the
- * state the action lands in.
- *
- * The reopen path needs this rather than deriveAssigneeRoles. On a workflow
- * with a GRO triage stop the create action lands on the assessors' state,
- * while REOPEN lands on PENDINGATLME, whose actors are the last-mile officers.
- * Deriving from the create path there picked the assessor who filed the
- * complaint, and the engine refused them: it validates every assignee as
- * "can act on the TARGET state" (INVALID_ASSIGNEE). When the current state is
- * unknown, every state carrying the action contributes.
- */
-export const deriveTransitionAssigneeRoles = (businessService, status, action) => {
-  const states = businessService?.states || [];
-  if (!action) return [];
-  const roles = new Set();
-  transitionsFrom(states, status, action).forEach((a) => rolesActingOn(states, a.nextState).forEach((r) => roles.add(r)));
-  return [...roles];
-};
-
-// `action`'s transitions from the complaint's current state (`status` =
-// applicationStatus or state name), or from every state carrying the action
-// when the current one is unknown or has none.
-const transitionsFrom = (states, status, action) => {
-  const of = (s) => (s?.actions || []).filter((a) => a?.action === action && isActive(a) && a?.nextState);
-  const current = states.find((s) => status && (s?.state === status || s?.applicationStatus === status) && of(s).length > 0);
-  return (current ? [current] : states.filter((s) => of(s).length > 0)).flatMap(of);
-};
-
-/**
- * Names of the state(s) `action` leads to from the complaint's current state,
- * chosen the same way as deriveTransitionAssigneeRoles (transitionsFrom).
- */
-export const transitionTargetStateNames = (businessService, status, action) => {
-  const states = businessService?.states || [];
-  if (!action) return [];
-  const names = new Set();
-  transitionsFrom(states, status, action).forEach((a) => {
-    const target = states.find((t) => t?.uuid === a.nextState || t?.state === a.nextState);
-    if (target?.state) names.add(target.state);
-  });
-  return [...names];
-};
-
-/**
  * Codes on the boundary-tree path to the complaint's locality, ordered
  * NARROWEST FIRST: the locality itself, then its parent, up to the root.
  *
@@ -157,7 +109,7 @@ export const boundaryAncestorCodes = (roots, localityCode) => {
 };
 
 // HRMS jurisdictions with junk boundary values exist in the field (e.g. the
-// tenant code "ke.nairobi" instead of a boundary code) — same defensive
+// tenant code "ke.bomet" instead of a boundary code) — same defensive
 // filter BoundaryComponent applies to its jurisdiction gate.
 const usableJurisdictionCodes = (employee, tenantId) =>
   (employee?.jurisdictions || [])

@@ -337,7 +337,7 @@ const FormExplorer = () => {
 
     // Pincode allowlist is a fallback for environments without a map +
     // ward-resolution flow. When the citizen has pinned a location that
-    // resolved to a Nairobi ward (turf point-in-polygon hit), the
+    // resolved to a ward (turf point-in-polygon hit), the
     // routing key is the ward, not the pincode, and Nominatim's
     // reverse-geocoded postcode often won't be in the tenant allowlist
     // even though the location is geographically valid. Skip the

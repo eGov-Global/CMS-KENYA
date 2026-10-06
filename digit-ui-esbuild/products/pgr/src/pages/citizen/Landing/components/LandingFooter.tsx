@@ -1,7 +1,7 @@
 // Government footer: channels, help links, the legal surface (privacy, terms,
 // accessibility) and both login entries, all routed through the route map.
-// Deep county green under a gold rule — the same pairing as the crest — so the
-// page closes the way nairobi.go.ke does.
+// Deep county navy under an accent rule, so the page closes the way the
+// county site does.
 
 import * as React from "react";
 import { Leaf, Mail } from "lucide-react";

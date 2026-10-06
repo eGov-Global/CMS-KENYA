@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useDispatch, useSelector } from "react-redux";
 import { useQueryClient } from "react-query";
-import { useParams, useHistory, Redirect } from "react-router-dom";
+import { useParams, useHistory } from "react-router-dom";
 
 import { BackButton, Card, CardHeader, CardText, CardLabelError, TextArea, SubmitBar } from "@egovernments/digit-ui-react-components";
 
@@ -110,7 +110,6 @@ const AddtionalDetails = (props) => {
       // reopen can therefore never be given an owner again, so this must not
       // be left empty.
       //
-      // From the history (utils/workflowHistory.js pickReopenAssignee):
       // 1) CMS_SUPERVISOR keeps the Mozambique CMS workflow behaviour.
       // 2) Otherwise the previous holder of any role the live workflow treats
       //    as assignable (Bomet: PGR_LME / PGR_VIEWER).

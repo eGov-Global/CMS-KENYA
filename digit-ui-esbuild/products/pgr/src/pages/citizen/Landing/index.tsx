@@ -13,9 +13,9 @@
 //
 // Works with or without a react-router v5 <Router> above it; strings resolve
 // from MDMS localization (PGR_LANDING_* keys) with built-in EN fallbacks;
-// colors resolve from --pgrl-*-brand CSS vars with Nairobi City County defaults.
+// colors resolve from --pgrl-*-brand CSS vars with County Government of Bomet defaults.
 // Photography is injected by the deployment entry (AppEntry.tsx); without it
-// the hero and the closing band render on flat brand green.
+// the hero and the closing band render on flat brand colour.
 
 import * as React from "react";
 

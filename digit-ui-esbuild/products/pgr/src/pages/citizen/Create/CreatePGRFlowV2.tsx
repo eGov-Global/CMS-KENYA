@@ -233,7 +233,7 @@ const REQUIRED_CONSENTS: ReadonlyArray<{ code: string; labelKey: string; label: 
 
 // Terms & Conditions acceptance, required on EVERY complaint (not only the
 // dispatcher flow): the county uses the complainant's contact details to send
-// updates on the complaint, and needs that agreed at submission (Nairobi UAT).
+// updates on the complaint, and needs that agreed at submission.
 const TERMS_CONSENT = {
   code: "TERMS_CONDITIONS",
   labelKey: "PGR_CONSENT_TERMS_LABEL",
@@ -1402,8 +1402,8 @@ function InlineSpinner() {
 // values travel in extendedAttributes (complainantName/complainantAddress), so
 // editing them never round-trips through the user service.
 // Optional free-text address, shown on EVERY tenant — its own card on step 1,
-// right under the complaint type (Nairobi UAT: the citizen describes the spot
-// while describing the issue; the map pin and ward follow on step 2).
+// right under the complaint type (the citizen describes the spot while
+// describing the issue; the map pin and ward follow on step 2).
 //
 // Kept separate from ReporterDetailsCard: that card's three fields (name /
 // address / email) travel in extendedAttributes and are therefore unusable on
