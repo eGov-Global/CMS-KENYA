@@ -41,15 +41,19 @@ const STATS = [
 function Figure({ icon: Icon, value, label }: { icon: React.ComponentType<any>; value: string; label: string }) {
   const { ref, text } = useCountUp<HTMLElement>(value);
   return (
-    <div className="flex items-center gap-4 py-3 lg:py-0 lg:pl-8 lg:border-0 lg:border-l lg:border-solid lg:border-[hsl(var(--pgrl-on-primary)/0.14)] lg:first:border-l-0 lg:first:pl-0">
+    // Two-up until xl: four cells across a 1024 px band left the figures and
+    // their labels wrapping at different heights. The icon is dropped on
+    // phones so "1–30 days" keeps to one line in a half-width cell. Top-aligned
+    // so every figure shares one baseline whatever its label wraps to.
+    <div className="flex items-start gap-4 py-3 xl:border-0 xl:border-l xl:border-solid xl:border-[hsl(var(--pgrl-on-primary)/0.14)] xl:py-0 xl:pl-8 xl:first:border-l-0 xl:first:pl-0">
       <span
         aria-hidden
-        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[hsl(var(--pgrl-on-primary)/0.08)] text-[hsl(var(--pgrl-accent))]"
+        className="hidden h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[hsl(var(--pgrl-on-primary)/0.08)] text-[hsl(var(--pgrl-accent))] sm:flex"
       >
         <Icon className="h-5 w-5" />
       </span>
       <div className="flex min-w-0 flex-col">
-        <dd ref={ref} className="order-1 m-0 text-[1.75rem] font-bold leading-none tracking-tight text-[hsl(var(--pgrl-on-primary))] md:text-4xl">
+        <dd ref={ref} className="order-1 m-0 whitespace-nowrap text-[1.75rem] font-bold leading-none tracking-tight text-[hsl(var(--pgrl-on-primary))] md:text-4xl">
           {/* The count-up is decoration: assistive tech reads the final figure at once. */}
           <span aria-hidden>{text}</span>
           <span className="sr-only">{value}</span>
@@ -174,7 +178,9 @@ export function EditorialHero({ routes, imageUrl, imageSmallUrl, section }: Edit
         </div>
 
         <div className="relative lg:col-span-6">
-          <figure className="pgrl-arch relative m-0 ml-auto w-full max-w-md lg:max-w-none">
+          {/* Portrait on phones (the small cut), a landscape band under the copy on
+              tablets, portrait again beside the copy from lg. */}
+          <figure className="pgrl-arch relative m-0 w-full">
             {/* Offset plate behind the frame, in the accent tint. */}
             <span aria-hidden className={cn("absolute -bottom-3 -right-3 h-full w-full bg-[hsl(var(--pgrl-accent)/0.4)] lg:-bottom-5 lg:-right-5", frame)} />
             {imageUrl ? (
@@ -188,13 +194,13 @@ export function EditorialHero({ routes, imageUrl, imageSmallUrl, section }: Edit
                   // @ts-expect-error fetchpriority is not in React 17's typings; browsers read the lowercase attribute.
                   fetchpriority="high"
                   className={cn(
-                    "relative block aspect-[4/5] w-full object-cover object-[60%_45%] shadow-[0_30px_60px_-30px_hsl(var(--pgrl-deep)/0.6)] sm:aspect-[5/4] lg:aspect-[10/11]",
+                    "relative block aspect-[4/5] w-full object-cover object-[60%_45%] shadow-[0_30px_60px_-30px_hsl(var(--pgrl-deep)/0.6)] md:aspect-[16/10] lg:aspect-square",
                     frame
                   )}
                 />
               </picture>
             ) : (
-              <span aria-hidden className={cn("relative block aspect-[4/5] w-full bg-[hsl(var(--pgrl-deep))] sm:aspect-[5/4] lg:aspect-[10/11]", frame)} />
+              <span aria-hidden className={cn("relative block aspect-[4/5] w-full bg-[hsl(var(--pgrl-deep))] md:aspect-[16/10] lg:aspect-square", frame)} />
             )}
             {imageUrl && caption && (
               <figcaption className="absolute right-4 top-4 m-0 rounded-full bg-[hsl(var(--pgrl-deep)/0.72)] px-3 py-1 text-[11px] text-[hsl(var(--pgrl-on-primary))] backdrop-blur-sm">
@@ -206,7 +212,7 @@ export function EditorialHero({ routes, imageUrl, imageSmallUrl, section }: Edit
             {script && (
               <p
                 aria-hidden
-                className="pgrl-float absolute -left-2 bottom-8 m-0 flex max-w-[15rem] items-center gap-3 rounded-2xl bg-[hsl(var(--pgrl-deep))] px-4 py-3 text-sm font-semibold leading-snug text-[hsl(var(--pgrl-on-primary))] shadow-xl sm:-left-6 sm:max-w-[18rem] sm:text-base"
+                className="pgrl-float absolute -left-2 bottom-8 m-0 flex max-w-[15rem] items-center gap-3 rounded-2xl bg-[hsl(var(--pgrl-deep))] px-4 py-3 text-sm font-semibold leading-snug text-[hsl(var(--pgrl-on-primary))] shadow-xl sm:max-w-[18rem] sm:text-base lg:-left-6"
               >
                 <Leaf className="h-5 w-5 shrink-0 text-[hsl(var(--pgrl-accent))]" />
                 {script}
@@ -219,7 +225,7 @@ export function EditorialHero({ routes, imageUrl, imageSmallUrl, section }: Edit
       {/* Headline figures as one dark band, divided by hairlines on desktop. */}
       {stats.length > 0 && (
         <div className="pgrl-rise bg-[hsl(var(--pgrl-deep))] text-[hsl(var(--pgrl-on-primary))]" style={revealIndex(6)}>
-          <dl className={cn(CONTAINER, "m-0 grid grid-cols-2 gap-x-6 gap-y-1 py-5 lg:grid-cols-4 lg:gap-x-10 lg:py-8")}>
+          <dl className={cn(CONTAINER, "m-0 grid grid-cols-2 gap-x-6 gap-y-1 py-5 xl:grid-cols-4 xl:gap-x-10 xl:py-8")}>
             {stats.map((s) => (
               <Figure key={s.label} icon={s.icon} value={s.value} label={s.label} />
             ))}

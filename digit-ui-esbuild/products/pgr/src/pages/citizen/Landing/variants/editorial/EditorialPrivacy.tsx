@@ -24,10 +24,15 @@ export function EditorialPrivacy({ routes, section }: EditorialPrivacyProps) {
     <Section id={domId} code={section?.code} eyebrow={c("PRIVACY_EYEBROW")} title={c(section?.titleKey, "PRIVACY_TITLE")} tone="tint">
       <div className="grid gap-8 lg:grid-cols-12 lg:gap-14">
         <blockquote
-          className="pgrl-reveal-item m-0 border-0 border-l-4 border-solid border-[hsl(var(--pgrl-primary))] pl-5 sm:pl-7 lg:col-span-6"
+          className="pgrl-reveal-item m-0 flex items-start gap-4 border-0 border-l-4 border-solid border-[hsl(var(--pgrl-primary))] pl-5 sm:pl-7 lg:col-span-6"
           style={revealIndex(1)}
         >
-          <ShieldCheck aria-hidden className="mb-4 h-8 w-8 text-[hsl(var(--pgrl-primary))]" />
+          <span
+            aria-hidden
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[hsl(var(--pgrl-primary))] text-[hsl(var(--pgrl-on-primary))]"
+          >
+            <ShieldCheck className="h-5 w-5" />
+          </span>
           <p className="m-0 text-xl font-semibold leading-snug text-[hsl(var(--pgrl-deep))] md:text-2xl">{c(section?.bodyKey, "PRIVACY_P1")}</p>
         </blockquote>
         <div className="pgrl-reveal-item lg:col-span-6" style={revealIndex(2)}>

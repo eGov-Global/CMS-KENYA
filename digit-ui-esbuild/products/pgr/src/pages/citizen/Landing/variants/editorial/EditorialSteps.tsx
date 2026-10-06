@@ -1,6 +1,7 @@
-// How it works as a vertical timeline (Bomet): numbered nodes on a line that
-// draws itself down as the steps reveal, with the "who handles your case"
-// reassurances in a card that stays beside the list on desktop.
+// How it works as a vertical timeline (Bomet): numbered nodes, each centred
+// on its step card, on a line that draws itself down as the steps reveal;
+// the "who handles your case" reassurances in a card that stays beside the
+// list on desktop, level with the first step.
 
 import * as React from "react";
 import { Bell, Check } from "lucide-react";
@@ -23,25 +24,34 @@ export function EditorialSteps({ section }: EditorialStepsProps = {}) {
   return (
     <Section id={domId} code={section?.code} eyebrow={c("HOW_EYEBROW")} title={c(section?.titleKey, "HOW_TITLE")} tone="page" dots>
       <div className="grid gap-10 lg:grid-cols-12 lg:gap-14">
-        <ol className="relative m-0 list-none p-0 pl-14 sm:pl-16 lg:col-span-7">
-          {/* The line: a hairline track with the brand fill drawing down it. */}
-          <span aria-hidden className="pgrl-reveal-item absolute bottom-4 left-5 top-4 w-[3px] rounded-full bg-[hsl(var(--pgrl-line))] sm:left-6" style={revealIndex(0)}>
+        <ol className="relative m-0 list-none p-0 lg:col-span-7">
+          {/* The line: a hairline track with the brand fill drawing down it,
+              centred under the nodes (40 px wide, 48 from sm). */}
+          <span
+            aria-hidden
+            className="pgrl-reveal-item absolute bottom-6 left-[18.5px] top-6 w-[3px] rounded-full bg-[hsl(var(--pgrl-line))] sm:left-[22.5px]"
+            style={revealIndex(0)}
+          >
             <span className="pgrl-tl-fill block h-full w-full rounded-full bg-[hsl(var(--pgrl-primary))]" />
           </span>
           {items.map((step, i) => {
             const Icon = step.icon;
             return (
-              <li key={step.id ?? step.titleKey ?? i} className="pgrl-reveal-item relative m-0 py-4 sm:py-5" style={revealIndex(i + 1)}>
+              <li
+                key={step.id ?? step.titleKey ?? i}
+                className="pgrl-reveal-item relative m-0 flex items-center gap-4 py-2.5 first:pt-0 last:pb-0 sm:gap-5 sm:py-3"
+                style={revealIndex(i + 1)}
+              >
                 <span
                   aria-hidden
                   className={
-                    "pgrl-step-num absolute -left-14 top-4 flex h-10 w-10 items-center justify-center rounded-full bg-[hsl(var(--pgrl-primary))] " +
-                    "text-sm font-bold text-[hsl(var(--pgrl-on-primary))] ring-4 ring-[hsl(var(--pgrl-page))] sm:-left-16 sm:top-5 sm:h-12 sm:w-12 sm:text-base"
+                    "pgrl-step-num flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[hsl(var(--pgrl-primary))] " +
+                    "text-sm font-bold text-[hsl(var(--pgrl-on-primary))] ring-4 ring-[hsl(var(--pgrl-page))] sm:h-12 sm:w-12 sm:text-base"
                   }
                 >
                   {i + 1}
                 </span>
-                <div className="flex items-start justify-between gap-4 rounded-2xl border border-solid border-[hsl(var(--pgrl-line))] bg-[hsl(var(--pgrl-surface))] p-4 sm:p-5">
+                <div className="flex min-w-0 flex-1 items-center justify-between gap-4 rounded-2xl border border-solid border-[hsl(var(--pgrl-line))] bg-[hsl(var(--pgrl-surface))] p-4 sm:p-5">
                   <span className="flex min-w-0 flex-col gap-1">
                     <span className="text-[11px] font-bold uppercase tracking-[0.14em] text-[hsl(var(--pgrl-primary))]">
                       {c("HOW_STEP_LABEL")} {i + 1}

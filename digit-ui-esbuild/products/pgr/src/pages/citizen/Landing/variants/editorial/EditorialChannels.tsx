@@ -92,7 +92,7 @@ export function EditorialChannels({ routes, section }: EditorialChannelsProps) {
       <div
         className={
           "pgrl-reveal-item mt-10 flex flex-col gap-5 rounded-2xl border border-solid border-[hsl(var(--pgrl-on-primary)/0.14)] " +
-          "bg-[hsl(var(--pgrl-on-primary)/0.06)] p-6 md:mt-12 md:flex-row md:items-center md:justify-between md:p-8"
+          "bg-[hsl(var(--pgrl-on-primary)/0.06)] p-6 md:mt-12 md:p-8 lg:flex-row lg:items-center lg:justify-between"
         }
         style={revealIndex(items.length + 1)}
       >
@@ -100,7 +100,7 @@ export function EditorialChannels({ routes, section }: EditorialChannelsProps) {
           <h3 className="m-0 text-xl font-bold leading-tight tracking-tight text-[hsl(var(--pgrl-on-primary))] md:text-2xl">{c("FINAL_TITLE")}</h3>
           <p className="mb-0 mt-2 max-w-[56ch] text-sm leading-relaxed text-[hsl(var(--pgrl-on-primary)/0.78)] md:text-base">{c("FINAL_TEXT")}</p>
         </div>
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center md:shrink-0">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center lg:shrink-0">
           <CtaLink
             to={routes.REGISTER_COMPLAINT}
             variant="accent"
