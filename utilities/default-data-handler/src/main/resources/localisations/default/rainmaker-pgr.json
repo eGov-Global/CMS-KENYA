@@ -3606,6 +3606,24 @@
         "locale": "default"
     },
     {
+        "code": "PGR_CONSENT_TERMS_LABEL",
+        "message": "I agree to the Terms & Conditions and to the county using my contact details to send me updates on this complaint.",
+        "module": "rainmaker-pgr",
+        "locale": "default"
+    },
+    {
+        "code": "PGR_CONSENT_SECTION_MANDATORY",
+        "message": "Mandatory",
+        "module": "rainmaker-pgr",
+        "locale": "default"
+    },
+    {
+        "code": "PGR_CONSENT_SECTION_OPTIONAL",
+        "message": "Optional",
+        "module": "rainmaker-pgr",
+        "locale": "default"
+    },
+    {
         "code": "FILTER_BY",
         "message": "FILTER BY",
         "module": "rainmaker-pgr",
@@ -7537,7 +7555,7 @@
     },
     {
         "code": "PGR_EXT_IS_CONFIDENTIAL_HINT",
-        "message": "Visibility is enforced once secure handling is enabled; for now this flags the complaint for staff awareness.",
+        "message": "Your name and phone number are not shown to the county officers handling this complaint.",
         "module": "rainmaker-pgr",
         "locale": "default"
     },
@@ -7613,5 +7631,208 @@
         "module": "rainmaker-pgr",
         "locale": "default"
     },
-    {"code": "ES_PGR_FILTER_ONLY_MY_COMPLAINTS", "message": "Only complaints I created", "module": "rainmaker-pgr", "locale": "default"}
+    {
+        "code": "ES_PGR_FILTER_ONLY_MY_COMPLAINTS",
+        "message": "Only complaints I created",
+        "module": "rainmaker-pgr",
+        "locale": "default"
+    },
+    {
+        "code": "PGR_RECEIPT_TITLE",
+        "message": "Complaint Receipt",
+        "module": "rainmaker-pgr",
+        "locale": "default"
+    },
+    {
+        "code": "PGR_RECEIPT_DOWNLOAD",
+        "message": "Download Application",
+        "module": "rainmaker-pgr",
+        "locale": "default"
+    },
+    {
+        "code": "PGR_RECEIPT_PRINT",
+        "message": "Print Receipt",
+        "module": "rainmaker-pgr",
+        "locale": "default"
+    },
+    {
+        "code": "PGR_RECEIPT_SHARE",
+        "message": "Share",
+        "module": "rainmaker-pgr",
+        "locale": "default"
+    },
+    {
+        "code": "PGR_RECEIPT_SHARE_TEXT",
+        "message": "Complaint {id} filed with {tenant}. Track it here:",
+        "module": "rainmaker-pgr",
+        "locale": "default"
+    },
+    {
+        "code": "PGR_RECEIPT_SHARE_COPIED",
+        "message": "Link copied — paste it anywhere to share.",
+        "module": "rainmaker-pgr",
+        "locale": "default"
+    },
+    {
+        "code": "PGR_RECEIPT_SHARE_UNAVAILABLE",
+        "message": "Sharing is not available on this device — download the receipt instead.",
+        "module": "rainmaker-pgr",
+        "locale": "default"
+    },
+    {
+        "code": "PGR_RECEIPT_ERROR",
+        "message": "Could not generate the receipt. Please try again.",
+        "module": "rainmaker-pgr",
+        "locale": "default"
+    },
+    {
+        "code": "PGR_RECEIPT_GENERATED_ON",
+        "message": "Generated on",
+        "module": "rainmaker-pgr",
+        "locale": "default"
+    },
+    {
+        "code": "PGR_RECEIPT_CLASSIFICATION",
+        "message": "Classification",
+        "module": "rainmaker-pgr",
+        "locale": "default"
+    },
+    {
+        "code": "PGR_RECEIPT_NEXT_TITLE",
+        "message": "What happens next",
+        "module": "rainmaker-pgr",
+        "locale": "default"
+    },
+    {
+        "code": "PGR_RECEIPT_NEXT_TRACK",
+        "message": "Keep this complaint number — you need it to ask about your complaint.",
+        "module": "rainmaker-pgr",
+        "locale": "default"
+    },
+    {
+        "code": "PGR_RECEIPT_NEXT_UPDATE",
+        "message": "You can track the status any time under My Complaints.",
+        "module": "rainmaker-pgr",
+        "locale": "default"
+    },
+    {
+        "code": "PGR_RECEIPT_SYSTEM_GENERATED",
+        "message": "This is a system-generated document and does not require a signature.",
+        "module": "rainmaker-pgr",
+        "locale": "default"
+    },
+    {
+        "code": "PGR_RECEIPT_SHARE_RETRY",
+        "message": "Sharing was interrupted — tap Share again.",
+        "module": "rainmaker-pgr",
+        "locale": "default"
+    },
+    {
+        "code": "CS_RATING_LABEL_1",
+        "message": "Very unhappy",
+        "module": "rainmaker-pgr",
+        "locale": "default"
+    },
+    {
+        "code": "CS_RATING_LABEL_2",
+        "message": "Unhappy",
+        "module": "rainmaker-pgr",
+        "locale": "default"
+    },
+    {
+        "code": "CS_RATING_LABEL_3",
+        "message": "Okay",
+        "module": "rainmaker-pgr",
+        "locale": "default"
+    },
+    {
+        "code": "CS_RATING_LABEL_4",
+        "message": "Happy",
+        "module": "rainmaker-pgr",
+        "locale": "default"
+    },
+    {
+        "code": "CS_RATING_LABEL_5",
+        "message": "Very happy",
+        "module": "rainmaker-pgr",
+        "locale": "default"
+    },
+    {
+        "code": "PGR_RECEIPT_SHARE_DOWNLOADED",
+        "message": "The receipt PDF is also in your downloads.",
+        "module": "rainmaker-pgr",
+        "locale": "default"
+    },
+    {
+        "code": "PGR_RECEIPT_SHARE_DOWNLOADED_COPIED",
+        "message": "Receipt PDF saved to your downloads; tracking link copied.",
+        "module": "rainmaker-pgr",
+        "locale": "default"
+    },
+    {
+        "code": "PGR_RECEIPT_SHARE_DOWNLOADED_ONLY",
+        "message": "Receipt PDF saved to your downloads.",
+        "module": "rainmaker-pgr",
+        "locale": "default"
+    },
+    {
+        "code": "PGR_RECEIPT_SHARE_VIA",
+        "message": "Share receipt via",
+        "module": "rainmaker-pgr",
+        "locale": "default"
+    },
+    {
+        "code": "PGR_RECEIPT_OPEN_PDF",
+        "message": "Open PDF",
+        "module": "rainmaker-pgr",
+        "locale": "default"
+    },
+    {
+        "code": "PGR_RECEIPT_SHARE_EMAIL",
+        "message": "Email",
+        "module": "rainmaker-pgr",
+        "locale": "default"
+    },
+    {
+        "code": "PGR_RECEIPT_SHARE_WHATSAPP",
+        "message": "WhatsApp",
+        "module": "rainmaker-pgr",
+        "locale": "default"
+    },
+    {
+        "code": "PGR_RECEIPT_SHARE_SMS",
+        "message": "SMS",
+        "module": "rainmaker-pgr",
+        "locale": "default"
+    },
+    {
+        "code": "PGR_RECEIPT_SHARE_COPY",
+        "message": "Copy link",
+        "module": "rainmaker-pgr",
+        "locale": "default"
+    },
+    {
+        "code": "PGR_RECEIPT_SHARE_MORE",
+        "message": "More apps",
+        "module": "rainmaker-pgr",
+        "locale": "default"
+    },
+    {
+        "code": "PGR_RECEIPT_SHARE_HINT",
+        "message": "Email, WhatsApp and SMS send the complaint number and tracking link. To send the PDF itself use More apps, or Download Application above.",
+        "module": "rainmaker-pgr",
+        "locale": "default"
+    },
+    {
+        "code": "PGR_RECEIPT_SHARE_COPY_FAILED",
+        "message": "Could not copy the link on this device.",
+        "module": "rainmaker-pgr",
+        "locale": "default"
+    },
+    {
+        "code": "PGR_RECEIPT_POPUP_BLOCKED",
+        "message": "The browser blocked the PDF tab — the receipt was downloaded instead.",
+        "module": "rainmaker-pgr",
+        "locale": "default"
+    }
 ]

@@ -23,6 +23,7 @@ import { useSelector } from "react-redux";
 import { useTranslation } from "react-i18next";
 import { CheckCircle2, AlertCircle, Eye } from "lucide-react";
 import { Button, Card } from "@egovernments/digit-ui-components-v2";
+import ReceiptActions from "../../components/ReceiptActions";
 
 // PGR `_update` returns `ResponseInfo` (capital R); accept either casing.
 const hasUpdatePayload = (complaints) =>
@@ -249,6 +250,13 @@ const Response = () => {
               <Button variant="outline" onClick={() => history.push(retryFlow)}>
                 {tr("CS_COMMON_TRY_AGAIN", "Try Again")}
               </Button>
+            ) : null}
+            {success && action !== "RATE" && complaintId ? (
+              // Only the created ServiceWrapper is in redux here, and printing
+              // that alone yields a receipt with nothing but the ID — so hand
+              // over the id and let the component load the same full record
+              // the detail page shows.
+              <ReceiptActions complaintId={complaintId} tenantId={wrapper?.service?.tenantId} />
             ) : null}
             <Link to={goHome} style={{ textDecoration: "none" }}>
               <Button>{tr("CORE_COMMON_GO_TO_HOME", "Go to Home")}</Button>

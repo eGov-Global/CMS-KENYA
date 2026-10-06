@@ -12,6 +12,7 @@ import org.egov.pgr.util.Principals;
 import org.egov.pgr.config.PGRConfiguration;
 import org.egov.pgr.repository.IdGenRepository;
 import org.egov.pgr.util.PGRUtils;
+import org.egov.pgr.util.ServiceRequestIdFormat;
 import org.egov.pgr.web.models.AuditDetails;
 import org.egov.pgr.web.models.ExtendedAttributes;
 import org.egov.pgr.web.models.RequestSearchCriteria;
@@ -92,7 +93,12 @@ public class EnrichmentService {
 
         List<String> customIds = getIdList(requestInfo,tenantId,config.getServiceRequestIdGenName(),config.getServiceRequestIdGenFormat(),1);
 
-        service.setServiceRequestId(customIds.get(0));
+        String serviceRequestId = customIds.get(0);
+        // idgen zero-pads the sequence to six digits; deployments that want the bare number opt out.
+        if (Boolean.TRUE.equals(config.getStripServiceRequestIdSequencePadding()))
+            serviceRequestId = ServiceRequestIdFormat.stripSequencePadding(serviceRequestId);
+
+        service.setServiceRequestId(serviceRequestId);
 
 
     }

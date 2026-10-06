@@ -17,7 +17,9 @@ const AssigneeComponent = ({ config, onSelect, formData }) => {
   // by department alone, which leaves the jurisdiction gate a no-op.
   // `preferredUuid` (escalation) is pre-selected when that person is in the
   // filtered list; otherwise the officer picks as usual.
-  const { roles = [], department, allDepartments, localityCode, preferredUuid } = config?.populators || {};
+  // `departmentsIn` / `excludeUuids` (Nairobi LME reassign) scope a picker to a
+  // set of departments and drop given officers; absent everywhere else.
+  const { roles = [], department, allDepartments, localityCode, preferredUuid, departmentsIn, excludeUuids } = config?.populators || {};
 
   // Jurisdiction coverage is a property of the boundary TREE (an officer
   // assigned the sub-county covers every ward beneath it), so the filter needs
@@ -49,6 +51,7 @@ const AssigneeComponent = ({ config, onSelect, formData }) => {
     params: {
       tenantId: tenantId,
       roles: roles.join(","),
+      isActive: true,
     },
     changeQueryName: `hrms-assignees-${tenantId}-${roles.join(",")}`,
     options: {
@@ -108,10 +111,16 @@ const AssigneeComponent = ({ config, onSelect, formData }) => {
       // pgr-services skips its department validation for these, so the actor may
       // route to ANY department — filtering by "NA" would empty the dropdown.
       const unscoped = allDepartments || !department || department === "NA";
+      // Deactivated employees are asked away server-side (isActive=true above);
+      // this guard keeps them out even where HRMS ignores that param.
+      const within = Array.isArray(departmentsIn) && departmentsIn.length > 0 ? new Set(departmentsIn) : null;
+      const excluded = new Set((excludeUuids || []).filter(Boolean));
       const filtered = employeeData.Employees.filter((e) => {
         const d = e?.assignments?.[0]?.department;
         // Deactivated staff can't take a complaint (pgr-services rejects them).
         if (!d || !e?.user?.uuid || e?.isActive === false) return false;
+        if (excluded.has(e.user.uuid)) return false;
+        if (within) return within.has(d);
         return unscoped ? true : d === department;
       });
       // Then by JURISDICTION, the second axis Bomet routes on: an officer with
@@ -134,7 +143,7 @@ const AssigneeComponent = ({ config, onSelect, formData }) => {
       return transformData(candidates);
     }
     return [];
-  }, [employeeData, department, allDepartments, localityCode, boundaryData, tenantId, t]);
+  }, [employeeData, department, allDepartments, localityCode, boundaryData, tenantId, t, departmentsIn, excludeUuids]);
   const options = useMemo(() => assignees.flatMap((group) => group.options), [assignees]);
 
   // The selection IS the form's value: the action modal submits the form
@@ -187,6 +196,11 @@ const AssigneeComponent = ({ config, onSelect, formData }) => {
     );
   }
 
+  // One control: the dropdown's own input is the search box. Typing filters
+  // the department-grouped list by department OR person (the atom matches
+  // nested children, not just group headers).
+  const searchLabel = t("CS_COMMON_SEARCH_EMPLOYEE") === "CS_COMMON_SEARCH_EMPLOYEE" ? "Search by name or department" : t("CS_COMMON_SEARCH_EMPLOYEE");
+
   return (
     <div className="assignee-dropdown-container">
       <Dropdown
@@ -197,7 +211,8 @@ const AssigneeComponent = ({ config, onSelect, formData }) => {
         select={(value) => {
           handleEmployeeSelect(value);
         }}
-        placeholder={t("CS_COMMON_SELECT_EMPLOYEE")}
+        isSearchable
+        placeholder={searchLabel}
         label={t(config.label)}
         variant="nesteddropdown"
       />

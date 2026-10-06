@@ -1,9 +1,14 @@
-import React from "react";
+import React, { Suspense } from "react";
 import { Redirect } from "react-router-dom";
 import { Loader } from "@egovernments/digit-ui-react-components";
-import AdminDashboard from "./src/AdminDashboard";
+import { lazyWithRetry } from "../pgr/src/utils/lazyLoad";
 import DashboardCard from "./DashboardCard";
 import { useDashboardAccess } from "./roles";
+
+// react-grid-layout, Leaflet and MapLibre only download when the dashboard is
+// actually opened — they are a large share of the bundle and most sessions
+// never visit it.
+const AdminDashboard = lazyWithRetry(() => import("./src/AdminDashboard"), "dashboard");
 
 // Mounted by core AppModules at /{contextPath}/employee/dashboard INSIDE the
 // employee chrome (topbar + sidebar). AppModules already guarantees a logged-in
@@ -34,7 +39,11 @@ const DashboardModule = ({ stateCode }) => {
   if (!allowed) {
     return <Redirect to={`/${window?.contextPath}/employee`} />;
   }
-  return <AdminDashboard embedded />;
+  return (
+    <Suspense fallback={<Loader />}>
+      <AdminDashboard embedded />
+    </Suspense>
+  );
 };
 
 const componentsToRegister = {

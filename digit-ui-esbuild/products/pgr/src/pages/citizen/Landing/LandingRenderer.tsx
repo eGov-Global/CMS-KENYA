@@ -31,6 +31,11 @@ export interface LandingRendererProps {
   routes?: Partial<LandingRoutes>;
   news?: NewsItem[];
   heroImageUrl?: string;
+  heroImageSmallUrl?: string;
+  bandImageUrl?: string;
+  personImageUrl?: string;
+  stepsOrbImageUrl?: string;
+  channelsOrbImageUrl?: string;
   emblemUrl?: string;
   footerLogoUrl?: string;
   languages?: LanguageOption[];
@@ -47,6 +52,11 @@ export function LandingRenderer({
   routes: routeOverrides,
   news = DEFAULT_NEWS,
   heroImageUrl,
+  heroImageSmallUrl,
+  bandImageUrl,
+  personImageUrl,
+  stepsOrbImageUrl,
+  channelsOrbImageUrl,
   emblemUrl,
   footerLogoUrl,
   languages = DEFAULT_LANGUAGES,
@@ -82,8 +92,8 @@ export function LandingRenderer({
   const fabOn = hasSections && (showWhatsAppFab ?? page.showWhatsAppFab ?? true);
 
   const ctx: RenderCtx = React.useMemo(
-    () => ({ routes, news, heroImageUrl, emblemUrl, footerLogoUrl }),
-    [routes, news, heroImageUrl, emblemUrl, footerLogoUrl]
+    () => ({ routes, news, heroImageUrl, heroImageSmallUrl, bandImageUrl, personImageUrl, stepsOrbImageUrl, channelsOrbImageUrl, emblemUrl, footerLogoUrl }),
+    [routes, news, heroImageUrl, heroImageSmallUrl, bandImageUrl, personImageUrl, stepsOrbImageUrl, channelsOrbImageUrl, emblemUrl, footerLogoUrl]
   );
 
   // Group the ordered, visible sections into DOM slots; unknown types (no
@@ -108,7 +118,9 @@ export function LandingRenderer({
     <div className="v2-scope" style={tokenStyle}>
       <div
         className={cn(
-          "pgr-landing flex min-h-screen flex-col bg-[hsl(var(--pgrl-page))] font-condensed text-[hsl(var(--pgrl-ink))]",
+          // pgrl-font: Roboto Condensed over a width-matched fallback (src/index.css),
+          // so the web font's late arrival does not re-wrap the page.
+          "pgr-landing pgrl-font flex min-h-screen flex-col bg-[hsl(var(--pgrl-page))] text-[hsl(var(--pgrl-ink))]",
           // Preflight is off, so form controls keep the UA font unless told to inherit.
           "[&_button]:font-[family-name:inherit] [&_input]:font-[family-name:inherit] [&_select]:font-[family-name:inherit] [&_textarea]:font-[family-name:inherit]",
           NO_HOVER_UNDERLINE,

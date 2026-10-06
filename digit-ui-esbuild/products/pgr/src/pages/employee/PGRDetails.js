@@ -23,6 +23,7 @@ import { mergeAdditionalDetail } from "../../utils/additionalDetail";
 import { isConfirmationAction } from "../../utils/withdraw";
 import useAutoAssignment from "../../hooks/pgr/useAutoAssignment";
 import { EV, trackE } from "../../utils/analytics";
+import ReceiptActions from "../../components/ReceiptActions";
 
 // CCSD-2167 (employee side) — route-back / terminal actions derive their
 // assignee from the complaint's OWN workflow history, exactly like the citizen
@@ -321,7 +322,10 @@ const PGRDetails = () => {
 
   // Fetch workflow details
   const { isLoading: isWorkflowLoading, data: workflowData, revalidate: workFlowRevalidate } = Digit.Hooks.useCustomAPIHook({
-    url: "/egov-workflow-v2/egov-wf/process/_search",
+    // Filtered chronology (pgr-services): same shape as the workflow API, but
+    // on a confidential complaint the complainant's identity inside the actor
+    // blocks is masked server-side for uncleared employees.
+    url: "/pgr-services/v2/request/_chronology",
     params: { tenantId: complaintTenantId, history: true, businessIds: id },
     config: { enabled: !!pgrData },
     changeQueryName: id,
@@ -799,8 +803,15 @@ const PGRDetails = () => {
   return (
     <div className="v2-pgr-details v2-scope">
       {/* Header */}
-      <header className="v2-employee-page-header">
+      <header className="v2-employee-page-header" style={{ display: "flex", alignItems: "center", gap: "16px", flexWrap: "wrap" }}>
         <h1>{t("CS_COMPLAINT_DETAILS_COMPLAINT_DETAILS")}</h1>
+        {complaintService?.serviceRequestId ? (
+          <ReceiptActions
+            className="ml-auto"
+            complaintId={complaintService.serviceRequestId}
+            tenantId={complaintService.tenantId || tenantId}
+          />
+        ) : null}
       </header>
 
       {/* Complaint Summary Card */}
