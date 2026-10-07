@@ -285,10 +285,12 @@ const CreateComplaintForm = ({
   }, [templatesAll, schemasByRef, caseRelatedTo]);
 
   // Generated FormComposerV2 field configs for the dynamic fields + a
-  // confidentiality checkbox. NOTE: x-security fields render in clear text until
+  // confidentiality checkbox. The checkbox is offered on EVERY complaint, with
+  // or without a category template (Nairobi has none): a clerk filing on a
+  // citizen's behalf must be able to keep them confidential, exactly as the
+  // citizen wizard does. NOTE: x-security fields render in clear text until
   // backend encryption lands (same interim posture as the citizen flow).
   const extFieldConfigs = useMemo(() => {
-    if (!extFields.length) return [];
     const toType = (dt) => (dt === "textarea" ? "textarea" : dt === "date" ? "date" : dt === "number" ? "number" : "text");
     const cfgs = extFields.map((f) => {
       // Date fields → our self-contained calendar-popover component (avoids the
