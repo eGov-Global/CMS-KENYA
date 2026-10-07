@@ -835,7 +835,7 @@
     },
     {
         "code": "CS_COMMON_CANCELLED",
-        "message": "Cancelled",
+        "message": "Withdrawn",
         "module": "rainmaker-pgr",
         "locale": "en_IN"
     },
@@ -1645,7 +1645,7 @@
     },
     {
         "code": "CS_COMPLAINT_DETAILS_CANCELLED",
-        "message": "Cancelled",
+        "message": "Withdrawn",
         "module": "rainmaker-pgr",
         "locale": "en_IN"
     },
@@ -7465,7 +7465,7 @@
     },
     {
         "code": "CS_COMMON_PGR_STATE_CANCELLED",
-        "message": "Cancelled",
+        "message": "Withdrawn",
         "module": "rainmaker-pgr",
         "locale": "en_IN"
     },
