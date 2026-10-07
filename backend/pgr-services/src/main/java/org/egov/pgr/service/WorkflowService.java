@@ -21,6 +21,10 @@ import static org.egov.pgr.util.PGRConstants.*;
 @org.springframework.stereotype.Service
 public class WorkflowService {
 
+    /** Ids per process-instance search when enriching a page of complaints: the stock
+     *  workflow jar's egov.wf.max.limit, above which it clamps a request. */
+    static final int WF_SEARCH_BATCH = 100;
+
     private PGRConfiguration pgrConfiguration;
 
     private ServiceRequestRepository repository;
@@ -129,21 +133,33 @@ public class WorkflowService {
 
             RequestInfoWrapper requestInfoWrapper = RequestInfoWrapper.builder().requestInfo(requestInfo).build();
 
-            StringBuilder searchUrl = getprocessInstanceSearchURL(tenantId, StringUtils.join(serviceRequestIds, ','));
-            Object result = repository.fetchResult(searchUrl, requestInfoWrapper);
+            // Workflow pages a search at egov.wf.default.limit (10 in the stock jar) when no
+            // limit is sent, and clamps anything above egov.wf.max.limit (100 stock). A page of
+            // more than ten complaints therefore came back short and failed the size check
+            // below: a citizen's "My Complaints" read "Couldn't load your complaints" from
+            // their eleventh case on. Ask for exactly the ids of each batch, batched at the
+            // stock maximum so the request never exceeds what workflow will honour.
+            List<ProcessInstance> processInstances = new ArrayList<>();
+            for (int from = 0; from < serviceRequestIds.size(); from += WF_SEARCH_BATCH) {
+                List<String> batch = serviceRequestIds.subList(from, Math.min(from + WF_SEARCH_BATCH, serviceRequestIds.size()));
+                StringBuilder searchUrl = getprocessInstanceSearchURL(tenantId, StringUtils.join(batch, ','));
+                searchUrl.append("&limit=").append(batch.size());
+                Object result = repository.fetchResult(searchUrl, requestInfoWrapper);
 
-
-            ProcessInstanceResponse processInstanceResponse = null;
-            try {
-                processInstanceResponse = mapper.convertValue(result, ProcessInstanceResponse.class);
-            } catch (IllegalArgumentException e) {
-                throw new CustomException("PARSING ERROR", "Failed to parse response of workflow processInstance search");
+                ProcessInstanceResponse processInstanceResponse;
+                try {
+                    processInstanceResponse = mapper.convertValue(result, ProcessInstanceResponse.class);
+                } catch (IllegalArgumentException e) {
+                    throw new CustomException("PARSING ERROR", "Failed to parse response of workflow processInstance search");
+                }
+                if (processInstanceResponse != null && !CollectionUtils.isEmpty(processInstanceResponse.getProcessInstances()))
+                    processInstances.addAll(processInstanceResponse.getProcessInstances());
             }
 
-            if (CollectionUtils.isEmpty(processInstanceResponse.getProcessInstances()) || processInstanceResponse.getProcessInstances().size() != serviceRequestIds.size())
+            if (processInstances.isEmpty() || processInstances.size() != serviceRequestIds.size())
                 throw new CustomException("WORKFLOW_NOT_FOUND", "The workflow object is not found");
 
-            Map<String, Workflow> businessIdToWorkflow = getWorkflow(processInstanceResponse.getProcessInstances());
+            Map<String, Workflow> businessIdToWorkflow = getWorkflow(processInstances);
 
             tenantSpecificWrappers.forEach(pgrEntity -> {
                 pgrEntity.setWorkflow(businessIdToWorkflow.get(pgrEntity.getService().getServiceRequestId()));
