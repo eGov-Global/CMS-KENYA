@@ -24,12 +24,13 @@ import { LOCALIZATION_KEY } from "../../constants/Localization";
 import { buildComplaintPath } from "../../utils/complaintHierarchyPath";
 import TimelineWrapper from "../../components/TimeLineWrapper";
 import useReopenWindow from "../../hooks/pgr/useReopenWindow";
+import useWithdrawWindow from "../../hooks/pgr/useWithdrawWindow";
 import ComplaintPhotos from "../../components/ComplaintPhotos";
 import ComplaintLocationMap from "../../components/ComplaintLocationMap";
 import { buildExtendedAttributeRows, useExtendedAttributeOrder } from "../../components/PgrExtendedAttributesView";
 import { EmojiRatingBadge } from "../../components/EmojiRating";
 import ReceiptActions from "../../components/ReceiptActions";
-import { buildWithdrawRequest } from "../../utils/withdraw";
+import { buildWithdrawRequest, isWithdrawOpen } from "../../utils/withdraw";
 import { trackApiError } from "../../utils/analytics";
 import WithdrawComplaintPopup from "./WithdrawComplaintPopup";
 
@@ -201,6 +202,7 @@ function WorkflowComponent({ complaintDetails, id }) {
   // 1-hour fallback below won everywhere — which is exactly the #925 bug that
   // useReopenWindow was written to fix, reintroduced on this page.
   const complainMaxIdleTime = useReopenWindow(tenantId);
+  const withdrawWindowMs = useWithdrawWindow(tenantId);
 
   useEffect(() => {
     revalidate();
@@ -255,7 +257,18 @@ function WorkflowComponent({ complaintDetails, id }) {
     .filter((a) => Array.isArray(a?.roles) && a.roles.includes("CITIZEN"))
     .map((a) => a?.action)
     .filter((a) => a && a !== "COMMENT")
-    .filter((a) => a !== "REOPEN" || reopenWindowOpen);
+    .filter((a) => a !== "REOPEN" || reopenWindowOpen)
+    // WITHDRAW only inside its window (server-enforced too) and never after a
+    // reopen (UI rule) — see isWithdrawOpen.
+    .filter(
+      (a) =>
+        a !== "WITHDRAW" ||
+        isWithdrawOpen({
+          createdTime: complaintDetails?.service?.auditDetails?.createdTime,
+          windowMs: withdrawWindowMs,
+          processInstances: workflowData?.ProcessInstances,
+        })
+    );
 
   // Rendered INSIDE the current-state timeline row (legacy-checkpoint parity):
   // action buttons while actions are open; the given rating once rated.

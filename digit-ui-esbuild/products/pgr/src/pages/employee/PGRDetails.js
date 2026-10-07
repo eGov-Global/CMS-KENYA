@@ -17,10 +17,11 @@ import { buildComplaintPath } from "../../utils/complaintHierarchyPath";
 import { selectServiceDefsFromComplaintHierarchy } from "../../utils";
 import { isPiiMaskingEnabled } from "../../utils/piiMasking";
 import useReopenWindow from "../../hooks/pgr/useReopenWindow";
+import useWithdrawWindow from "../../hooks/pgr/useWithdrawWindow";
 import { findLatestAssigneeUuidByRole, findLatestAssigneeUuidByAnyRole } from "../../utils/workflowAssignee";
 import { escalationStamp, isCurrentAssignee, nextLevelRoles } from "../../utils/escalation";
 import { mergeAdditionalDetail } from "../../utils/additionalDetail";
-import { isConfirmationAction } from "../../utils/withdraw";
+import { isConfirmationAction, isWithdrawOpen } from "../../utils/withdraw";
 import useAutoAssignment from "../../hooks/pgr/useAutoAssignment";
 import { EV, trackE } from "../../utils/analytics";
 import ReceiptActions from "../../components/ReceiptActions";
@@ -190,6 +191,7 @@ const PGRDetails = () => {
   // Same REOPENSLA window the citizen timeline gates on, so employee and citizen can never
   // disagree about the deadline. undefined => defer to pgr-services (see useReopenWindow).
   const reopenWindowMs = useReopenWindow(tenantId);
+  const withdrawWindowMs = useWithdrawWindow(tenantId);
 
   // Complaint classification hierarchy (configurable N levels). Absent on
   // un-migrated tenants -> buildComplaintPath returns null and the flat
@@ -727,6 +729,17 @@ const PGRDetails = () => {
     return matchingState.actions
       ? matchingState.actions.filter((action) => action.roles.some((role) => userRoles.includes(role)))
         .filter((action) => action.action !== "ESCALATE" || (assignedToMe && action.nextState !== matchingState.uuid))
+        // WITHDRAW on the citizen's behalf only inside the withdraw window (server-enforced
+        // too) and never after a reopen (UI rule) — see isWithdrawOpen.
+        .filter(
+          (action) =>
+            action.action !== "WITHDRAW" ||
+            isWithdrawOpen({
+              createdTime: pgrData?.ServiceWrappers?.[0]?.service?.auditDetails?.createdTime,
+              windowMs: withdrawWindowMs,
+              processInstances: workflowData?.ProcessInstances,
+            })
+        )
         .map((action) => {
           // Look up the target state so the modal can adapt generically (terminal → no assignee,
           // docUploadRequired → future doc capture) with no per-action code.

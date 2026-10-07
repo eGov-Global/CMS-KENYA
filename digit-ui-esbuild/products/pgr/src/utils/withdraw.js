@@ -19,3 +19,20 @@ export const buildWithdrawRequest = (service, reason) => {
     workflow: { action: "WITHDRAW", assignes: [], ...(comments ? { comments } : {}) },
   };
 };
+
+// Whether WITHDRAW should be offered at all. Two gates:
+//   - the withdraw window (RAINMAKER-PGR.UIConstants.WITHDRAWSLA, measured from
+//     filing). pgr-services enforces the same value (validateActionWindow), so once
+//     it has passed the server refuses the action and the button must not be shown.
+//     An unknown window (MDMS still loading, or no usable value) defers to the
+//     server and lets the button through, like REOPEN.
+//   - a complaint that has been REOPENED is not offered Withdraw again: it is back
+//     with the department at the citizen's own request. This one is a UI rule only;
+//     the server has no reopen check beyond the filing window, which in practice has
+//     long passed by the time a complaint is resolved and reopened.
+export const isWithdrawOpen = ({ createdTime, windowMs, processInstances, now = Date.now() } = {}) => {
+  const reopened = (processInstances || []).some((pi) => pi?.action === "REOPEN");
+  if (reopened) return false;
+  if (typeof windowMs !== "number" || !Number.isFinite(windowMs) || windowMs <= 0) return true;
+  return typeof createdTime === "number" && Number.isFinite(createdTime) && now - createdTime < windowMs;
+};
