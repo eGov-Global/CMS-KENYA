@@ -58,6 +58,36 @@ export function fieldsFromSchema(schema) {
     .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
 }
 
+// The FLAT top-level service.extendedAttributes for an employee-filed complaint,
+// or undefined when there is nothing to send (so unmapped tenants keep sending
+// exactly what they did before). Two shapes, mirroring the citizen wizard:
+//   - a category template resolved (extOpts.caseRelatedTo): the full object with
+//     the hierarchy levels and the dynamic field values;
+//   - no template but "Keep details confidential" ticked: the bare flag, which
+//     pgr-services accepts on its own and masks the complainant for staff.
+export function buildCreateExtendedAttributes(formData, extOpts) {
+  if (extOpts && extOpts.caseRelatedTo) {
+    const sct = formData?.SelectComplaintType;
+    const sst = formData?.SelectSubComplaintType;
+    const lvl1 = sct?.code ?? sct?.serviceCode ?? sct?.name;
+    const lvl2 = sst?.code ?? sst?.serviceCode ?? sst?.name;
+    const ext = {
+      caseRelatedTo: extOpts.caseRelatedTo,
+      isConfidential: !!formData?.isConfidential,
+      schemaVersion: "1.0",
+    };
+    if (lvl1) ext.hierarchyLevel1 = lvl1;
+    if (lvl2) ext.hierarchyLevel2 = lvl2;
+    (extOpts.fieldKeys || []).forEach((k) => {
+      const v = formData?.[k];
+      if (v !== undefined && v !== null && String(v).length > 0) ext[k] = v;
+    });
+    return ext;
+  }
+  if (formData?.isConfidential) return { isConfidential: true };
+  return undefined;
+}
+
 // Reverse-map an employee's login tenant (e.g. "mz.ige") to a category code via
 // ComplaintRelatedToMap.tenantCode. Returns the code (e.g. "IGE") or null when
 // the tenant isn't mapped (so callers can fall back to the plain form).

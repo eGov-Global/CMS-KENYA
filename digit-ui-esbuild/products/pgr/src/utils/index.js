@@ -2,6 +2,7 @@ import _ from "lodash";
 import axios from "axios";
 import { CustomisedHooks } from "../hooks";
 import { UICustomizations } from "../configs/UICustomizations";
+import { buildCreateExtendedAttributes } from "./extendedAttributes";
 
 export const overrideHooks = () => {
   Object.keys(CustomisedHooks).map((ele) => {
@@ -240,26 +241,13 @@ export const formPayloadToCreateComplaint = (formData, tenantId, user, extOpts) 
   }
 
   // Additive: attach a FLAT top-level service.extendedAttributes when the
-  // employee's tenant mapped to a category (extOpts.caseRelatedTo). Backward
-  // compatible — existing 3-arg callers and non-mapped tenants are unchanged.
-  if (extOpts && extOpts.caseRelatedTo) {
-    const sct = formData?.SelectComplaintType;
-    const sst = formData?.SelectSubComplaintType;
-    const lvl1 = sct?.code ?? sct?.serviceCode ?? sct?.name;
-    const lvl2 = sst?.code ?? sst?.serviceCode ?? sst?.name;
-    const ext = {
-      caseRelatedTo: extOpts.caseRelatedTo,
-      isConfidential: !!formData?.isConfidential,
-      schemaVersion: "1.0",
-    };
-    if (lvl1) ext.hierarchyLevel1 = lvl1;
-    if (lvl2) ext.hierarchyLevel2 = lvl2;
-    (extOpts.fieldKeys || []).forEach((k) => {
-      const v = formData?.[k];
-      if (v !== undefined && v !== null && String(v).length > 0) ext[k] = v;
-    });
-    complaint.service.extendedAttributes = ext;
-  }
+  // employee's tenant mapped to a category (extOpts.caseRelatedTo) OR the clerk
+  // ticked "Keep details confidential" (bare flag — needs the pgr-services that
+  // shipped with #103; an older backend rejects extendedAttributes without a
+  // caseRelatedTo). Absent otherwise, so existing 3-arg callers and non-mapped
+  // tenants are unchanged.
+  const ext = buildCreateExtendedAttributes(formData, extOpts);
+  if (ext) complaint.service.extendedAttributes = ext;
 
   // Optional free-text address -> service.address.street, a first-class column.
   //
