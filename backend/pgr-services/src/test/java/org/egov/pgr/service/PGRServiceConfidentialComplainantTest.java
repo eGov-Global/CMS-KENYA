@@ -120,6 +120,16 @@ class PGRServiceConfidentialComplainantTest {
     }
 
     @Test
+    void searchMasksComplainantForAnEmployeeSessionLinkedToTheComplainantsAccount() {
+        // Ownership counts only on a citizen session; staff need the viewer role, full stop.
+        List<ServiceWrapper> result = searchAs(employee(COMPLAINANT_UUID), wrapper(flagOnly(true)));
+
+        assertEquals(MASK_SENTINEL, result.get(0).getService().getCitizen().getName());
+        assertEquals(MASK_SENTINEL, result.get(0).getService().getCitizen().getMobileNumber());
+        assertNull(result.get(0).getService().getAccountId());
+    }
+
+    @Test
     void searchKeepsComplainantClearForAClearedViewer() {
         List<ServiceWrapper> result = searchAs(employee("auditor-1", ROLE_CONFIDENTIAL_VIEWER), wrapper(flagOnly(true)));
 
@@ -189,6 +199,17 @@ class PGRServiceConfidentialComplainantTest {
 
         assertNotNull(updated.getService().getExtendedAttributes());
         assertTrue(updated.getService().getExtendedAttributes().getIsConfidentialSafe());
+    }
+
+    @Test
+    void updateByAnEmployeeSessionLinkedToTheComplainantsAccountCannotSwitchConfidentialityOff() {
+        storedIs(flagOnly(true));
+        ServiceRequest request = request(employee(COMPLAINANT_UUID), service(flagOnly(false)));
+
+        ServiceRequest updated = pgrService.update(request);
+
+        assertTrue(updated.getService().getExtendedAttributes().getIsConfidentialSafe());
+        assertEquals(MASK_SENTINEL, updated.getService().getCitizen().getName());
     }
 
     @Test
