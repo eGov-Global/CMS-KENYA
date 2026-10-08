@@ -1,6 +1,8 @@
 import { Dropdown, Header } from "@egovernments/digit-ui-components";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import ReactDOM from "react-dom";
+import useEmployeeDesignation from "../hooks/pgr/useEmployeeDesignation";
+import { departmentLabel } from "../utils/employeeLabels";
 
 const DEFAULT_EGOV_LOGO = "https://egov-dev-assets.s3.ap-south-1.amazonaws.com/egov-logo-2025.png";
 const DEFAULT_EGOV_LOGO_ON_DARK = "/digit-ui/brand/egov-logo-white.png";
@@ -265,8 +267,9 @@ const ProfileMenu = ({ t, userDetails, cityDetails, workingContext, userOptions,
     const localized = t(`ACCESSCONTROL_ROLES_ROLES_${primary.code}`);
     return localized === `ACCESSCONTROL_ROLES_ROLES_${primary.code}` ? primary?.name || primary?.code : localized;
   }, [info?.roles, t]);
+  // HRMS hands bare department codes; show their seeded names (see employeeLabels).
   const department = workingContext?.departments?.length
-    ? workingContext.departments.map((d) => d?.name || d?.code || d).filter(Boolean).join(", ")
+    ? workingContext.departments.map((d) => departmentLabel(t, d)).filter(Boolean).join(", ")
     : null;
   const location = cityDetails?.i18nKey ? t(cityDetails.i18nKey) : null;
   const lastLogin = formatStamp(sessionLoginAt());
@@ -500,6 +503,11 @@ const EmployeeTopBarV2 = (props) => {
   const { t, stateInfo, toggleSidebar, userDetails, cityDetails, userOptions, handleUserDropdownSelection, logoUrl, logoUrlWhite, showLanguageChange, workingContext, loggedin } = props;
   const headerTone = typeof document !== "undefined" ? document.documentElement.dataset.headerTone : undefined;
   const name = userDetails?.info?.name;
+  // Greet by what the person does here ("Hello, Call Centre Employee") rather
+  // than by name; the name stays as the fallback for accounts without an HRMS
+  // designation (workbench/admin logins) and while the record loads.
+  const designation = useEmployeeDesignation(cityDetails?.code || userDetails?.info?.tenantId, t);
+  const greetingName = designation || name;
 
   return (
     <Header
@@ -507,8 +515,8 @@ const EmployeeTopBarV2 = (props) => {
         loggedin && name && (
           <span style={itemStyle}>
             <Glyph d={ICONS.person} />
-            <span style={{ fontWeight: 500 }}>
-              {t("CORE_TOPBAR_HELLO")}, {name}
+            <span style={{ fontWeight: 500 }} title={name}>
+              {t("CORE_TOPBAR_HELLO")}, {greetingName}
             </span>
           </span>
         ),
