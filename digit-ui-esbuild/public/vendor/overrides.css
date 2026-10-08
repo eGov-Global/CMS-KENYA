@@ -1083,6 +1083,14 @@ html .digit-topbar:not(.digit-employee-header) {
 .citizen > .main.center-container.citizen-home-container {
   flex: 1 1 auto;
 }
+/* The login / OTP shell (V2LoginShell) sizes itself with the same bars calc
+ * inline. Inside the flex column it only has to fill its parent, and the calc
+ * ignores the padding .main carries under the fixed top bar, so it pushed the
+ * footer 4px (desktop) to 26px (phone) below the fold. Let it stretch instead. */
+.citizen > .main.center-container.citizen-home-container > .citizen-form-wrapper > .v2-scope {
+  min-height: 0 !important;
+  flex: 1 1 auto;
+}
 
 /* Some citizen surfaces (e.g. /user/profile, edit profile) mount under
  * the `.employee` wrapper because of how `useRouteSubscription` flips on
