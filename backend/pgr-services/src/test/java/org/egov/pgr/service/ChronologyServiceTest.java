@@ -230,6 +230,46 @@ class ChronologyServiceTest {
     }
 
     @Test
+    void employeeSessionLinkedToTheComplainantsAccountIsMaskedLikeAnyOtherEmployee() {
+        // No owner exemption on a staff session: the viewer role is the only way in.
+        ObjectNode root = fixture();
+        ChronologyService.filterForRequester(root, requester("EMPLOYEE", COMPLAINANT, "EMPLOYEE"), ctx(true));
+        JsonNode apply = root.get("ProcessInstances").get(2);
+        assertEquals("****", apply.get("assigner").get("name").asText());
+        assertEquals("****", apply.get("assigner").get("mobileNumber").asText());
+        assertTrue(apply.get("assigner").get("uuid").isNull());
+    }
+
+    @Test
+    void filingStepByAClerkIsMaskedForUnclearedStaffIncludingTheClerk() {
+        // Filed at the counter: the APPLY actor is the clerk, whose typed contact is
+        // routinely the complainant's. Masked whole for staff without the viewer role —
+        // the clerk's own session included — while the other staff steps stay in clear.
+        ObjectNode root = fixture();
+        ObjectNode apply = (ObjectNode) root.get("ProcessInstances").get(2);
+        ((ObjectNode) apply.get("assigner")).put("uuid", "clerk-uuid-5").put("name", "Clerk Five")
+                .put("userName", "CLK5").put("mobileNumber", "715897965");
+        ChronologyService.filterForRequester(root, requester("EMPLOYEE", "clerk-uuid-5", "EMPLOYEE", "CSR"), ctx(true));
+        assertEquals("****", apply.get("assigner").get("name").asText());
+        assertEquals("****", apply.get("assigner").get("mobileNumber").asText());
+        assertEquals("****", apply.get("assigner").get("userName").asText());
+        assertTrue(apply.get("assigner").get("uuid").isNull());
+        assertEquals("Officer Nine", root.get("ProcessInstances").get(0).get("assigner").get("name").asText());
+        assertEquals("Officer Nine", root.get("ProcessInstances").get(1).get("assigner").get("name").asText());
+    }
+
+    @Test
+    void filingStepByAClerkStaysClearWhenNotConfidentialOrForAClearedViewer() {
+        for (Map<String, ComplaintContext> contexts : List.of(ctx(false), ctx(true, true))) {
+            ObjectNode root = fixture();
+            ObjectNode apply = (ObjectNode) root.get("ProcessInstances").get(2);
+            ((ObjectNode) apply.get("assigner")).put("uuid", "clerk-uuid-5").put("name", "Clerk Five");
+            ChronologyService.filterForRequester(root, requester("EMPLOYEE", OFFICER, "EMPLOYEE", "CONFIDENTIAL_COMPLAINT_VIEWER"), contexts);
+            assertEquals("Clerk Five", apply.get("assigner").get("name").asText());
+        }
+    }
+
+    @Test
     void confidentialViewerSeesEverythingInClear() {
         ObjectNode root = fixture();
         ChronologyService.filterForRequester(root,

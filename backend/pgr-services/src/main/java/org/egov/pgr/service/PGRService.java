@@ -33,6 +33,7 @@ import static org.egov.pgr.util.PGRConstants.MDMS_DEPARTMENT_SEARCH;
 import static org.egov.pgr.util.PGRConstants.MDMS_SERVICENAME_SEARCH;
 import static org.egov.pgr.util.PGRConstants.ROLE_CONFIDENTIAL_VIEWER;
 import static org.egov.pgr.util.PGRConstants.MASK_SENTINEL;
+import static org.egov.pgr.util.PGRConstants.USERTYPE_CITIZEN;
 import static org.egov.pgr.util.PGRConstants.USERTYPE_EMPLOYEE;
 
 import java.util.stream.Collectors;
@@ -566,7 +567,8 @@ public class PGRService {
 
     /**
      * Decrypts or masks extendedAttributes for each wrapper.
-     * All-or-nothing: confidential + no viewer role → maskAll. Creator always decrypts.
+     * All-or-nothing: confidential + no viewer role → maskAll. The complainant, on a citizen
+     * session, always decrypts; staff only with a viewer role.
      * If MDMS config is gone for a confidential complaint, mask to avoid leaking ciphertext.
      */
     private void applyDecryptOrMask(List<ServiceWrapper> wrappers, RequestInfo requestInfo,
@@ -588,10 +590,14 @@ public class PGRService {
         }
     }
 
-    /** Creator always qualifies; otherwise the caller needs one of cfg's allowed viewer roles. */
+    /**
+     * The complainant qualifies on a CITIZEN session; any other caller needs one of cfg's allowed
+     * viewer roles. A staff session never qualifies by ownership — not the clerk who filed the
+     * complaint, and not an employee account the complaint happens to be linked to — so that on
+     * a confidential complaint the viewer role is the only way staff ever see the complainant.
+     */
     private boolean isAuthorizedForConfidential(RequestInfo requestInfo, Service svc, ComplaintTemplateTypeConfig cfg) {
-        String callerUuid = requestInfo.getUserInfo() != null ? requestInfo.getUserInfo().getUuid() : null;
-        if (callerUuid != null && callerUuid.equals(svc.getAccountId())) return true;
+        if (callerIsOwner(requestInfo, svc)) return true;
         List<String> viewerRoles = cfg != null && !CollectionUtils.isEmpty(cfg.getAllowedViewerRoles())
                 ? cfg.getAllowedViewerRoles() : List.of(ROLE_CONFIDENTIAL_VIEWER);
         return hasAnyRole(requestInfo, viewerRoles);
@@ -674,9 +680,13 @@ public class PGRService {
         return CollectionUtils.isEmpty(stored) ? null : stored.get(0).getService();
     }
 
+    /** The complainant acting through a citizen session. Ownership counts for nothing on a staff
+     *  session (see isAuthorizedForConfidential), so an employee can neither read nor switch off
+     *  the confidentiality of a complaint linked to their own account without the viewer role. */
     private static boolean callerIsOwner(RequestInfo requestInfo, Service stored) {
-        String caller = requestInfo.getUserInfo() != null ? requestInfo.getUserInfo().getUuid() : null;
-        return caller != null && caller.equals(stored.getAccountId());
+        org.egov.common.contract.request.User caller = requestInfo.getUserInfo();
+        return caller != null && caller.getUuid() != null && caller.getUuid().equals(stored.getAccountId())
+                && USERTYPE_CITIZEN.equalsIgnoreCase(caller.getType());
     }
 
     /**
