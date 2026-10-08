@@ -29,6 +29,7 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import static org.egov.pgr.util.PGRConstants.APPLY;
 import static org.egov.pgr.util.PGRConstants.MASK_SENTINEL;
 import static org.egov.pgr.util.PGRConstants.ROLE_CONFIDENTIAL_VIEWER;
 
@@ -71,6 +72,12 @@ import static org.egov.pgr.util.PGRConstants.ROLE_CONFIDENTIAL_VIEWER;
  *    unless the caller is authorized for THAT complaint's template
  *    (allowedViewerRoles, default CONFIDENTIAL_COMPLAINT_VIEWER) — the
  *    chronology twin of the service.citizen masking in PGRService (AC-06).
+ *    The viewer role is the ONLY way staff see it: there is no exemption for
+ *    the clerk who filed the complaint, nor for an employee session whose
+ *    account happens to be the complainant's. The filing step (APPLY) is
+ *    masked whole for uncleared staff, whoever performed it — a clerk who files
+ *    at the counter often types their own contact as the complainant's, so the
+ *    actor of that step identifies the complainant as surely as the card does.
  *    The viewer decision is per complaint, not global: one request may span
  *    templates with different viewer roles.
  */
@@ -301,7 +308,8 @@ public class ChronologyService {
 
         // EMPLOYEE: full content; on confidential complaints, mask the
         // complainant's identity in the actor blocks unless the caller is
-        // authorized for THAT complaint's template.
+        // authorized for THAT complaint's template. No owner exemption on a
+        // staff session: the clerk who filed it is staff like any other.
         for (int i = instances.size() - 1; i >= 0; i--) {
             ObjectNode pi = (ObjectNode) instances.get(i);
             ComplaintContext ctx = contexts.get(text(pi, "businessId"));
@@ -313,9 +321,12 @@ public class ChronologyService {
             }
             if (!ctx.confidential || ctx.viewerAuthorized)
                 continue;
-            if (ctx.accountId != null && ctx.accountId.equals(callerUuid))
-                continue; // the complainant browsing via an employee session keeps their own data
-            maskPersonIfComplainant(pi.get("assigner"), ctx.accountId);
+            // The filing step names whoever filed: the citizen, or the clerk who typed
+            // the complainant's details — which at a counter are often the clerk's own.
+            if (APPLY.equals(text(pi, "action")))
+                maskPerson(pi.get("assigner"));
+            else
+                maskPersonIfComplainant(pi.get("assigner"), ctx.accountId);
             JsonNode assignes = pi.get("assignes");
             if (assignes != null && assignes.isArray())
                 for (JsonNode a : assignes)
@@ -360,9 +371,15 @@ public class ChronologyService {
     private static void maskPersonIfComplainant(JsonNode person, String accountId) {
         if (person == null || !person.isObject() || accountId == null)
             return;
-        ObjectNode p = (ObjectNode) person;
-        if (!accountId.equals(text(p, "uuid")))
+        if (!accountId.equals(text((ObjectNode) person, "uuid")))
             return;
+        maskPerson(person);
+    }
+
+    private static void maskPerson(JsonNode person) {
+        if (person == null || !person.isObject())
+            return;
+        ObjectNode p = (ObjectNode) person;
         for (String field : new String[] { "name", "userName", "mobileNumber", "emailId", "correspondenceAddress" })
             if (p.hasNonNull(field))
                 p.put(field, MASK_SENTINEL);
