@@ -9,19 +9,18 @@ import { Header as TopBarComponentMain } from "@egovernments/digit-ui-components
 import ImageComponent from "../ImageComponent";
 import { resolveProfilePhoto } from "../utils";
 
-const DEFAULT_EGOV_LOGO = "https://egov-dev-assets.s3.ap-south-1.amazonaws.com/egov-logo-2025.png";
 /**
- * The shipped lockup is the dark-on-light one: an orange "e" and a navy "GOV".
- * On a tenant that paints its header navy the "GOV" is navy on navy and simply
- * disappears, so a dark header needs the reverse lockup instead. Same geometry
- * as the default — 800x800, the wordmark 800x200 letterboxed on transparency —
- * so it drops into the square slot without touching any layout.
- *
+ * Bundled DIGIT marks (public/brand/digit-logo*.png, 545x128 on transparency):
+ * what a header shows when the tenant has no logo configured, and what it falls
+ * back to when the configured logo fails to load — served with the bundle, so
+ * neither can go the way of a remote asset host. On a header painted in a dark
+ * primary colour the dark mark would vanish, so the white one is used there;
  * `applyTheme` publishes the header's tone from the same luminance it uses to
  * pick readable foregrounds, so this cannot disagree with the rest of the
  * chrome about whether the header is dark.
  */
-const DEFAULT_EGOV_LOGO_ON_DARK = "/digit-ui/brand/egov-logo-white.png";
+const DIGIT_LOGO_FALLBACK = "/digit-ui/brand/digit-logo.png";
+const DIGIT_LOGO_FALLBACK_ON_DARK = "/digit-ui/brand/digit-logo-white.png";
 
 /**
  * Observed rather than read once: the theme record arrives over the network, so
@@ -128,6 +127,7 @@ const TopBar = ({
       <div>
         <TopBarComponent
           img={stateInfo?.logoUrlWhite}
+          logoFallback={DIGIT_LOGO_FALLBACK_ON_DARK}
           isMobile={true}
           toggleSidebar={updateSidebar}
           logoUrl={stateInfo?.logoUrlWhite}
@@ -235,8 +235,9 @@ const TopBar = ({
         logoHeight={"48px"}
         logo={
           (loggedin ? cityDetails?.logoId : stateInfo?.statelogo) ||
-          (headerTone === "dark" ? DEFAULT_EGOV_LOGO_ON_DARK : DEFAULT_EGOV_LOGO)
+          (headerTone === "dark" ? DIGIT_LOGO_FALLBACK_ON_DARK : DIGIT_LOGO_FALLBACK)
         }
+        logoFallback={headerTone === "dark" ? DIGIT_LOGO_FALLBACK_ON_DARK : DIGIT_LOGO_FALLBACK}
         onImageClick={() => {}}
         onLogoClick={() => {}}
         props={{}}

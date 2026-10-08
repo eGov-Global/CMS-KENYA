@@ -1066,6 +1066,24 @@ html .digit-topbar:not(.digit-employee-header) {
   ) !important;
 }
 
+/* The citizen shell stacks the top bar, the routes box and the "Powered by
+ * DIGIT" footer. In block layout the routes box is only as tall as the
+ * min-height calc above — which assumes the bars' heights — while the real
+ * footer is 40px, so every short page (mobile-number and OTP steps, the
+ * module home on a tall display) showed a strip of body background between
+ * the footer and the bottom of the viewport. Stack the shell as a flex
+ * column that fills the viewport and let the routes box take the slack:
+ * the footer sits flush at the bottom whatever the bars measure, and longer
+ * pages still scroll as before (it is a min-height, not a height). */
+.citizen {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+.citizen > .main.center-container.citizen-home-container {
+  flex: 1 1 auto;
+}
+
 /* Some citizen surfaces (e.g. /user/profile, edit profile) mount under
  * the `.employee` wrapper because of how `useRouteSubscription` flips on
  * those paths. Vendor css then pins the citizen page footer with
