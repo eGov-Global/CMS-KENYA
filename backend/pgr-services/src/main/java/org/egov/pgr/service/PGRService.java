@@ -18,11 +18,14 @@ import org.egov.pgr.web.models.ComplaintTemplateTypeConfig;
 import org.egov.pgr.web.models.ExtendedAttributes;
 import org.egov.pgr.web.models.Service;
 import org.egov.pgr.web.models.ServiceWrapper;
+import org.egov.pgr.web.models.User;
+import org.egov.pgr.web.models.AuditDetails;
 import org.egov.pgr.web.models.RequestSearchCriteria;
 import org.egov.pgr.web.models.ServiceRequest;
 import org.egov.tracer.model.CustomException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.util.CollectionUtils;
+import org.springframework.util.StringUtils;
 
 import java.util.*;
 
@@ -30,6 +33,7 @@ import static org.egov.pgr.util.PGRConstants.MDMS_DEPARTMENT_SEARCH;
 import static org.egov.pgr.util.PGRConstants.MDMS_SERVICENAME_SEARCH;
 import static org.egov.pgr.util.PGRConstants.ROLE_CONFIDENTIAL_VIEWER;
 import static org.egov.pgr.util.PGRConstants.MASK_SENTINEL;
+import static org.egov.pgr.util.PGRConstants.USERTYPE_CITIZEN;
 import static org.egov.pgr.util.PGRConstants.USERTYPE_EMPLOYEE;
 
 import java.util.stream.Collectors;
@@ -133,16 +137,22 @@ public class PGRService {
 		ExtendedAttributes plainExt = null;
 		if (ext != null) {
 			if (ext.getIsConfidential() == null) ext.setIsConfidential(false);
-			cfg = mdmsUtils.fetchComplaintTemplateTypeConfig(
-					request.getRequestInfo(), tenantId, ext.getCaseRelatedTo());
-			if (cfg == null)
-				throw new CustomException("INVALID_CASE_RELATED_TO",
-						"No MDMS config found for caseRelatedTo: " + ext.getCaseRelatedTo());
-			extendedAttributesValidationService.validate(ext, cfg, service);
-			plainExt = ext.copy(); // snapshot before encrypt — avoids decrypt round-trip for response
-			service.setExtendedAttributes(
-					encryptionDecryptionService.encrypt(ext, cfg, tenantId));
-			enrichmentService.enrichUserContactDetails(request);
+			if (isConfidentialityFlagOnly(ext)) {
+				// Citizen "keep my details confidential" without a category template: nothing
+				// to validate or encrypt — the flag alone drives complainant masking on read.
+				enrichmentService.enrichUserContactDetails(request);
+			} else {
+				cfg = mdmsUtils.fetchComplaintTemplateTypeConfig(
+						request.getRequestInfo(), tenantId, ext.getCaseRelatedTo());
+				if (cfg == null)
+					throw new CustomException("INVALID_CASE_RELATED_TO",
+							"No MDMS config found for caseRelatedTo: " + ext.getCaseRelatedTo());
+				extendedAttributesValidationService.validate(ext, cfg, service);
+				plainExt = ext.copy(); // snapshot before encrypt — avoids decrypt round-trip for response
+				service.setExtendedAttributes(
+						encryptionDecryptionService.encrypt(ext, cfg, tenantId));
+				enrichmentService.enrichUserContactDetails(request);
+			}
 		}
 
 		complaintDomainEventService.publishWorkflowTransitionEvent(request, fromState);
@@ -180,6 +190,8 @@ public class PGRService {
         if(criteria.getMobileNumber()!=null && CollectionUtils.isEmpty(criteria.getUserIds()))
             return new ArrayList<>();
 
+        applyConfidentialIdentityGuard(requestInfo, criteria);
+
         String tenantIdForScope = criteria.getTenantId() != null ? criteria.getTenantId() : requestInfo.getUserInfo().getTenantId();
         PgrSearchScope scope = searchAccessPolicyService.resolveScope(requestInfo, tenantIdForScope, config.getStateLevelTenantIdLength());
 
@@ -212,6 +224,7 @@ public class PGRService {
                 : (requestInfo.getUserInfo() != null ? requestInfo.getUserInfo().getTenantId() : null);
         Map<String, ComplaintTemplateTypeConfig> configCache = buildConfigCache(requestInfo, tenantIdForMdms, enrichedServiceWrappers);
         applyDecryptOrMask(enrichedServiceWrappers, requestInfo, configCache);
+        maskConfidentialComplainants(enrichedServiceWrappers, requestInfo, configCache);
         fieldVisibilityService.apply(requestInfo, tenantIdForScope, scope,
                 AccessPolicyRegistry.PGR_REQUEST_SEARCH_URL, "complaint", enrichedServiceWrappers);
 
@@ -238,6 +251,13 @@ public class PGRService {
     public ServiceRequest update(ServiceRequest request){
         String tenantId = request.getService().getTenantId();
         String fromState = request.getService().getApplicationStatus();
+        // The stored record owns the complaint's identity: a workflow update can neither re-link
+        // it to another account nor undo the complainant's confidentiality choice, and a payload
+        // that lost its category template (or arrived from a masked read) gets it back from the
+        // record before validation. One read by id; validateUpdate repeats it to reject unknown ids.
+        Service stored = fetchStoredService(request.getService().getId(), tenantId);
+        if (stored != null)
+            adoptStoredIdentity(request, stored);
         Object mdmsData = mdmsUtils.mDMSCall(request);
         validator.validateUpdate(request, mdmsData);
         enrichmentService.enrichUpdateRequest(request);
@@ -260,21 +280,25 @@ public class PGRService {
 		ExtendedAttributes plainExt = null;
 		if (updatedExt != null) {
 			if (updatedExt.getIsConfidential() == null) updatedExt.setIsConfidential(false);
-			cfg = mdmsUtils.fetchComplaintTemplateTypeConfig(
-					request.getRequestInfo(), tenantId, updatedExt.getCaseRelatedTo());
-			if (cfg == null)
-				throw new CustomException("INVALID_CASE_RELATED_TO",
-						"No MDMS config found for caseRelatedTo: " + updatedExt.getCaseRelatedTo());
-			restoreMaskedPlaceholders(updatedExt, updateService.getId(), tenantId, cfg);
-			extendedAttributesValidationService.validate(updatedExt, cfg, updateService);
-			plainExt = updatedExt.copy(); // snapshot before encrypt — avoids decrypt round-trip for response
-			// A restored value may be real confidential data the caller isn't cleared to see —
-			// persist it correctly either way, but don't leak it back in this response.
-			if (updatedExt.getIsConfidentialSafe() && !isAuthorizedForConfidential(request.getRequestInfo(), updateService, cfg))
-				encryptionDecryptionService.maskAllPlaintext(plainExt, cfg);
-			updateService.setExtendedAttributes(
-					encryptionDecryptionService.encrypt(updatedExt, cfg, tenantId));
-			enrichmentService.enrichUserContactDetails(request);
+			if (isConfidentialityFlagOnly(updatedExt)) {
+				syncContactDetailsIfOwner(request, stored);
+			} else {
+				cfg = mdmsUtils.fetchComplaintTemplateTypeConfig(
+						request.getRequestInfo(), tenantId, updatedExt.getCaseRelatedTo());
+				if (cfg == null)
+					throw new CustomException("INVALID_CASE_RELATED_TO",
+							"No MDMS config found for caseRelatedTo: " + updatedExt.getCaseRelatedTo());
+				restoreMaskedPlaceholders(updatedExt, updateService.getId(), tenantId, cfg);
+				extendedAttributesValidationService.validate(updatedExt, cfg, updateService);
+				plainExt = updatedExt.copy(); // snapshot before encrypt — avoids decrypt round-trip for response
+				// A restored value may be real confidential data the caller isn't cleared to see —
+				// persist it correctly either way, but don't leak it back in this response.
+				if (updatedExt.getIsConfidentialSafe() && !isAuthorizedForConfidential(request.getRequestInfo(), updateService, cfg))
+					encryptionDecryptionService.maskAllPlaintext(plainExt, cfg);
+				updateService.setExtendedAttributes(
+						encryptionDecryptionService.encrypt(updatedExt, cfg, tenantId));
+				syncContactDetailsIfOwner(request, stored);
+			}
 		}
 
         complaintDomainEventService.publishWorkflowTransitionEvent(request, fromState);
@@ -284,6 +308,7 @@ public class PGRService {
 		if (plainExt != null)
 			updateService.setExtendedAttributes(plainExt);
 
+		maskComplainantIfUnauthorized(updateService, request.getRequestInfo(), cfg);
         return request;
     }
 
@@ -332,6 +357,8 @@ public class PGRService {
         }
 
         criteria.setIsPlainSearch(false);
+        applyConfidentialIdentityGuard(requestInfo, criteria);
+
         String tenantIdForScope = criteria.getTenantId() != null ? criteria.getTenantId() : requestInfo.getUserInfo().getTenantId();
         PgrSearchScope scope = searchAccessPolicyService.resolveScope(requestInfo, tenantIdForScope, config.getStateLevelTenantIdLength());
         Integer count = repository.getCount(criteria, scope);
@@ -429,6 +456,7 @@ public class PGRService {
                 : (requestInfo.getUserInfo() != null ? requestInfo.getUserInfo().getTenantId() : null);
         Map<String, ComplaintTemplateTypeConfig> configCache = buildConfigCache(requestInfo, tenantIdForMdms, enrichedServiceWrappers);
         applyDecryptOrMask(enrichedServiceWrappers, requestInfo, configCache);
+        maskConfidentialComplainants(enrichedServiceWrappers, requestInfo, configCache);
 
         // plainSearch stays record-level unrestricted (see PGRRepository/PGRQueryBuilder — no scope
         // threaded into the query) AND, deliberately, unrestricted at the field-visibility level too:
@@ -539,7 +567,8 @@ public class PGRService {
 
     /**
      * Decrypts or masks extendedAttributes for each wrapper.
-     * All-or-nothing: confidential + no viewer role → maskAll. Creator always decrypts.
+     * All-or-nothing: confidential + no viewer role → maskAll. The complainant, on a citizen
+     * session, always decrypts; staff only with a viewer role.
      * If MDMS config is gone for a confidential complaint, mask to avoid leaking ciphertext.
      */
     private void applyDecryptOrMask(List<ServiceWrapper> wrappers, RequestInfo requestInfo,
@@ -561,13 +590,153 @@ public class PGRService {
         }
     }
 
-    /** Creator always qualifies; otherwise the caller needs one of cfg's allowed viewer roles. */
+    /**
+     * The complainant qualifies on a CITIZEN session; any other caller needs one of cfg's allowed
+     * viewer roles. A staff session never qualifies by ownership — not the clerk who filed the
+     * complaint, and not an employee account the complaint happens to be linked to — so that on
+     * a confidential complaint the viewer role is the only way staff ever see the complainant.
+     */
     private boolean isAuthorizedForConfidential(RequestInfo requestInfo, Service svc, ComplaintTemplateTypeConfig cfg) {
-        String callerUuid = requestInfo.getUserInfo() != null ? requestInfo.getUserInfo().getUuid() : null;
-        if (callerUuid != null && callerUuid.equals(svc.getAccountId())) return true;
-        List<String> viewerRoles = !CollectionUtils.isEmpty(cfg.getAllowedViewerRoles())
+        if (callerIsOwner(requestInfo, svc)) return true;
+        List<String> viewerRoles = cfg != null && !CollectionUtils.isEmpty(cfg.getAllowedViewerRoles())
                 ? cfg.getAllowedViewerRoles() : List.of(ROLE_CONFIDENTIAL_VIEWER);
         return hasAnyRole(requestInfo, viewerRoles);
+    }
+
+    /** extendedAttributes carrying only the citizen's confidentiality choice — no category template
+     *  and none of the contact fields that would be forwarded to the user service. */
+    private static boolean isConfidentialityFlagOnly(ExtendedAttributes ext) {
+        return ext.getCaseRelatedTo() == null && ext.getDynamicFields().isEmpty()
+                && ext.getEmail() == null && ext.getComplainantAddress() == null;
+    }
+
+    /**
+     * A confidential complaint hides WHO complained, not only its template fields: the complainant
+     * record the user service enriched is masked for every caller who is neither the complainant
+     * nor a cleared viewer. Runs on both read paths and on the update response.
+     */
+    private void maskConfidentialComplainants(List<ServiceWrapper> wrappers, RequestInfo requestInfo,
+                                              Map<String, ComplaintTemplateTypeConfig> configCache) {
+        for (ServiceWrapper wrapper : wrappers) {
+            Service svc = wrapper.getService();
+            if (svc.getExtendedAttributes() == null) continue;
+            maskComplainantIfUnauthorized(svc, requestInfo, configCache.get(svc.getExtendedAttributes().getCaseRelatedTo()));
+        }
+    }
+
+    private void maskComplainantIfUnauthorized(Service svc, RequestInfo requestInfo, ComplaintTemplateTypeConfig cfg) {
+        ExtendedAttributes ext = svc.getExtendedAttributes();
+        User citizen = svc.getCitizen();
+        if (ext == null || !ext.getIsConfidentialSafe() || citizen == null) return;
+        if (isAuthorizedForConfidential(requestInfo, svc, cfg)) return;
+        // A masked COPY: enrichUsers hands every complaint by the same citizen one shared User
+        // instance, so mutating it would mask that person's non-confidential complaints too.
+        svc.setCitizen(maskedCopyOf(citizen));
+        // The account link is identity as well: /user/_search resolves a uuid to the person. Updates
+        // don't need it back — update() re-adopts accountId from the stored record.
+        String accountId = svc.getAccountId();
+        svc.setAccountId(null);
+        AuditDetails audit = svc.getAuditDetails();
+        if (audit != null && accountId != null) {
+            if (accountId.equals(audit.getCreatedBy())) audit.setCreatedBy(null);
+            if (accountId.equals(audit.getLastModifiedBy())) audit.setLastModifiedBy(null);
+        }
+    }
+
+    private static User maskedCopyOf(User c) {
+        return User.builder()
+                .type(c.getType()).roles(c.getRoles()).tenantId(c.getTenantId()).active(c.getActive())
+                .countryCode(c.getCountryCode())
+                .name(MASK_SENTINEL)
+                .mobileNumber(MASK_SENTINEL)
+                .userName(MASK_SENTINEL) // citizen accounts log in with the mobile number
+                .emailId(c.getEmailId() != null ? MASK_SENTINEL : null)
+                .correspondenceAddress(c.getCorrespondenceAddress() != null ? MASK_SENTINEL : null)
+                .build(); // uuid / id deliberately absent
+    }
+
+    /**
+     * Searching by WHO filed (mobile → userIds, createdBy) from a caller who is neither that
+     * person nor a cleared viewer must not confirm that a confidential complaint exists —
+     * the rows are left out of search and count alike (PGRQueryBuilder honours the flag).
+     */
+    private void applyConfidentialIdentityGuard(RequestInfo requestInfo, RequestSearchCriteria criteria) {
+        Set<String> userIds = criteria.getUserIds() == null ? Collections.emptySet() : criteria.getUserIds();
+        Set<String> createdBy = criteria.getCreatedBy() == null ? Collections.emptySet() : criteria.getCreatedBy();
+        if (userIds.isEmpty() && createdBy.isEmpty()) return;
+        String caller = requestInfo.getUserInfo() != null ? requestInfo.getUserInfo().getUuid() : null;
+        boolean onlySelf = caller != null
+                && Set.of(caller).containsAll(userIds) && Set.of(caller).containsAll(createdBy);
+        if (onlySelf || hasAnyRole(requestInfo, List.of(ROLE_CONFIDENTIAL_VIEWER))) return;
+        criteria.setExcludeConfidential(true);
+    }
+
+    private Service fetchStoredService(String id, String tenantId) {
+        if (id == null) return null;
+        RequestSearchCriteria criteria = RequestSearchCriteria.builder()
+                .ids(Collections.singleton(id)).tenantId(tenantId).build();
+        criteria.setIsPlainSearch(false);
+        List<ServiceWrapper> stored = repository.getServiceWrappers(criteria);
+        return CollectionUtils.isEmpty(stored) ? null : stored.get(0).getService();
+    }
+
+    /** The complainant acting through a citizen session. Ownership counts for nothing on a staff
+     *  session (see isAuthorizedForConfidential), so an employee can neither read nor switch off
+     *  the confidentiality of a complaint linked to their own account without the viewer role. */
+    private static boolean callerIsOwner(RequestInfo requestInfo, Service stored) {
+        org.egov.common.contract.request.User caller = requestInfo.getUserInfo();
+        return caller != null && caller.getUuid() != null && caller.getUuid().equals(stored.getAccountId())
+                && USERTYPE_CITIZEN.equalsIgnoreCase(caller.getType());
+    }
+
+    /**
+     * Identity that the payload may not override on update:
+     *  - accountId comes from the record (a masked read returns it as null; a crafted payload
+     *    could otherwise re-link the complaint);
+     *  - a category template the record has but the payload lacks is carried over — the
+     *    caseRelatedTo plus mask placeholders for its fields, which the templated branch then
+     *    restores from the record (restoreMaskedPlaceholders) instead of wiping them;
+     *  - confidentiality, once set, is switched off only by the complainant.
+     */
+    private void adoptStoredIdentity(ServiceRequest request, Service stored) {
+        Service incoming = request.getService();
+        if (StringUtils.hasText(stored.getAccountId())) {
+            if (incoming.getAccountId() != null && !incoming.getAccountId().equals(stored.getAccountId()))
+                log.warn("Update of {} carried accountId {} — keeping the stored account",
+                        incoming.getServiceRequestId(), incoming.getAccountId());
+            incoming.setAccountId(stored.getAccountId());
+        }
+        ExtendedAttributes storedExt = stored.getExtendedAttributes();
+        if (storedExt == null) return;
+        ExtendedAttributes ext = incoming.getExtendedAttributes();
+        boolean templateLost = storedExt.getCaseRelatedTo() != null && (ext == null || ext.getCaseRelatedTo() == null);
+        boolean mustStayConfidential = storedExt.getIsConfidentialSafe() && !callerIsOwner(request.getRequestInfo(), stored);
+        if (!templateLost && !mustStayConfidential) return;
+        if (ext == null) {
+            ext = new ExtendedAttributes();
+            incoming.setExtendedAttributes(ext);
+        }
+        if (templateLost) {
+            ext.setCaseRelatedTo(storedExt.getCaseRelatedTo());
+            if (ext.getSchemaVersion() == null) ext.setSchemaVersion(storedExt.getSchemaVersion());
+            for (String key : storedExt.getDynamicFields().keySet())
+                if (ext.getField(key) == null) ext.putField(key, MASK_SENTINEL);
+        }
+        if (mustStayConfidential) ext.setIsConfidential(true);
+    }
+
+    /** Contact details ride on extendedAttributes to the user service; on update only the
+     *  complainant may change their own — anyone else's copy is dropped before the Kafka push. */
+    private void syncContactDetailsIfOwner(ServiceRequest request, Service stored) {
+        if (stored == null || callerIsOwner(request.getRequestInfo(), stored)) {
+            enrichmentService.enrichUserContactDetails(request);
+            return;
+        }
+        ExtendedAttributes ext = request.getService().getExtendedAttributes();
+        if (ext != null) {
+            ext.setEmail(null);
+            ext.setComplainantAddress(null);
+        }
     }
 
     private String getDepartmentFromMDMS(ServiceRequest request, Object mdmsData) {
