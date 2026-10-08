@@ -7740,6 +7740,18 @@
         "locale": "default"
     },
     {
+        "code": "PGR_RECEIPT_SHARE_HINT_PDF",
+        "message": "Every option sends the receipt PDF. On a computer the PDF is downloaded first — attach it in the app that opens.",
+        "module": "rainmaker-pgr",
+        "locale": "default"
+    },
+    {
+        "code": "PGR_RECEIPT_SHARE_ATTACH",
+        "message": "Receipt PDF saved to your downloads — attach it in the app that opened.",
+        "module": "rainmaker-pgr",
+        "locale": "default"
+    },
+    {
         "code": "PGR_RECEIPT_SHARE_COPY_FAILED",
         "message": "Could not copy the link on this device.",
         "module": "rainmaker-pgr",

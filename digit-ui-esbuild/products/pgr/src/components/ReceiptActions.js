@@ -6,15 +6,18 @@
 // utils/complaintReceipt), so Download works on a dropped connection. The only
 // network call is the optional tenant logo, fetched with a short timeout and
 // omitted on failure. Share opens an inline sheet: open the PDF, Email,
-// WhatsApp, SMS (phones), copy the tracking link, and "More apps"
-// (the device's native share sheet, which carries the PDF itself).
+// WhatsApp, SMS (phones) and "More apps". What is shared is the receipt PDF
+// itself — never the complaint number or a tracking link. Where the browser can
+// hand a file to another app (Web Share API level 2: Android Chrome, iOS Safari)
+// every tile opens the device's share sheet with the PDF in it. Elsewhere the PDF
+// is downloaded first and the tile opens the app empty, for the user to attach it.
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Download, FileText, Link2, Mail, MessageCircle, MessageSquare, Printer, Share2 } from "lucide-react";
+import { Download, FileText, Mail, MessageCircle, MessageSquare, Printer, Share2 } from "lucide-react";
 import { Button } from "@egovernments/digit-ui-components-v2";
 import { RECEIPT_FALLBACKS } from "../utils/receiptCopy";
-import { buildShareLinks } from "../utils/receiptShare";
+import { buildShareLinks, canShareFiles } from "../utils/receiptShare";
 import useComplaintReceiptModel from "../hooks/pgr/useComplaintReceiptModel";
 
 const loadReceipt = () => import("../utils/complaintReceipt");
@@ -27,16 +30,11 @@ export const RECEIPT_ACTION_FALLBACKS = {
   email: "Email",
   whatsapp: "WhatsApp",
   sms: "SMS",
-  copy: "Copy link",
   more: "More apps",
-  hint: "Email, WhatsApp and SMS send the complaint number and tracking link. To send the PDF itself use More apps, or Download Application above.",
+  hintPdf: "Every option sends the receipt PDF. On a computer the PDF is downloaded first — attach it in the app that opens.",
   shareRetry: "Sharing was interrupted — tap again.",
-  shareText: "Complaint {id} filed with {tenant}. Track it here:",
-  copied: "Link copied — paste it anywhere to share.",
-  copyFailed: "Could not copy the link on this device.",
-  downloaded: "The receipt PDF is also in your downloads.",
-  downloadedCopied: "Receipt PDF saved to your downloads; tracking link copied.",
   downloadedOnly: "Receipt PDF saved to your downloads.",
+  attach: "Receipt PDF saved to your downloads — attach it in the app that opened.",
   popupBlocked: "The browser blocked the PDF tab — the receipt was downloaded instead.",
 };
 
@@ -61,15 +59,7 @@ const getLogo = async (url) => {
   return uri;
 };
 
-/** The surface the user is on decides which details route the share link opens. */
-const trackingUrl = (id) => {
-  const ctx = window.contextPath || "digit-ui";
-  const employee = /\/employee\//.test(window.location.pathname);
-  const path = employee ? `/${ctx}/employee/pgr/complaint-details/${id}` : `/${ctx}/citizen/pgr/complaints/${id}`;
-  return `${window.location.origin}${path}`;
-};
-
-/** Human tenant name for the receipt and the share text (never the bare code). */
+/** Human tenant name for the receipt (never the bare code). */
 const resolveTenant = (tenantCode, tr) => {
   const initData = Digit.SessionStorage.get("initData") || {};
   const stateInfo = initData.stateInfo || {};
@@ -158,13 +148,11 @@ const ReceiptActionsReady = ({ complaintDetails, actions, variant, className }) 
   }, [service?.tenantId, tr]);
 
   const id = service?.serviceRequestId || "";
+  // The share carries the PDF only: the subject names the document, not the complaint.
   const share = useMemo(() => {
-    const { tenantName } = resolveTenant(service?.tenantId, tr);
-    const subject = `${tr("PGR_RECEIPT_TITLE", RECEIPT_FALLBACKS.title)} ${id}`;
-    const text = tr("PGR_RECEIPT_SHARE_TEXT", RECEIPT_ACTION_FALLBACKS.shareText).replace("{id}", id).replace("{tenant}", tenantName || "");
-    const url = trackingUrl(id);
-    return { subject, text, url, links: buildShareLinks({ subject, text, url }) };
-  }, [service?.tenantId, id, tr]);
+    const subject = tr("PGR_RECEIPT_TITLE", RECEIPT_FALLBACKS.title);
+    return { subject, links: buildShareLinks({ subject }) };
+  }, [tr]);
 
   const prepareModel = useCallback(async () => {
     const { tenantName, helpline, logoUrl } = resolveTenant(service?.tenantId, tr);
@@ -174,7 +162,8 @@ const ReceiptActionsReady = ({ complaintDetails, actions, variant, className }) 
 
   const nav = typeof navigator !== "undefined" ? navigator : null;
   const canNativeShare = typeof nav?.share === "function";
-  const canCopy = typeof nav?.clipboard?.writeText === "function";
+  // Probed once per mount: whether this browser can hand the PDF to another app.
+  const fileShare = useMemo(() => canShareFiles(nav), [nav]);
   const coarsePointer = typeof window !== "undefined" && !!window.matchMedia?.("(pointer: coarse)")?.matches;
 
   const rootRef = useRef(null);
@@ -237,6 +226,11 @@ const ReceiptActionsReady = ({ complaintDetails, actions, variant, className }) 
       // straight onto the prebuilt PDF when it is ready, else a blank tab that is
       // navigated once the PDF exists.
       let tab = null;
+      if (action === "whatsapp") {
+        // WhatsApp Web must be opened inside the click too, before the PDF is drawn.
+        tab = window.open("", "_blank");
+        if (tab) tab.opener = null;
+      }
       if (action === "open") {
         const ready = pdfRef.current.url;
         if (ready) {
@@ -253,11 +247,6 @@ const ReceiptActionsReady = ({ complaintDetails, actions, variant, className }) 
         if (tab) tab.opener = null;
       }
       try {
-        if (action === "copy") {
-          await nav.clipboard.writeText(share.links.message);
-          setNotice({ tone: "info", text: tr("PGR_RECEIPT_SHARE_COPIED", RECEIPT_ACTION_FALLBACKS.copied) });
-          return;
-        }
         const [{ downloadComplaintReceipt, printComplaintReceipt, openComplaintReceipt, shareComplaintReceipt }, model] = await Promise.all([loadReceipt(), prepareModel()]);
         if (action === "download") {
           downloadComplaintReceipt(model);
@@ -270,20 +259,32 @@ const ReceiptActionsReady = ({ complaintDetails, actions, variant, className }) 
             downloadedRef.current = true;
             setNotice({ tone: "info", text: tr("PGR_RECEIPT_POPUP_BLOCKED", RECEIPT_ACTION_FALLBACKS.popupBlocked) });
           }
-        } else if (action === "more") {
-          const result = await shareComplaintReceipt(model, { title: share.subject, text: share.text, url: share.url, alreadyDownloaded: downloadedRef.current });
-          if (result.startsWith("downloaded")) downloadedRef.current = true;
-          // Without native file sharing the PDF went to the downloads folder - say so,
-          // and whether the tracking link reached the share sheet or the clipboard.
-          if (result === "downloaded-shared") setNotice({ tone: "info", text: tr("PGR_RECEIPT_SHARE_DOWNLOADED", RECEIPT_ACTION_FALLBACKS.downloaded) });
-          if (result === "downloaded-copied") setNotice({ tone: "info", text: tr("PGR_RECEIPT_SHARE_DOWNLOADED_COPIED", RECEIPT_ACTION_FALLBACKS.downloadedCopied) });
-          if (result === "downloaded") setNotice({ tone: "info", text: tr("PGR_RECEIPT_SHARE_DOWNLOADED_ONLY", RECEIPT_ACTION_FALLBACKS.downloadedOnly) });
+        } else if (action === "share") {
+          // Any tile on a file-sharing browser, and "More apps" everywhere: the PDF goes
+          // into the native share sheet; without file support it is downloaded instead.
+          const result = await shareComplaintReceipt(model, { title: share.subject, alreadyDownloaded: downloadedRef.current });
+          if (result === "downloaded") {
+            downloadedRef.current = true;
+            setNotice({ tone: "info", text: tr("PGR_RECEIPT_SHARE_DOWNLOADED_ONLY", RECEIPT_ACTION_FALLBACKS.downloadedOnly) });
+          }
+        } else if (action === "email" || action === "whatsapp" || action === "sms") {
+          // No file sharing here: save the PDF, then open the app empty for the user to
+          // attach it. mailto: and sms: navigate in place; WhatsApp gets the tab opened above.
+          if (!downloadedRef.current) {
+            downloadComplaintReceipt(model);
+            downloadedRef.current = true;
+          }
+          setNotice({ tone: "info", text: tr("PGR_RECEIPT_SHARE_ATTACH", RECEIPT_ACTION_FALLBACKS.attach) });
+          if (action === "whatsapp") {
+            if (tab) tab.location = share.links.whatsapp;
+            else window.open(share.links.whatsapp, "_blank", "noopener");
+          } else {
+            window.location.href = share.links[action];
+          }
         }
       } catch (e) {
         if (tab && !tab.closed) tab.close();
-        if (action === "copy") {
-          setNotice({ tone: "info", text: tr("PGR_RECEIPT_SHARE_COPY_FAILED", RECEIPT_ACTION_FALLBACKS.copyFailed) });
-        } else if (e?.name === "AbortError") {
+        if (e?.name === "AbortError") {
           // the user dismissed the native sheet: nothing to say
         } else if (e?.name === "NotAllowedError") {
           setNotice({ tone: "info", text: tr("PGR_RECEIPT_SHARE_RETRY", RECEIPT_ACTION_FALLBACKS.shareRetry) });
@@ -302,13 +303,15 @@ const ReceiptActionsReady = ({ complaintDetails, actions, variant, className }) 
     print: { icon: Printer, label: tr("PGR_RECEIPT_PRINT", RECEIPT_ACTION_FALLBACKS.print), onClick: () => run("print") },
     share: { icon: Share2, label: tr("PGR_RECEIPT_SHARE", RECEIPT_ACTION_FALLBACKS.share), onClick: () => setSheetOpen((o) => !o) },
   };
+  // On a file-sharing browser every channel tile opens the native sheet with the PDF
+  // (the tile names the app the user is after; the OS sheet lets them pick it).
+  const channel = (key) => (fileShare ? () => run("share") : () => run(key));
   const options = [
     { key: "open", icon: FileText, label: tr("PGR_RECEIPT_OPEN_PDF", RECEIPT_ACTION_FALLBACKS.openPdf), onClick: () => run("open") },
-    { key: "email", icon: Mail, label: tr("PGR_RECEIPT_SHARE_EMAIL", RECEIPT_ACTION_FALLBACKS.email), href: share.links.email },
-    { key: "whatsapp", icon: MessageCircle, label: tr("PGR_RECEIPT_SHARE_WHATSAPP", RECEIPT_ACTION_FALLBACKS.whatsapp), href: share.links.whatsapp, external: true },
-    coarsePointer && { key: "sms", icon: MessageSquare, label: tr("PGR_RECEIPT_SHARE_SMS", RECEIPT_ACTION_FALLBACKS.sms), href: share.links.sms },
-    canCopy && { key: "copy", icon: Link2, label: tr("PGR_RECEIPT_SHARE_COPY", RECEIPT_ACTION_FALLBACKS.copy), onClick: () => run("copy") },
-    canNativeShare && { key: "more", icon: Share2, label: tr("PGR_RECEIPT_SHARE_MORE", RECEIPT_ACTION_FALLBACKS.more), onClick: () => run("more") },
+    { key: "email", icon: Mail, label: tr("PGR_RECEIPT_SHARE_EMAIL", RECEIPT_ACTION_FALLBACKS.email), onClick: channel("email") },
+    { key: "whatsapp", icon: MessageCircle, label: tr("PGR_RECEIPT_SHARE_WHATSAPP", RECEIPT_ACTION_FALLBACKS.whatsapp), onClick: channel("whatsapp") },
+    coarsePointer && { key: "sms", icon: MessageSquare, label: tr("PGR_RECEIPT_SHARE_SMS", RECEIPT_ACTION_FALLBACKS.sms), onClick: channel("sms") },
+    canNativeShare && { key: "more", icon: Share2, label: tr("PGR_RECEIPT_SHARE_MORE", RECEIPT_ACTION_FALLBACKS.more), onClick: () => run("share") },
   ].filter(Boolean);
 
   return (
@@ -341,18 +344,14 @@ const ReceiptActionsReady = ({ complaintDetails, actions, variant, className }) 
                   <span>{o.label}</span>
                 </>
               );
-              return o.href ? (
-                <a key={o.key} ref={i === 0 ? firstOptionRef : undefined} className="pgr-share-sheet__option" data-share={o.key} href={o.href} target={o.external ? "_blank" : undefined} rel={o.external ? "noopener noreferrer" : undefined}>
-                  {inner}
-                </a>
-              ) : (
-                <button key={o.key} ref={i === 0 ? firstOptionRef : undefined} type="button" className="pgr-share-sheet__option" data-share={o.key} onClick={o.onClick} disabled={!!busy} aria-busy={busy === o.key || undefined}>
+              return (
+                <button key={o.key} ref={i === 0 ? firstOptionRef : undefined} type="button" className="pgr-share-sheet__option" data-share={o.key} onClick={o.onClick} disabled={!!busy} aria-busy={busy ? "true" : undefined}>
                   {inner}
                 </button>
               );
             })}
           </div>
-          <p className="pgr-share-sheet__hint">{tr("PGR_RECEIPT_SHARE_HINT", RECEIPT_ACTION_FALLBACKS.hint)}</p>
+          <p className="pgr-share-sheet__hint">{tr("PGR_RECEIPT_SHARE_HINT_PDF", RECEIPT_ACTION_FALLBACKS.hintPdf)}</p>
         </div>
       ) : null}
       {notice ? (

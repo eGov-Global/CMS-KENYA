@@ -605,7 +605,7 @@ const openTab = (url) => {
  * drawn at most once per tap, whether it ends up in the share sheet or in the
  * downloads folder; `alreadyDownloaded` lets a repeat tap skip the download.
  */
-export const shareComplaintReceipt = async (model, { title, text, url, alreadyDownloaded = false }) => {
+export const shareComplaintReceipt = async (model, { title, alreadyDownloaded = false }) => {
   let doc = null;
   const getDoc = () => (doc = doc || buildComplaintReceipt(model));
   return shareReceipt({
@@ -613,8 +613,6 @@ export const shareComplaintReceipt = async (model, { title, text, url, alreadyDo
     makeFile: () => new File([getDoc().output("blob")], receiptFileName(model), { type: "application/pdf" }),
     download: () => getDoc().save(receiptFileName(model)),
     title,
-    text,
-    url,
     alreadyDownloaded,
   });
 };
