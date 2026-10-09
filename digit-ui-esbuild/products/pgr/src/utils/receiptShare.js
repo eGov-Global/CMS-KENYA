@@ -8,9 +8,13 @@
 //   "downloaded"  this browser cannot hand a file to another app: the PDF was saved
 //                 to the downloads folder so the user can attach it in the app the
 //                 tile opened — not an error
-// A FILE share the user dismissed rethrows (AbortError / NotAllowedError): nothing
-// was saved yet, so there is nothing to confirm.
-export const isUserCancel = (e) => e?.name === "AbortError" || e?.name === "NotAllowedError";
+// A FILE share the user dismissed (AbortError) rethrows: nothing was saved yet, so
+// there is nothing to confirm. NotAllowedError is different: the browser refused the
+// share itself — on Safari and desktop Chrome that is the user activation having run
+// out before share() was called (issue #138, Mac) — so the PDF is downloaded instead,
+// exactly as on a browser without file sharing. Callers avoid the refusal in the
+// first place by handing share() a prebuilt file synchronously inside the click.
+export const isUserCancel = (e) => e?.name === "AbortError";
 
 /** Whether this browser can hand a PDF to another app (Web Share API level 2). */
 export const canShareFiles = (nav, makeProbeFile) => {

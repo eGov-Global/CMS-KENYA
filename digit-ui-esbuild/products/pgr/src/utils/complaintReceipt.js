@@ -616,3 +616,43 @@ export const shareComplaintReceipt = async (model, { title, alreadyDownloaded = 
     alreadyDownloaded,
   });
 };
+
+/**
+ * Draw the receipt once and keep every form a tap may need: the File for the
+ * share sheet, the blob URL for "Open PDF" and the download. Built when the share
+ * dialog opens so that each tile can act synchronously inside its click — the only
+ * moment Safari and desktop Chrome accept navigator.share() and a programmatic
+ * download (issue #138). Revoke the URL with releaseReceiptArtifacts when done.
+ */
+export const buildReceiptArtifacts = (model) => {
+  const blob = buildComplaintReceipt(model).output("blob");
+  const fileName = receiptFileName(model);
+  return { fileName, blob, url: URL.createObjectURL(blob), file: new File([blob], fileName, { type: "application/pdf" }) };
+};
+
+export const releaseReceiptArtifacts = (artifacts) => {
+  if (artifacts?.url) URL.revokeObjectURL(artifacts.url);
+};
+
+/** Save a prebuilt receipt through a plain anchor click: synchronous, so it stays inside the user gesture. */
+export const downloadReceiptArtifacts = ({ url, fileName }) => {
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = fileName;
+  a.rel = "noopener";
+  a.style.display = "none";
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(() => a.remove(), 0);
+  return true;
+};
+
+/** Share a prebuilt receipt; navigator.share() is reached synchronously (no await before it). */
+export const shareReceiptArtifacts = (artifacts, { title, alreadyDownloaded = false }) =>
+  shareReceipt({
+    nav: typeof navigator !== "undefined" ? navigator : null,
+    makeFile: () => artifacts.file,
+    download: () => downloadReceiptArtifacts(artifacts),
+    title,
+    alreadyDownloaded,
+  });

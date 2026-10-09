@@ -45,6 +45,13 @@ test("nothing available at all (desktop): download only", async () => {
   assert.deepEqual(h.downloads, ["X.pdf"]);
 });
 
+test("a refused FILE share (NotAllowedError: user activation ran out, Safari / desktop Chrome) falls back to the download", async () => {
+  const nav = { share: async () => { throw err("NotAllowedError"); }, canShare: () => true };
+  const h = harness(nav);
+  assert.equal(await shareReceipt(h), "downloaded");
+  assert.deepEqual(h.downloads, ["X.pdf"]);
+});
+
 test("a dismissed FILE share rethrows: nothing was saved, so the caller shows no confirmation", async () => {
   const h = harness({ canShare: () => true, share: async () => { throw err("AbortError"); } });
   await assert.rejects(shareReceipt(h), { name: "AbortError" });

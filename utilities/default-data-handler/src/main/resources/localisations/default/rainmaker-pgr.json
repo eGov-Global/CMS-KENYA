@@ -7762,5 +7762,17 @@
         "message": "The browser blocked the PDF tab — the receipt was downloaded instead.",
         "module": "rainmaker-pgr",
         "locale": "default"
+    },
+    {
+        "code": "PGR_RECEIPT_SHARE_CLOSE",
+        "message": "Close",
+        "module": "rainmaker-pgr",
+        "locale": "default"
+    },
+    {
+        "code": "PGR_RECEIPT_SHARE_PREPARING",
+        "message": "Preparing the PDF…",
+        "module": "rainmaker-pgr",
+        "locale": "default"
     }
 ]
