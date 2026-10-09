@@ -29,7 +29,7 @@ import { jsPDF } from "jspdf";
 
 import { complaintLabel, COMPLAINT_LABEL_PREFIX } from "./complaintLabel";
 import { RECEIPT_FALLBACKS } from "./receiptCopy";
-import { shareReceipt } from "./receiptShare";
+import { buildReceiptShareText, shareReceipt } from "./receiptShare";
 
 const PAGE_W = 210;
 const MARGIN_L = 15;
@@ -121,6 +121,83 @@ const prettifyKey = (key) =>
     .trim()
     .toLowerCase()
     .replace(/\b\w/g, (c) => c.toUpperCase());
+
+// Values in the details map are themselves localization keys. t() echoes an
+// unseeded key back, so each family needs its own readable fallback or the
+// receipt prints a raw CS_/COMPLAINT_HIERARCHY token on a document a citizen
+// hands to an official. Shared by the PDF rows and the share message.
+const resolveDetailValue = (raw, translate) => {
+  const s = S(raw);
+  if (!s) return "";
+  if (s.startsWith(COMPLAINT_LABEL_PREFIX)) {
+    // complaintLabel falls back to the MDMS node name, then the bare code.
+    return S(complaintLabel(translate, s.slice(COMPLAINT_LABEL_PREFIX.length)));
+  }
+  const translated = S(translate(s));
+  if (translated && translated !== s) return translated;
+  if (s.startsWith("CS_COMMON_")) {
+    // Same tone vocabulary the pill uses, so the two can't disagree.
+    const bare = s.slice("CS_COMMON_".length);
+    if (bare === "null" || bare === "undefined") return "";
+    return TONES[toneOf(bare)].word;
+  }
+  // Not a key at all (free text, a date, an id) - print it as-is.
+  return s;
+};
+
+const FLAT_TYPE_KEYS = new Set(["CS_ADDCOMPLAINT_COMPLAINT_TYPE", "CS_ADDCOMPLAINT_COMPLAINT_SUB_TYPE"]);
+const DESC_KEY = "CS_COMPLAINT_ADDTIONAL_DETAILS";
+
+/**
+ * The rows the PDF prints under "Complaint Details", as {label, value} pairs:
+ * the details map in page order (complaint number, status, filed date, address…),
+ * the hierarchy levels in place of the flat type rows when the tenant runs one,
+ * the description last. Drives the share message so it can never disagree with
+ * the receipt.
+ */
+export const buildReceiptSummaryRows = ({ details, classification, t, tr } = {}) => {
+  const translate = typeof t === "function" ? t : (k) => k;
+  const label = typeof tr === "function" ? tr : (k, fb) => fb;
+  const hasClassification = Array.isArray(classification) && classification.length > 0;
+  const keys = details && typeof details === "object" ? Object.keys(details) : [];
+  const rows = [];
+  let classificationPlaced = false;
+  for (const k of keys) {
+    if (k === DESC_KEY) continue;
+    if (hasClassification && FLAT_TYPE_KEYS.has(k)) {
+      if (!classificationPlaced) {
+        classification.forEach((r) => rows.push({ label: S(r?.label), value: S(r?.value) }));
+        classificationPlaced = true;
+      }
+      continue;
+    }
+    const raw = details[k];
+    const value = Array.isArray(raw) ? raw.map((item) => resolveDetailValue(item, translate)).filter(Boolean).join(", ") : resolveDetailValue(raw, translate);
+    rows.push({ label: S(label(k, ROW_LABEL_FALLBACKS[k] || prettifyKey(k))), value });
+  }
+  if (hasClassification && !classificationPlaced) classification.forEach((r) => rows.push({ label: S(r?.label), value: S(r?.value) }));
+  if (keys.includes(DESC_KEY) && !isBlank(details[DESC_KEY])) {
+    rows.push({ label: S(label("CS_COMPLAINT_DETAILS_ADDITIONAL_DETAILS_DESCRIPTION", ROW_LABEL_FALLBACKS.CS_COMPLAINT_DETAILS_ADDITIONAL_DETAILS_DESCRIPTION)), value: S(details[DESC_KEY]) });
+  }
+  return rows.filter((r) => r.label && r.value);
+};
+
+/** Subject + body for the share channels and the native share sheet. */
+export const buildReceiptShareMessage = (model) => {
+  const label = typeof model?.tr === "function" ? model.tr : (k, fb) => fb;
+  const title = S(label("PGR_RECEIPT_TITLE", RECEIPT_FALLBACKS.title));
+  const complaintId = S(model?.service?.serviceRequestId);
+  return {
+    subject: complaintId ? `${title} ${complaintId}` : title,
+    text: buildReceiptShareText({
+      title,
+      tenantName: model?.tenantName,
+      rows: buildReceiptSummaryRows(model),
+      helpline: model?.helpline,
+      helplineLabel: label("CS_COMMON_HELPLINE", RECEIPT_FALLBACKS.nextHelpline),
+    }),
+  };
+};
 
 /**
  * Read a tenant brand colour off the live CSS custom properties so the receipt
@@ -398,37 +475,18 @@ export const buildComplaintReceipt = ({
   // unseeded key back, so each family needs its own readable fallback or the
   // receipt prints a raw CS_/COMPLAINT_HIERARCHY token on a document a citizen
   // hands to an official.
-  const resolveValue = (raw) => {
-    const s = S(raw);
-    if (!s) return "";
-    if (s.startsWith(COMPLAINT_LABEL_PREFIX)) {
-      // complaintLabel falls back to the MDMS node name, then the bare code.
-      return S(complaintLabel(translate, s.slice(COMPLAINT_LABEL_PREFIX.length)));
-    }
-    const translated = S(translate(s));
-    if (translated && translated !== s) return translated;
-    if (s.startsWith("CS_COMMON_")) {
-      // Same tone vocabulary the pill uses, so the two can't disagree.
-      const bare = s.slice("CS_COMMON_".length);
-      if (bare === "null" || bare === "undefined") return "";
-      return TONES[toneOf(bare)].word;
-    }
-    // Not a key at all (free text, a date, an id) - print it as-is.
-    return s;
-  };
+  const resolveValue = (raw) => resolveDetailValue(raw, translate);
 
   const detailKeys = details && typeof details === "object" ? Object.keys(details) : [];
   // When the hierarchy renders, its levels replace the flat type rows. Matched by
   // KEY, never by comparing translated label text — the on-screen version compares
   // English strings and so duplicates these rows under pt_MZ.
-  const FLAT_TYPE_KEYS = new Set(["CS_ADDCOMPLAINT_COMPLAINT_TYPE", "CS_ADDCOMPLAINT_COMPLAINT_SUB_TYPE"]);
   const shownKeys = detailKeys.filter((k) => !(hasClassification && FLAT_TYPE_KEYS.has(k)));
   // The free-text description closes this section as an ordinary two-column
   // row labelled "Description". Its source key translates to "Additional
   // Details" — the same words as the extended-attributes heading below, which
   // read as a duplicate — and the old full-width block sat out of line with
   // the rows around it (CCSD-2234). row() flows an oversized value across pages.
-  const DESC_KEY = "CS_COMPLAINT_ADDTIONAL_DETAILS";
   const hasDescription = detailKeys.includes(DESC_KEY) && !isBlank(details[DESC_KEY]);
 
   if (shownKeys.length || hasDescription) {
@@ -616,3 +674,44 @@ export const shareComplaintReceipt = async (model, { title, alreadyDownloaded = 
     alreadyDownloaded,
   });
 };
+
+/**
+ * Draw the receipt once and keep every form a tap may need: the File for the
+ * share sheet, the blob URL for "Open PDF" and the download. Built when the share
+ * dialog opens so that each tile can act synchronously inside its click — the only
+ * moment Safari and desktop Chrome accept navigator.share() and a programmatic
+ * download (issue #138). Revoke the URL with releaseReceiptArtifacts when done.
+ */
+export const buildReceiptArtifacts = (model) => {
+  const blob = buildComplaintReceipt(model).output("blob");
+  const fileName = receiptFileName(model);
+  return { fileName, blob, url: URL.createObjectURL(blob), file: new File([blob], fileName, { type: "application/pdf" }) };
+};
+
+export const releaseReceiptArtifacts = (artifacts) => {
+  if (artifacts?.url) URL.revokeObjectURL(artifacts.url);
+};
+
+/** Save a prebuilt receipt through a plain anchor click: synchronous, so it stays inside the user gesture. */
+export const downloadReceiptArtifacts = ({ url, fileName }) => {
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = fileName;
+  a.rel = "noopener";
+  a.style.display = "none";
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(() => a.remove(), 0);
+  return true;
+};
+
+/** Share a prebuilt receipt; navigator.share() is reached synchronously (no await before it). */
+export const shareReceiptArtifacts = (artifacts, { title, text, alreadyDownloaded = false }) =>
+  shareReceipt({
+    nav: typeof navigator !== "undefined" ? navigator : null,
+    makeFile: () => artifacts.file,
+    download: () => downloadReceiptArtifacts(artifacts),
+    title,
+    text,
+    alreadyDownloaded,
+  });

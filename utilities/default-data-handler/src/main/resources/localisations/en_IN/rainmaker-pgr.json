@@ -8526,6 +8526,18 @@
         "locale": "en_IN"
     },
     {
+        "code": "PGR_RECEIPT_SHARE_CLOSE",
+        "message": "Close",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "PGR_RECEIPT_SHARE_PREPARING",
+        "message": "Preparing the PDF…",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
         "code": "WITHDRAW",
         "message": "Withdraw",
         "module": "rainmaker-pgr",
