@@ -3,7 +3,7 @@
 //
 // Strangler-fig replacement for the legacy ComplaintDetails.js. Same
 // data hooks (`useComplaintDetails`, `useWorkflowDetails`,
-// `useReopenWindow` for the reopen window) and same subcomponents
+// `useActionWindow` for the reopen window) and same subcomponents
 // (TimeLine, ComplaintPhotos, ComplaintLocationMap). Only the visual
 // chrome — page header, summary cards, key-value rows, status pill —
 // is replaced with the v2 Card / typography / theme tokens used by
@@ -21,7 +21,7 @@ import { AlertCircle } from "lucide-react";
 import { LOCALIZATION_KEY } from "../../constants/Localization";
 import { buildComplaintPath } from "../../utils/complaintHierarchyPath";
 import TimelineWrapper from "../../components/TimeLineWrapper";
-import useReopenWindow from "../../hooks/pgr/useReopenWindow";
+import useActionWindow from "../../hooks/pgr/useActionWindow";
 import ComplaintPhotos from "../../components/ComplaintPhotos";
 import ComplaintLocationMap from "../../components/ComplaintLocationMap";
 import { buildExtendedAttributeRows, useExtendedAttributeOrder } from "../../components/PgrExtendedAttributesView";
@@ -173,18 +173,14 @@ function WorkflowComponent({ complaintDetails, id }) {
     changeQueryName: id,
   });
 
-  // Reopen window, from RAINMAKER-PGR.UIConstants.REOPENSLA via useReopenWindow
-  // — the same master pgr-services reads in validateReOpen(), so the UI guard
-  // and server enforcement cannot drift.
-  //
-  // This used to query RAINMAKER-PGR.ComplainClosingTime and read `.cct` off
-  // the response. That could never resolve: mdms v1 keys its response by
-  // MASTER NAME, so the value would have had to live under
-  // `["RAINMAKER-PGR"].ComplainClosingTime`, and no environment defines that
-  // master at all. The lookup therefore always returned undefined and the
-  // 1-hour fallback below won everywhere — which is exactly the #925 bug that
-  // useReopenWindow was written to fix, reintroduced on this page.
-  const complainMaxIdleTime = useReopenWindow(tenantId);
+  // Reopen window: the complaint tenant's RAINMAKER-PGR.UIConstants (REOPENSLA and
+  // its actionWindows rule), fetched fresh, against this complaint's own timestamps
+  // — the rule pgr-services enforces, so the button and the server agree.
+  const reopenWindow = useActionWindow({
+    action: "REOPEN",
+    tenantId: complaintDetails?.service?.tenantId,
+    auditDetails: complaintDetails?.service?.auditDetails,
+  });
 
   useEffect(() => {
     revalidate();
@@ -196,24 +192,14 @@ function WorkflowComponent({ complaintDetails, id }) {
   // its Resolved/Rejected checkpoints, so the TimelineWrapper swap dropped them.
   // COMMENT is excluded (no citizen page for it); REOPEN honors the idle-window.
   const current = workflowData?.ProcessInstances?.[0];
-  const lastModifiedTime = complaintDetails?.service?.auditDetails?.lastModifiedTime;
-  // useReopenWindow returns undefined while MDMS loads and on tenants with no
-  // usable REOPENSLA. Treat that as "window unknown" and let REOPEN through
-  // rather than hiding it: pgr-services applies its own pgr.complain.idle.time
-  // backstop and rejects a genuinely late reopen, so deferring is safe, while
-  // falling back to a local 1-hour default enforces a deadline nobody
-  // configured — the #925 bug. Same rule the hook documents for its callers.
-  const reopenWindowOpen =
-    typeof complainMaxIdleTime !== "number"
-      ? true
-      : typeof lastModifiedTime === "number" &&
-        Number.isFinite(lastModifiedTime) &&
-        Date.now() - lastModifiedTime < complainMaxIdleTime;
+  // REOPEN waits for the UIConstants answer (no button that appears and then vanishes)
+  // and disappears the moment the window closes, without a reload.
+  const reopenAllowed = reopenWindow.ready && reopenWindow.open;
   const citizenActions = (current?.nextActions || [])
     .filter((a) => Array.isArray(a?.roles) && a.roles.includes("CITIZEN"))
     .map((a) => a?.action)
     .filter((a) => a && a !== "COMMENT")
-    .filter((a) => a !== "REOPEN" || reopenWindowOpen);
+    .filter((a) => a !== "REOPEN" || reopenAllowed);
 
   // Rendered INSIDE the current-state timeline row (legacy-checkpoint parity):
   // action buttons while actions are open; the given rating once rated.

@@ -16,7 +16,7 @@ import { buildExtendedAttributeRows, useExtendedAttributeOrder } from "../../com
 import { buildComplaintPath } from "../../utils/complaintHierarchyPath";
 import { selectServiceDefsFromComplaintHierarchy } from "../../utils";
 import { isPiiMaskingEnabled } from "../../utils/piiMasking";
-import useReopenWindow from "../../hooks/pgr/useReopenWindow";
+import useActionWindow from "../../hooks/pgr/useActionWindow";
 import { findLatestAssigneeUuidByRole } from "../../utils/workflowAssignee";
 import { LAST_MILE_ROLE, narrowToLastMile } from "../../utils/autoAssign";
 import { EV, trackE } from "../../utils/analytics";
@@ -174,10 +174,6 @@ const PGRDetails = () => {
     { schemaCode: "PGR_COMPLAINT_HIERARCHY_DETAILS" }
   );
 
-  // Same REOPENSLA window the citizen timeline gates on, so employee and citizen can never
-  // disagree about the deadline. undefined => defer to pgr-services (see useReopenWindow).
-  const reopenWindowMs = useReopenWindow(tenantId);
-
   // Complaint classification hierarchy (configurable N levels). Absent on
   // un-migrated tenants -> buildComplaintPath returns null and the flat
   // Type/Sub-Type rows are kept below. `nodes` is the full adjacency list
@@ -252,6 +248,13 @@ const PGRDetails = () => {
   const isError = fromAdminSearch ? adminSearch.isError : pgrSearch.isError;
   const error = fromAdminSearch ? adminSearch.error : pgrSearch.error;
   const pgrData = fromAdminSearch ? adminSearch.data : pgrSearch.data;
+  // Reopen window: the complaint tenant's UIConstants fetched fresh, against this complaint's
+  // timestamps (see useActionWindow) — the rule the citizen page and pgr-services apply.
+  const reopenWindow = useActionWindow({
+    action: "REOPEN",
+    tenantId: pgrData?.ServiceWrappers?.[0]?.service?.tenantId || tenantId,
+    auditDetails: pgrData?.ServiceWrappers?.[0]?.service?.auditDetails,
+  });
   const pgrSearchRevalidate = fromAdminSearch ? adminSearch.refetch : pgrSearch.revalidate;
   // CCSD-2123: schema x-order for the Additional Details rows (complainantName
   // pinned first inside buildExtendedAttributeRows regardless).
@@ -668,6 +671,8 @@ const PGRDetails = () => {
     const userRoles = userInfo?.info?.roles?.map((role) => role.code) || [];
     return matchingState.actions
       ? matchingState.actions.filter((action) => action.roles.some((role) => userRoles.includes(role)))
+        // REOPEN is offered only while its window is known to be open.
+        .filter((action) => action.action !== "REOPEN" || (reopenWindow.ready && reopenWindow.open))
         .map((action) => {
           // Look up the target state so the modal can adapt generically (terminal → no assignee,
           // docUploadRequired → future doc capture) with no per-action code.
@@ -1014,9 +1019,9 @@ const PGRDetails = () => {
               key="action-button"
               label={t("ES_COMMON_TAKE_ACTION")}
               onOptionSelect={(selected) => {
+                // A menu opened just before the deadline can still offer REOPEN: check the clock now.
                 if (selected.action === "REOPEN") {
-                  const lastModifiedTime = pgrData?.ServiceWrappers?.[0]?.service?.auditDetails?.lastModifiedTime;
-                  if (reopenWindowMs && lastModifiedTime && Date.now() - lastModifiedTime > reopenWindowMs) {
+                  if (!reopenWindow.isOpenNow()) {
                     setToast({
                       show: true,
                       type: "error",
