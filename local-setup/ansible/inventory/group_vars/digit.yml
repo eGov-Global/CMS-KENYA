@@ -179,6 +179,9 @@ core_mobile_configs: {}
 # "" does not fall back to the default — it renders no footer at all.
 footer_logo_url: "/digit-ui/brand/digit-footer.png"
 footer_bw_logo_url: "/digit-ui/brand/digit-footer-bw.png"
+# Browser tab before the app boots; empty = neutral "DIGIT" until the tenant localisation (CORE_APP_TITLE) is in.
+app_title: ""
+favicon_url: ""
 
 # Tenant-restriction lists. Empty = no filtering. Tenants override
 # when they want to surface only their own city or hide modules.
