@@ -8902,5 +8902,11 @@
         "message": "Administrator",
         "module": "rainmaker-common",
         "locale": "default"
+    },
+    {
+        "code": "CORE_APP_TITLE",
+        "message": "Citizen Complaint Resolution System",
+        "module": "rainmaker-common",
+        "locale": "default"
     }
 ]
