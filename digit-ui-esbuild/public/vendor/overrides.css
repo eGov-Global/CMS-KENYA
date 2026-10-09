@@ -234,6 +234,21 @@ button[class*="submit-bar"]:hover {
   color: var(--color-button-primary-text, #FFFFFF) !important;
 }
 
+/* Primary button resting state. The vendored `.digit-button-primary` paints
+ * `var(--color-primary-main)` — on a v3 record that is primary-2 (Nairobi's
+ * gold) — while the hover/pressed rules above and the label colour follow the
+ * `--color-button-primary-*` tokens (applyTheme resolves those to the record's
+ * button surface, dark green on Nairobi, and derives a readable label for it).
+ * The two disagreed: white text on a gold button that turned green on hover.
+ * Paint the resting state from the same token the label was chosen for. */
+.digit-btn.primary,
+.digit-button.primary,
+.digit-button-primary,
+button.digit-submit-bar,
+button[class*="submit-bar"] {
+  background-color: var(--color-button-primary-bg-default, var(--color-primary-2, #FEC931)) !important;
+}
+
 /* Primary button pressed — designer's "Primary Button / Background Pressed"
  * (Nairobi: #CC9F00). Active state during click. */
 .digit-btn.primary:active,
@@ -1051,6 +1066,32 @@ html .digit-topbar:not(.digit-employee-header) {
   ) !important;
 }
 
+/* The citizen shell stacks the top bar, the routes box and the "Powered by
+ * DIGIT" footer. In block layout the routes box is only as tall as the
+ * min-height calc above — which assumes the bars' heights — while the real
+ * footer is 40px, so every short page (mobile-number and OTP steps, the
+ * module home on a tall display) showed a strip of body background between
+ * the footer and the bottom of the viewport. Stack the shell as a flex
+ * column that fills the viewport and let the routes box take the slack:
+ * the footer sits flush at the bottom whatever the bars measure, and longer
+ * pages still scroll as before (it is a min-height, not a height). */
+.citizen {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+.citizen > .main.center-container.citizen-home-container {
+  flex: 1 1 auto;
+}
+/* The login / OTP shell (V2LoginShell) sizes itself with the same bars calc
+ * inline. Inside the flex column it only has to fill its parent, and the calc
+ * ignores the padding .main carries under the fixed top bar, so it pushed the
+ * footer 4px (desktop) to 26px (phone) below the fold. Let it stretch instead. */
+.citizen > .main.center-container.citizen-home-container > .citizen-form-wrapper > .v2-scope {
+  min-height: 0 !important;
+  flex: 1 1 auto;
+}
+
 /* Some citizen surfaces (e.g. /user/profile, edit profile) mount under
  * the `.employee` wrapper because of how `useRouteSubscription` flips on
  * those paths. Vendor css then pins the citizen page footer with
@@ -1447,21 +1488,32 @@ button[class*="toast-close"] svg,
   color: var(--color-text-primary, #363636) !important;
 }
 
-/* Rating-star buttons on /citizen/pgr/rate — strip every vendor button
- * affordance (box-shadow on hover, focus ring, default bg). Only the
- * star icon's color/fill should react to hover; the button frame
- * stays invisible. */
-.v2-rating-star,
-.v2-rating-star:hover,
-.v2-rating-star:active,
-.v2-rating-star:focus,
-.v2-rating-star:focus-visible {
-  background: transparent !important;
-  background-color: transparent !important;
-  border: 0 !important;
+/* Receipt share-sheet options (components/ReceiptActions.js): plain tiles, no
+ * vendor hover lift or press transform. */
+.pgr-share-sheet__option,
+.pgr-share-sheet__option:hover,
+.pgr-share-sheet__option:active,
+.pgr-share-sheet__option:focus {
   box-shadow: none !important;
-  outline: none !important;
   transform: none !important;
+}
+
+/* Emoji-rating options on /citizen/pgr/rate (components/EmojiRating.js) — the
+ * generic button rules below add a hover drop-shadow and a press transform that
+ * would replace the option's own selected ring. Pin both: no vendor lift, and the
+ * selected ring survives hover/press. */
+.pgr-emoji-rating__option,
+.pgr-emoji-rating__option:hover,
+.pgr-emoji-rating__option:active,
+.pgr-emoji-rating__option:focus {
+  box-shadow: none !important;
+  transform: none !important;
+}
+.pgr-emoji-rating__option.is-active,
+.pgr-emoji-rating__option.is-active:hover,
+.pgr-emoji-rating__option.is-active:active,
+.pgr-emoji-rating__option.is-active:focus {
+  box-shadow: inset 0 0 0 1px var(--color-primary-1, var(--color-primary-main, #c84c0e)) !important;
 }
 
 /* `.back-btn2` ships with `margin-bottom: 16px` from vendor; we used to
@@ -1587,14 +1639,16 @@ button[class*="toast-close"] svg,
  *
  * Re-cap by media query so the modal looks like a calm centred card
  * on every viewport. Scoped to the LogoutDialog's stable
- * `digit-logout-popup-wrapper` class so other digit popups (employee
- * admin forms etc.) keep their existing sizing. */
+ * `digit-logout-popup-wrapper` class, and `pgr-confirm-popup-wrapper` for
+ * the PGR yes/no confirmations (citizen Withdraw), so other digit popups
+ * (employee admin forms etc.) keep their existing sizing. */
 /* Width is pinned (min/max equal) so vendor rules — `.digit-logout-
  * popup-wrapper { width: 31.25rem }`, `.digit-popup-wrapper { width: 100% }`,
  * the small-screen `width: 100%` clamp at 600px — can't pull the
  * card to a different size mid-render. Height stays content-driven. */
 @media (max-width: 47.99rem) {
-  .digit-popup-overlay .digit-popup-wrapper.digit-logout-popup-wrapper {
+  .digit-popup-overlay .digit-popup-wrapper.digit-logout-popup-wrapper,
+  .digit-popup-overlay .digit-popup-wrapper.pgr-confirm-popup-wrapper {
     width: min(420px, calc(100vw - 32px)) !important;
     min-width: min(420px, calc(100vw - 32px)) !important;
     max-width: min(420px, calc(100vw - 32px)) !important;
@@ -1605,7 +1659,8 @@ button[class*="toast-close"] svg,
   }
 }
 @media (min-width: 48rem) {
-  .digit-popup-overlay .digit-popup-wrapper.digit-logout-popup-wrapper {
+  .digit-popup-overlay .digit-popup-wrapper.digit-logout-popup-wrapper,
+  .digit-popup-overlay .digit-popup-wrapper.pgr-confirm-popup-wrapper {
     width: 520px !important;
     min-width: 520px !important;
     max-width: 520px !important;
@@ -1620,23 +1675,39 @@ button[class*="toast-close"] svg,
  * yes/no logout confirm that's overkill — the modal ends up looking
  * "too long". Tighten each section's height/padding so the card hugs
  * its actual content. */
-.digit-popup-wrapper.digit-logout-popup-wrapper .digit-popup-header {
+.digit-popup-wrapper.digit-logout-popup-wrapper .digit-popup-header,
+.digit-popup-wrapper.pgr-confirm-popup-wrapper .digit-popup-header {
   padding: 18px 20px 8px 20px !important;
   min-height: 0 !important;
   height: auto !important;
 }
-.digit-popup-wrapper.digit-logout-popup-wrapper .digit-popup-children-wrap {
+.digit-popup-wrapper.digit-logout-popup-wrapper .digit-popup-children-wrap,
+.digit-popup-wrapper.pgr-confirm-popup-wrapper .digit-popup-children-wrap {
   padding: 4px 20px 16px 20px !important;
   min-height: 0 !important;
   height: auto !important;
   font-size: 0.9375rem !important;
   line-height: 1.5 !important;
 }
-.digit-popup-wrapper.digit-logout-popup-wrapper .digit-popup-footer {
+.digit-popup-wrapper.digit-logout-popup-wrapper .digit-popup-footer,
+.digit-popup-wrapper.pgr-confirm-popup-wrapper .digit-popup-footer {
   padding: 8px 20px 18px 20px !important;
   min-height: 0 !important;
   height: auto !important;
   gap: 8px !important;
+}
+/* Section 21 gives `[class*="popup-children-wrap"]` the dialog-panel card
+ * look, but in the DIGIT PopUp that class is the BODY — the confirmation read
+ * as a bordered, shadowed card nested inside the popup card. The vendor
+ * heading (2rem) is also sized for full-page popups, not a small card. */
+.digit-popup-wrapper.pgr-confirm-popup-wrapper .digit-popup-children-wrap {
+  border: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+}
+.digit-popup-wrapper.pgr-confirm-popup-wrapper .digit-popup-heading {
+  font-size: 1.25rem !important;
+  line-height: 1.4 !important;
 }
 
 /* v2 employee login card — make the top tenant + DIGIT-secondary logos

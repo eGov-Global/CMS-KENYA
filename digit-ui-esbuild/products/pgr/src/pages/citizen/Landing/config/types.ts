@@ -17,6 +17,7 @@ export type LandingSectionType =
   | "types"
   | "steps"
   | "channels"
+  | "helplines"
   | "privacy"
   | "news"
   | "institutions"
@@ -73,6 +74,8 @@ export interface LandingPageConfig {
    *  wins over each section's numeric `order`. */
   sectionOrder?: string[];
   seo?: { titleKey?: string; descriptionKey?: string };
+  /** Free-form; the renderer reads `layout` ("classic" | "editorial", see
+   *  sectionRegistry) and ignores unknown values. */
   theme?: Record<string, string>;
   publish?: { status?: string; publishedVersion?: number; publishedAt?: number };
 }

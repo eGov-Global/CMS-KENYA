@@ -19,6 +19,10 @@ var globalConfigs = (function () {
   var configModuleName = "{{ .Values.globalConfigs.configModuleName }}";
   var localeRegion = "{{ .Values.globalConfigs.localeRegion }}";
   var localeDefault = "{{ .Values.globalConfigs.localeDefault }}";
+  // Browser tab before the app boots (optional). The tenant localisation CORE_APP_TITLE and
+  // StateInfo.logoUrl refine the title and favicon once the app has its boot data.
+  var appTitle = "{{ .Values.globalConfigs.appTitle }}";
+  var faviconUrl = "{{ .Values.globalConfigs.faviconUrl }}";
   var mdmsContext = "{{ .Values.globalConfigs.mdmsContext }}";
   var hrmsContext = "{{ .Values.globalConfigs.hrmsContext }}";
   var invalidEmployeeRoles = {{ .Values.globalConfigs.invalidEmployeeRoles | toJson }};
@@ -48,6 +52,8 @@ var globalConfigs = (function () {
     else if (key === "GMAPS_API_KEY") { return gmaps_api_key; }
     else if (key === "FIN_ENV") { return finEnv; }
     else if (key === "CENTRAL_INSTANCE_ENABLED") { return centralInstanceEnabled; }
+    else if (key === "APP_TITLE") { return appTitle; }
+    else if (key === "FAVICON_URL") { return faviconUrl; }
     else if (key === "FOOTER_BW_LOGO_URL") { return footerBWLogoURL; }
     else if (key === "FOOTER_LOGO_URL") { return footerLogoURL; }
     else if (key === "DIGIT_HOME_URL") { return digitHomeURL; }

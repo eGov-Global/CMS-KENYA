@@ -1,6 +1,8 @@
 import { Dropdown, Header } from "@egovernments/digit-ui-components";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import ReactDOM from "react-dom";
+import useEmployeeDesignation from "../hooks/pgr/useEmployeeDesignation";
+import { departmentLabel } from "../utils/employeeLabels";
 
 const DEFAULT_EGOV_LOGO = "https://egov-dev-assets.s3.ap-south-1.amazonaws.com/egov-logo-2025.png";
 const DEFAULT_EGOV_LOGO_ON_DARK = "/digit-ui/brand/egov-logo-white.png";
@@ -265,14 +267,19 @@ const ProfileMenu = ({ t, userDetails, cityDetails, workingContext, userOptions,
     const localized = t(`ACCESSCONTROL_ROLES_ROLES_${primary.code}`);
     return localized === `ACCESSCONTROL_ROLES_ROLES_${primary.code}` ? primary?.name || primary?.code : localized;
   }, [info?.roles, t]);
+  // HRMS hands bare department codes; show their seeded names (see employeeLabels).
   const department = workingContext?.departments?.length
-    ? workingContext.departments.map((d) => d?.name || d?.code || d).filter(Boolean).join(", ")
+    ? workingContext.departments.map((d) => departmentLabel(t, d)).filter(Boolean).join(", ")
     : null;
   const location = cityDetails?.i18nKey ? t(cityDetails.i18nKey) : null;
   const lastLogin = formatStamp(sessionLoginAt());
 
   const editOption = (userOptions || []).find((o) => o?.icon === "Edit");
   const logoutOption = (userOptions || []).find((o) => o?.icon === "Logout");
+  // Actions render in the order the caller lists them, so a surface can put
+  // Logout first without a fork of this menu. Logout is always present.
+  const actions = (userOptions || []).filter((o) => o === editOption || o === logoutOption);
+  if (!logoutOption) actions.push({ icon: "Logout", name: t("CORE_COMMON_LOGOUT"), func: () => {} });
   const pick = (opt) => {
     setOpen(false);
     if (opt) handleUserDropdownSelection ? handleUserDropdownSelection(opt) : opt.func && opt.func();
@@ -323,35 +330,28 @@ const ProfileMenu = ({ t, userDetails, cityDetails, workingContext, userOptions,
               * header stylesheet sets a tight line-height on buttons, which
               * collapsed these rows even with padding applied. */}
             <div style={{ paddingTop: "0.75rem", display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-              {editOption && (
-                <button
-                  type="button"
-                  role="menuitem"
-                  // Class is load-bearing, not cosmetic: overrides.css resets
-                  // `button:not([class]):has(> svg)` padding to 0 !important for
-                  // bare icon-only buttons, which beat this row's inline padding.
-                  className="pgr-topbar-menu-item"
-                  onClick={() => pick(editOption)}
-                  onMouseEnter={(e) => (e.currentTarget.style.background = "#f3f4f6")}
-                  onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
-                  style={menuItemStyle("#111827")}
-                >
-                  <Glyph d={ICONS.edit} size={18} style={{ stroke: "#111827" }} />
-                  <span>{editOption.name}</span>
-                </button>
-              )}
-              <button
-                type="button"
-                role="menuitem"
-                className="pgr-topbar-menu-item"
-                onClick={() => pick(logoutOption || { func: () => {} })}
-                onMouseEnter={(e) => (e.currentTarget.style.background = "#fef2f2")}
-                onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
-                style={menuItemStyle("#e11d48")}
-              >
-                <Glyph d={ICONS.logout} size={18} style={{ stroke: "#e11d48" }} />
-                <span>{logoutOption?.name || t("CORE_COMMON_LOGOUT")}</span>
-              </button>
+              {actions.map((opt) => {
+                const isLogout = opt.icon === "Logout";
+                const tone = isLogout ? "#e11d48" : "#111827";
+                return (
+                  <button
+                    key={opt.icon}
+                    type="button"
+                    role="menuitem"
+                    // Class is load-bearing, not cosmetic: overrides.css resets
+                    // `button:not([class]):has(> svg)` padding to 0 !important for
+                    // bare icon-only buttons, which beat this row's inline padding.
+                    className="pgr-topbar-menu-item"
+                    onClick={() => pick(opt)}
+                    onMouseEnter={(e) => (e.currentTarget.style.background = isLogout ? "#fef2f2" : "#f3f4f6")}
+                    onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+                    style={menuItemStyle(tone)}
+                  >
+                    <Glyph d={isLogout ? ICONS.logout : ICONS.edit} size={18} style={{ stroke: tone }} />
+                    <span>{opt.name}</span>
+                  </button>
+                );
+              })}
             </div>
           </div>,
           document.body
@@ -503,6 +503,11 @@ const EmployeeTopBarV2 = (props) => {
   const { t, stateInfo, toggleSidebar, userDetails, cityDetails, userOptions, handleUserDropdownSelection, logoUrl, logoUrlWhite, showLanguageChange, workingContext, loggedin } = props;
   const headerTone = typeof document !== "undefined" ? document.documentElement.dataset.headerTone : undefined;
   const name = userDetails?.info?.name;
+  // Greet by what the person does here ("Hello, Call Centre Employee") rather
+  // than by name; the name stays as the fallback for accounts without an HRMS
+  // designation (workbench/admin logins) and while the record loads.
+  const designation = useEmployeeDesignation(cityDetails?.code || userDetails?.info?.tenantId, t);
+  const greetingName = designation || name;
 
   return (
     <Header
@@ -510,8 +515,8 @@ const EmployeeTopBarV2 = (props) => {
         loggedin && name && (
           <span style={itemStyle}>
             <Glyph d={ICONS.person} />
-            <span style={{ fontWeight: 500 }}>
-              {t("CORE_TOPBAR_HELLO")}, {name}
+            <span style={{ fontWeight: 500 }} title={name}>
+              {t("CORE_TOPBAR_HELLO")}, {greetingName}
             </span>
           </span>
         ),

@@ -23,7 +23,7 @@ import { useLandingCopy } from "./useLandingCopy";
 import { UtilityBar, LanguageOption, DEFAULT_LANGUAGES } from "./components/UtilityBar";
 import { WhatsAppFab } from "./components/WhatsAppFab";
 
-import { getEntry, RenderCtx, Slot } from "./config/sectionRegistry";
+import { getEntry, isLandingLayout, LandingLayout, RenderCtx, Slot } from "./config/sectionRegistry";
 import type { LandingSectionConfig, ResolvedLandingConfig } from "./config/types";
 
 export interface LandingRendererProps {
@@ -31,6 +31,11 @@ export interface LandingRendererProps {
   routes?: Partial<LandingRoutes>;
   news?: NewsItem[];
   heroImageUrl?: string;
+  heroImageSmallUrl?: string;
+  bandImageUrl?: string;
+  personImageUrl?: string;
+  stepsOrbImageUrl?: string;
+  channelsOrbImageUrl?: string;
   emblemUrl?: string;
   footerLogoUrl?: string;
   languages?: LanguageOption[];
@@ -39,6 +44,9 @@ export interface LandingRendererProps {
   /** Explicit override; when undefined the LandingPageConfig toggle governs. */
   showWhatsAppFab?: boolean;
   showUtilityBar?: boolean;
+  /** Deployment default; LandingPageConfig.theme.layout wins when it names a
+   *  known layout, so a tenant can switch without a build. */
+  layout?: LandingLayout;
   className?: string;
 }
 
@@ -47,6 +55,11 @@ export function LandingRenderer({
   routes: routeOverrides,
   news = DEFAULT_NEWS,
   heroImageUrl,
+  heroImageSmallUrl,
+  bandImageUrl,
+  personImageUrl,
+  stepsOrbImageUrl,
+  channelsOrbImageUrl,
   emblemUrl,
   footerLogoUrl,
   languages = DEFAULT_LANGUAGES,
@@ -54,6 +67,7 @@ export function LandingRenderer({
   tokens,
   showWhatsAppFab,
   showUtilityBar,
+  layout: layoutProp,
   className,
 }: LandingRendererProps) {
   const { c } = useLandingCopy();
@@ -72,6 +86,8 @@ export function LandingRenderer({
   }, []);
 
   const page = config.page || {};
+  const configLayout = page.theme?.layout;
+  const layout: LandingLayout = isLandingLayout(configLayout) ? configLayout : layoutProp ?? "classic";
   // Off by default: the header is a single self-contained bar now, and the
   // strip's own content (gov name, sign-in) duplicated the header/footer.
   // Still restorable per tenant via LandingPageConfig.showUtilityBar.
@@ -82,8 +98,8 @@ export function LandingRenderer({
   const fabOn = hasSections && (showWhatsAppFab ?? page.showWhatsAppFab ?? true);
 
   const ctx: RenderCtx = React.useMemo(
-    () => ({ routes, news, heroImageUrl, emblemUrl, footerLogoUrl }),
-    [routes, news, heroImageUrl, emblemUrl, footerLogoUrl]
+    () => ({ routes, news, heroImageUrl, heroImageSmallUrl, bandImageUrl, personImageUrl, stepsOrbImageUrl, channelsOrbImageUrl, emblemUrl, footerLogoUrl }),
+    [routes, news, heroImageUrl, heroImageSmallUrl, bandImageUrl, personImageUrl, stepsOrbImageUrl, channelsOrbImageUrl, emblemUrl, footerLogoUrl]
   );
 
   // Group the ordered, visible sections into DOM slots; unknown types (no
@@ -91,14 +107,14 @@ export function LandingRenderer({
   const slots = React.useMemo(() => {
     const out: Record<Slot, LandingSectionConfig[]> = { header: [], main: [], footer: [] };
     (config.sections || []).forEach((s) => {
-      const entry = getEntry(s.type);
+      const entry = getEntry(s.type, layout);
       if (entry) out[entry.slot].push(s);
     });
     return out;
-  }, [config.sections]);
+  }, [config.sections, layout]);
 
   const renderSection = (s: LandingSectionConfig, i: number) => {
-    const entry = getEntry(s.type);
+    const entry = getEntry(s.type, layout);
     if (!entry) return null;
     const { Component, buildProps } = entry;
     return <Component key={s.code ?? `${s.type}-${i}`} {...buildProps(s, ctx)} />;
@@ -108,7 +124,9 @@ export function LandingRenderer({
     <div className="v2-scope" style={tokenStyle}>
       <div
         className={cn(
-          "pgr-landing flex min-h-screen flex-col bg-[hsl(var(--pgrl-page))] font-condensed text-[hsl(var(--pgrl-ink))]",
+          // pgrl-font: Roboto Condensed over a width-matched fallback (src/index.css),
+          // so the web font's late arrival does not re-wrap the page.
+          "pgr-landing pgrl-font flex min-h-screen flex-col bg-[hsl(var(--pgrl-page))] text-[hsl(var(--pgrl-ink))]",
           // Preflight is off, so form controls keep the UA font unless told to inherit.
           "[&_button]:font-[family-name:inherit] [&_input]:font-[family-name:inherit] [&_select]:font-[family-name:inherit] [&_textarea]:font-[family-name:inherit]",
           NO_HOVER_UNDERLINE,

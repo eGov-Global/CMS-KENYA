@@ -16,6 +16,7 @@ import { HeroSection } from "../components/HeroSection";
 import { TypesSection } from "../components/TypesSection";
 import { HowItWorksSection } from "../components/HowItWorksSection";
 import { ChannelsSection } from "../components/ChannelsSection";
+import { HelplinesSection } from "../components/HelplinesSection";
 import { PrivacySection } from "../components/PrivacySection";
 import { NewsSection } from "../components/NewsSection";
 import { InstitutionsSection } from "../components/InstitutionsSection";
@@ -27,13 +28,15 @@ import {
   MANIFESTATION_TYPES,
   HOW_STEPS,
   CHANNELS,
+  HELPLINES,
   INSTITUTIONS,
   NAV_ITEMS,
   NewsItem,
 } from "../content";
 import { LandingRoutes } from "../routes";
-import { buildRichItems, safeMediaSrc } from "./resolve";
-import type { LandingMediaConfig, LandingSectionConfig } from "./types";
+import { buildRichItems, mediaUrl, withItems } from "./resolve";
+import type { LandingSectionConfig } from "./types";
+import { EDITORIAL_SECTIONS } from "../variants/editorial";
 
 export type Slot = "header" | "main" | "footer";
 
@@ -41,6 +44,15 @@ export interface RenderCtx {
   routes: LandingRoutes;
   news: NewsItem[];
   heroImageUrl?: string;
+  /** Narrow-viewport cut of the hero photo (srcSet); only used with heroImageUrl. */
+  heroImageSmallUrl?: string;
+  /** Photo for the circular artwork beside the channels title. */
+  bandImageUrl?: string;
+  /** Portrait of a resident for the closing call to action. */
+  personImageUrl?: string;
+  /** Square cuts for the two circular photo orbs. */
+  stepsOrbImageUrl?: string;
+  channelsOrbImageUrl?: string;
   emblemUrl?: string;
   footerLogoUrl?: string;
 }
@@ -51,19 +63,7 @@ export interface SectionEntry {
   buildProps: (section: LandingSectionConfig, ctx: RenderCtx) => Record<string, any>;
 }
 
-/** media.imageId as a direct URL passes through (see safeMediaSrc); a bare
- *  filestore id is left for the P2 media phase and ignored here, so the
- *  section falls back to its default (no image). */
-function mediaUrl(media?: LandingMediaConfig): string | undefined {
-  return safeMediaSrc(media?.imageId);
-}
 
-/** section with its items normalised to the rich runtime shape (or left absent
- *  so the leaf uses its default array). */
-const withItems = (s: LandingSectionConfig, def: any[], routes: LandingRoutes): LandingSectionConfig => ({
-  ...s,
-  items: buildRichItems(s.items, def, routes as unknown as Record<string, string>) as any,
-});
 
 export const SECTION_REGISTRY: Record<string, SectionEntry> = {
   navigation: {
@@ -82,11 +82,17 @@ export const SECTION_REGISTRY: Record<string, SectionEntry> = {
     // P4 (approved adapter tweak): hero trust "features" are items-driven when
     // config provides items[]; icons resolve through the whitelist. CTAs stay
     // application behavior (fixed destinations).
-    buildProps: (s, ctx) => ({
-      routes: ctx.routes,
-      imageUrl: mediaUrl(s.media) ?? ctx.heroImageUrl,
-      section: withItems(s, [], ctx.routes),
-    }),
+    buildProps: (s, ctx) => {
+      const configured = mediaUrl(s.media);
+      return {
+        routes: ctx.routes,
+        imageUrl: configured ?? ctx.heroImageUrl,
+        // The small cut belongs to the shipped photo only; a configured image
+        // has no sibling, so it is dropped rather than mismatched.
+        imageSmallUrl: configured ? undefined : ctx.heroImageSmallUrl,
+        section: withItems(s, [], ctx.routes),
+      };
+    },
   },
   types: {
     Component: TypesSection,
@@ -96,12 +102,24 @@ export const SECTION_REGISTRY: Record<string, SectionEntry> = {
   steps: {
     Component: HowItWorksSection,
     slot: "main",
-    buildProps: (s, ctx) => ({ section: withItems(s, HOW_STEPS, ctx.routes) }),
+    // Square cut so the circular orb isn't a heavy crop of a wide photo;
+    // falls back to the hero image when a deployment ships no square asset.
+    buildProps: (s, ctx) => ({ orbImageUrl: mediaUrl(s.media) ?? ctx.stepsOrbImageUrl ?? ctx.heroImageUrl, section: withItems(s, HOW_STEPS, ctx.routes) }),
   },
   channels: {
     Component: ChannelsSection,
     slot: "main",
-    buildProps: (s, ctx) => ({ routes: ctx.routes, section: withItems(s, CHANNELS, ctx.routes) }),
+    buildProps: (s, ctx) => ({
+      routes: ctx.routes,
+      orbImageUrl: mediaUrl(s.media) ?? ctx.channelsOrbImageUrl ?? ctx.bandImageUrl,
+      personImageUrl: ctx.personImageUrl,
+      section: withItems(s, CHANNELS, ctx.routes),
+    }),
+  },
+  helplines: {
+    Component: HelplinesSection,
+    slot: "main",
+    buildProps: (s, ctx) => ({ routes: ctx.routes, section: withItems(s, HELPLINES, ctx.routes) }),
   },
   privacy: {
     Component: PrivacySection,
@@ -116,7 +134,12 @@ export const SECTION_REGISTRY: Record<string, SectionEntry> = {
   institutions: {
     Component: InstitutionsSection,
     slot: "main",
-    buildProps: (s, ctx) => ({ section: withItems(s, INSTITUTIONS, ctx.routes) }),
+    buildProps: (s, ctx) => ({
+      routes: ctx.routes,
+      // Phone-only photo card: the small hero cut phones already downloaded.
+      photoUrl: ctx.heroImageSmallUrl ?? ctx.heroImageUrl,
+      section: withItems(s, INSTITUTIONS, ctx.routes),
+    }),
   },
   cta: {
     Component: FinalCtaSection,
@@ -132,12 +155,31 @@ export const SECTION_REGISTRY: Record<string, SectionEntry> = {
     buildProps: (s, ctx) => ({
       routes: ctx.routes,
       logoUrl: mediaUrl(s.media) ?? ctx.footerLogoUrl,
+      emblemUrl: ctx.emblemUrl,
       section: s,
     }),
   },
 };
 
-export function getEntry(type?: string): SectionEntry | undefined {
+/** Page layouts. "classic" is the registry above (the Bonga Nai page);
+ *  "editorial" (the Bomet Feedback Hub) swaps in the components under
+ *  variants/editorial for the types it restyles and keeps the rest. A layout
+ *  changes composition only: every section still reads the same config rows,
+ *  copy keys, routes and media, so the Builder and the seeds are shared. */
+export type LandingLayout = "classic" | "editorial";
+
+export const LANDING_LAYOUTS: readonly LandingLayout[] = ["classic", "editorial"];
+
+const LAYOUT_OVERRIDES: Record<LandingLayout, Partial<Record<string, SectionEntry>>> = {
+  classic: {},
+  editorial: EDITORIAL_SECTIONS,
+};
+
+export function isLandingLayout(v: unknown): v is LandingLayout {
+  return typeof v === "string" && (LANDING_LAYOUTS as readonly string[]).includes(v);
+}
+
+export function getEntry(type?: string, layout: LandingLayout = "classic"): SectionEntry | undefined {
   if (!type) return undefined;
-  return SECTION_REGISTRY[type];
+  return LAYOUT_OVERRIDES[layout]?.[type] ?? SECTION_REGISTRY[type];
 }

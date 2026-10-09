@@ -45,6 +45,9 @@ globalConfigs:
   finEnv: "dev"
   centralInstanceEnabled: false
   footerBWLogoURL: "/digit-ui/brand/digit-footer-bw.png"
+  # Browser tab before the app boots; empty = neutral "DIGIT" until the tenant localisation (CORE_APP_TITLE) is in.
+  appTitle: ""
+  faviconUrl: ""
   footerLogoURL: "/digit-ui/brand/digit-footer.png"
   digitHomeURL: "https://www.digit.org/"
   assetS3Bucket: ""

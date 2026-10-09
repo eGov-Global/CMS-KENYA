@@ -2,6 +2,7 @@ import { useQuery, useQueryClient } from "react-query";
 import { useMemo } from "react";
 import { Request } from "@egovernments/digit-ui-libraries";
 import { EV, trackE } from "../../utils/analytics";
+import { slaDaysRemaining } from "../../utils/sla";
 
 // ── Behaviour analytics for the inbox search ──
 // Only a USER-FILTERED search counts (never the default inbox load, never
@@ -167,16 +168,7 @@ const usePGRInboxSearch = (reqCriteria) => {
         if (d?.serviceCode != null && d?.slaHours != null) slaHoursByCode[d.serviceCode] = Number(d.slaHours);
       });
     }
-    const DAY_MS = 24 * 60 * 60 * 1000;
-    const HOUR_MS = 60 * 60 * 1000;
-    // Uniform business-level SLA fallback for complaint types with no per-type
-    // slaHours = pgr.business.level.sla (432000000 ms / 5 days) — the SAME default
-    // pgr-services' SLA ORDER BY uses (PGRQueryBuilder.addOrderByClause →
-    // config.getBusinessLevelSla), so display and server sort stay consistent.
-    // The previous fallback read the workflow ProcessInstance's business-service
-    // SLA (pi.businesssServiceSla) instead — a DIFFERENT, larger budget that
-    // showed e.g. 14 days for a 5-day complaint (issue #432).
-    const DEFAULT_SLA_MS = 432000000;
+    // SLA budget/fallback live in utils/sla.js, shared with the employee home.
 
     return {
       items: wrappers.map((sw) => {
@@ -185,13 +177,7 @@ const usePGRInboxSearch = (reqCriteria) => {
         // (option 1 in the #432 thread: whole-complaint SLA, per type, from creation).
         // Falls back to the uniform business-level SLA when a type has no slaHours, so
         // the column never goes blank and stays consistent with the server-side sort.
-        const slaHours = slaHoursByCode[sw.service?.serviceCode];
-        const createdTime = sw.service?.auditDetails?.createdTime;
-        let slaDays = null;
-        if (createdTime != null) {
-          const budgetMs = slaHours != null ? slaHours * HOUR_MS : DEFAULT_SLA_MS;
-          slaDays = Math.round((budgetMs - (Date.now() - createdTime)) / DAY_MS);
-        }
+        const slaDays = slaDaysRemaining(sw.service?.auditDetails?.createdTime, slaHoursByCode[sw.service?.serviceCode]);
         return {
           businessObject: { service: sw.service, serviceSla: slaDays },
           ProcessInstance: pi,

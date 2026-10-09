@@ -12,7 +12,7 @@
 // employee Create Complaint form uses (PR #38). It reads the cascading
 // hierarchy from `boundaryHierarchyOrder` in SessionStorage (populated
 // by `usePGRInitialization` on module mount) and renders one Dropdown
-// per level, e.g. County → Sub-County → Ward on Nairobi.
+// per level, e.g. County → Sub-County → Ward on Bomet.
 
 export const complaintsLocation = {
   head: "CS_ADDCOMPLAINT_COMPLAINT_LOCATION",

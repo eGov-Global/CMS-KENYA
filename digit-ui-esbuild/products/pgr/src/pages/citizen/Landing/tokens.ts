@@ -14,23 +14,25 @@
 // the whole page without touching this file, while the page still renders a
 // complete government identity with zero configuration.
 //
-// Default palette: County Government of Bomet blues, contrast-checked for
-// WCAG 2.2 AA. The hex value and role of each colour is noted inline below.
+// Default palette: County Government of Bomet brand — the county blue of the
+// live theme (header, buttons, links) with a deep navy for the hero and footer
+// and a soft blue tint for bands. Contrast-checked for WCAG 2.2 AA; hex and
+// role noted inline below.
 
 import * as React from "react";
 
 export interface LandingTokens {
-  /** Brand blue — headers, nav, primary emphasis. AA on white for normal text. */
+  /** Brand green — headers, nav, primary emphasis. AA on white for normal text. */
   primary: string;
-  /** Hover state for primary-coloured buttons and links (darker blue). */
+  /** Hover state for primary-coloured buttons and links (darker green). */
   primaryHover: string;
-  /** Secondary green. Reserved; nothing on the page uses it at the moment. */
+  /** Secondary burgundy. Reserved; nothing on the page uses it at the moment. */
   secondary: string;
-  /** Deep navy — hero, footer, final CTA band. */
+  /** Deepest green — hero, footer, final CTA band. */
   deep: string;
-  /** Light blue — primary CTAs, active nav indicator. Dark text only. */
+  /** County gold — primary CTAs, active nav indicator. Dark text only. */
   accent: string;
-  /** Accent hover state (slightly darker blue). */
+  /** Accent hover state (slightly darker gold). */
   accentHover: string;
   /** Text on primary/deep surfaces. */
   onPrimary: string;
@@ -48,6 +50,10 @@ export interface LandingTokens {
   line: string;
   /** Focus ring on light surfaces. */
   ring: string;
+  /** Soft brand tint — section bands, icon tiles, hover fills. */
+  tint: string;
+  /** Soft gold tint — highlights that should not shout. */
+  tintGold: string;
   /** Card accent tints. Names are historical; content.ts decides which service
    *  area uses which one (see MANIFESTATION_TYPES accentVar). */
   typeComplaint: string;
@@ -76,9 +82,11 @@ export const DEFAULT_LANDING_TOKENS: LandingTokens = {
   page: "0 0% 98%",             // #FAFAFA
   line: "30 2% 84%",            // #D6D5D4
   ring: "207 78% 37%",
-  typeComplaint: "210 60% 36%",
-  typeGrievance: "28 85% 38%",
-  typePetition: "275 45% 42%",
+  tint: "204 70% 94%",          // #E4F1FA  soft blue band / icon tiles
+  tintGold: "204 70% 94%",      // no gold in the Bomet palette: the same soft blue
+  typeComplaint: "210 60% 36%", // Health Services
+  typeGrievance: "28 85% 38%",  // Administration & Governance
+  typePetition: "275 45% 42%",  // Water & Sanitation
   typeReport: "0 65% 42%",
   radius: "0.375rem",
 };
@@ -127,6 +135,6 @@ export const NO_HOVER_UNDERLINE = "[&_a:hover]:!no-underline";
 export const FOCUS_RING =
   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--pgrl-ring))] focus-visible:ring-offset-2";
 
-/** Focus ring for interactive elements on the dark blue surfaces. */
+/** Focus ring for interactive elements on the dark green surfaces. */
 export const FOCUS_RING_DARK =
   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--pgrl-accent))] focus-visible:ring-offset-2 focus-visible:ring-offset-transparent";

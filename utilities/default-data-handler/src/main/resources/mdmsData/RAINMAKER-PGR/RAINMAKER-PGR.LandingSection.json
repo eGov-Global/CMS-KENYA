@@ -46,6 +46,14 @@
     "titleKey": "PGR_LANDING_CHANNELS_TITLE"
   },
   {
+    "code": "helplines",
+    "type": "helplines",
+    "order": 65,
+    "status": "PUBLISHED",
+    "enabled": true,
+    "titleKey": "PGR_LANDING_HELPLINES_TITLE"
+  },
+  {
     "code": "privacy",
     "type": "privacy",
     "order": 70,
@@ -58,7 +66,7 @@
     "type": "news",
     "order": 80,
     "status": "PUBLISHED",
-    "enabled": true,
+    "enabled": false,
     "titleKey": "PGR_LANDING_NEWS_TITLE"
   },
   {
@@ -74,7 +82,7 @@
     "type": "cta",
     "order": 100,
     "status": "PUBLISHED",
-    "enabled": true,
+    "enabled": false,
     "titleKey": "PGR_LANDING_FINAL_CTA_TITLE"
   },
   {

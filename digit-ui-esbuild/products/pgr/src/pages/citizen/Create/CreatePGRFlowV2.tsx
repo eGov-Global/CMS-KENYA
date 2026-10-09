@@ -40,6 +40,7 @@ import {
   Input,
   Select,
 } from "@egovernments/digit-ui-components-v2";
+import { compareLabels, sortByLabel } from "../../../utils/sortByLabel";
 
 /**
  * Resolve a translation key with an English fallback.
@@ -131,13 +132,19 @@ interface FormData {
   resolvedTenantId?: string; // sub-tenant the complaint files under (ComplaintRelatedToMap.tenantCode)
   dynamicFields?: Record<string, unknown>;
   consents?: string[];
-  isConfidential?: boolean; // doc "Keep details confidential" (backend-enforced later)
+  isConfidential?: boolean; // "Keep details confidential" — backend masks the complainant for staff
   // Reporter identity (step 1, optional, prefilled from the citizen profile).
   // Travels in extendedAttributes — deliberately NOT citizen.name: posting an
   // edited name back to the user service triggers its masked-update rejection.
   complainantName?: string;
   complainantAddress?: string;
   email?: string;
+  // Optional free-text address. Persisted as service.address.street — a
+  // first-class column — NOT via extendedAttributes, which only exists when a
+  // Mozambique category resolved and which pgr-services rejects outright on a
+  // tenant with no ComplaintTemplateType row (#43). Verified end-to-end
+  // against the API for both the citizen and employee personas (#21).
+  street?: string;
 }
 
 // RAINMAKER-PGR.ComplaintRelatedToMap — the citizen-facing category lookup. Maps
@@ -224,6 +231,15 @@ const REQUIRED_CONSENTS: ReadonlyArray<{ code: string; labelKey: string; label: 
   { code: "DATA_PROCESSING", labelKey: "PGR_CONSENT_DATA_PROCESSING_LABEL", label: "I consent to my data being processed to handle this complaint." },
 ];
 
+// Terms & Conditions acceptance, required on EVERY complaint (not only the
+// dispatcher flow): the county uses the complainant's contact details to send
+// updates on the complaint, and needs that agreed at submission.
+const TERMS_CONSENT = {
+  code: "TERMS_CONDITIONS",
+  labelKey: "PGR_CONSENT_TERMS_LABEL",
+  label: "I agree to the Terms & Conditions and to the county using my contact details to send me updates on this complaint.",
+} as const;
+
 // Consistent checkbox styling: fixed-size box with a theme-accent (centered native
 // tick), nudged to align with the first line of the label text.
 const CHECKBOX_STYLE: React.CSSProperties = {
@@ -245,6 +261,8 @@ interface StepShellProps {
 // Consolidated 3-step wizard (was 6 screens). Each step groups what used to be
 // separate screens so the citizen reaches Submit in far fewer taps:
 //   complaint — "what is it about?" (related-to dispatcher) + the complaint type
+//               + the optional free-text address (UAT ask: describe the spot
+//               while describing the issue)
 //   where     — map pin + ward (auto-cascaded from the pin) + landmark
 //   details   — description + dynamic category fields + photos + consents → submit
 const STEPS = [
@@ -349,12 +367,18 @@ function mapFormDataToRequest(formData: FormData, tenantId: string, user: any, d
   const userInfo = user;
   // FLAT extendedAttributes (doc §2/§5) ride at the TOP LEVEL of service —
   // jsonPath $.service.extendedAttributes (a dedicated JSONB column), NOT nested
-  // under additionalDetail. Built only when a category was resolved (legacy flow
-  // unchanged). complainantAddress/email travel here too but the backend strips
+  // under additionalDetail. Built when a category was resolved, or as the bare
+  // confidentiality flag. complainantAddress/email travel here too but the backend strips
   // them to the User Service (eg_user_address / eg_user.emailaddress) — they are
   // not stored as category data. NOTE: x-security fields are submitted in clear
   // text until the backend encryption phase lands.
   const additionalDetail: Record<string, unknown> = {};
+  // The accepted consents (at least the mandatory Terms & Conditions) are
+  // recorded on every complaint. additionalDetail is the one free-form slot
+  // the backend accepts without a category template; on create it only adds
+  // its own keys (department, serviceName) on top of what is sent here.
+  additionalDetail.consents = formData.consents || [];
+  additionalDetail.consentsAcceptedAt = timestamp;
   let extendedAttributes: Record<string, unknown> | undefined;
   if (formData?.caseRelatedTo) {
     const sct: any = formData.SelectComplaintType;
@@ -375,6 +399,10 @@ function mapFormDataToRequest(formData: FormData, tenantId: string, user: any, d
       consents: formData.consents || [],
       ...(formData.dynamicFields || {}),
     };
+  } else if (formData.isConfidential) {
+    // No category template, but the citizen asked for confidentiality: the
+    // backend accepts the flag on its own and masks the complainant for staff.
+    extendedAttributes = { isConfidential: true };
   }
   const geoLocation = formData?.GeoLocationsPoint || { lat: null, lng: null };
   return {
@@ -394,7 +422,7 @@ function mapFormDataToRequest(formData: FormData, tenantId: string, user: any, d
       address: {
         landmark: validateString(formData?.landmark),
         buildingName: "",
-        street: "",
+        street: validateString(formData?.street),
         locality: {
           // SelectedBoundary FIRST: it is the confirmed cascade value (a real
           // boundary-tree code, and the user's manual correction when they
@@ -412,9 +440,13 @@ function mapFormDataToRequest(formData: FormData, tenantId: string, user: any, d
         }),
       },
       // Top-level service.extendedAttributes (doc jsonPath $.service.extendedAttributes).
-      // Attached only when a category resolved; legacy/no-category flow is unchanged.
+      // Attached when a category resolved or the citizen asked for confidentiality.
       ...(extendedAttributes ? { extendedAttributes } : {}),
-      additionalDetail: JSON.stringify(additionalDetail),
+      // An OBJECT, not a JSON string: pgr-services' extractAdditionalDetails keeps
+      // Map-shaped payloads only — a string parses as nothing and the consents
+      // would be lost whenever auto-assignment (which re-sends it as an object)
+      // does not resolve.
+      additionalDetail,
       auditDetails: {
         createdBy: user?.uuid,
         createdTime: timestamp,
@@ -602,16 +634,22 @@ function ComplaintHierarchyPicker({
     if (lvl.isLeafServiceCode) {
       // Leaf rows link to their parent node strictly via parentCode (single
       // adjacency list); no separate sector/menuPath master anymore.
-      return (serviceDefs || [])
-        .filter((s) => (parentCode ? s.parentCode === parentCode : true))
-        .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
-        .map((s) => ({ value: s.serviceCode, label: complaintLabel(t, s.serviceCode, s.name) }));
+      // A–Z by the displayed label (UAT ask) — the configurator's `order` is
+      // not applied on this fork; "Others" stays last (see sortByLabel).
+      return sortByLabel(
+        (serviceDefs || [])
+          .filter((s) => (parentCode ? s.parentCode === parentCode : true))
+          .map((s) => ({ value: s.serviceCode, label: complaintLabel(t, s.serviceCode, s.name) })),
+        (o) => o.label
+      );
     }
-    return (nodes || [])
-      .filter((n) => n.levelCode === lvl.levelCode && n.active !== false)
-      .filter((n) => (i === 0 ? !n.parentCode : n.parentCode === parentCode))
-      .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
-      .map((n) => ({ value: n.code, label: complaintLabel(t, n.code, n.name) }));
+    return sortByLabel(
+      (nodes || [])
+        .filter((n) => n.levelCode === lvl.levelCode && n.active !== false)
+        .filter((n) => (i === 0 ? !n.parentCode : n.parentCode === parentCode))
+        .map((n) => ({ value: n.code, label: complaintLabel(t, n.code, n.name) })),
+      (o) => o.label
+    );
   };
 
   const optionsForLevel = (i: number) => optionsForLevelWith(sel, i);
@@ -777,16 +815,19 @@ function Step0Type({ data, patch, serviceDefs, hierarchyDef, nodes, t }: StepBod
         // Group label = key-based (COMPLAINT_HIERARCHY.<parentCode>) with the
         // parent node name as fallback.
         menuPathName: complaintLabel(t, s.menuPath, s.menuPathName),
-      }));
+      }))
+      // A–Z by the label the citizen actually reads (UAT ask); "Others" last.
+      .sort((a, b) => compareLabels(a.menuPathName, b.menuPathName));
   }, [serviceDefs, t]);
 
   const subTypes = React.useMemo(() => {
     const mp = data.SelectComplaintType?.menuPath;
     if (!mp) return [];
-    return serviceDefs
-      .filter((s) => s.menuPath === mp)
-      .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
-  }, [data.SelectComplaintType?.menuPath, serviceDefs]);
+    return sortByLabel(
+      serviceDefs.filter((s) => s.menuPath === mp),
+      (s: ServiceDef) => complaintLabel(t, s.serviceCode, s.name)
+    );
+  }, [data.SelectComplaintType?.menuPath, serviceDefs, t]);
 
   return (
     // QA #11: collapsible removed — the section is always expanded.
@@ -1128,19 +1169,21 @@ function Step3Description({ data, patch, templateFields, t }: StepBodyProps) {
 
         {/* Complainant name + address + email moved to step 1 (ReporterDetailsCard, prefilled). */}
 
-        {extended ? (
-          <div className="space-y-2">
+        <div className="space-y-2">
             {/* Consents are EXPLICIT at create (CCSD-1979 revisited: show at
                 create; hidden only on the details/view screens — CCSD-1988).
                 CCSD-2072: group the mandatory consents under an OBRIGATÓRIO
-                header and the confidential opt-in under OPCIONAL. */}
+                header and the confidential opt-in under OPCIONAL.
+                The Terms & Conditions consent is mandatory for every tenant and
+                the confidential opt-in is always offered; the dispatcher-flow
+                declarations show only when a category template is in play. */}
             <div className="text-xs font-semibold uppercase tracking-wide" style={{ color: PRIMARY }}>
               {tr(t, "PGR_CONSENT_SECTION_MANDATORY", "Mandatory")}
               <span className="ml-0.5" style={{ color: "var(--color-error, #d4351c)" }} aria-hidden>
                 *
               </span>
             </div>
-            {REQUIRED_CONSENTS.map((c) => (
+            {[...(extended ? REQUIRED_CONSENTS : []), TERMS_CONSENT].map((c) => (
               <label key={c.code} className="flex items-start gap-2 text-sm">
                 <input
                   type="checkbox"
@@ -1170,12 +1213,11 @@ function Step3Description({ data, patch, templateFields, t }: StepBodyProps) {
               <span>
                 {tr(t, "PGR_EXT_IS_CONFIDENTIAL_LABEL", "Keep details confidential.")}{" "}
                 <span className="text-muted-foreground">
-                  {tr(t, "PGR_EXT_IS_CONFIDENTIAL_HINT", "Visibility is enforced once secure handling is enabled; for now this flags the complaint for staff awareness.")}
+                  {tr(t, "PGR_EXT_IS_CONFIDENTIAL_HINT", "Your name and phone number are not shown to the county officers handling this complaint.")}
                 </span>
               </span>
             </label>
-          </div>
-        ) : null}
+        </div>
       </div>
     </StepShell>
   );
@@ -1359,6 +1401,35 @@ function InlineSpinner() {
 // the logged-in citizen's profile (name + address editable per complaint). The
 // values travel in extendedAttributes (complainantName/complainantAddress), so
 // editing them never round-trips through the user service.
+// Optional free-text address, shown on EVERY tenant — its own card on step 1,
+// right under the complaint type (the citizen describes the spot while
+// describing the issue; the map pin and ward follow on step 2).
+//
+// Kept separate from ReporterDetailsCard: that card's three fields (name /
+// address / email) travel in extendedAttributes and are therefore unusable on
+// a tenant with no category dispatcher (#51). This one writes
+// service.address.street, a first-class column every tenant persists, so the
+// citizen and employee create forms can offer the same optional address and
+// both details pages can render it (#21).
+function AddressCard({ data, patch, t }: StepBodyProps) {
+  const label = tr(t, "ES_CREATECOMPLAINT_ADDRESS", "Address");
+  return (
+    <StepShell
+      title={label}
+      description={tr(t, "CS_ADDRESS_HELP", "Optional — a nearby building, plot or description to help the officer find the spot.")}
+    >
+      <Input
+        id="complaint-address"
+        aria-label={label}
+        data-matomo-mask
+        maxLength={300}
+        value={data.street ?? ""}
+        onChange={(e) => patch({ street: e.target.value })}
+      />
+    </StepShell>
+  );
+}
+
 function ReporterDetailsCard({ data, patch, t }: StepBodyProps) {
   React.useEffect(() => {
     const info = Digit.UserService.getUser()?.info;
@@ -1433,9 +1504,33 @@ function StepComplaint(props: StepBodyProps) {
       />
       {/* Single-authority: the one option is auto-selected upstream — no picker. */}
       {hasDispatcher && (relatedToOptions?.length ?? 0) > 1 ? <RelatedToStepBody {...props} /> : null}
-      <ReporterDetailsCard {...props} />
+      {/* Every value this card collects (name / address / email) travels ONLY
+          inside service.extendedAttributes, which is built solely when a
+          category resolved (see the caseRelatedTo block in mapFormDataToRequest).
+          A tenant with no dispatcher therefore cannot persist any of them, so
+          rendering the card there asks the citizen to fill three fields that
+          are silently discarded on submit (#51) — and the address in
+          particular is then missing from the details page, which is what QA
+          reported on #21.
+          Not fixable by moving the fields out of that block: pgr-services
+          throws INVALID_CASE_RELATED_TO for ANY non-null extendedAttributes
+          whose caseRelatedTo has no ComplaintTemplateType row (PGRService
+          ~L119-125), and Bomet seeds none — so sending them would fail the
+          create outright (#43). The user-service write that stores the address
+          (EnrichmentService.enrichUserContactDetails) is itself gated on
+          extendedAttributes being present, so persisting it on a
+          dispatcher-less tenant needs a backend change, not a frontend one.
+          Until then, don't collect what we cannot keep. */}
+      {hasDispatcher ? <ReporterDetailsCard {...props} /> : null}
       {showType ? (
-        catalogueLoading ? <InlineSpinner /> : <Step0Type {...props} />
+        catalogueLoading ? (
+          <InlineSpinner />
+        ) : (
+          <>
+            <Step0Type {...props} />
+            <AddressCard {...props} />
+          </>
+        )
       ) : (
         <EmptyStateCard t={t} />
       )}
@@ -1444,7 +1539,8 @@ function StepComplaint(props: StepBodyProps) {
 }
 
 // Step 2 — "Where": ONE unified card with the map (left, larger) and Location
-// details (right). flex-wrap stacks them on mobile (no Tailwind md: needed).
+// details (right: ward cascade + landmark; the free-text address lives on
+// step 1). flex-wrap stacks them on mobile (no Tailwind md: needed).
 // align-items:flex-start keeps the form pinned top-right beside the capped map.
 function StepWhere(props: StepBodyProps) {
   return (
@@ -1878,6 +1974,8 @@ const CreatePGRFlowV2: React.FC = () => {
         if (formData.caseRelatedTo && REQUIRED_CONSENTS.some((c) => !(formData.consents || []).includes(c.code))) {
           return "ConsentRequired";
         }
+        // Terms & Conditions must be accepted on every complaint.
+        if (!(formData.consents || []).includes(TERMS_CONSENT.code)) return "ConsentRequired";
         return null;
       }
       default:

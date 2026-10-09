@@ -78,6 +78,11 @@ export const DigitApp = ({ stateCode, modules, appTenants, logoUrl, logoUrlWhite
   const PGRLandingPage = Digit?.ComponentRegistryService?.getComponent?.("PGRLandingPage");
   // Public privacy-policy page — also shell-free; linked from the landing.
   const PGRPrivacyPolicy = Digit?.ComponentRegistryService?.getComponent?.("PGRPrivacyPolicy");
+  // Role-tiered employee home (PGR module). Shell-free like the landing: it
+  // renders its own sidebar, so mounting it inside EmployeeApp would double
+  // the chrome. Absent when PGR isn't enabled, in which case the usual
+  // /employee route below still serves upstream's card grid.
+  const PGREmployeeHomeV2 = Digit?.ComponentRegistryService?.getComponent?.("PGREmployeeHomeV2");
   let sourceUrl = `${window.location.origin}/citizen`;
   const commonProps = {
     stateInfo,
@@ -108,6 +113,11 @@ export const DigitApp = ({ stateCode, modules, appTenants, logoUrl, logoUrlWhite
       {PGRPrivacyPolicy && (
         <Route exact path={`/${window?.contextPath}/privacy-policy`}>
           <PGRPrivacyPolicy />
+        </Route>
+      )}
+      {PGREmployeeHomeV2 && allowedUserTypes?.some((userType) => userType == "employee") && (
+        <Route exact path={`/${window?.contextPath}/employee/home-v2`}>
+          <PGREmployeeHomeV2 />
         </Route>
       )}
      {allowedUserTypes?.some(userType=>userType=="employee")&& <Route path={`/${window?.contextPath}/employee`}>

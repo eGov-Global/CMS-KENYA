@@ -360,9 +360,34 @@ const Home = ({
         )}
 
         <Switch>
-          <Route exact path={path}>
-            <CitizenHome />
-          </Route>
+          {/* #44 (Kenya product call): an anonymous visitor to the bare
+              /citizen route used to render CitizenHome, whose effect then
+              bounced them to the module home (pgr-home) — a public page from
+              which they still had to find "Login". Product wants them on the
+              login page straight away. A declarative Redirect (same shape as
+              the /user/profile gate below) rather than a push from inside
+              CitizenHome, so no home-page frame renders before the navigation
+              — the transient this ticket originally reported. Post-login,
+              Login honours `from` and already routes a citizen with no home
+              city through select-location, so the bootstrap path is intact.
+              Logged-in visitors are unchanged. Deliberately gates ONLY this
+              route: /citizen/pgr-home stays reachable by direct URL. */}
+          <Route
+            exact
+            path={path}
+            render={({ location }) =>
+              Digit.UserService.getUser()?.access_token ? (
+                <CitizenHome />
+              ) : (
+                <Redirect
+                  to={{
+                    pathname: `${path}/login`,
+                    state: { from: location.pathname + location.search },
+                  }}
+                />
+              )
+            }
+          />
 
           <Route exact path={`${path}/select-language`}>
             <LanguageSelection />

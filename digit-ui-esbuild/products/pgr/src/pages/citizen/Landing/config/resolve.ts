@@ -6,7 +6,7 @@
 
 import { resolveIcon } from "./iconRegistry";
 import type { IconComponent } from "../content";
-import type { LandingItemConfig, LandingSectionConfig } from "./types";
+import type { LandingItemConfig, LandingMediaConfig, LandingSectionConfig } from "./types";
 
 // ---------------------------------------------------------------------------
 // Links
@@ -207,3 +207,21 @@ export function orderSections(
   }
   return visible.slice().sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
 }
+
+// ---------------------------------------------------------------------------
+// Registry adapters — shared by every layout's section entries
+// ---------------------------------------------------------------------------
+
+/** media.imageId as a direct URL passes through (see safeMediaSrc); a bare
+ *  filestore id is left for the P2 media phase and ignored here, so the
+ *  section falls back to its default (no image). */
+export function mediaUrl(media?: LandingMediaConfig): string | undefined {
+  return safeMediaSrc(media?.imageId);
+}
+
+/** section with its items normalised to the rich runtime shape (or left absent
+ *  so the leaf uses its default array). */
+export const withItems = (s: LandingSectionConfig, def: any[], routes: object): LandingSectionConfig => ({
+  ...s,
+  items: buildRichItems(s.items, def, routes as Record<string, string>) as any,
+});

@@ -1,18 +1,36 @@
 import { useTranslation } from "react-i18next";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo } from "react";
 import { Dropdown, Loader } from "@egovernments/digit-ui-components";
+import { narrowByJurisdiction } from "../utils/autoAssign";
+import useFetchBoundaries from "../hooks/boundary/useFetchBoundaries";
 
-const AssigneeComponent = ({ config, onSelect, formState, defaultValues }) => {
+const AssigneeComponent = ({ config, onSelect, formData }) => {
   const { t } = useTranslation();
-  const [assignees, setAssignees] = useState([]);
-  const [selectedEmployee, setSelectedEmployee] = useState(null);
   const tenantId = Digit.ULBService.getCurrentTenantId();
   const hrmsContext = window?.globalConfigs?.getConfig("HRMS_CONTEXT_PATH") || "egov-hrms";
 
   // Get roles from config populators. `allDepartments` is true only for a
   // CMS_SCREENING_OFFICER, who routes across EVERY department in the tenant;
   // everyone else stays scoped to the single primary `department`.
-  const { roles = [], department, allDepartments } = config?.populators || {};
+  // `localityCode` is the complaint's leaf boundary — the jurisdiction axis
+  // Bomet routes on (department + jurisdiction). Absent on tenants that route
+  // by department alone, which leaves the jurisdiction gate a no-op.
+  // `preferredUuid` (escalation) is pre-selected when that person is in the
+  // filtered list; otherwise the officer picks as usual.
+  const { roles = [], department, allDepartments, localityCode, preferredUuid } = config?.populators || {};
+
+  // Jurisdiction coverage is a property of the boundary TREE (an officer
+  // assigned the sub-county covers every ward beneath it), so the filter needs
+  // the hierarchy, not just the leaf code. Shares the react-query cache key
+  // BoundaryComponent and useAutoAssignment already populate, so this is
+  // normally a cache hit rather than a third fetch. Never gates rendering: if
+  // it hasn't landed, narrowByJurisdiction widens to the full list.
+  const { data: boundaryData } = useFetchBoundaries(tenantId, {
+    staleTime: 10 * 60 * 1000,
+    retry: false,
+    refetchOnWindowFocus: false,
+    enabled: !!tenantId && !!localityCode,
+  });
 
   // Fetch employee data based on roles
   // Staff lists change on the scale of HRMS edits, not seconds. The hook's
@@ -31,6 +49,7 @@ const AssigneeComponent = ({ config, onSelect, formState, defaultValues }) => {
     params: {
       tenantId: tenantId,
       roles: roles.join(","),
+      isActive: true,
     },
     changeQueryName: `hrms-assignees-${tenantId}-${roles.join(",")}`,
     options: {
@@ -79,8 +98,9 @@ const AssigneeComponent = ({ config, onSelect, formState, defaultValues }) => {
   
   
 
-  // Update assignees when employee data changes
-  useEffect(() => {
+  // Eligible assignees, derived in render so the list and the selection below
+  // are always computed from the same data.
+  const assignees = useMemo(() => {
     if (employeeData?.Employees?.length > 0) {
       // Screening officer (allDepartments): NO department filter — list every
       // department's assignable employees (transformData groups them by
@@ -89,23 +109,65 @@ const AssigneeComponent = ({ config, onSelect, formState, defaultValues }) => {
       // pgr-services skips its department validation for these, so the actor may
       // route to ANY department — filtering by "NA" would empty the dropdown.
       const unscoped = allDepartments || !department || department === "NA";
+      // Deactivated employees are asked away server-side (isActive=true above);
+      // this guard keeps them out even where HRMS ignores that param.
       const filtered = employeeData.Employees.filter((e) => {
         const d = e?.assignments?.[0]?.department;
-        if (!d || !e?.user?.uuid) return false;
+        // Deactivated staff can't take a complaint (pgr-services rejects them).
+        if (!d || !e?.user?.uuid || e?.isActive === false) return false;
         return unscoped ? true : d === department;
       });
-      setAssignees(transformData(filtered));
+      // Then by JURISDICTION, the second axis Bomet routes on: an officer with
+      // no jurisdiction over the complaint's ward should not be offered as its
+      // assignee (the backend validates department but NOT jurisdiction, so
+      // this dropdown is the only gate). Applied AFTER the department filter so
+      // the two narrow together, and shared with the automatic router so manual
+      // and auto assignment can never disagree about who is eligible.
+      //
+      // Deliberately widening, not exclusive: narrowByJurisdiction returns the
+      // list UNCHANGED when no level of the boundary path has a candidate — the
+      // case on every tenant that never seeded HRMS jurisdictions. Filtering
+      // strictly there would empty the dropdown and block the action outright.
+      const { candidates } = narrowByJurisdiction({
+        employees: filtered,
+        localityCode,
+        boundaryRoots: boundaryData?.[0]?.boundary,
+        tenantId,
+      });
+      return transformData(candidates);
     }
-  }, [employeeData]);
+    return [];
+  }, [employeeData, department, allDepartments, localityCode, boundaryData, tenantId, t]);
+  const options = useMemo(() => assignees.flatMap((group) => group.options), [assignees]);
 
-  // Handle employee selection
+  // The selection IS the form's value: the action modal submits the form
+  // (its session draft), so the dropdown must show exactly that. A separate
+  // local copy drifted from it — the form resets to the draft after this
+  // component's effects run, and a value kept from an earlier opening was
+  // submitted without being shown.
+  const formValue = formData?.[config?.key];
+  const selectedEmployee = options.find((o) => o.uuid === formValue?.uuid) || null;
+
+  // Keep the value eligible: an empty value takes the pre-selection (when that
+  // person is in the list); a value not in this list — kept from another state
+  // or action — is replaced by it or cleared, so the mandatory check stops a
+  // submit instead of sending someone the officer cannot see.
+  useEffect(() => {
+    if (isEmployeeDataLoading || !config?.key) return;
+    if (formValue?.uuid && options.some((o) => o.uuid === formValue.uuid)) return;
+    const preferred = preferredUuid ? options.find((o) => o.uuid === preferredUuid) : null;
+    if (!preferred && !formValue) return;
+    // Deferred: with the staff list already cached this runs during mount,
+    // before the enclosing form Controller has registered the field (a child's
+    // effects run before its parent's), and a value set then is dropped.
+    const timer = setTimeout(() => onSelect(config.key, preferred || undefined), 0);
+    return () => clearTimeout(timer);
+  }, [isEmployeeDataLoading, options, preferredUuid, formValue?.uuid]);
+
   const handleEmployeeSelect = (employee) => {
-    setSelectedEmployee(employee);
-    if (employee && config?.key) {
-      onSelect(config.key, employee);
-    }
+    if (employee && config?.key) onSelect(config.key, employee);
   };
-  
+
 
   if (error) return <div>{t("CS_COMMON_EMPLOYEE_FETCH_ERROR")}</div>;
   if (isEmployeeDataLoading) return <Loader />;
@@ -128,6 +190,11 @@ const AssigneeComponent = ({ config, onSelect, formState, defaultValues }) => {
     );
   }
 
+  // One control: the dropdown's own input is the search box. Typing filters
+  // the department-grouped list by department OR person (the atom matches
+  // nested children, not just group headers).
+  const searchLabel = t("CS_COMMON_SEARCH_EMPLOYEE") === "CS_COMMON_SEARCH_EMPLOYEE" ? "Search by name or department" : t("CS_COMMON_SEARCH_EMPLOYEE");
+
   return (
     <div className="assignee-dropdown-container">
       <Dropdown
@@ -138,7 +205,8 @@ const AssigneeComponent = ({ config, onSelect, formState, defaultValues }) => {
         select={(value) => {
           handleEmployeeSelect(value);
         }}
-        placeholder={t("CS_COMMON_SELECT_EMPLOYEE")}
+        isSearchable
+        placeholder={searchLabel}
         label={t(config.label)}
         variant="nesteddropdown"
       />

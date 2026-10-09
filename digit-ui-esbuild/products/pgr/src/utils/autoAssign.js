@@ -21,9 +21,11 @@
 // ComplaintHierarchy leaf share). `additionalDetail.department` as written by
 // the backend on create holds the department display NAME — never match on it.
 
-// Mirrors PGRDetails' NON_ASSIGNEE_ROLES: system / non-employee actors that a
-// workflow state may list but that must never receive an assignment.
-const NON_ASSIGNEE_ROLES = new Set(["CITIZEN", "AUTO_ESCALATE", "ANONYMOUS"]);
+// Mirrors PGRDetails' NON_ASSIGNEE_ROLES (which also drops the CMS_VIEWER
+// read-only role) — SYSTEM is the actor an auto-escalating workflow puts
+// on its ESCALATE actions. System / non-employee actors that a workflow state may
+// list but that must never receive an assignment.
+const NON_ASSIGNEE_ROLES = new Set(["CITIZEN", "AUTO_ESCALATE", "ANONYMOUS", "SYSTEM"]);
 
 // The last-mile role a NEW complaint is assigned to. deriveAssigneeRoles reads
 // every role on the create target state's forward actions, which on a
@@ -33,8 +35,7 @@ const NON_ASSIGNEE_ROLES = new Set(["CITIZEN", "AUTO_ESCALATE", "ANONYMOUS"]);
 // receive it only via escalation. narrowToLastMile keeps just PGR_LME when the
 // workflow has one, and otherwise returns the derived set unchanged so a
 // single-tier tenant that routes straight to a viewer still resolves someone.
-// create-time only; reopen keeps the full set (it matches the PREVIOUS holder,
-// who legitimately may have been a viewer).
+// Used by create-time assignment (useAutoAssignment).
 export const LAST_MILE_ROLE = "PGR_LME";
 
 export const narrowToLastMile = (roles) =>
@@ -52,12 +53,20 @@ export const deriveAssigneeRoles = (businessService, action = "APPLY") => {
   const states = businessService?.states || [];
   const start = states.find((s) => s?.isStartState);
   const createAction = (start?.actions || []).find((a) => a?.action === action && a?.active !== false);
-  const nextRef = createAction?.nextState;
-  if (!nextRef) return [];
+  if (!createAction?.nextState) return [];
+  return rolesActingOn(states, createAction.nextState);
+};
+
+const isActive = (a) => a?.active !== false;
+
+// Roles that can act on the state `nextRef` points at (uuid or name): the
+// union over its forward (non-self-loop) actions, falling back to every action
+// when the state only loops on itself.
+const rolesActingOn = (states, nextRef) => {
   const nextState = states.find((s) => s?.uuid === nextRef || s?.state === nextRef);
   if (!nextState) return [];
   const isSelf = (a) => a?.nextState === nextState.uuid || a?.nextState === nextState.state;
-  const actions = (nextState.actions || []).filter((a) => a?.active !== false);
+  const actions = (nextState.actions || []).filter(isActive);
   const forward = actions.filter((a) => a?.nextState && !isSelf(a));
   const source = forward.length > 0 ? forward : actions;
   const roles = new Set();
@@ -100,7 +109,7 @@ export const boundaryAncestorCodes = (roots, localityCode) => {
 };
 
 // HRMS jurisdictions with junk boundary values exist in the field (e.g. the
-// tenant code "ke.nairobi" instead of a boundary code) — same defensive
+// tenant code "ke.bomet" instead of a boundary code) — same defensive
 // filter BoundaryComponent applies to its jurisdiction gate.
 const usableJurisdictionCodes = (employee, tenantId) =>
   (employee?.jurisdictions || [])
@@ -175,5 +184,39 @@ export const resolveAutoAssignee = ({ employees, departmentCode, localityCode, b
     };
   } catch (e) {
     return null;
+  }
+};
+
+/**
+ * Narrow a candidate list to the employees whose HRMS jurisdiction covers the
+ * complaint's locality — the jurisdiction half of resolveAutoAssignee's tier 1,
+ * factored out so the MANUAL assignee picker can apply the same rule the
+ * automatic router does. Without it, the employee dropdown listed every
+ * department member county-wide, so a reopen could be handed to an officer with
+ * no jurisdiction over the ward the complaint is in (the backend does not
+ * validate jurisdiction, so the UI is the only gate).
+ *
+ * Widening is deliberate and mirrors resolveAutoAssignee: walk the boundary
+ * path NARROWEST FIRST and return the first level that has anyone, so a ward
+ * officer is preferred over the sub-county officer above them. When no level on
+ * the path has a candidate — or the locality/boundary tree is missing, which is
+ * the norm on tenants that never seeded jurisdictions — return the input
+ * UNCHANGED rather than an empty list. An empty assignee dropdown blocks the
+ * action outright; a too-wide one is merely imprecise. Same fallback
+ * philosophy as BoundaryComponent's jurisdiction prune.
+ *
+ * @returns {{ candidates: Array, jurisdiction: string|null }}
+ */
+export const narrowByJurisdiction = ({ employees, localityCode, boundaryRoots, tenantId }) => {
+  const all = Array.isArray(employees) ? employees : [];
+  try {
+    const path = boundaryAncestorCodes(boundaryRoots, localityCode) || [];
+    for (const code of path) {
+      const atLevel = all.filter((e) => usableJurisdictionCodes(e, tenantId).includes(code));
+      if (atLevel.length > 0) return { candidates: atLevel, jurisdiction: code };
+    }
+    return { candidates: all, jurisdiction: null };
+  } catch (e) {
+    return { candidates: all, jurisdiction: null };
   }
 };

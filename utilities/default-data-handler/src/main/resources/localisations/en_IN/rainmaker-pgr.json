@@ -835,7 +835,7 @@
     },
     {
         "code": "CS_COMMON_CANCELLED",
-        "message": "Cancelled",
+        "message": "Withdrawn",
         "module": "rainmaker-pgr",
         "locale": "en_IN"
     },
@@ -1184,6 +1184,78 @@
     {
         "code": "CS_COMMON_PGR_STATE_ESCALATEDLEVEL3",
         "message": "Escalated (level 3)",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "ESCALATE_SUCCESSFULLY",
+        "message": "Escalated Successfully",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "WF_PGR_ESCALATE",
+        "message": "Escalated",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "WITHDRAW",
+        "message": "Withdraw",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "CS_ACTION_WITHDRAW",
+        "message": "Withdraw Complaint",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "CS_COMMON_WITHDRAW",
+        "message": "Withdraw",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "WITHDRAW_SUCCESSFULLY",
+        "message": "Withdrawn Successfully",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "WF_PGR_WITHDRAW",
+        "message": "Withdrawn",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "CS_WITHDRAW_CONFIRM_HEADING",
+        "message": "Withdraw this complaint?",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "CS_WITHDRAW_CONFIRM_MESSAGE",
+        "message": "The complaint will be closed and no further action will be taken on it. This cannot be undone.",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "CS_WITHDRAW_REASON",
+        "message": "Reason for withdrawing",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "CS_WITHDRAWING",
+        "message": "Withdrawing…",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "CS_WITHDRAW_FAILED",
+        "message": "Couldn't withdraw the complaint. Please try again.",
         "module": "rainmaker-pgr",
         "locale": "en_IN"
     },
@@ -1573,7 +1645,7 @@
     },
     {
         "code": "CS_COMPLAINT_DETAILS_CANCELLED",
-        "message": "Cancelled",
+        "message": "Withdrawn",
         "module": "rainmaker-pgr",
         "locale": "en_IN"
     },
@@ -3908,6 +3980,12 @@
     {
         "code": "FAILED_TO_UPDATE_COMPLAINT",
         "message": "Failed to update the complaint, please try again later.",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "PGR_CONSENT_TERMS_LABEL",
+        "message": "I agree to the Terms & Conditions and to the county using my contact details to send me updates on this complaint.",
         "module": "rainmaker-pgr",
         "locale": "en_IN"
     },
@@ -7213,7 +7291,7 @@
     },
     {
         "code": "PGR_EXT_IS_CONFIDENTIAL_HINT",
-        "message": "Visibility is enforced once secure handling is enabled; for now this flags the complaint for staff awareness.",
+        "message": "Your name and phone number are not shown to the county officers handling this complaint.",
         "module": "rainmaker-pgr",
         "locale": "en_IN"
     },
@@ -7387,7 +7465,7 @@
     },
     {
         "code": "CS_COMMON_PGR_STATE_CANCELLED",
-        "message": "Cancelled",
+        "message": "Withdrawn",
         "module": "rainmaker-pgr",
         "locale": "en_IN"
     },
@@ -7429,37 +7507,37 @@
     },
     {
         "code": "PGR_LANDING_GOV_NAME",
-        "message": "Republic of Mozambique",
+        "message": "County Government of Bomet",
         "module": "rainmaker-pgr",
         "locale": "en_IN"
     },
     {
         "code": "PGR_LANDING_PORTAL_NAME",
-        "message": "Complaints and Reports Portal",
+        "message": "Bomet Feedback Hub",
         "module": "rainmaker-pgr",
         "locale": "en_IN"
     },
     {
         "code": "PGR_LANDING_ORG_NAMES",
-        "message": "Inspectorate-General of the State (IGE)",
+        "message": "Office of the Ombudsman · Health · Water & Sanitation",
         "module": "rainmaker-pgr",
         "locale": "en_IN"
     },
     {
         "code": "PGR_LANDING_FOOTER_ORG",
-        "message": "IGE",
+        "message": "County Government of Bomet",
         "module": "rainmaker-pgr",
         "locale": "en_IN"
     },
     {
         "code": "PGR_LANDING_TAGLINE",
-        "message": "The citizen speaks. The State responds.",
+        "message": "You report it. The County acts on it.",
         "module": "rainmaker-pgr",
         "locale": "en_IN"
     },
     {
         "code": "PGR_LANDING_MOTTO_VALUES",
-        "message": "Transparency · Integrity",
+        "message": "The Greatest Good For The Greatest Number",
         "module": "rainmaker-pgr",
         "locale": "en_IN"
     },
@@ -7471,19 +7549,13 @@
     },
     {
         "code": "PGR_LANDING_UTILITY_PHONE_LABEL",
-        "message": "+258 21 490 000",
+        "message": "County Government of Bomet",
         "module": "rainmaker-pgr",
         "locale": "en_IN"
     },
     {
         "code": "PGR_LANDING_UTILITY_GREEN_LINE",
-        "message": "Green Line 800 77 77",
-        "module": "rainmaker-pgr",
-        "locale": "en_IN"
-    },
-    {
-        "code": "PGR_LANDING_UTILITY_GREEN_LINE_FREE",
-        "message": "toll-free",
+        "message": "County Call Centre",
         "module": "rainmaker-pgr",
         "locale": "en_IN"
     },
@@ -7531,25 +7603,25 @@
     },
     {
         "code": "PGR_LANDING_NAV_SUBMIT",
-        "message": "Submit a Case",
+        "message": "Report an Issue",
         "module": "rainmaker-pgr",
         "locale": "en_IN"
     },
     {
         "code": "PGR_LANDING_NAV_TRACK",
-        "message": "Track a Case",
+        "message": "Track a Complaint",
         "module": "rainmaker-pgr",
         "locale": "en_IN"
     },
     {
         "code": "PGR_LANDING_NAV_TRAINING",
-        "message": "Training & Help",
+        "message": "Help",
         "module": "rainmaker-pgr",
         "locale": "en_IN"
     },
     {
         "code": "PGR_LANDING_NAV_ABOUT",
-        "message": "About the Portal",
+        "message": "About",
         "module": "rainmaker-pgr",
         "locale": "en_IN"
     },
@@ -7561,43 +7633,43 @@
     },
     {
         "code": "PGR_LANDING_HERO_EYEBROW",
-        "message": "Republic of Mozambique · IGE",
+        "message": "County Government of Bomet · Kenya",
         "module": "rainmaker-pgr",
         "locale": "en_IN"
     },
     {
         "code": "PGR_LANDING_HERO_TITLE",
-        "message": "Complaints and Reports Portal",
+        "message": "Bomet Feedback Hub",
         "module": "rainmaker-pgr",
         "locale": "en_IN"
     },
     {
         "code": "PGR_LANDING_HERO_PILOT_NOTICE",
-        "message": "This platform is in a pilot phase and, for now, is available only for the City of Maputo.",
+        "message": "Pilot phase: complaints are handled for Health and Water & Sanitation in all five sub-counties, Sotik, Chepalungu, Bomet East, Bomet Central and Konoin.",
         "module": "rainmaker-pgr",
         "locale": "en_IN"
     },
     {
         "code": "PGR_LANDING_HERO_LEDE",
-        "message": "The national channel for complaints and grievances about public services and public administration — with simple, secure and transparent tracking.",
+        "message": "Report a problem with a county service, get a case number, and follow it until it is resolved. Every case is routed to the officer responsible for your ward, and escalated automatically if it misses its deadline.",
         "module": "rainmaker-pgr",
         "locale": "en_IN"
     },
     {
         "code": "PGR_LANDING_HERO_CTA_SUBMIT",
-        "message": "Submit a Case",
+        "message": "Report an Issue",
         "module": "rainmaker-pgr",
         "locale": "en_IN"
     },
     {
         "code": "PGR_LANDING_HERO_CTA_TRACK",
-        "message": "Track a Case",
+        "message": "Track a Complaint",
         "module": "rainmaker-pgr",
         "locale": "en_IN"
     },
     {
         "code": "PGR_LANDING_HERO_TRUST_CONFIDENTIAL",
-        "message": "Confidential handling",
+        "message": "No National ID needed, just your name and phone number",
         "module": "rainmaker-pgr",
         "locale": "en_IN"
     },
@@ -7609,43 +7681,43 @@
     },
     {
         "code": "PGR_LANDING_HERO_TRUST_NOTIFICATIONS",
-        "message": "SMS & WhatsApp notifications",
+        "message": "SMS acknowledgement with your case number",
         "module": "rainmaker-pgr",
         "locale": "en_IN"
     },
     {
         "code": "PGR_LANDING_HERO_CHANNELS_LABEL",
-        "message": "Also available on:",
+        "message": "Also available through:",
         "module": "rainmaker-pgr",
         "locale": "en_IN"
     },
     {
         "code": "PGR_LANDING_HERO_CHANNEL_APP",
-        "message": "Android App",
+        "message": "Counter desks in the pilot wards",
         "module": "rainmaker-pgr",
         "locale": "en_IN"
     },
     {
         "code": "PGR_LANDING_HERO_CHANNEL_WA",
-        "message": "Official WhatsApp",
+        "message": "SMS case updates",
         "module": "rainmaker-pgr",
         "locale": "en_IN"
     },
     {
         "code": "PGR_LANDING_HERO_CHANNEL_LINE",
-        "message": "Green Line 800 77 77",
+        "message": "County call centre",
         "module": "rainmaker-pgr",
         "locale": "en_IN"
     },
     {
         "code": "PGR_LANDING_TYPES_TITLE",
-        "message": "Types of Submission",
+        "message": "What You Can Report",
         "module": "rainmaker-pgr",
         "locale": "en_IN"
     },
     {
         "code": "PGR_LANDING_TYPES_INTRO",
-        "message": "Choose the type that best describes your situation. If unsure, pick the closest — our services will route it correctly.",
+        "message": "Pick the service your complaint is about. You then choose a category, a sub-category and your ward. That is what routes the case to the right officer and sets its deadline.",
         "module": "rainmaker-pgr",
         "locale": "en_IN"
     },
@@ -7699,13 +7771,13 @@
     },
     {
         "code": "PGR_LANDING_TYPE_CTA",
-        "message": "Submit",
+        "message": "Report an issue",
         "module": "rainmaker-pgr",
         "locale": "en_IN"
     },
     {
         "code": "PGR_LANDING_HOW_TITLE",
-        "message": "How it Works",
+        "message": "How It Works",
         "module": "rainmaker-pgr",
         "locale": "en_IN"
     },
@@ -7717,91 +7789,91 @@
     },
     {
         "code": "PGR_LANDING_HOW_STEP_1",
-        "message": "Submit your case",
+        "message": "Report through the portal, the call centre or a counter desk",
         "module": "rainmaker-pgr",
         "locale": "en_IN"
     },
     {
         "code": "PGR_LANDING_HOW_STEP_2",
-        "message": "Receive your case number",
+        "message": "Receive your case number by SMS",
         "module": "rainmaker-pgr",
         "locale": "en_IN"
     },
     {
         "code": "PGR_LANDING_HOW_STEP_3",
-        "message": "Your case is reviewed",
+        "message": "The Ombudsman's Office routes it to your sub-county",
         "module": "rainmaker-pgr",
         "locale": "en_IN"
     },
     {
         "code": "PGR_LANDING_HOW_STEP_4",
-        "message": "The competent authority is engaged",
+        "message": "The responsible officer works the case",
         "module": "rainmaker-pgr",
         "locale": "en_IN"
     },
     {
         "code": "PGR_LANDING_HOW_STEP_5",
-        "message": "Track the case status",
+        "message": "A missed deadline escalates the case automatically",
         "module": "rainmaker-pgr",
         "locale": "en_IN"
     },
     {
         "code": "PGR_LANDING_HOW_STEP_6",
-        "message": "Receive the final decision",
+        "message": "You confirm the outcome and rate the service",
         "module": "rainmaker-pgr",
         "locale": "en_IN"
     },
     {
         "code": "PGR_LANDING_HOW_NOTE_TITLE",
-        "message": "Guaranteed follow-up",
+        "message": "Who handles your case, and what happens if it stalls",
         "module": "rainmaker-pgr",
         "locale": "en_IN"
     },
     {
         "code": "PGR_LANDING_HOW_NOTE_NOTIFY",
-        "message": "You receive an SMS or WhatsApp notification every time the case status changes.",
+        "message": "Health and Administration cases go to the Sub-County Administrator for your area. Water & Sanitation cases go to the Department Director for the whole county.",
         "module": "rainmaker-pgr",
         "locale": "en_IN"
     },
     {
         "code": "PGR_LANDING_HOW_NOTE_RECORD",
-        "message": "The entire process is digitally recorded, ensuring transparency, traceability and accountability.",
+        "message": "If the deadline passes without a resolution, the case moves up on its own: Sub-County Administrator → Department Director → Chief Officer → County Executive Committee Member (CECM).",
         "module": "rainmaker-pgr",
         "locale": "en_IN"
     },
     {
         "code": "PGR_LANDING_HOW_NOTE_CHANNELS",
-        "message": "Every channel — Portal, App or WhatsApp — issues a unique case number for tracking.",
+        "message": "Deadlines are set per category: one day for unsafe water, two days for a sewer overflow, seven days for a water outage or absent staff, and up to 30 days for corruption and procurement cases.",
         "module": "rainmaker-pgr",
         "locale": "en_IN"
     },
     {
         "code": "PGR_LANDING_CHANNELS_TITLE",
-        "message": "Service Channels",
+        "message": "Ways to Reach Us",
         "module": "rainmaker-pgr",
         "locale": "en_IN"
     },
     {
         "code": "PGR_LANDING_CHANNELS_INTRO",
-        "message": "Use the Web Portal for the full submission and tracking experience, or pick the channel that suits you best.",
+        "message": "Every channel creates the same case in the same system, with the same case number and the same deadline. Choose whichever is easiest for you.",
         "module": "rainmaker-pgr",
         "locale": "en_IN"
     },
     {
         "code": "PGR_LANDING_CHANNEL_WEB_TITLE",
-        "message": "Web Portal",
+        "message": "This Portal",
         "module": "rainmaker-pgr",
         "locale": "en_IN"
     },
     {
         "code": "PGR_LANDING_CHANNEL_WEB_DESC",
-        "message": "Full submission and tracking, with complete case history.",
+        "message": "Register with your name and phone number, no National ID required. Submit, attach photos, and see the full history of your case.",
         "module": "rainmaker-pgr",
         "locale": "en_IN"
     },
     {
         "code": "PGR_LANDING_CHANNEL_WEB_CTA",
-        "message": "Submit now",
+        "message": "Report an issue",
         "module": "rainmaker-pgr",
         "locale": "en_IN"
     },
@@ -7849,61 +7921,61 @@
     },
     {
         "code": "PGR_LANDING_CHANNEL_LINE_TITLE",
-        "message": "Green Line 800 77 77",
+        "message": "County Call Centre",
         "module": "rainmaker-pgr",
         "locale": "en_IN"
     },
     {
         "code": "PGR_LANDING_CHANNEL_LINE_DESC",
-        "message": "Toll-free call for support, guidance and assisted submission.",
+        "message": "Agents log your complaint while you are on the call and read your case number back to you.",
         "module": "rainmaker-pgr",
         "locale": "en_IN"
     },
     {
         "code": "PGR_LANDING_CHANNEL_LINE_CTA",
-        "message": "Call 800 77 77",
+        "message": "Call the centre",
         "module": "rainmaker-pgr",
         "locale": "en_IN"
     },
     {
         "code": "PGR_LANDING_CHANNEL_INPERSON_TITLE",
-        "message": "In-Person Service",
+        "message": "Counter Desks",
         "module": "rainmaker-pgr",
         "locale": "en_IN"
     },
     {
         "code": "PGR_LANDING_CHANNEL_INPERSON_DESC",
-        "message": "Visit the physical offices or service desks of the Inspectorate-General of the State (IGE) or another public institution for in-person assistance and to submit complaints manually.",
+        "message": "County counter staff in the pilot wards log walk-in complaints for you and hand over a written case reference before you leave.",
         "module": "rainmaker-pgr",
         "locale": "en_IN"
     },
     {
         "code": "PGR_LANDING_PRIVACY_TITLE",
-        "message": "Confidentiality and Data Protection",
+        "message": "Your Privacy and Your Data",
         "module": "rainmaker-pgr",
         "locale": "en_IN"
     },
     {
         "code": "PGR_LANDING_PRIVACY_P1",
-        "message": "The portal protects citizens' personal data in accordance with applicable legislation.",
+        "message": "The County Government of Bomet protects the personal information you submit in line with the Data Protection Act, 2019.",
         "module": "rainmaker-pgr",
         "locale": "en_IN"
     },
     {
         "code": "PGR_LANDING_PRIVACY_P2",
-        "message": "When submitting a case you may request confidential treatment of your data. Your identity is then hidden from the users managing and processing the case, except where required by law.",
+        "message": "Your details are used to register, route and resolve your complaint and to send you SMS updates. They are seen by the authorised county officers handling your case and are not shared with unauthorised third parties. If you tick \"Keep my details confidential\" when you report, your name and phone number are hidden from the officers working the case; only staff cleared to view confidential complaints can see them.",
         "module": "rainmaker-pgr",
         "locale": "en_IN"
     },
     {
         "code": "PGR_LANDING_PRIVACY_LINK",
-        "message": "Read the Privacy Policy",
+        "message": "Read the Privacy Notice",
         "module": "rainmaker-pgr",
         "locale": "en_IN"
     },
     {
         "code": "PGR_LANDING_NEWS_TITLE",
-        "message": "Latest Updates",
+        "message": "County Updates",
         "module": "rainmaker-pgr",
         "locale": "en_IN"
     },
@@ -7921,7 +7993,7 @@
     },
     {
         "code": "PGR_LANDING_INST_TITLE",
-        "message": "Inspectorate-General of the State (IGE) at the citizen's service",
+        "message": "Areas We Cover",
         "module": "rainmaker-pgr",
         "locale": "en_IN"
     },
@@ -7951,25 +8023,25 @@
     },
     {
         "code": "PGR_LANDING_FINAL_TITLE",
-        "message": "Have a Complaint or Grievance?",
+        "message": "Have a complaint about a county service?",
         "module": "rainmaker-pgr",
         "locale": "en_IN"
     },
     {
         "code": "PGR_LANDING_FINAL_TEXT",
-        "message": "Help improve public services. Submit your case and follow its handling through the portal.",
+        "message": "It takes a few minutes. You get a case number, SMS updates, and an officer accountable for a deadline.",
         "module": "rainmaker-pgr",
         "locale": "en_IN"
     },
     {
         "code": "PGR_LANDING_FINAL_CTA",
-        "message": "Submit a Case",
+        "message": "Report an Issue",
         "module": "rainmaker-pgr",
         "locale": "en_IN"
     },
     {
         "code": "PGR_LANDING_FOOTER_CHANNELS",
-        "message": "Official Channels",
+        "message": "Ways to Reach Us",
         "module": "rainmaker-pgr",
         "locale": "en_IN"
     },
@@ -7993,31 +8065,31 @@
     },
     {
         "code": "PGR_LANDING_FOOTER_PORTAL_WEB",
-        "message": "Web Portal",
+        "message": "This Portal",
         "module": "rainmaker-pgr",
         "locale": "en_IN"
     },
     {
         "code": "PGR_LANDING_FOOTER_ANDROID",
-        "message": "Android App",
+        "message": "Counter Desks",
         "module": "rainmaker-pgr",
         "locale": "en_IN"
     },
     {
         "code": "PGR_LANDING_FOOTER_WHATSAPP",
-        "message": "Official WhatsApp",
+        "message": "SMS Updates",
         "module": "rainmaker-pgr",
         "locale": "en_IN"
     },
     {
         "code": "PGR_LANDING_FOOTER_GREEN_LINE",
-        "message": "Green Line 800 77 77",
+        "message": "County Call Centre",
         "module": "rainmaker-pgr",
         "locale": "en_IN"
     },
     {
         "code": "PGR_LANDING_FOOTER_FAQ",
-        "message": "FAQ",
+        "message": "Frequently Asked Questions",
         "module": "rainmaker-pgr",
         "locale": "en_IN"
     },
@@ -8029,13 +8101,13 @@
     },
     {
         "code": "PGR_LANDING_FOOTER_EMPLOYEE_LOGIN",
-        "message": "Employee Access",
+        "message": "County Staff Access",
         "module": "rainmaker-pgr",
         "locale": "en_IN"
     },
     {
         "code": "PGR_LANDING_FOOTER_PRIVACY",
-        "message": "Privacy Policy",
+        "message": "Privacy Notice",
         "module": "rainmaker-pgr",
         "locale": "en_IN"
     },
@@ -8053,13 +8125,13 @@
     },
     {
         "code": "PGR_LANDING_FOOTER_COPYRIGHT",
-        "message": "Complaints and Reports Portal · Republic of Mozambique. All rights reserved.",
+        "message": "Bomet Feedback Hub · County Government of Bomet. All rights reserved.",
         "module": "rainmaker-pgr",
         "locale": "en_IN"
     },
     {
         "code": "PGR_LANDING_FAB_LABEL",
-        "message": "Chat with us on WhatsApp",
+        "message": "Chat with us",
         "module": "rainmaker-pgr",
         "locale": "en_IN"
     },
@@ -8185,37 +8257,37 @@
     },
     {
         "code": "PGR_LANDING_PRIVACY_PAGE_TITLE",
-        "message": "Privacy Policy",
+        "message": "Privacy Notice",
         "module": "rainmaker-pgr",
         "locale": "en_IN"
     },
     {
         "code": "PGR_LANDING_PRIVACY_PAGE_P1",
-        "message": "The Fala Cidadão Platform is committed to protecting your privacy and ensuring your personal information is handled securely, transparently and in compliance with applicable law.",
+        "message": "The Bomet Feedback Hub is operated by the County Government of Bomet. We are committed to protecting your privacy and to handling your personal information securely, transparently and in line with the Data Protection Act, 2019.",
         "module": "rainmaker-pgr",
         "locale": "en_IN"
     },
     {
         "code": "PGR_LANDING_PRIVACY_PAGE_P2",
-        "message": "By using this Platform you consent to the collection and processing of the information you provide to register, investigate, manage and resolve your complaint, petitions, grievances and reports. This may include your name, contact details, identifying details where applicable, complaint details, supporting documents, photographs and other evidence you submit.",
+        "message": "When you report an issue you consent to the collection and processing of the information you provide so that your complaint can be registered, routed, investigated and resolved. This includes your name, phone number, the ward and location of the issue, the complaint category, your description of the problem, and any photographs or documents you choose to attach. Registration does not require a National ID.",
         "module": "rainmaker-pgr",
         "locale": "en_IN"
     },
     {
         "code": "PGR_LANDING_PRIVACY_PAGE_P3",
-        "message": "Your personal information will only be accessed by duly authorised government officials and institutions responsible for handling your complaint. It will not be shared with unauthorised third parties or used for commercial or marketing purposes. Where the Platform allows, complaints submitted as confidential will have the author's identity protected, disclosed only to a restricted, senior group of officials or when required by law.",
+        "message": "Your information is accessed only by authorised county officers responsible for handling your complaint, the Office of the Ombudsman, the sub-county administrators, and the department officers in the escalation chain. It is not shared with unauthorised third parties and is never used for commercial or marketing purposes. A complaint you mark as confidential hides your name and phone number from the officers working it; only staff cleared to view confidential complaints can see them.",
         "module": "rainmaker-pgr",
         "locale": "en_IN"
     },
     {
         "code": "PGR_LANDING_PRIVACY_PAGE_P4",
-        "message": "The Platform implements appropriate technical and organisational measures to safeguard your information against unauthorised access, alteration, disclosure or loss. Technical information may also be collected, such as device data, IP address and system usage, to improve security, system performance and service quality.",
+        "message": "Your phone number is used to send case notifications by SMS. Technical information such as device data, IP address and system usage may also be collected to keep the service secure and working properly. We apply appropriate technical and organisational safeguards against unauthorised access, alteration, disclosure or loss.",
         "module": "rainmaker-pgr",
         "locale": "en_IN"
     },
     {
         "code": "PGR_LANDING_PRIVACY_PAGE_P5",
-        "message": "Your information will be retained only for the period necessary to process your complaint, comply with legal obligations and maintain official government records. You may request access to or correction of your personal information, subject to applicable law and any restrictions necessary to protect ongoing investigations.",
+        "message": "Information is retained only for as long as needed to resolve your complaint, meet legal obligations and maintain official county records. You may request access to your personal information or ask for it to be corrected, subject to applicable law and to any restriction needed to protect an ongoing investigation.",
         "module": "rainmaker-pgr",
         "locale": "en_IN"
     },
@@ -8280,6 +8352,12 @@
         "locale": "en_IN"
     },
     {
+        "code": "CS_REOPEN_SUBMIT_ERROR",
+        "message": "The complaint could not be reopened. Please try again.",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
         "code": "CS_REOPEN_UPLOAD_HINT",
         "message": "JPG, PNG, PDF, DOC, DOCX, XLS, XLSX, MP4, MOV, AVI, MKV up to 5 MB each. You can upload up to 5 files.",
         "module": "rainmaker-pgr",
@@ -8297,5 +8375,580 @@
         "module": "rainmaker-pgr",
         "locale": "en_IN"
     },
-    {"code": "ES_PGR_FILTER_ONLY_MY_COMPLAINTS", "message": "Only complaints I created", "module": "rainmaker-pgr", "locale": "en_IN"}
+    {
+        "code": "ES_PGR_FILTER_ONLY_MY_COMPLAINTS",
+        "message": "Only complaints I created",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "PGR_RECEIPT_TITLE",
+        "message": "Complaint Receipt",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "PGR_RECEIPT_DOWNLOAD",
+        "message": "Download Application",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "PGR_RECEIPT_PRINT",
+        "message": "Print Receipt",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "PGR_RECEIPT_SHARE",
+        "message": "Share",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "PGR_RECEIPT_SHARE_TEXT",
+        "message": "Complaint {id} filed with {tenant}. Track it here:",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "PGR_RECEIPT_SHARE_COPIED",
+        "message": "Link copied — paste it anywhere to share.",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "PGR_RECEIPT_SHARE_UNAVAILABLE",
+        "message": "Sharing is not available on this device — download the receipt instead.",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "PGR_RECEIPT_ERROR",
+        "message": "Could not generate the receipt. Please try again.",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "PGR_RECEIPT_GENERATED_ON",
+        "message": "Generated on",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "PGR_RECEIPT_CLASSIFICATION",
+        "message": "Classification",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "PGR_RECEIPT_NEXT_TITLE",
+        "message": "What happens next",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "PGR_RECEIPT_NEXT_TRACK",
+        "message": "Keep this complaint number — you need it to ask about your complaint.",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "PGR_RECEIPT_NEXT_UPDATE",
+        "message": "You can track the status any time under My Complaints.",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "PGR_RECEIPT_SYSTEM_GENERATED",
+        "message": "This is a system-generated document and does not require a signature.",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "PGR_RECEIPT_SHARE_RETRY",
+        "message": "Sharing was interrupted — tap Share again.",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "CS_RATING_LABEL_1",
+        "message": "Very unhappy",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "CS_RATING_LABEL_2",
+        "message": "Unhappy",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "CS_RATING_LABEL_3",
+        "message": "Okay",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "CS_RATING_LABEL_4",
+        "message": "Happy",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "CS_RATING_LABEL_5",
+        "message": "Very happy",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "PGR_RECEIPT_SHARE_DOWNLOADED",
+        "message": "The receipt PDF is also in your downloads.",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "PGR_RECEIPT_SHARE_DOWNLOADED_COPIED",
+        "message": "Receipt PDF saved to your downloads; tracking link copied.",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "PGR_RECEIPT_SHARE_DOWNLOADED_ONLY",
+        "message": "Receipt PDF saved to your downloads.",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "PGR_RECEIPT_SHARE_VIA",
+        "message": "Share receipt via",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "PGR_RECEIPT_OPEN_PDF",
+        "message": "Open PDF",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "PGR_RECEIPT_SHARE_EMAIL",
+        "message": "Email",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "PGR_RECEIPT_SHARE_WHATSAPP",
+        "message": "WhatsApp",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "PGR_RECEIPT_SHARE_SMS",
+        "message": "SMS",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "PGR_RECEIPT_SHARE_COPY",
+        "message": "Copy link",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "PGR_RECEIPT_SHARE_MORE",
+        "message": "More apps",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "PGR_RECEIPT_SHARE_HINT",
+        "message": "Email, WhatsApp and SMS send the complaint number and tracking link. To send the PDF itself use More apps, or Download Application above.",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "PGR_RECEIPT_SHARE_HINT_PDF",
+        "message": "Every option sends the receipt PDF. On a computer the PDF is downloaded first — attach it in the app that opens.",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "PGR_RECEIPT_SHARE_ATTACH",
+        "message": "Receipt PDF saved to your downloads — attach it in the app that opened.",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "PGR_RECEIPT_SHARE_COPY_FAILED",
+        "message": "Could not copy the link on this device.",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "PGR_RECEIPT_POPUP_BLOCKED",
+        "message": "The browser blocked the PDF tab — the receipt was downloaded instead.",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "PGR_LANDING_WORDMARK_LINE1",
+        "message": "Bomet",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "PGR_LANDING_WORDMARK_LINE2",
+        "message": "County Government",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "PGR_LANDING_TYPE_HEALTH_TITLE",
+        "message": "Health Services",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "PGR_LANDING_TYPE_HEALTH_DESC",
+        "message": "Maternal and newborn emergencies, ambulance delays, drug stock-outs, oxygen and equipment failures, staff absence or conduct, long waiting times, facility sanitation, referral delays, SHA service denial, illegal charges. Emergency categories carry deadlines of one to five days.",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "PGR_LANDING_TYPE_WATER_TITLE",
+        "message": "Water & Sanitation",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "PGR_LANDING_TYPE_WATER_DESC",
+        "message": "Contaminated or unsafe water, pipe leaks and low pressure, sewer and manhole overflows, water outages, billing and meter disputes, broken kiosks and boreholes, blocked drains and flooding. Unsafe water is a one-day case.",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "PGR_LANDING_TYPE_ADMIN_TITLE",
+        "message": "Administration & Governance",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "PGR_LANDING_TYPE_ADMIN_DESC",
+        "message": "Staff misconduct, corruption and bribery, abuse of office, procurement and tender irregularities, exclusion from public participation, stalled or poor-quality projects, unanswered information requests, public nuisance.",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "PGR_LANDING_CHANNEL_SMS_TITLE",
+        "message": "SMS Updates",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "PGR_LANDING_CHANNEL_SMS_DESC",
+        "message": "When your complaint is registered you get an SMS with your case number, then further SMS as its status changes. No smartphone or data needed.",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "PGR_LANDING_INST_SOTIK_TITLE",
+        "message": "Sotik Sub-County",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "PGR_LANDING_INST_SOTIK_DESC",
+        "message": "Wards: Ndanai/Abosi · Chemagel · Kipsonoi · Rongena/Manaret · Kapletundo",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "PGR_LANDING_INST_CHEPALUNGU_TITLE",
+        "message": "Chepalungu Sub-County",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "PGR_LANDING_INST_CHEPALUNGU_DESC",
+        "message": "Wards: Kong'asis · Nyangores · Sigor · Chebunyo · Siongiroi",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "PGR_LANDING_INST_BOMET_EAST_TITLE",
+        "message": "Bomet East Sub-County",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "PGR_LANDING_INST_BOMET_EAST_DESC",
+        "message": "Wards: Merigi · Kembu · Longisa · Kipreres · Chemaner",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "PGR_LANDING_INST_BOMET_CENTRAL_TITLE",
+        "message": "Bomet Central Sub-County",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "PGR_LANDING_INST_BOMET_CENTRAL_DESC",
+        "message": "Wards: Silibwet Township · Nadaraweta · Singorwet · Chesoen · Mutarakwa",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "PGR_LANDING_INST_KONOIN_TITLE",
+        "message": "Konoin Sub-County",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "PGR_LANDING_INST_KONOIN_DESC",
+        "message": "Wards: Chepchabas · Kimulot · Mogogosiek · Boito · Embomos",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "PGR_LANDING_FOOTER_CONTACT",
+        "message": "Contact the County",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "PGR_LANDING_CONTACT_HOTLINE",
+        "message": "Hotline",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "PGR_LANDING_CONTACT_EMAIL",
+        "message": "Email",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "PGR_LANDING_CONTACT_POST",
+        "message": "Postal Address",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "PGR_LANDING_FOOTER_FOLLOW",
+        "message": "Follow the County",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "PGR_LANDING_SOCIAL_FACEBOOK",
+        "message": "Facebook",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "PGR_LANDING_SOCIAL_X",
+        "message": "X (formerly Twitter)",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "PGR_LANDING_SOCIAL_YOUTUBE",
+        "message": "YouTube",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "PGR_LANDING_HERO_PHOTO_CAPTION",
+        "message": "Bomet County highlands",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "PGR_LANDING_HERO_SCRIPT",
+        "message": "The Greatest Good For The Greatest Number",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "PGR_LANDING_ORB_TAGLINE",
+        "message": "Your Voice Matters",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "PGR_LANDING_STAT_SUBCOUNTIES_VALUE",
+        "message": "5",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "PGR_LANDING_STAT_SUBCOUNTIES_LABEL",
+        "message": "sub-counties, county-wide",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "PGR_LANDING_STAT_WARDS_VALUE",
+        "message": "25",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "PGR_LANDING_STAT_WARDS_LABEL",
+        "message": "wards covered",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "PGR_LANDING_STAT_SLA_VALUE",
+        "message": "1–30 days",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "PGR_LANDING_STAT_SLA_LABEL",
+        "message": "deadline per category, then automatic escalation",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "PGR_LANDING_STAT_DEPARTMENTS_VALUE",
+        "message": "3",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "PGR_LANDING_STAT_DEPARTMENTS_LABEL",
+        "message": "service areas you can report on",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "PGR_LANDING_TYPES_EYEBROW",
+        "message": "Service areas",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "PGR_LANDING_HOW_EYEBROW",
+        "message": "From report to resolution",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "PGR_LANDING_CHANNELS_EYEBROW",
+        "message": "Channels",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "PGR_LANDING_CAROUSEL_PREV",
+        "message": "Previous channels",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "PGR_LANDING_CAROUSEL_NEXT",
+        "message": "Next channels",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "PGR_LANDING_CHANNEL_INPERSON_CTA",
+        "message": "Find a desk",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "PGR_LANDING_CHANNEL_SMS_CTA",
+        "message": "Track your case",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "PGR_LANDING_HELPLINES_EYEBROW",
+        "message": "Emergency",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "PGR_LANDING_HELPLINES_TITLE",
+        "message": "Emergency and Help Lines",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "PGR_LANDING_HELPLINES_INTRO",
+        "message": "In an emergency call the national lines first. For a county service, the County Call Centre logs the complaint for you and reads your case number back.",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "PGR_LANDING_HELPLINE_POLICE_TITLE",
+        "message": "Police",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "PGR_LANDING_HELPLINE_POLICE_DESC",
+        "message": "Crime, accidents and threats to safety",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "PGR_LANDING_HELPLINE_AMBULANCE_TITLE",
+        "message": "Ambulance",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "PGR_LANDING_HELPLINE_AMBULANCE_DESC",
+        "message": "Medical emergencies",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "PGR_LANDING_HELPLINE_COUNTY_TITLE",
+        "message": "County Call Centre",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "PGR_LANDING_HELPLINE_COUNTY_DESC",
+        "message": "County services — call agents log your complaint for you",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "PGR_LANDING_HELPLINES_CALL",
+        "message": "Call",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "PGR_LANDING_PRIVACY_EYEBROW",
+        "message": "Privacy & data",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "PGR_LANDING_INST_EYEBROW",
+        "message": "Where we work",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "PGR_LANDING_INST_INTRO",
+        "message": "The Feedback Hub runs in all five sub-counties of Bomet, 25 wards in all. Health and Administration cases go to your Sub-County Administrator; Water & Sanitation cases go to the Department Director for the whole county.",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "CS_COMMON_SEARCH_EMPLOYEE",
+        "message": "Search by name or department",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    }
 ]

@@ -16,6 +16,18 @@ import type { LandingRoutes } from "./routes";
 // `navigation` section with a media.imageId still overrides this.
 import bometLogo from "./assets/bomet-logo.jpg";
 import bometFooterLogo from "./assets/bomet-footer-logo.jpg";
+// The county highlands already shipped as the sign-in backdrop, re-cut to the
+// hero's two sizes as webp (see assets/CREDITS.md). No portrait or orb photos yet:
+// the orb props are set to "" so those sections render without a photo instead
+// of cropping the wide hero into circles. The palette comes from tokens.ts
+// (Bomet defaults) and the MDMS theme; no per-entry override needed.
+//
+// `layout="editorial"`: Bomet's own composition (split hero over a light page,
+// a figures band, service rows, a timeline, a dark channels band, a helpline
+// strip, a light footer) — the sibling Bonga Nai page keeps "classic".
+import bometHero from "./assets/bomet-hero.webp";
+import bometHeroSm from "./assets/bomet-hero-sm.webp";
+
 
 export function PGRLandingEntry() {
   const ctx = (typeof window !== "undefined" && (window as any)?.contextPath) || "digit-ui";
@@ -32,7 +44,19 @@ export function PGRLandingEntry() {
     [ctx]
   );
 
-  return <PGRLandingPage routes={routes} emblemUrl={bometLogo} footerLogoUrl={bometFooterLogo} />;
+  return (
+    <PGRLandingPage
+      routes={routes}
+      emblemUrl={bometLogo}
+      footerLogoUrl={bometFooterLogo}
+      heroImageUrl={bometHero}
+      heroImageSmallUrl={bometHeroSm}
+      bandImageUrl={bometHero}
+      stepsOrbImageUrl=""
+      channelsOrbImageUrl=""
+      layout="editorial"
+    />
+  );
 }
 
 export default PGRLandingEntry;

@@ -35,7 +35,8 @@ function bundle(entry) {
   return require(out);
 }
 
-const { deriveAssigneeRoles, narrowToLastMile, boundaryAncestorCodes, resolveAutoAssignee } = bundle("autoAssign.js");
+const { deriveAssigneeRoles, narrowToLastMile, boundaryAncestorCodes, resolveAutoAssignee, narrowByJurisdiction } =
+  bundle("autoAssign.js");
 
 /* ------------------------------------------------------------------ */
 /* Fixtures                                                            */
@@ -298,4 +299,69 @@ test("selection is deterministic for a seed and spreads across seeds", () => {
     picked.add(resolveAutoAssignee({ ...base, employees: pool, seed: `s-${i}` }).uuid);
   }
   assert.equal(picked.size, 3);
+});
+
+/* ------------------------------------------------------------------ */
+/* narrowByJurisdiction — the MANUAL assignee picker's jurisdiction    */
+/* gate. Shares resolveAutoAssignee's narrowest-first walk, but must   */
+/* WIDEN rather than empty out: an empty dropdown blocks the action.   */
+/* ------------------------------------------------------------------ */
+
+const JBASE = { boundaryRoots: TREE, tenantId: "bo", localityCode: "BOMET_CENTRAL_SILIBWET" };
+
+test("jurisdiction: keeps only the employees covering the complaint's ward", () => {
+  const inWard = emp("uuid-ward", "DEPT_WATER", { jurisdictions: ["BOMET_CENTRAL_SILIBWET"] });
+  const elsewhere = emp("uuid-far", "DEPT_WATER", { jurisdictions: ["CHEPALUNGU"] });
+  const out = narrowByJurisdiction({ ...JBASE, employees: [inWard, elsewhere] });
+  assert.deepEqual(out.candidates.map((e) => e.user.uuid), ["uuid-ward"]);
+  assert.equal(out.jurisdiction, "BOMET_CENTRAL_SILIBWET");
+});
+
+test("jurisdiction: narrowest level wins — ward officer over sub-county over county", () => {
+  const ward = emp("uuid-ward", "DEPT_WATER", { jurisdictions: ["BOMET_CENTRAL_SILIBWET"] });
+  const sub = emp("uuid-sub", "DEPT_WATER", { jurisdictions: ["BOMET_CENTRAL"] });
+  const county = emp("uuid-county", "DEPT_WATER", { jurisdictions: ["BOMET"] });
+  const out = narrowByJurisdiction({ ...JBASE, employees: [county, sub, ward] });
+  assert.deepEqual(out.candidates.map((e) => e.user.uuid), ["uuid-ward"]);
+});
+
+test("jurisdiction: falls up to the next level when the ward has nobody", () => {
+  const sub = emp("uuid-sub", "DEPT_WATER", { jurisdictions: ["BOMET_CENTRAL"] });
+  const county = emp("uuid-county", "DEPT_WATER", { jurisdictions: ["BOMET"] });
+  const out = narrowByJurisdiction({ ...JBASE, employees: [county, sub] });
+  assert.deepEqual(out.candidates.map((e) => e.user.uuid), ["uuid-sub"]);
+  assert.equal(out.jurisdiction, "BOMET_CENTRAL");
+});
+
+// The load-bearing negative: a tenant that never seeded HRMS jurisdictions
+// must keep its FULL dropdown, not lose every option. This is what separates
+// the filter from a regression that blocks reopen everywhere.
+test("jurisdiction: nobody on the path -> returns the input unchanged, never empty", () => {
+  const a = emp("uuid-a", "DEPT_WATER", { jurisdictions: ["CHEPALUNGU"] });
+  const b = emp("uuid-b", "DEPT_WATER", { jurisdictions: [] });
+  const out = narrowByJurisdiction({ ...JBASE, employees: [a, b] });
+  assert.deepEqual(out.candidates.map((e) => e.user.uuid), ["uuid-a", "uuid-b"]);
+  assert.equal(out.jurisdiction, null);
+});
+
+test("jurisdiction: missing locality or boundary tree widens instead of emptying", () => {
+  const a = emp("uuid-a", "DEPT_WATER", { jurisdictions: ["BOMET"] });
+  assert.equal(narrowByJurisdiction({ ...JBASE, localityCode: null, employees: [a] }).candidates.length, 1);
+  assert.equal(narrowByJurisdiction({ ...JBASE, boundaryRoots: null, employees: [a] }).candidates.length, 1);
+  assert.equal(narrowByJurisdiction({ ...JBASE, localityCode: "NOWHERE", employees: [a] }).candidates.length, 1);
+});
+
+test("jurisdiction: junk boundary values are ignored, not treated as coverage", () => {
+  // Field data carries the tenant code in `boundary`; it must not count as
+  // covering anything (same defensive filter as resolveAutoAssignee).
+  const junk = emp("uuid-junk", "DEPT_WATER", { jurisdictions: ["bo", "ke.bomet"] });
+  const real = emp("uuid-real", "DEPT_WATER", { jurisdictions: ["BOMET_CENTRAL_SILIBWET"] });
+  const out = narrowByJurisdiction({ ...JBASE, employees: [junk, real] });
+  assert.deepEqual(out.candidates.map((e) => e.user.uuid), ["uuid-real"]);
+});
+
+test("jurisdiction: empty and non-array inputs are safe", () => {
+  assert.deepEqual(narrowByJurisdiction({ ...JBASE, employees: [] }).candidates, []);
+  assert.deepEqual(narrowByJurisdiction({ ...JBASE, employees: null }).candidates, []);
+  assert.deepEqual(narrowByJurisdiction({}).candidates, []);
 });

@@ -18,6 +18,7 @@ import { useTranslation } from "react-i18next";
 import { useHistory } from "react-router-dom";
 import { formPayloadToCreateComplaint } from "../../../utils";
 import { fieldsFromSchema, deriveCaseRelatedTo } from "../../../utils/extendedAttributes";
+import { compareLabels } from "../../../utils/sortByLabel";
 
 const CreateComplaintForm = ({
   createComplaintConfig,      // Form configuration for Create Complaint screen
@@ -77,6 +78,12 @@ const CreateComplaintForm = ({
 
   // Fetch the list of service definitions (e.g., complaint types) for current tenant
   const serviceDefs = Digit.Hooks.pgr.useServiceDefs(tenantId, "PGR");
+  // Create-time routing, same resolver the citizen create flow uses. On Bomet
+  // APPLY lands straight in PENDINGATLME, which has NO ASSIGN action — a
+  // complaint filed here without an assignee sits in nobody's inbox with no
+  // way to give it an owner later. Prefetches while the operator fills the
+  // form so submit can resolve synchronously.
+  const autoAssignment = Digit.Hooks.pgr.useAutoAssignment(tenantId);
 
   // Does this tenant have a configurable complaint hierarchy (with nodes)?
   // If so, the flat Type/Sub-Type dropdowns are replaced by the cascading
@@ -201,9 +208,9 @@ const CreateComplaintForm = ({
 
     // Flat complaint types carry no configurator-authored order, so present
     // them A–Z by their displayed label (`menuPathName`) for an easy-to-scan,
-    // searchable dropdown (CCRS#941). The hierarchy picker keeps its own
-    // `order` and is unaffected.
-    return uniqueItems.sort((a, b) => (a?.menuPathName || "").localeCompare(b?.menuPathName || ""));
+    // searchable dropdown (CCRS#941). The hierarchy picker sorts the same way
+    // (ComplaintHierarchyComponent).
+    return uniqueItems.sort((a, b) => compareLabels(a?.menuPathName, b?.menuPathName));
   }
 
   function getSubTypesByDepartment(baseItem, allItems) {
@@ -214,11 +221,12 @@ const CreateComplaintForm = ({
     }
 
     // Sub-types in the flat flow have no configurator order either, so sort
-    // them A–Z by their displayed label (`i18nKey`, with a `name` fallback)
-    // for the searchable dropdown (CCRS#941).
+    // them A–Z by the label the dropdown shows — the TRANSLATED i18nKey, not
+    // the raw key, which orders by code rather than by name (CCRS#941, UAT).
+    const label = (item) => (item?.i18nKey ? t(item.i18nKey) : item?.name) || "";
     return allItems
       .filter(item => item.department === baseItem.department)
-      .sort((a, b) => (a?.i18nKey || a?.name || "").localeCompare(b?.i18nKey || b?.name || ""));
+      .sort((a, b) => compareLabels(label(a), label(b)));
   }
 
 
@@ -277,10 +285,12 @@ const CreateComplaintForm = ({
   }, [templatesAll, schemasByRef, caseRelatedTo]);
 
   // Generated FormComposerV2 field configs for the dynamic fields + a
-  // confidentiality checkbox. NOTE: x-security fields render in clear text until
+  // confidentiality checkbox. The checkbox is offered on EVERY complaint, with
+  // or without a category template (Nairobi has none): a clerk filing on a
+  // citizen's behalf must be able to keep them confidential, exactly as the
+  // citizen wizard does. NOTE: x-security fields render in clear text until
   // backend encryption lands (same interim posture as the citizen flow).
   const extFieldConfigs = useMemo(() => {
-    if (!extFields.length) return [];
     const toType = (dt) => (dt === "textarea" ? "textarea" : dt === "date" ? "date" : dt === "number" ? "number" : "text");
     const cfgs = extFields.map((f) => {
       // Date fields → our self-contained calendar-popover component (avoids the
@@ -644,6 +654,41 @@ const CreateComplaintForm = ({
       caseRelatedTo,
       fieldKeys: extFields.map((f) => f.fieldKey),
     });
+    // Best-effort auto-assignment (citizen-create parity): department from the
+    // picked complaint type's ComplaintHierarchy leaf, jurisdiction from the
+    // submitted ward. A null resolution — data still loading, no eligible
+    // PGR_LME officer, unmapped type — submits unchanged; routing never blocks
+    // the operator.
+    const leaf = (serviceDefs || []).find((d) => d.serviceCode === payload?.service?.serviceCode);
+    const assignment = autoAssignment.resolve({
+      departmentCode: leaf?.department && leaf.department !== "NA" ? leaf.department : undefined,
+      localityCode: payload?.service?.address?.locality?.code,
+      seed: `${user?.info?.uuid ?? ""}:${Date.now()}`,
+    });
+    if (assignment) {
+      payload.workflow.assignes = [assignment.uuid];
+      payload.workflow.hrmsAssignes = [assignment.uuid];
+      // MERGE into additionalDetail (built as a JSON string) and send it back as
+      // an OBJECT: pgr-services' extractAdditionalDetails only keeps Map-shaped
+      // payloads, and replacing it would drop the fields already stamped there.
+      let existing = {};
+      try {
+        const raw = payload.service.additionalDetail;
+        existing = typeof raw === "string" ? JSON.parse(raw || "{}") : raw || {};
+      } catch (e) {
+        existing = {};
+      }
+      payload.service.additionalDetail = {
+        ...existing,
+        autoAssignment: {
+          assignee: assignment.uuid,
+          departmentCode: assignment.department,
+          tier: assignment.tier,
+          ...(assignment.jurisdiction ? { jurisdiction: assignment.jurisdiction } : {}),
+          source: "employee-create",
+        },
+      };
+    }
     handleResponseForCreateComplaint(payload);
   };
 

@@ -11,6 +11,10 @@ var globalConfigs = (function () {
   var configModuleName = "commonMDMSConfig";
   var localeRegion = "PT";
   var localeDefault = "pt";
+  // Browser tab before the app boots (optional). The tenant localisation CORE_APP_TITLE and
+  // StateInfo.logoUrl refine the title and favicon once the app has its boot data.
+  var appTitle = "";
+  var faviconUrl = "";
   var mdmsContext = "mdms-v2";
   var hrmsContext = "egov-hrms";
   var invalidEmployeeRoles = ["SYSTEM"];
@@ -74,6 +78,8 @@ var globalConfigs = (function () {
     else if (key === "GMAPS_API_KEY") return gmaps_api_key;
     else if (key === "FIN_ENV") return finEnv;
     else if (key === "ENABLE_SINGLEINSTANCE") return centralInstanceEnabled;
+    else if (key === "APP_TITLE") return appTitle;
+    else if (key === "FAVICON_URL") return faviconUrl;
     else if (key === "DIGIT_FOOTER_BW") return footerBWLogoURL;
     else if (key === "DIGIT_FOOTER") return footerLogoURL;
     else if (key === "DIGIT_HOME_URL") return digitHomeURL;
