@@ -9,12 +9,14 @@
 // is replaced with the v2 Card / typography / theme tokens used by
 // the rest of the modernized citizen surface.
 
-import React, { useEffect } from "react";
+import React, { useCallback, useEffect, useState } from "react";
+import { useQueryClient } from "react-query";
 import { statusLabel } from "../../utils/statusLabel";
 import { useParams, Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 
 import { Loader } from "@egovernments/digit-ui-react-components";
+import { Toast } from "@egovernments/digit-ui-components";
 import { Card } from "@egovernments/digit-ui-components-v2";
 import { AlertCircle } from "lucide-react";
 
@@ -27,6 +29,9 @@ import ComplaintLocationMap from "../../components/ComplaintLocationMap";
 import { buildExtendedAttributeRows, useExtendedAttributeOrder } from "../../components/PgrExtendedAttributesView";
 import { EmojiRatingBadge } from "../../components/EmojiRating";
 import ReceiptActions from "../../components/ReceiptActions";
+import { buildWithdrawRequest, wasReopened } from "../../utils/withdraw";
+import { trackApiError } from "../../utils/analytics";
+import WithdrawComplaintPopup from "./WithdrawComplaintPopup";
 
 // Terminal (non-active) states across standard PGR *and* the mz.igsae CMS workflow.
 // CANCELLED / CLOSEDAFTER* are CMS terminals; without them CANCELLED wrongly showed
@@ -181,6 +186,62 @@ function WorkflowComponent({ complaintDetails, id }) {
     tenantId: complaintDetails?.service?.tenantId,
     auditDetails: complaintDetails?.service?.auditDetails,
   });
+  // Withdraw window: WITHDRAWSLA counted from filing, same mechanism.
+  const withdrawWindow = useActionWindow({
+    action: "WITHDRAW",
+    tenantId: complaintDetails?.service?.tenantId,
+    auditDetails: complaintDetails?.service?.auditDetails,
+  });
+
+  const queryClient = useQueryClient();
+  const [withdrawPopup, setWithdrawPopup] = useState({ open: false, submitting: false, failed: false });
+  const [toast, setToast] = useState(null);
+  const closeToast = useCallback(() => setToast(null), []);
+
+  // The popup only confirms; the WITHDRAW update runs here so the page can
+  // refresh itself afterwards — status pill (useComplaintDetails), My
+  // Complaints and this timeline all move to the closed state without a reload.
+  const withdrawComplaint = async (reason) => {
+    setWithdrawPopup({ open: true, submitting: true, failed: false });
+    try {
+      const response = await Digit.PGRService.update(buildWithdrawRequest(complaintDetails.service, reason));
+      if (!response?.ServiceWrappers?.length) throw new Error("WITHDRAW update returned no complaint");
+    } catch (e) {
+      trackApiError("Withdraw", e);
+      setWithdrawPopup({ open: true, submitting: false, failed: true });
+      return;
+    }
+    setWithdrawPopup({ open: false, submitting: false, failed: false });
+    const successKey = "WITHDRAW_SUCCESSFULLY";
+    setToast({ type: "success", label: t(successKey) === successKey ? "Withdrawn Successfully" : t(successKey) });
+    refreshComplaint();
+    setStatusSettle({ from: complaintDetails?.service?.applicationStatus, attempt: 0 });
+  };
+
+  const refreshComplaint = () => {
+    queryClient.invalidateQueries(["complaintDetails"]);
+    queryClient.invalidateQueries(["complaintsList"]);
+    revalidate();
+  };
+  // pgr-services saves the new status asynchronously (egov-persister), so the search
+  // fired right after the update can still return the old one: the status pill stayed on
+  // "Pending" next to a "Withdrawn" timeline. Refresh again, backing off, until the
+  // complaint no longer reads as it did before the withdrawal (at most five tries).
+  const [statusSettle, setStatusSettle] = useState(null);
+  const currentStatus = complaintDetails?.service?.applicationStatus;
+  useEffect(() => {
+    if (!statusSettle) return undefined;
+    if (currentStatus !== statusSettle.from || statusSettle.attempt >= 5) {
+      setStatusSettle(null);
+      return undefined;
+    }
+    const timer = setTimeout(() => {
+      refreshComplaint();
+      setStatusSettle((s) => s && { ...s, attempt: s.attempt + 1 });
+    }, 800 * (statusSettle.attempt + 1));
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [statusSettle, currentStatus]);
 
   useEffect(() => {
     revalidate();
@@ -199,7 +260,14 @@ function WorkflowComponent({ complaintDetails, id }) {
     .filter((a) => Array.isArray(a?.roles) && a.roles.includes("CITIZEN"))
     .map((a) => a?.action)
     .filter((a) => a && a !== "COMMENT")
-    .filter((a) => a !== "REOPEN" || reopenAllowed);
+    .filter((a) => a !== "REOPEN" || reopenAllowed)
+    // WITHDRAW only inside its window (server-enforced too) and never after a
+    // reopen (UI rule) — see utils/withdraw.
+    .filter(
+      (a) =>
+        a !== "WITHDRAW" ||
+        (withdrawWindow.ready && withdrawWindow.open && !wasReopened(workflowData?.ProcessInstances))
+    );
 
   // Rendered INSIDE the current-state timeline row (legacy-checkpoint parity):
   // action buttons while actions are open; the given rating once rated.
@@ -213,28 +281,37 @@ function WorkflowComponent({ complaintDetails, id }) {
           .map((action) => {
             const key = `CS_COMMON_${action}`;
             const label = t(key) === key ? action : t(key);
-            return (
+            const isWithdraw = action === "WITHDRAW";
+            const button = (
+              <button
+                type="button"
+                // The class is load-bearing: overrides.css restyles every
+                // CLASSLESS <button> with text-primary (near-black) !important,
+                // which on a dark-green primary read as black-on-green.
+                className="pgr-citizen-action-btn"
+                onClick={isWithdraw ? () => setWithdrawPopup({ open: true, submitting: false, failed: false }) : undefined}
+                style={{
+                  padding: "0.4rem 1.1rem",
+                  fontWeight: 600,
+                  // Same pair the design-system primary button uses; applyTheme
+                  // derives a readable text colour when the tenant omits it.
+                  color: "var(--color-button-primary-text, #fff)",
+                  background: "var(--color-button-primary-bg-default, var(--color-primary-1, var(--color-primary-main, #c84c0e)))",
+                  border: "none",
+                  borderRadius: "0.375rem",
+                  cursor: "pointer",
+                }}
+              >
+                {label}
+              </button>
+            );
+            // WITHDRAW is confirmed in a popup on this page; the other citizen
+            // actions have their own pages (/reopen, /rate).
+            return isWithdraw ? (
+              <React.Fragment key={action}>{button}</React.Fragment>
+            ) : (
               <Link key={action} to={`/${window?.contextPath || "digit-ui"}/citizen/pgr/${action.toLowerCase()}/${id}`}>
-                <button
-                  type="button"
-                  // The class is load-bearing: overrides.css restyles every
-                  // CLASSLESS <button> with text-primary (near-black) !important,
-                  // which on a dark-green primary read as black-on-green.
-                  className="pgr-citizen-action-btn"
-                  style={{
-                    padding: "0.4rem 1.1rem",
-                    fontWeight: 600,
-                    // Same pair the design-system primary button uses; applyTheme
-                    // derives a readable text colour when the tenant omits it.
-                    color: "var(--color-button-primary-text, #fff)",
-                    background: "var(--color-button-primary-bg-default, var(--color-primary-1, var(--color-primary-main, #c84c0e)))",
-                    border: "none",
-                    borderRadius: "0.375rem",
-                    cursor: "pointer",
-                  }}
-                >
-                  {label}
-                </button>
+                {button}
               </Link>
             );
           })}
@@ -242,19 +319,30 @@ function WorkflowComponent({ complaintDetails, id }) {
     ) : null;
 
   return (
-    <TimelineWrapper
-      businessId={id}
-      isWorkFlowLoading={isWorkFlowLoading}
-      workflowData={workflowData}
-      labelPrefix="WF_PGR_"
-      currentStateChildren={currentStateChildren}
-      // QA #19 part 1 (sheet v4): the citizen must not see which employee
-      // handled the complaint — employee name + contact lines are omitted.
-      hideEmployeeContacts
-      // Internal department comments (assign, escalate, reassign, …) stay
-      // internal; the citizen reads the resolving / rejecting comment only.
-      citizenCommentActions={["RESOLVE", "REJECT"]}
-    />
+    <>
+      <TimelineWrapper
+        businessId={id}
+        isWorkFlowLoading={isWorkFlowLoading}
+        workflowData={workflowData}
+        labelPrefix="WF_PGR_"
+        currentStateChildren={currentStateChildren}
+        // QA #19 part 1 (sheet v4): the citizen must not see which employee
+        // handled the complaint — employee name + contact lines are omitted.
+        hideEmployeeContacts
+        // Internal department comments (assign, escalate, reassign, …) stay
+        // internal; the citizen reads the resolving / rejecting comment only.
+        citizenCommentActions={["RESOLVE", "REJECT"]}
+      />
+      {withdrawPopup.open ? (
+        <WithdrawComplaintPopup
+          onConfirm={withdrawComplaint}
+          onClose={() => setWithdrawPopup({ open: false, submitting: false, failed: false })}
+          isSubmitting={withdrawPopup.submitting}
+          hasError={withdrawPopup.failed}
+        />
+      ) : null}
+      {toast ? <Toast type={toast.type} label={toast.label} onClose={closeToast} /> : null}
+    </>
   );
 }
 

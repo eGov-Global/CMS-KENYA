@@ -17,6 +17,7 @@ import { buildComplaintPath } from "../../utils/complaintHierarchyPath";
 import { selectServiceDefsFromComplaintHierarchy } from "../../utils";
 import { isPiiMaskingEnabled } from "../../utils/piiMasking";
 import useActionWindow from "../../hooks/pgr/useActionWindow";
+import { isConfirmationAction, wasReopened } from "../../utils/withdraw";
 import { findLatestAssigneeUuidByRole } from "../../utils/workflowAssignee";
 import { LAST_MILE_ROLE, narrowToLastMile } from "../../utils/autoAssign";
 import { EV, trackE } from "../../utils/analytics";
@@ -101,14 +102,19 @@ const buildActionFormConfig = ({ action, assigneeRoles = [], isTerminal = false,
   // attach a file just to ask a question is wrong, so the attachment is
   // optional for this action regardless of the target state's flag.
   const ATTACHMENT_OPTIONAL_ACTIONS = ["AWAITINGINFORMATION"];
-  body.push({
-    type: "component",
-    isMandatory: !!docUploadRequired && !ATTACHMENT_OPTIONAL_ACTIONS.includes(action),
-    component: "PGRActionUploadComponent",
-    key: "SelectedDocuments",
-    label: "CS_COMMON_ATTACHMENTS",
-    populators: { name: "SelectedDocuments" },
-  });
+  // WITHDRAW closes the complaint on the complainant's behalf: the modal is a
+  // confirmation (message + reason), with nothing to attach.
+  const isConfirmation = isConfirmationAction(action);
+  if (!isConfirmation) {
+    body.push({
+      type: "component",
+      isMandatory: !!docUploadRequired && !ATTACHMENT_OPTIONAL_ACTIONS.includes(action),
+      component: "PGRActionUploadComponent",
+      key: "SelectedDocuments",
+      label: "CS_COMMON_ATTACHMENTS",
+      populators: { name: "SelectedDocuments" },
+    });
+  }
   body.push({
     type: "textarea",
     isMandatory: true,
@@ -117,7 +123,12 @@ const buildActionFormConfig = ({ action, assigneeRoles = [], isTerminal = false,
     populators: { name: "SelectedComments", maxLength: 1000, validation: { required: true }, error: "CORE_COMMON_REQUIRED_ERRMSG" },
   });
   return {
-    label: { heading: `CS_ACTION_${action}`, cancel: "CS_COMMON_CANCEL", submit: "CS_COMMON_SUBMIT" },
+    label: {
+      heading: `CS_ACTION_${action}`,
+      cancel: "CS_COMMON_CANCEL",
+      submit: isConfirmation ? `CS_COMMON_${action}` : "CS_COMMON_SUBMIT",
+    },
+    ...(isConfirmation ? { description: `CS_${action}_CONFIRM_MESSAGE` } : {}),
     form: [{ body }],
   };
 };
@@ -252,6 +263,12 @@ const PGRDetails = () => {
   // timestamps (see useActionWindow) — the rule the citizen page and pgr-services apply.
   const reopenWindow = useActionWindow({
     action: "REOPEN",
+    tenantId: pgrData?.ServiceWrappers?.[0]?.service?.tenantId || tenantId,
+    auditDetails: pgrData?.ServiceWrappers?.[0]?.service?.auditDetails,
+  });
+  // Withdraw window (WITHDRAWSLA from filing), same mechanism.
+  const withdrawWindow = useActionWindow({
+    action: "WITHDRAW",
     tenantId: pgrData?.ServiceWrappers?.[0]?.service?.tenantId || tenantId,
     auditDetails: pgrData?.ServiceWrappers?.[0]?.service?.auditDetails,
   });
@@ -673,6 +690,13 @@ const PGRDetails = () => {
       ? matchingState.actions.filter((action) => action.roles.some((role) => userRoles.includes(role)))
         // REOPEN is offered only while its window is known to be open.
         .filter((action) => action.action !== "REOPEN" || (reopenWindow.ready && reopenWindow.open))
+        // WITHDRAW on the citizen's behalf only inside its window (server-enforced too)
+        // and never after a reopen (UI rule) — see utils/withdraw.
+        .filter(
+          (action) =>
+            action.action !== "WITHDRAW" ||
+            (withdrawWindow.ready && withdrawWindow.open && !wasReopened(workflowData?.ProcessInstances))
+        )
         .map((action) => {
           // Look up the target state so the modal can adapt generically (terminal → no assignee,
           // docUploadRequired → future doc capture) with no per-action code.

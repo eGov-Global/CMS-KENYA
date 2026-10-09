@@ -7762,5 +7762,65 @@
         "message": "The browser blocked the PDF tab — the receipt was downloaded instead.",
         "module": "rainmaker-pgr",
         "locale": "default"
+    },
+    {
+        "code": "WITHDRAW",
+        "message": "Withdraw",
+        "module": "rainmaker-pgr",
+        "locale": "default"
+    },
+    {
+        "code": "CS_ACTION_WITHDRAW",
+        "message": "Withdraw Complaint",
+        "module": "rainmaker-pgr",
+        "locale": "default"
+    },
+    {
+        "code": "CS_COMMON_WITHDRAW",
+        "message": "Withdraw",
+        "module": "rainmaker-pgr",
+        "locale": "default"
+    },
+    {
+        "code": "WITHDRAW_SUCCESSFULLY",
+        "message": "Withdrawn Successfully",
+        "module": "rainmaker-pgr",
+        "locale": "default"
+    },
+    {
+        "code": "WF_PGR_WITHDRAW",
+        "message": "Withdrawn",
+        "module": "rainmaker-pgr",
+        "locale": "default"
+    },
+    {
+        "code": "CS_WITHDRAW_CONFIRM_HEADING",
+        "message": "Withdraw this complaint?",
+        "module": "rainmaker-pgr",
+        "locale": "default"
+    },
+    {
+        "code": "CS_WITHDRAW_CONFIRM_MESSAGE",
+        "message": "The complaint will be closed and no further action will be taken on it. This cannot be undone.",
+        "module": "rainmaker-pgr",
+        "locale": "default"
+    },
+    {
+        "code": "CS_WITHDRAW_REASON",
+        "message": "Reason for withdrawing",
+        "module": "rainmaker-pgr",
+        "locale": "default"
+    },
+    {
+        "code": "CS_WITHDRAWING",
+        "message": "Withdrawing…",
+        "module": "rainmaker-pgr",
+        "locale": "default"
+    },
+    {
+        "code": "CS_WITHDRAW_FAILED",
+        "message": "Couldn't withdraw the complaint. Please try again.",
+        "module": "rainmaker-pgr",
+        "locale": "default"
     }
 ]
