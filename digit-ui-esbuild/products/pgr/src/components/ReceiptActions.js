@@ -5,16 +5,24 @@
 // The PDF is drawn locally from data already in memory (see
 // utils/complaintReceipt), so Download works on a dropped connection. The only
 // network call is the optional tenant logo, fetched with a short timeout and
-// omitted on failure. Share opens an inline sheet: open the PDF, Email,
+// omitted on failure. Share opens a modal dialog: open the PDF, Email,
 // WhatsApp, SMS (phones) and "More apps". What is shared is the receipt PDF
 // itself — never the complaint number or a tracking link. Where the browser can
-// hand a file to another app (Web Share API level 2: Android Chrome, iOS Safari)
-// every tile opens the device's share sheet with the PDF in it. Elsewhere the PDF
-// is downloaded first and the tile opens the app empty, for the user to attach it.
+// hand a file to another app (Web Share API level 2: Android Chrome, iOS and
+// macOS Safari) every tile opens the device's share sheet with the PDF in it.
+// Elsewhere the PDF is downloaded first and the tile opens the app empty, for
+// the user to attach it.
+//
+// The PDF is drawn as soon as the dialog opens and kept (File, blob URL), so a
+// tile can call navigator.share() / trigger the download synchronously inside its
+// own click. Safari and desktop Chrome refuse both once the click's user
+// activation has run out, which an `await` before the call guarantees — that was
+// issue #138 on Mac: "loading" and then nothing.
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import ReactDOM from "react-dom";
 import { useTranslation } from "react-i18next";
-import { Download, FileText, Mail, MessageCircle, MessageSquare, Printer, Share2 } from "lucide-react";
+import { Download, FileText, Mail, MessageCircle, MessageSquare, Printer, Share2, X } from "lucide-react";
 import { Button } from "@egovernments/digit-ui-components-v2";
 import { RECEIPT_FALLBACKS } from "../utils/receiptCopy";
 import { buildShareLinks, canShareFiles } from "../utils/receiptShare";
@@ -26,13 +34,14 @@ export const RECEIPT_ACTION_FALLBACKS = {
   print: "Print Receipt",
   share: "Share",
   shareVia: "Share receipt via",
+  close: "Close",
+  preparing: "Preparing the PDF…",
   openPdf: "Open PDF",
   email: "Email",
   whatsapp: "WhatsApp",
   sms: "SMS",
   more: "More apps",
   hintPdf: "Every option sends the receipt PDF. On a computer the PDF is downloaded first — attach it in the app that opens.",
-  shareRetry: "Sharing was interrupted — tap again.",
   downloadedOnly: "Receipt PDF saved to your downloads.",
   attach: "Receipt PDF saved to your downloads — attach it in the app that opened.",
   popupBlocked: "The browser blocked the PDF tab — the receipt was downloaded instead.",
@@ -57,6 +66,14 @@ const getLogo = async (url) => {
   const uri = await fetchLogoDataUri(url);
   logoCache.set(url, uri);
   return uri;
+};
+
+// window.open with the "noopener" feature returns null BY SPEC even when the tab
+// opened, which would read as a blocked popup — detach the opener by hand.
+const openTab = (url) => {
+  const tab = window.open(url, "_blank");
+  if (tab) tab.opener = null;
+  return tab;
 };
 
 /** Human tenant name for the receipt (never the bare code). */
@@ -128,7 +145,8 @@ const ReceiptActionsReady = ({ complaintDetails, actions, variant, className }) 
   const { t } = useTranslation();
   const [busy, setBusy] = useState(null); // which action is running
   const [notice, setNotice] = useState(null); // { tone: "error" | "info", text }
-  const [sheetOpen, setSheetOpen] = useState(false);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [preparing, setPreparing] = useState(false); // PDF being drawn for the open dialog
   const downloadedRef = useRef(false); // a repeat share must not save a second copy
   const firstOptionRef = useRef(null);
   const { service, details, classification, extendedRows } = useComplaintReceiptModel(complaintDetails);
@@ -148,11 +166,12 @@ const ReceiptActionsReady = ({ complaintDetails, actions, variant, className }) 
   }, [service?.tenantId, tr]);
 
   const id = service?.serviceRequestId || "";
-  // The share carries the PDF only: the subject names the document, not the complaint.
-  const share = useMemo(() => {
-    const subject = tr("PGR_RECEIPT_TITLE", RECEIPT_FALLBACKS.title);
-    return { subject, links: buildShareLinks({ subject }) };
-  }, [tr]);
+  // Subject + message text for the channels and the native sheet, built together
+  // with the receipt from the same rows the PDF prints. Until then the links carry
+  // the bare subject, so a very fast click still opens the app.
+  const [message, setMessage] = useState(null);
+  const subjectFallback = tr("PGR_RECEIPT_TITLE", RECEIPT_FALLBACKS.title);
+  const links = useMemo(() => buildShareLinks(message || { subject: subjectFallback }), [message, subjectFallback]);
 
   const prepareModel = useCallback(async () => {
     const { tenantName, helpline, logoUrl } = resolveTenant(service?.tenantId, tr);
@@ -167,141 +186,153 @@ const ReceiptActionsReady = ({ complaintDetails, actions, variant, className }) 
   const coarsePointer = typeof window !== "undefined" && !!window.matchMedia?.("(pointer: coarse)")?.matches;
 
   const rootRef = useRef(null);
-  const sheetId = `pgr-share-sheet-${id || "receipt"}`;
+  const dialogId = `pgr-share-dialog-${id || "receipt"}`;
 
-  // The PDF for "Open PDF" is drawn as soon as the sheet opens, so the click can
-  // open the finished blob URL synchronously - the only way every browser allows
-  // a new tab (navigating a blank popup afterwards is not reliable everywhere).
-  const pdfRef = useRef({ url: null, promise: null });
-  const ensurePdfUrl = useCallback(() => {
-    if (pdfRef.current.url) return Promise.resolve(pdfRef.current.url);
-    if (!pdfRef.current.promise) {
-      pdfRef.current.promise = Promise.all([loadReceipt(), prepareModel()])
-        .then(([{ buildComplaintReceipt }, model]) => {
-          const url = buildComplaintReceipt(model).output("bloburl");
-          pdfRef.current.url = url;
-          return url;
+  // The receipt, drawn once per complaint record and kept in every form a tile
+  // needs (File for the share sheet, blob URL for Open PDF and the download),
+  // together with the receipt module that knows how to use them. Built when the
+  // dialog opens; `ready` is set only once both exist so a click can act
+  // synchronously, which Safari and desktop Chrome require (issue #138).
+  const receiptRef = useRef({ mod: null, artifacts: null, promise: null });
+  const ensureReceipt = useCallback(() => {
+    const ref = receiptRef.current;
+    if (ref.artifacts && ref.mod) return Promise.resolve(ref);
+    if (!ref.promise) {
+      setPreparing(true);
+      ref.promise = Promise.all([loadReceipt(), prepareModel()])
+        .then(([mod, model]) => {
+          ref.mod = mod;
+          ref.artifacts = mod.buildReceiptArtifacts(model);
+          ref.message = mod.buildReceiptShareMessage(model);
+          setMessage(ref.message);
+          return ref;
         })
         .catch((e) => {
-          pdfRef.current.promise = null;
+          ref.promise = null;
           throw e;
-        });
+        })
+        .finally(() => setPreparing(false));
     }
-    return pdfRef.current.promise;
+    return ref.promise;
   }, [prepareModel]);
   useEffect(() => {
     // A new/updated complaint record invalidates the drawn receipt.
-    const ref = pdfRef.current;
-    ref.url = null;
-    ref.promise = null;
-    return () => {
-      if (ref.url) URL.revokeObjectURL(ref.url);
-      ref.url = null;
+    const ref = receiptRef.current;
+    const drop = () => {
+      if (ref.artifacts && ref.mod) ref.mod.releaseReceiptArtifacts(ref.artifacts);
+      ref.artifacts = null;
+      ref.message = null;
       ref.promise = null;
     };
+    drop();
+    return drop;
   }, [service]);
 
+  const closeDialog = useCallback(() => {
+    setDialogOpen(false);
+    rootRef.current?.querySelector(`[aria-controls="${dialogId}"]`)?.focus();
+  }, [dialogId]);
+
   useEffect(() => {
-    if (!sheetOpen) return undefined;
+    if (!dialogOpen) return undefined;
     prefetch();
-    ensurePdfUrl().catch(() => {});
+    ensureReceipt().catch(() => {});
     firstOptionRef.current?.focus();
-    // Escape closes the sheet from anywhere on the page (an option that disabled
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    // Escape closes the dialog from anywhere on the page (an option that disabled
     // itself while busy may have dropped focus to <body>) and hands focus back to Share.
     const onKey = (e) => {
-      if (e.key !== "Escape") return;
-      setSheetOpen(false);
-      rootRef.current?.querySelector(`[aria-controls="${sheetId}"]`)?.focus();
+      if (e.key === "Escape") closeDialog();
     };
     document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, [sheetOpen, prefetch, ensurePdfUrl, sheetId]);
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.body.style.overflow = prevOverflow;
+    };
+  }, [dialogOpen, prefetch, ensureReceipt, closeDialog]);
+
+  const saveArtifacts = useCallback((ref) => {
+    ref.mod.downloadReceiptArtifacts(ref.artifacts);
+    downloadedRef.current = true;
+  }, []);
+
+  /**
+   * Act with the prebuilt receipt. Everything that must happen inside the user
+   * gesture — navigator.share(), the download anchor, window.open — is reached
+   * here without an await in between.
+   */
+  const actWithReceipt = useCallback(
+    (action, ref) => {
+      if (action === "download") {
+        saveArtifacts(ref);
+        return Promise.resolve();
+      }
+      if (action === "open") {
+        if (!openTab(ref.artifacts.url)) {
+          saveArtifacts(ref);
+          setNotice({ tone: "info", text: tr("PGR_RECEIPT_POPUP_BLOCKED", RECEIPT_ACTION_FALLBACKS.popupBlocked) });
+        }
+        return Promise.resolve();
+      }
+      if (action === "share") {
+        // Any tile on a file-sharing browser, and "More apps" everywhere: the PDF goes
+        // into the native share sheet; a browser that refuses (no file support, or the
+        // activation ran out) gets the download instead — see utils/receiptShare.
+        return ref.mod
+          .shareReceiptArtifacts(ref.artifacts, { title: ref.message?.subject || subjectFallback, text: ref.message?.text, alreadyDownloaded: downloadedRef.current })
+          .then((result) => {
+            if (result === "downloaded") {
+              downloadedRef.current = true;
+              setNotice({ tone: "info", text: tr("PGR_RECEIPT_SHARE_DOWNLOADED_ONLY", RECEIPT_ACTION_FALLBACKS.downloadedOnly) });
+            }
+          });
+      }
+      // email / whatsapp / sms on a browser without file sharing: the tile is a real
+      // link that opens the app with the summary prefilled (the browser handles the
+      // navigation itself); here the PDF is saved inside the same click and the user
+      // is told to attach it.
+      if (!downloadedRef.current) saveArtifacts(ref);
+      setNotice({ tone: "info", text: tr("PGR_RECEIPT_SHARE_ATTACH", RECEIPT_ACTION_FALLBACKS.attach) });
+      return Promise.resolve();
+    },
+    [saveArtifacts, subjectFallback, tr]
+  );
 
   const run = useCallback(
-    async (action) => {
+    (action) => {
       if (busy) return;
       setBusy(action);
       setNotice(null);
-      // Opened synchronously, inside the click, so the popup blocker sees the gesture:
-      // straight onto the prebuilt PDF when it is ready, else a blank tab that is
-      // navigated once the PDF exists.
-      let tab = null;
-      if (action === "whatsapp") {
-        // WhatsApp Web must be opened inside the click too, before the PDF is drawn.
-        tab = window.open("", "_blank");
-        if (tab) tab.opener = null;
-      }
-      if (action === "open") {
-        const ready = pdfRef.current.url;
-        if (ready) {
-          const { openReceiptUrl, downloadComplaintReceipt } = await loadReceipt();
-          if (!openReceiptUrl(ready)) {
-            downloadComplaintReceipt(await prepareModel());
-            downloadedRef.current = true;
-            setNotice({ tone: "info", text: tr("PGR_RECEIPT_POPUP_BLOCKED", RECEIPT_ACTION_FALLBACKS.popupBlocked) });
-          }
-          setBusy(null);
-          return;
-        }
-        tab = window.open("", "_blank");
-        if (tab) tab.opener = null;
-      }
-      try {
-        const [{ downloadComplaintReceipt, printComplaintReceipt, openComplaintReceipt, shareComplaintReceipt }, model] = await Promise.all([loadReceipt(), prepareModel()]);
-        if (action === "download") {
-          downloadComplaintReceipt(model);
-          downloadedRef.current = true;
-        } else if (action === "print") {
+      const ref = receiptRef.current;
+      let work;
+      if (action === "print") {
+        // Printing draws into a hidden iframe; nothing here needs the gesture.
+        work = Promise.all([loadReceipt(), prepareModel()]).then(([{ printComplaintReceipt, downloadComplaintReceipt }, model]) => {
           if (printComplaintReceipt(model) === false) downloadComplaintReceipt(model);
-        } else if (action === "open") {
-          if (openComplaintReceipt(model, tab) === false) {
-            downloadComplaintReceipt(model);
-            downloadedRef.current = true;
-            setNotice({ tone: "info", text: tr("PGR_RECEIPT_POPUP_BLOCKED", RECEIPT_ACTION_FALLBACKS.popupBlocked) });
-          }
-        } else if (action === "share") {
-          // Any tile on a file-sharing browser, and "More apps" everywhere: the PDF goes
-          // into the native share sheet; without file support it is downloaded instead.
-          const result = await shareComplaintReceipt(model, { title: share.subject, alreadyDownloaded: downloadedRef.current });
-          if (result === "downloaded") {
-            downloadedRef.current = true;
-            setNotice({ tone: "info", text: tr("PGR_RECEIPT_SHARE_DOWNLOADED_ONLY", RECEIPT_ACTION_FALLBACKS.downloadedOnly) });
-          }
-        } else if (action === "email" || action === "whatsapp" || action === "sms") {
-          // No file sharing here: save the PDF, then open the app empty for the user to
-          // attach it. mailto: and sms: navigate in place; WhatsApp gets the tab opened above.
-          if (!downloadedRef.current) {
-            downloadComplaintReceipt(model);
-            downloadedRef.current = true;
-          }
-          setNotice({ tone: "info", text: tr("PGR_RECEIPT_SHARE_ATTACH", RECEIPT_ACTION_FALLBACKS.attach) });
-          if (action === "whatsapp") {
-            if (tab) tab.location = share.links.whatsapp;
-            else window.open(share.links.whatsapp, "_blank", "noopener");
-          } else {
-            window.location.href = share.links[action];
-          }
-        }
-      } catch (e) {
-        if (tab && !tab.closed) tab.close();
-        if (e?.name === "AbortError") {
-          // the user dismissed the native sheet: nothing to say
-        } else if (e?.name === "NotAllowedError") {
-          setNotice({ tone: "info", text: tr("PGR_RECEIPT_SHARE_RETRY", RECEIPT_ACTION_FALLBACKS.shareRetry) });
-        } else {
-          setNotice({ tone: "error", text: tr("PGR_RECEIPT_ERROR", RECEIPT_FALLBACKS.errorLabel) });
-        }
-      } finally {
-        setBusy(null);
+        });
+      } else if (ref.artifacts && ref.mod) {
+        work = actWithReceipt(action, ref); // synchronous path: still inside the click
+      } else {
+        // Clicked before the receipt was drawn (dialog not used, or a very fast tap):
+        // draw it first. The gesture may have run out by then; the share helper then
+        // falls back to the download rather than failing.
+        work = ensureReceipt().then((r) => actWithReceipt(action, r));
       }
+      work
+        .catch((e) => {
+          if (e?.name === "AbortError") return; // the user dismissed the native sheet: nothing to say
+          setNotice({ tone: "error", text: tr("PGR_RECEIPT_ERROR", RECEIPT_FALLBACKS.errorLabel) });
+        })
+        .finally(() => setBusy(null));
     },
-    [busy, nav, prepareModel, share, tr]
+    [busy, prepareModel, actWithReceipt, ensureReceipt, tr]
   );
 
   const buttons = {
     download: { icon: Download, label: tr("PGR_RECEIPT_DOWNLOAD", RECEIPT_FALLBACKS.downloadLabel), onClick: () => run("download") },
     print: { icon: Printer, label: tr("PGR_RECEIPT_PRINT", RECEIPT_ACTION_FALLBACKS.print), onClick: () => run("print") },
-    share: { icon: Share2, label: tr("PGR_RECEIPT_SHARE", RECEIPT_ACTION_FALLBACKS.share), onClick: () => setSheetOpen((o) => !o) },
+    share: { icon: Share2, label: tr("PGR_RECEIPT_SHARE", RECEIPT_ACTION_FALLBACKS.share), onClick: () => setDialogOpen((o) => !o) },
   };
   // On a file-sharing browser every channel tile opens the native sheet with the PDF
   // (the tile names the app the user is after; the OS sheet lets them pick it).
@@ -314,12 +345,88 @@ const ReceiptActionsReady = ({ complaintDetails, actions, variant, className }) 
     canNativeShare && { key: "more", icon: Share2, label: tr("PGR_RECEIPT_SHARE_MORE", RECEIPT_ACTION_FALLBACKS.more), onClick: () => run("share") },
   ].filter(Boolean);
 
+  const noticeEl = notice ? (
+    <p role={notice.tone === "error" ? "alert" : "status"} className={`pgr-share-dialog__notice m-0 text-sm ${notice.tone === "error" ? "text-destructive" : "text-muted-foreground"}`}>
+      {notice.text}
+    </p>
+  ) : null;
+
+  // A modal, portaled to <body>: the sheet used to sit inline in the page header and
+  // clipped inside the details card. The backdrop and Escape close it; focus starts
+  // on the first tile and returns to the Share button.
+  const dialog = dialogOpen
+    ? ReactDOM.createPortal(
+        <div
+          className="v2-scope pgr-share-dialog"
+          onMouseDown={(e) => {
+            if (e.target === e.currentTarget) closeDialog();
+          }}
+        >
+          <div id={dialogId} className="pgr-share-dialog__panel" role="dialog" aria-modal="true" aria-labelledby={`${dialogId}-title`}>
+            <div className="pgr-share-dialog__head">
+              <p id={`${dialogId}-title`} className="pgr-share-sheet__title">{tr("PGR_RECEIPT_SHARE_VIA", RECEIPT_ACTION_FALLBACKS.shareVia)}</p>
+              <button type="button" className="pgr-share-dialog__close" aria-label={tr("PGR_RECEIPT_SHARE_CLOSE", RECEIPT_ACTION_FALLBACKS.close)} onClick={closeDialog}>
+                <X aria-hidden="true" />
+              </button>
+            </div>
+            <div className="pgr-share-sheet__grid">
+              {options.map((o, i) => {
+                const Icon = o.icon;
+                const inner = (
+                  <>
+                    <Icon aria-hidden="true" />
+                    <span>{o.label}</span>
+                  </>
+                );
+                // Without file sharing the channel tiles are real links: the app opens
+                // with the summary prefilled, the click handler only saves the PDF.
+                if (!fileShare && links[o.key]) {
+                  const newTab = o.key === "whatsapp";
+                  return (
+                    <a
+                      key={o.key}
+                      className="pgr-share-sheet__option"
+                      data-share={o.key}
+                      href={links[o.key]}
+                      target={newTab ? "_blank" : undefined}
+                      rel={newTab ? "noopener noreferrer" : undefined}
+                      aria-disabled={busy ? "true" : undefined}
+                      onClick={(e) => {
+                        if (busy) {
+                          e.preventDefault();
+                          return;
+                        }
+                        o.onClick();
+                      }}
+                    >
+                      {inner}
+                    </a>
+                  );
+                }
+                return (
+                  <button key={o.key} ref={i === 0 ? firstOptionRef : undefined} type="button" className="pgr-share-sheet__option" data-share={o.key} onClick={o.onClick} disabled={!!busy} aria-busy={busy ? "true" : undefined}>
+                    {inner}
+                  </button>
+                );
+              })}
+            </div>
+            <p className="pgr-share-sheet__hint">{tr("PGR_RECEIPT_SHARE_HINT_PDF", RECEIPT_ACTION_FALLBACKS.hintPdf)}</p>
+            {preparing ? (
+              <p className="pgr-share-sheet__hint" role="status" data-share-preparing="true">{tr("PGR_RECEIPT_SHARE_PREPARING", RECEIPT_ACTION_FALLBACKS.preparing)}</p>
+            ) : null}
+            {noticeEl}
+          </div>
+        </div>,
+        document.body
+      )
+    : null;
+
   return (
     <div ref={rootRef} className={scoped(className)} style={{ display: "flex", flexDirection: "column", gap: "6px", alignItems: "flex-start" }}>
       <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }} onPointerEnter={prefetch} onFocusCapture={prefetch} onTouchStart={prefetch}>
         {actions.filter((a) => buttons[a]).map((a) => {
           const { icon: Icon, label, onClick } = buttons[a];
-          const extra = a === "share" ? { "aria-expanded": sheetOpen, "aria-controls": sheetId } : {};
+          const extra = a === "share" ? { "aria-expanded": dialogOpen, "aria-haspopup": "dialog", "aria-controls": dialogId } : {};
           return (
             <Button key={a} variant={variant} type="button" onClick={onClick} loading={busy === a} disabled={!!busy && busy !== a} leading={<Icon className="h-4 w-4" />} {...extra}>
               {label}
@@ -327,38 +434,8 @@ const ReceiptActionsReady = ({ complaintDetails, actions, variant, className }) 
           );
         })}
       </div>
-      {sheetOpen ? (
-        <div
-          id={sheetId}
-          className="pgr-share-sheet"
-          role="group"
-          aria-labelledby={`${sheetId}-title`}
-        >
-          <p id={`${sheetId}-title`} className="pgr-share-sheet__title">{tr("PGR_RECEIPT_SHARE_VIA", RECEIPT_ACTION_FALLBACKS.shareVia)}</p>
-          <div className="pgr-share-sheet__grid">
-            {options.map((o, i) => {
-              const Icon = o.icon;
-              const inner = (
-                <>
-                  <Icon aria-hidden="true" />
-                  <span>{o.label}</span>
-                </>
-              );
-              return (
-                <button key={o.key} ref={i === 0 ? firstOptionRef : undefined} type="button" className="pgr-share-sheet__option" data-share={o.key} onClick={o.onClick} disabled={!!busy} aria-busy={busy ? "true" : undefined}>
-                  {inner}
-                </button>
-              );
-            })}
-          </div>
-          <p className="pgr-share-sheet__hint">{tr("PGR_RECEIPT_SHARE_HINT_PDF", RECEIPT_ACTION_FALLBACKS.hintPdf)}</p>
-        </div>
-      ) : null}
-      {notice ? (
-        <p role={notice.tone === "error" ? "alert" : "status"} className={notice.tone === "error" ? "m-0 text-sm text-destructive" : "m-0 text-sm text-muted-foreground"}>
-          {notice.text}
-        </p>
-      ) : null}
+      {dialog}
+      {!dialogOpen ? noticeEl : null}
     </div>
   );
 };

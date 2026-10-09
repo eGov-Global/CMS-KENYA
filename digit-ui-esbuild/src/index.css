@@ -447,9 +447,31 @@ body:has(.citizen-form-wrapper) .citizen {
 @media (max-width: 480px) { .pgr-rate-feedback-grid { grid-template-columns: minmax(0, 1fr); } }
 
 /* ---- Receipt share sheet (components/ReceiptActions.js): inline card under Download / Print / Share ---- */
-.pgr-share-sheet {
-  width: 100%; max-width: 560px; margin-top: 4px; padding: 12px;
-  border: 1px solid var(--color-border, #d6d5d4); border-radius: 12px; background: #fff;
+/* The share dialog (components/ReceiptActions.js): a modal portaled to <body>, so it
+ * never clips inside the details card the Share button lives in. Phones get it as a
+ * bottom sheet. The tile / title / hint rules below are shared with it. */
+.pgr-share-dialog {
+  position: fixed; inset: 0; z-index: 10000;
+  display: flex; align-items: center; justify-content: center; padding: 16px;
+  background: rgba(11, 12, 12, 0.5);
+}
+.pgr-share-dialog__panel {
+  width: 100%; max-width: 460px; max-height: calc(100vh - 32px); overflow: auto;
+  padding: 16px; border-radius: 12px; background: #fff; box-shadow: 0 12px 32px rgba(0, 0, 0, 0.24);
+}
+.pgr-share-dialog__head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
+.pgr-share-dialog__head .pgr-share-sheet__title { margin: 0; font-size: 1rem; }
+.pgr-share-dialog__close {
+  display: flex; align-items: center; justify-content: center; flex: none; width: 40px; height: 40px;
+  border: 0; border-radius: 8px; background: transparent; color: var(--color-text-secondary, #505a5f); cursor: pointer;
+}
+.pgr-share-dialog__close:hover { background: var(--color-page-secondary-bg, #f4f4f4); }
+.pgr-share-dialog__close:focus-visible { outline: 3px solid var(--color-primary-1, var(--color-primary-main, #c84c0e)); outline-offset: 2px; }
+.pgr-share-dialog__close svg { width: 20px; height: 20px; }
+.pgr-share-dialog__notice { margin-top: 10px; }
+@media (max-width: 480px) {
+  .pgr-share-dialog { align-items: flex-end; padding: 0; }
+  .pgr-share-dialog__panel { max-width: none; max-height: 85vh; border-radius: 16px 16px 0 0; padding: 16px 16px calc(16px + env(safe-area-inset-bottom)); }
 }
 .pgr-share-sheet__title { margin: 0 0 8px; font-size: 0.875rem; font-weight: 600; color: var(--color-text-primary, #0b0c0c); }
 .pgr-share-sheet__grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 8px; }
@@ -462,10 +484,11 @@ body:has(.citizen-form-wrapper) .citizen {
 .pgr-share-sheet__option:hover { background: var(--color-page-secondary-bg, #f4f4f4); color: var(--color-text-primary, #0b0c0c); text-decoration: none; }
 .pgr-share-sheet__option:focus-visible { outline: 3px solid var(--color-primary-1, var(--color-primary-main, #c84c0e)); outline-offset: 2px; border-radius: 10px; }
 .pgr-share-sheet__option[disabled] { opacity: 0.6; cursor: progress; }
+.pgr-share-sheet__option[aria-disabled="true"] { opacity: 0.6; cursor: progress; pointer-events: none; }
+a.pgr-share-sheet__option { text-decoration: none; }
 .pgr-share-sheet__option svg { width: 18px; height: 18px; flex: none; color: var(--color-primary-1, var(--color-primary-main, #c84c0e)); }
 .pgr-share-sheet__hint { margin: 10px 0 0; font-size: 0.8125rem; line-height: 1.35; color: var(--color-text-secondary, #505a5f); }
 @media (max-width: 420px) {
-  .pgr-share-sheet { padding: 10px; }
   .pgr-share-sheet__grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
 }
 
