@@ -1631,14 +1631,16 @@ button[class*="toast-close"] svg,
  *
  * Re-cap by media query so the modal looks like a calm centred card
  * on every viewport. Scoped to the LogoutDialog's stable
- * `digit-logout-popup-wrapper` class so other digit popups (employee
- * admin forms etc.) keep their existing sizing. */
+ * `digit-logout-popup-wrapper` class, and `pgr-confirm-popup-wrapper` for
+ * the PGR yes/no confirmations (citizen Withdraw), so other digit popups
+ * (employee admin forms etc.) keep their existing sizing. */
 /* Width is pinned (min/max equal) so vendor rules — `.digit-logout-
  * popup-wrapper { width: 31.25rem }`, `.digit-popup-wrapper { width: 100% }`,
  * the small-screen `width: 100%` clamp at 600px — can't pull the
  * card to a different size mid-render. Height stays content-driven. */
 @media (max-width: 47.99rem) {
-  .digit-popup-overlay .digit-popup-wrapper.digit-logout-popup-wrapper {
+  .digit-popup-overlay .digit-popup-wrapper.digit-logout-popup-wrapper,
+  .digit-popup-overlay .digit-popup-wrapper.pgr-confirm-popup-wrapper {
     width: min(420px, calc(100vw - 32px)) !important;
     min-width: min(420px, calc(100vw - 32px)) !important;
     max-width: min(420px, calc(100vw - 32px)) !important;
@@ -1649,7 +1651,8 @@ button[class*="toast-close"] svg,
   }
 }
 @media (min-width: 48rem) {
-  .digit-popup-overlay .digit-popup-wrapper.digit-logout-popup-wrapper {
+  .digit-popup-overlay .digit-popup-wrapper.digit-logout-popup-wrapper,
+  .digit-popup-overlay .digit-popup-wrapper.pgr-confirm-popup-wrapper {
     width: 520px !important;
     min-width: 520px !important;
     max-width: 520px !important;
@@ -1664,23 +1667,39 @@ button[class*="toast-close"] svg,
  * yes/no logout confirm that's overkill — the modal ends up looking
  * "too long". Tighten each section's height/padding so the card hugs
  * its actual content. */
-.digit-popup-wrapper.digit-logout-popup-wrapper .digit-popup-header {
+.digit-popup-wrapper.digit-logout-popup-wrapper .digit-popup-header,
+.digit-popup-wrapper.pgr-confirm-popup-wrapper .digit-popup-header {
   padding: 18px 20px 8px 20px !important;
   min-height: 0 !important;
   height: auto !important;
 }
-.digit-popup-wrapper.digit-logout-popup-wrapper .digit-popup-children-wrap {
+.digit-popup-wrapper.digit-logout-popup-wrapper .digit-popup-children-wrap,
+.digit-popup-wrapper.pgr-confirm-popup-wrapper .digit-popup-children-wrap {
   padding: 4px 20px 16px 20px !important;
   min-height: 0 !important;
   height: auto !important;
   font-size: 0.9375rem !important;
   line-height: 1.5 !important;
 }
-.digit-popup-wrapper.digit-logout-popup-wrapper .digit-popup-footer {
+.digit-popup-wrapper.digit-logout-popup-wrapper .digit-popup-footer,
+.digit-popup-wrapper.pgr-confirm-popup-wrapper .digit-popup-footer {
   padding: 8px 20px 18px 20px !important;
   min-height: 0 !important;
   height: auto !important;
   gap: 8px !important;
+}
+/* Section 21 gives `[class*="popup-children-wrap"]` the dialog-panel card
+ * look, but in the DIGIT PopUp that class is the BODY — the confirmation read
+ * as a bordered, shadowed card nested inside the popup card. The vendor
+ * heading (2rem) is also sized for full-page popups, not a small card. */
+.digit-popup-wrapper.pgr-confirm-popup-wrapper .digit-popup-children-wrap {
+  border: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+}
+.digit-popup-wrapper.pgr-confirm-popup-wrapper .digit-popup-heading {
+  font-size: 1.25rem !important;
+  line-height: 1.4 !important;
 }
 
 /* v2 employee login card — make the top tenant + DIGIT-secondary logos
