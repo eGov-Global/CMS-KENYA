@@ -232,6 +232,8 @@ asset_s3_bucket: "mytenant-egov-assets"
 # nginx_features.brand_assets is on. Note "" means NO footer, not default.
 # footer_logo_url: "https://cdn.example.org/my-footer.png"      # unset = stock DIGIT attribution
 # footer_bw_logo_url: "https://cdn.example.org/my-footer-bw.png"  # unset = stock DIGIT attribution
+# app_title: "Bomet Feedback Hub"          # browser tab before the app boots (tenant localisation CORE_APP_TITLE refines it)
+# favicon_url: "/digit-ui/brand/bomet-logo-round.png"   # unset = bundled DIGIT mark until StateInfo.logoUrl is in
 
 # ────────── digit-ui serving mode ──────────
 

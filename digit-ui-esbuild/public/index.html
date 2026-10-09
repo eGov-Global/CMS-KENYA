@@ -20,6 +20,18 @@
   <title>DIGIT</title>
   <script>if(typeof process==="undefined"){window.process={env:{NODE_ENV:"production",REACT_APP_STATE_LEVEL_TENANT_ID:""}}}</script>
   <script src="/digit-ui/globalConfigs.js"></script>
+  <script>
+    /* Instance branding before the app boots: the server's globalConfigs.js may name the
+       tab (APP_TITLE) and the favicon (FAVICON_URL). Both optional; absent keys keep the
+       neutral defaults above. Once the boot data is in, the app refines the title from the
+       tenant's localisation (CORE_APP_TITLE) and the icon from StateInfo.logoUrl. */
+    (function () {
+      var gc = window.globalConfigs; if (!gc || typeof gc.getConfig !== "function") return;
+      var title = gc.getConfig("APP_TITLE"); if (typeof title === "string" && title.trim()) document.title = title.trim();
+      var icon = gc.getConfig("FAVICON_URL"); var link = document.querySelector('link[rel="icon"]');
+      if (typeof icon === "string" && icon.trim() && link) link.setAttribute("href", icon.trim());
+    })();
+  </script>
   <script src="https://unpkg.com/xlsx/dist/xlsx.full.min.js"></script>
   <script src="https://unpkg.com/keycloak-js@24.0.5/dist/keycloak.js"></script>
   <script>
