@@ -166,11 +166,12 @@ const ReceiptActionsReady = ({ complaintDetails, actions, variant, className }) 
   }, [service?.tenantId, tr]);
 
   const id = service?.serviceRequestId || "";
-  // The share carries the PDF only: the subject names the document, not the complaint.
-  const share = useMemo(() => {
-    const subject = tr("PGR_RECEIPT_TITLE", RECEIPT_FALLBACKS.title);
-    return { subject, links: buildShareLinks({ subject }) };
-  }, [tr]);
+  // Subject + message text for the channels and the native sheet, built together
+  // with the receipt from the same rows the PDF prints. Until then the links carry
+  // the bare subject, so a very fast click still opens the app.
+  const [message, setMessage] = useState(null);
+  const subjectFallback = tr("PGR_RECEIPT_TITLE", RECEIPT_FALLBACKS.title);
+  const links = useMemo(() => buildShareLinks(message || { subject: subjectFallback }), [message, subjectFallback]);
 
   const prepareModel = useCallback(async () => {
     const { tenantName, helpline, logoUrl } = resolveTenant(service?.tenantId, tr);
@@ -202,6 +203,8 @@ const ReceiptActionsReady = ({ complaintDetails, actions, variant, className }) 
         .then(([mod, model]) => {
           ref.mod = mod;
           ref.artifacts = mod.buildReceiptArtifacts(model);
+          ref.message = mod.buildReceiptShareMessage(model);
+          setMessage(ref.message);
           return ref;
         })
         .catch((e) => {
@@ -218,6 +221,7 @@ const ReceiptActionsReady = ({ complaintDetails, actions, variant, className }) 
     const drop = () => {
       if (ref.artifacts && ref.mod) ref.mod.releaseReceiptArtifacts(ref.artifacts);
       ref.artifacts = null;
+      ref.message = null;
       ref.promise = null;
     };
     drop();
@@ -276,7 +280,7 @@ const ReceiptActionsReady = ({ complaintDetails, actions, variant, className }) 
         // into the native share sheet; a browser that refuses (no file support, or the
         // activation ran out) gets the download instead — see utils/receiptShare.
         return ref.mod
-          .shareReceiptArtifacts(ref.artifacts, { title: share.subject, alreadyDownloaded: downloadedRef.current })
+          .shareReceiptArtifacts(ref.artifacts, { title: ref.message?.subject || subjectFallback, text: ref.message?.text, alreadyDownloaded: downloadedRef.current })
           .then((result) => {
             if (result === "downloaded") {
               downloadedRef.current = true;
@@ -284,22 +288,15 @@ const ReceiptActionsReady = ({ complaintDetails, actions, variant, className }) 
             }
           });
       }
-      // email / whatsapp / sms on a browser without file sharing: save the PDF, then
-      // open the app empty for the user to attach it. mailto: and sms: navigate in
-      // place; WhatsApp Web needs a tab, opened inside the same click.
-      let tab = null;
-      if (action === "whatsapp") tab = openTab("");
+      // email / whatsapp / sms on a browser without file sharing: the tile is a real
+      // link that opens the app with the summary prefilled (the browser handles the
+      // navigation itself); here the PDF is saved inside the same click and the user
+      // is told to attach it.
       if (!downloadedRef.current) saveArtifacts(ref);
       setNotice({ tone: "info", text: tr("PGR_RECEIPT_SHARE_ATTACH", RECEIPT_ACTION_FALLBACKS.attach) });
-      if (action === "whatsapp") {
-        if (tab) tab.location = share.links.whatsapp;
-        else window.open(share.links.whatsapp, "_blank", "noopener");
-      } else {
-        window.location.href = share.links[action];
-      }
       return Promise.resolve();
     },
-    [saveArtifacts, share, tr]
+    [saveArtifacts, subjectFallback, tr]
   );
 
   const run = useCallback(
@@ -375,10 +372,40 @@ const ReceiptActionsReady = ({ complaintDetails, actions, variant, className }) 
             <div className="pgr-share-sheet__grid">
               {options.map((o, i) => {
                 const Icon = o.icon;
-                return (
-                  <button key={o.key} ref={i === 0 ? firstOptionRef : undefined} type="button" className="pgr-share-sheet__option" data-share={o.key} onClick={o.onClick} disabled={!!busy} aria-busy={busy ? "true" : undefined}>
+                const inner = (
+                  <>
                     <Icon aria-hidden="true" />
                     <span>{o.label}</span>
+                  </>
+                );
+                // Without file sharing the channel tiles are real links: the app opens
+                // with the summary prefilled, the click handler only saves the PDF.
+                if (!fileShare && links[o.key]) {
+                  const newTab = o.key === "whatsapp";
+                  return (
+                    <a
+                      key={o.key}
+                      className="pgr-share-sheet__option"
+                      data-share={o.key}
+                      href={links[o.key]}
+                      target={newTab ? "_blank" : undefined}
+                      rel={newTab ? "noopener noreferrer" : undefined}
+                      aria-disabled={busy ? "true" : undefined}
+                      onClick={(e) => {
+                        if (busy) {
+                          e.preventDefault();
+                          return;
+                        }
+                        o.onClick();
+                      }}
+                    >
+                      {inner}
+                    </a>
+                  );
+                }
+                return (
+                  <button key={o.key} ref={i === 0 ? firstOptionRef : undefined} type="button" className="pgr-share-sheet__option" data-share={o.key} onClick={o.onClick} disabled={!!busy} aria-busy={busy ? "true" : undefined}>
+                    {inner}
                   </button>
                 );
               })}

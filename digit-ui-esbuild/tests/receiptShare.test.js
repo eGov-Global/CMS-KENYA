@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { shareReceipt, buildShareLinks, canShareFiles } from "../products/pgr/src/utils/receiptShare.js";
+import { shareReceipt, buildShareLinks, buildReceiptShareText, canShareFiles } from "../products/pgr/src/utils/receiptShare.js";
 
 const err = (name) => Object.assign(new Error(name), { name });
 const harness = (nav, { downloads = [] } = {}) => ({
@@ -72,13 +72,37 @@ test("a repeat tap does not download a second copy", async () => {
   assert.deepEqual(h.downloads, []);
 });
 
-test("channel links open the app empty: subject only, no complaint number, no tracking link", () => {
-  const l = buildShareLinks({ subject: "Complaint Receipt" });
-  assert.equal(l.email, "mailto:?subject=Complaint%20Receipt");
-  assert.equal(l.whatsapp, "https://wa.me/");
-  assert.equal(l.sms, "sms:");
-  for (const v of Object.values(buildShareLinks({ subject: "Receipt PG-PGR-2026-10-08-000001" }))) assert.doesNotMatch(v, /text=|body=|complaints\//);
-  assert.equal(buildShareLinks({}).email, "mailto:?subject=");
+test("channel links open the app with the summary prefilled: subject + body / text, URL-encoded", () => {
+  const text = "Complaint Receipt — Bomet\nComplaint No.: BFH-2026-120\nStatus: Pending";
+  const l = buildShareLinks({ subject: "Complaint Receipt BFH-2026-120", text });
+  assert.equal(l.email, `mailto:?subject=${encodeURIComponent("Complaint Receipt BFH-2026-120")}&body=${encodeURIComponent(text)}`);
+  assert.equal(l.whatsapp, `https://wa.me/?text=${encodeURIComponent(text)}`);
+  assert.equal(l.sms, `sms:?&body=${encodeURIComponent(text)}`);
+  assert.deepEqual(buildShareLinks({ subject: "Complaint Receipt" }), { email: "mailto:?subject=Complaint%20Receipt", whatsapp: "https://wa.me/", sms: "sms:" });
+});
+
+test("the share text lists the receipt rows as 'label: value', skips blanks, trims a long description", () => {
+  const text = buildReceiptShareText({
+    title: "Complaint Receipt", tenantName: "Bomet",
+    rows: [{ label: "Complaint No.", value: "BFH-2026-120" }, { label: "Status", value: " Pending at last mile  employee " }, { label: "Landmark", value: "" }, { label: "Description", value: "x".repeat(400) }],
+    helpline: "0700000000", helplineLabel: "Helpline",
+  });
+  const lines = text.split("\n");
+  assert.equal(lines[0], "Complaint Receipt — Bomet");
+  assert.equal(lines[1], "Complaint No.: BFH-2026-120");
+  assert.equal(lines[2], "Status: Pending at last mile employee");
+  assert.ok(!lines.some((l) => l.startsWith("Landmark")));
+  assert.ok(lines[3].startsWith("Description: ") && lines[3].endsWith("…") && lines[3].length < 260);
+  assert.equal(lines[4], "Helpline: 0700000000");
+  assert.equal(buildReceiptShareText({ title: "", rows: [] }), "");
+  const noisy = buildReceiptShareText({ title: "T", rows: [{ label: "Landmark", value: "NA" }, { label: "Ward", value: "Ward 7" }], helpline: "0000000000" });
+  assert.equal(noisy, "T\nWard: Ward 7", "placeholder 'NA' rows and an all-zero helpline are left out");
+});
+
+test("a file share passes title and text along with the PDF", async () => {
+  const seen = []; const nav = { share: async (d) => { seen.push(d); }, canShare: () => true };
+  await shareReceipt({ ...harness(nav), text: "Complaint No.: X" });
+  assert.equal(seen[0].title, "Complaint Receipt"); assert.equal(seen[0].text, "Complaint No.: X"); assert.equal(seen[0].files.length, 1);
 });
 
 test("canShareFiles: true only when share() and canShare() accept a PDF file", () => {

@@ -484,6 +484,8 @@ body:has(.citizen-form-wrapper) .citizen {
 .pgr-share-sheet__option:hover { background: var(--color-page-secondary-bg, #f4f4f4); color: var(--color-text-primary, #0b0c0c); text-decoration: none; }
 .pgr-share-sheet__option:focus-visible { outline: 3px solid var(--color-primary-1, var(--color-primary-main, #c84c0e)); outline-offset: 2px; border-radius: 10px; }
 .pgr-share-sheet__option[disabled] { opacity: 0.6; cursor: progress; }
+.pgr-share-sheet__option[aria-disabled="true"] { opacity: 0.6; cursor: progress; pointer-events: none; }
+a.pgr-share-sheet__option { text-decoration: none; }
 .pgr-share-sheet__option svg { width: 18px; height: 18px; flex: none; color: var(--color-primary-1, var(--color-primary-main, #c84c0e)); }
 .pgr-share-sheet__hint { margin: 10px 0 0; font-size: 0.8125rem; line-height: 1.35; color: var(--color-text-secondary, #505a5f); }
 @media (max-width: 420px) {
