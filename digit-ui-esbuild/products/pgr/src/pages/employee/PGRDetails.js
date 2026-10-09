@@ -19,7 +19,6 @@ import { isPiiMaskingEnabled } from "../../utils/piiMasking";
 import useReopenWindow from "../../hooks/pgr/useReopenWindow";
 import { findLatestAssigneeUuidByRole } from "../../utils/workflowAssignee";
 import { LAST_MILE_ROLE, narrowToLastMile } from "../../utils/autoAssign";
-import { canTakeAction } from "../../utils/takeActionGate";
 import { EV, trackE } from "../../utils/analytics";
 import ReceiptActions from "../../components/ReceiptActions";
 
@@ -695,13 +694,14 @@ const PGRDetails = () => {
   // action from real LME / GRO field users on naipepea (most of whom
   // are seeded with PGR_LME or GRO but no PGR_VIEWER). PGR_VIEWER is
   // a viewer credential, not a prerequisite to act.
-  const shouldShowActionButton = () =>
-    canTakeAction({
-      state: workflowData?.ProcessInstances?.[0]?.state,
-      assignees: workflowData?.ProcessInstances?.[0]?.assignes,
-      userUuid: userInfo?.info?.uuid,
-      userRoles: userInfo?.info?.roles?.map((role) => role.code),
-    });
+  const shouldShowActionButton = () => {
+    const userRoles = userInfo?.info?.roles?.map((role) => role.code) || [];
+    const currentState = workflowData?.ProcessInstances?.[0]?.state;
+    if (!currentState?.actions) return false;
+    const allActionRoles = new Set();
+    currentState.actions.forEach((action) => (action.roles || []).forEach((r) => allActionRoles.add(r)));
+    return userRoles.some((r) => allActionRoles.has(r));
+  };
 
   // Display loader until required data loads
   if (isLoading || isMDMSLoading || isWorkflowLoading) return <Loader />;
