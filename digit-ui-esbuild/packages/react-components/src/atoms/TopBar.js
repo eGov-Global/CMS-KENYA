@@ -19,8 +19,20 @@ const TopBar = ({
   onNotificationIconClick,
   hideNotificationIconOnSomeUrlsWhenNotLoggedIn,
   changeLanguage,
+  // Bundled DIGIT mark on transparency, white because this bar is painted in the
+  // tenant's dark primary colour. Shown when no tenant logo is configured and
+  // whenever the configured one fails to load (moved bucket, blocked host,
+  // offline device) — a broken-image icon was the previous outcome of both.
+  logoFallback = "/digit-ui/brand/digit-logo-white.png",
 }) => {
   const { pathname } = useLocation();
+  const [logoSrc, setLogoSrc] = useState(img || logoFallback);
+  useEffect(() => {
+    setLogoSrc(img || logoFallback);
+  }, [img, logoFallback]);
+  const onLogoError = () => {
+    if (logoSrc !== logoFallback) setLogoSrc(logoFallback);
+  };
 
   // const showHaburgerorBackButton = () => {
   //   if (pathname === "/digit-ui/citizen" || pathname === "/digit-ui/citizen/" || pathname === "/digit-ui/citizen/select-language") {
@@ -37,8 +49,9 @@ const TopBar = ({
           <img
             className="city"
             id="topbar-logo"
-            src={img || "https://cdn.jsdelivr.net/npm/@egovernments/digit-ui-css@1.0.7/img/m_seva_white_logo.png"}
-            alt="mSeva"
+            src={logoSrc}
+            onError={onLogoError}
+            alt="Logo"
           />
           <h3>{cityOfCitizenShownBesideLogo}</h3>
         </div>

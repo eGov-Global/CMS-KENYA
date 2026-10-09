@@ -20,6 +20,10 @@ const maskName = (name) => (name ? MASKED : name);
 const maskPhone = (phone) => (phone ? MASKED : phone);
 const isCitizenActor = (person) =>
   Array.isArray(person?.roles) && person.roles.some((r) => (r?.code || r) === "CITIZEN");
+// Workflow actors/assignees carry a user `type`; a record without it (older
+// data) is judged by its roles. Anyone who is not a citizen is staff.
+const isEmployeePerson = (person) =>
+  !!person && (person.type ? person.type !== "CITIZEN" : !isCitizenActor(person));
 
 // QA #19: maskEmployeeContacts — set by the EMPLOYEE details page —
 // masks every non-citizen actor's name and mobile in the timeline (the
@@ -27,7 +31,12 @@ const isCitizenActor = (person) =>
 // QA #19 part 1 (sheet v4): hideEmployeeContacts — set by the CITIZEN details
 // page — OMITS employee name and contact lines entirely (the citizen must not
 // see who handled the complaint). Citizen actors' own entries stay visible.
-const TimelineWrapper = ({ businessId, isWorkFlowLoading, workflowData, labelPrefix = "", currentStateChildren = null, maskConfidential = false, maskEmployeeContacts = false, hideEmployeeContacts = false }) => {
+// Unlike masking, this does not depend on the PGR_PII_MASKING switch: Nairobi
+// runs with masking off and still must not show staff identities to citizens.
+// citizenCommentActions — when set, a row's comment is shown only for those
+// actions (plus the citizen's own rows): internal department comments stay
+// internal; the resolving / rejecting comment reaches the citizen.
+const TimelineWrapper = ({ businessId, isWorkFlowLoading, workflowData, labelPrefix = "", currentStateChildren = null, maskConfidential = false, maskEmployeeContacts = false, hideEmployeeContacts = false, citizenCommentActions = null }) => {
     const { t } = useTranslation();
 
     const tenantId = Digit.ULBService.getCurrentTenantId();
@@ -239,22 +248,28 @@ const TimelineWrapper = ({ businessId, isWorkFlowLoading, workflowData, labelPre
                 // ALWAYS masks the CITIZEN actor's name and number — even on
                 // non-confidential complaints. The complainant card is the one
                 // place that shows clear identity, per the viewer's privilege.
-                // (maskConfidential is kept as a prop for compatibility but the
-                // citizen actor no longer depends on it.)
                 //
-                // All of it sits behind the PGR_PII_MASKING deploy switch —
-                // Kenya/Bomet runs no confidentiality programme and shows
-                // identities in clear (see utils/piiMasking.js). This is the
-                // single enforcement point, so callers' props need no gating.
+                // The always-on citizen masking sits behind the PGR_PII_MASKING
+                // deploy switch — Kenya/Bomet runs no confidentiality programme
+                // and shows identities in clear (see utils/piiMasking.js).
+                // maskConfidential (below) and the citizen-view hide rules do
+                // not depend on that switch.
                 const piiMasking = isPiiMaskingEnabled();
                 const isEmployeeActor = personRecord && !isCitizenActor(personRecord);
+                // A complaint the citizen marked confidential masks their actor
+                // rows even with the deploy switch off: the backend hides the
+                // complainant card, and workflow-v2 (which feeds this timeline
+                // directly) has no such rule of its own.
                 const maskThis =
-                  piiMasking &&
-                  (isCitizenActor(personRecord) ||
-                    (maskEmployeeContacts && isEmployeeActor));
+                  (maskConfidential && isCitizenActor(personRecord)) ||
+                  (piiMasking &&
+                    (isCitizenActor(personRecord) ||
+                      (maskEmployeeContacts && isEmployeeActor)));
                 // QA #19 part 1: citizen view drops employee identity lines
-                // entirely (hide, not mask).
-                const hideThis = piiMasking && hideEmployeeContacts && isEmployeeActor;
+                // entirely (hide, not mask) — independent of the masking switch.
+                // The chronology endpoint already nulls the employee actor for
+                // citizens — treat "no actor" the same as "employee actor".
+                const hideThis = hideEmployeeContacts && (!personRecord || isEmployeePerson(personRecord));
                 const mobile = isAssigningAction(instance?.action) ? assignee?.mobileNumber : instance?.assigner?.mobileNumber;
                 // The backend already masks the mobile per viewer privilege
                 // ("Contact Details: *****0104"). Mirror that decision onto the
@@ -274,7 +289,7 @@ const TimelineWrapper = ({ businessId, isWorkFlowLoading, workflowData, labelPre
                 // the same rules as any other employee identity on this row.
                 const escalatedToLine = (() => {
                   if (instance?.action !== "ESCALATE" || !assignee?.name) return null;
-                  if (piiMasking && hideEmployeeContacts && !isCitizenActor(assignee)) return null;
+                  if (hideEmployeeContacts && isEmployeePerson(assignee)) return null;
                   const shouldMask =
                     piiMasking &&
                     (isCitizenActor(assignee) || (maskEmployeeContacts && !isCitizenActor(assignee)));
@@ -287,6 +302,10 @@ const TimelineWrapper = ({ businessId, isWorkFlowLoading, workflowData, labelPre
                 // legibly even before their WF_PGR_* keys are seeded.
                 const labelKey = `${labelPrefix}${instance?.action}`;
                 const localizedLabel = t(labelKey);
+                const commentVisible =
+                  !Array.isArray(citizenCommentActions) ||
+                  citizenCommentActions.includes(instance?.action) ||
+                  isCitizenActor(personRecord);
                 return {
                     label: localizedLabel && localizedLabel !== labelKey ? localizedLabel : (instance?.action || ""),
                     variant: 'completed',
@@ -298,7 +317,7 @@ const TimelineWrapper = ({ businessId, isWorkFlowLoading, workflowData, labelPre
                         isSystemActor(personRecord) ? null : personLine,
                         isSystemActor(personRecord) ? null : contactLine,
                         escalatedToLine,
-                        formatComment(instance?.comment),
+                        commentVisible ? formatComment(instance?.comment) : null,
                     ].filter(Boolean),
                     // CCSD-1965: the attachments uploaded AT this workflow step
                     // (verificationDocuments persist per transition). Rendered
@@ -311,7 +330,7 @@ const TimelineWrapper = ({ businessId, isWorkFlowLoading, workflowData, labelPre
             });
             setTimelineSteps(steps);
         }
-    }, [workflowData]);
+    }, [workflowData, maskConfidential, maskEmployeeContacts, hideEmployeeContacts, citizenCommentActions]);
 
     return (
         isWorkFlowLoading ? <Loader /> :

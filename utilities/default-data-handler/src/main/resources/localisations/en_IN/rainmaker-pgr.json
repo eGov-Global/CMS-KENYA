@@ -3912,6 +3912,12 @@
         "locale": "en_IN"
     },
     {
+        "code": "PGR_CONSENT_TERMS_LABEL",
+        "message": "I agree to the Terms & Conditions and to the county using my contact details to send me updates on this complaint.",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
         "code": "FILTER_BY",
         "message": "FILTER BY",
         "module": "rainmaker-pgr",
@@ -7213,7 +7219,7 @@
     },
     {
         "code": "PGR_EXT_IS_CONFIDENTIAL_HINT",
-        "message": "Visibility is enforced once secure handling is enabled; for now this flags the complaint for staff awareness.",
+        "message": "Your name and phone number are not shown to the county officers handling this complaint.",
         "module": "rainmaker-pgr",
         "locale": "en_IN"
     },
@@ -8280,6 +8286,12 @@
         "locale": "en_IN"
     },
     {
+        "code": "CS_REOPEN_SUBMIT_ERROR",
+        "message": "The complaint could not be reopened. Please try again.",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
         "code": "CS_REOPEN_UPLOAD_HINT",
         "message": "JPG, PNG, PDF, DOC, DOCX, XLS, XLSX, MP4, MOV, AVI, MKV up to 5 MB each. You can upload up to 5 files.",
         "module": "rainmaker-pgr",
@@ -8297,5 +8309,292 @@
         "module": "rainmaker-pgr",
         "locale": "en_IN"
     },
-    {"code": "ES_PGR_FILTER_ONLY_MY_COMPLAINTS", "message": "Only complaints I created", "module": "rainmaker-pgr", "locale": "en_IN"}
+    {
+        "code": "ES_PGR_FILTER_ONLY_MY_COMPLAINTS",
+        "message": "Only complaints I created",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "PGR_RECEIPT_TITLE",
+        "message": "Complaint Receipt",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "PGR_RECEIPT_DOWNLOAD",
+        "message": "Download Application",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "PGR_RECEIPT_PRINT",
+        "message": "Print Receipt",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "PGR_RECEIPT_SHARE",
+        "message": "Share",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "PGR_RECEIPT_SHARE_TEXT",
+        "message": "Complaint {id} filed with {tenant}. Track it here:",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "PGR_RECEIPT_SHARE_COPIED",
+        "message": "Link copied — paste it anywhere to share.",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "PGR_RECEIPT_SHARE_UNAVAILABLE",
+        "message": "Sharing is not available on this device — download the receipt instead.",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "PGR_RECEIPT_ERROR",
+        "message": "Could not generate the receipt. Please try again.",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "PGR_RECEIPT_GENERATED_ON",
+        "message": "Generated on",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "PGR_RECEIPT_CLASSIFICATION",
+        "message": "Classification",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "PGR_RECEIPT_NEXT_TITLE",
+        "message": "What happens next",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "PGR_RECEIPT_NEXT_TRACK",
+        "message": "Keep this complaint number — you need it to ask about your complaint.",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "PGR_RECEIPT_NEXT_UPDATE",
+        "message": "You can track the status any time under My Complaints.",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "PGR_RECEIPT_SYSTEM_GENERATED",
+        "message": "This is a system-generated document and does not require a signature.",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "PGR_RECEIPT_SHARE_RETRY",
+        "message": "Sharing was interrupted — tap Share again.",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "CS_RATING_LABEL_1",
+        "message": "Very unhappy",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "CS_RATING_LABEL_2",
+        "message": "Unhappy",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "CS_RATING_LABEL_3",
+        "message": "Okay",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "CS_RATING_LABEL_4",
+        "message": "Happy",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "CS_RATING_LABEL_5",
+        "message": "Very happy",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "PGR_RECEIPT_SHARE_DOWNLOADED",
+        "message": "The receipt PDF is also in your downloads.",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "PGR_RECEIPT_SHARE_DOWNLOADED_COPIED",
+        "message": "Receipt PDF saved to your downloads; tracking link copied.",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "PGR_RECEIPT_SHARE_DOWNLOADED_ONLY",
+        "message": "Receipt PDF saved to your downloads.",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "PGR_RECEIPT_SHARE_VIA",
+        "message": "Share receipt via",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "PGR_RECEIPT_OPEN_PDF",
+        "message": "Open PDF",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "PGR_RECEIPT_SHARE_EMAIL",
+        "message": "Email",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "PGR_RECEIPT_SHARE_WHATSAPP",
+        "message": "WhatsApp",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "PGR_RECEIPT_SHARE_SMS",
+        "message": "SMS",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "PGR_RECEIPT_SHARE_COPY",
+        "message": "Copy link",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "PGR_RECEIPT_SHARE_MORE",
+        "message": "More apps",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "PGR_RECEIPT_SHARE_HINT",
+        "message": "Email, WhatsApp and SMS send the complaint number and tracking link. To send the PDF itself use More apps, or Download Application above.",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "PGR_RECEIPT_SHARE_HINT_PDF",
+        "message": "Every option sends the receipt PDF. On a computer the PDF is downloaded first — attach it in the app that opens.",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "PGR_RECEIPT_SHARE_ATTACH",
+        "message": "Receipt PDF saved to your downloads — attach it in the app that opened.",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "PGR_RECEIPT_SHARE_COPY_FAILED",
+        "message": "Could not copy the link on this device.",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "PGR_RECEIPT_POPUP_BLOCKED",
+        "message": "The browser blocked the PDF tab — the receipt was downloaded instead.",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "PGR_RECEIPT_SHARE_CLOSE",
+        "message": "Close",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "PGR_RECEIPT_SHARE_PREPARING",
+        "message": "Preparing the PDF…",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "WITHDRAW",
+        "message": "Withdraw",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "CS_ACTION_WITHDRAW",
+        "message": "Withdraw Complaint",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "CS_COMMON_WITHDRAW",
+        "message": "Withdraw",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "WITHDRAW_SUCCESSFULLY",
+        "message": "Withdrawn Successfully",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "WF_PGR_WITHDRAW",
+        "message": "Withdrawn",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "CS_WITHDRAW_CONFIRM_HEADING",
+        "message": "Withdraw this complaint?",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "CS_WITHDRAW_CONFIRM_MESSAGE",
+        "message": "The complaint will be closed and no further action will be taken on it. This cannot be undone.",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "CS_WITHDRAW_REASON",
+        "message": "Reason for withdrawing",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "CS_WITHDRAWING",
+        "message": "Withdrawing…",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "CS_WITHDRAW_FAILED",
+        "message": "Couldn't withdraw the complaint. Please try again.",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    }
 ]

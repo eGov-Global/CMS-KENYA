@@ -2,9 +2,13 @@
 //
 // CTAs on the landing page are navigations, not actions, so they must be real
 // anchors (middle-click, copy-link, SEO) — hence a styled LandingLink instead
-// of the v2 <Button>. Variants follow the county identity: light-blue accent
-// for the primary ask, brand blue for secondary emphasis, outline flavours for
-// light and dark surfaces.
+// of the v2 <Button>. Variants follow the county identity: county gold for the
+// primary ask, brand green for secondary emphasis, outline flavours for light
+// and dark surfaces.
+//
+// Feedback: every CTA gives a little under the finger (press scale) and its
+// trailing icon nudges forward on hover/focus. `group/cta` is named so a
+// caller's own icons can react too without catching an outer `group`.
 
 import * as React from "react";
 import { cn } from "@egovernments/digit-ui-components-v2";
@@ -23,8 +27,13 @@ export interface CtaLinkProps extends LandingLinkProps {
 
 const BASE =
   // no-underline + m-0 defend against legacy global anchor styles (preflight is off)
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap font-semibold no-underline " +
-  "rounded-[var(--pgrl-radius)] motion-safe:transition-colors select-none m-0";
+  "group/cta inline-flex items-center justify-center gap-2 whitespace-nowrap font-semibold no-underline " +
+  "rounded-[var(--pgrl-radius)] motion-safe:transition-[background-color,color,border-color,box-shadow,transform] select-none m-0 " +
+  // A placeholder ("#") renders aria-disabled and must not feel pressable.
+  "motion-safe:active:scale-[0.97] aria-disabled:active:scale-100";
+
+const TRAILING_NUDGE =
+  "inline-flex motion-safe:transition-transform motion-safe:group-hover/cta:translate-x-1 motion-safe:group-focus-visible/cta:translate-x-1";
 
 // Anchor colors are `!important` (Tailwind `!` modifier): the app's legacy
 // overrides.css styles `a:not(.digit-button):not(.button)` at specificity
@@ -32,7 +41,8 @@ const BASE =
 // the tenant's tertiary-link color.
 const VARIANTS: Record<CtaVariant, string> = {
   accent:
-    "bg-[hsl(var(--pgrl-accent))] !text-[hsl(var(--pgrl-on-accent))] hover:bg-[hsl(var(--pgrl-accent-hover))] shadow-sm " +
+    "bg-[hsl(var(--pgrl-accent))] !text-[hsl(var(--pgrl-on-accent))] hover:bg-[hsl(var(--pgrl-accent-hover))] " +
+    "shadow-[0_10px_24px_-12px_hsl(var(--pgrl-accent)/0.9)] " +
     FOCUS_RING_DARK,
   primary:
     "bg-[hsl(var(--pgrl-primary))] !text-[hsl(var(--pgrl-on-primary))] hover:bg-[hsl(var(--pgrl-primary-hover))] shadow-sm " +
@@ -66,7 +76,7 @@ export const CtaLink = React.forwardRef<HTMLAnchorElement, CtaLinkProps>(
     >
       {leading}
       {children}
-      {trailing}
+      {trailing && <span className={TRAILING_NUDGE}>{trailing}</span>}
     </LandingLink>
   )
 );

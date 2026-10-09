@@ -3,29 +3,35 @@
 //
 // Strangler-fig replacement for the legacy ComplaintDetails.js. Same
 // data hooks (`useComplaintDetails`, `useWorkflowDetails`,
-// `useReopenWindow` for the reopen window) and same subcomponents
+// `useActionWindow` for the reopen window) and same subcomponents
 // (TimeLine, ComplaintPhotos, ComplaintLocationMap). Only the visual
 // chrome — page header, summary cards, key-value rows, status pill —
 // is replaced with the v2 Card / typography / theme tokens used by
 // the rest of the modernized citizen surface.
 
-import React, { useEffect } from "react";
+import React, { useCallback, useEffect, useState } from "react";
+import { useQueryClient } from "react-query";
 import { statusLabel } from "../../utils/statusLabel";
 import { useParams, Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 
 import { Loader } from "@egovernments/digit-ui-react-components";
+import { Toast } from "@egovernments/digit-ui-components";
 import { Card } from "@egovernments/digit-ui-components-v2";
 import { AlertCircle } from "lucide-react";
 
 import { LOCALIZATION_KEY } from "../../constants/Localization";
 import { buildComplaintPath } from "../../utils/complaintHierarchyPath";
 import TimelineWrapper from "../../components/TimeLineWrapper";
-import useReopenWindow from "../../hooks/pgr/useReopenWindow";
+import useActionWindow from "../../hooks/pgr/useActionWindow";
 import ComplaintPhotos from "../../components/ComplaintPhotos";
 import ComplaintLocationMap from "../../components/ComplaintLocationMap";
 import { buildExtendedAttributeRows, useExtendedAttributeOrder } from "../../components/PgrExtendedAttributesView";
-import StarRated from "../../components/timelineInstances/StarRated";
+import { EmojiRatingBadge } from "../../components/EmojiRating";
+import ReceiptActions from "../../components/ReceiptActions";
+import { buildWithdrawRequest, wasReopened } from "../../utils/withdraw";
+import { trackApiError } from "../../utils/analytics";
+import WithdrawComplaintPopup from "./WithdrawComplaintPopup";
 
 // Terminal (non-active) states across standard PGR *and* the mz.igsae CMS workflow.
 // CANCELLED / CLOSEDAFTER* are CMS terminals; without them CANCELLED wrongly showed
@@ -162,23 +168,80 @@ function WorkflowComponent({ complaintDetails, id }) {
   // mz.igsae CMS workflow) with no hardcoded status list, replacing the legacy
   // status-ordered <TimeLine>.
   const { isLoading: isWorkFlowLoading, data: workflowData, revalidate } = Digit.Hooks.useCustomAPIHook({
-    url: "/egov-workflow-v2/egov-wf/process/_search",
+    // The chronology comes through pgr-services' filtered endpoint — same
+    // response shape as the workflow API, but employee comments, attachments
+    // and identities are stripped SERVER-SIDE for the citizen instead of only
+    // being hidden by TimelineWrapper (the raw workflow API returned everything
+    // to the citizen's token).
+    url: "/pgr-services/v2/request/_chronology",
     params: { tenantId, history: true, businessIds: id },
     changeQueryName: id,
   });
 
-  // Reopen window, from RAINMAKER-PGR.UIConstants.REOPENSLA via useReopenWindow
-  // — the same master pgr-services reads in validateReOpen(), so the UI guard
-  // and server enforcement cannot drift.
-  //
-  // This used to query RAINMAKER-PGR.ComplainClosingTime and read `.cct` off
-  // the response. That could never resolve: mdms v1 keys its response by
-  // MASTER NAME, so the value would have had to live under
-  // `["RAINMAKER-PGR"].ComplainClosingTime`, and no environment defines that
-  // master at all. The lookup therefore always returned undefined and the
-  // 1-hour fallback below won everywhere — which is exactly the #925 bug that
-  // useReopenWindow was written to fix, reintroduced on this page.
-  const complainMaxIdleTime = useReopenWindow(tenantId);
+  // Reopen window: the complaint tenant's RAINMAKER-PGR.UIConstants (REOPENSLA and
+  // its actionWindows rule), fetched fresh, against this complaint's own timestamps
+  // — the rule pgr-services enforces, so the button and the server agree.
+  const reopenWindow = useActionWindow({
+    action: "REOPEN",
+    tenantId: complaintDetails?.service?.tenantId,
+    auditDetails: complaintDetails?.service?.auditDetails,
+  });
+  // Withdraw window: WITHDRAWSLA counted from filing, same mechanism.
+  const withdrawWindow = useActionWindow({
+    action: "WITHDRAW",
+    tenantId: complaintDetails?.service?.tenantId,
+    auditDetails: complaintDetails?.service?.auditDetails,
+  });
+
+  const queryClient = useQueryClient();
+  const [withdrawPopup, setWithdrawPopup] = useState({ open: false, submitting: false, failed: false });
+  const [toast, setToast] = useState(null);
+  const closeToast = useCallback(() => setToast(null), []);
+
+  // The popup only confirms; the WITHDRAW update runs here so the page can
+  // refresh itself afterwards — status pill (useComplaintDetails), My
+  // Complaints and this timeline all move to the closed state without a reload.
+  const withdrawComplaint = async (reason) => {
+    setWithdrawPopup({ open: true, submitting: true, failed: false });
+    try {
+      const response = await Digit.PGRService.update(buildWithdrawRequest(complaintDetails.service, reason));
+      if (!response?.ServiceWrappers?.length) throw new Error("WITHDRAW update returned no complaint");
+    } catch (e) {
+      trackApiError("Withdraw", e);
+      setWithdrawPopup({ open: true, submitting: false, failed: true });
+      return;
+    }
+    setWithdrawPopup({ open: false, submitting: false, failed: false });
+    const successKey = "WITHDRAW_SUCCESSFULLY";
+    setToast({ type: "success", label: t(successKey) === successKey ? "Withdrawn Successfully" : t(successKey) });
+    refreshComplaint();
+    setStatusSettle({ from: complaintDetails?.service?.applicationStatus, attempt: 0 });
+  };
+
+  const refreshComplaint = () => {
+    queryClient.invalidateQueries(["complaintDetails"]);
+    queryClient.invalidateQueries(["complaintsList"]);
+    revalidate();
+  };
+  // pgr-services saves the new status asynchronously (egov-persister), so the search
+  // fired right after the update can still return the old one: the status pill stayed on
+  // "Pending" next to a "Withdrawn" timeline. Refresh again, backing off, until the
+  // complaint no longer reads as it did before the withdrawal (at most five tries).
+  const [statusSettle, setStatusSettle] = useState(null);
+  const currentStatus = complaintDetails?.service?.applicationStatus;
+  useEffect(() => {
+    if (!statusSettle) return undefined;
+    if (currentStatus !== statusSettle.from || statusSettle.attempt >= 5) {
+      setStatusSettle(null);
+      return undefined;
+    }
+    const timer = setTimeout(() => {
+      refreshComplaint();
+      setStatusSettle((s) => s && { ...s, attempt: s.attempt + 1 });
+    }, 800 * (statusSettle.attempt + 1));
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [statusSettle, currentStatus]);
 
   useEffect(() => {
     revalidate();
@@ -190,53 +253,65 @@ function WorkflowComponent({ complaintDetails, id }) {
   // its Resolved/Rejected checkpoints, so the TimelineWrapper swap dropped them.
   // COMMENT is excluded (no citizen page for it); REOPEN honors the idle-window.
   const current = workflowData?.ProcessInstances?.[0];
-  const lastModifiedTime = complaintDetails?.service?.auditDetails?.lastModifiedTime;
-  // useReopenWindow returns undefined while MDMS loads and on tenants with no
-  // usable REOPENSLA. Treat that as "window unknown" and let REOPEN through
-  // rather than hiding it: pgr-services applies its own pgr.complain.idle.time
-  // backstop and rejects a genuinely late reopen, so deferring is safe, while
-  // falling back to a local 1-hour default enforces a deadline nobody
-  // configured — the #925 bug. Same rule the hook documents for its callers.
-  const reopenWindowOpen =
-    typeof complainMaxIdleTime !== "number"
-      ? true
-      : typeof lastModifiedTime === "number" &&
-        Number.isFinite(lastModifiedTime) &&
-        Date.now() - lastModifiedTime < complainMaxIdleTime;
+  // REOPEN waits for the UIConstants answer (no button that appears and then vanishes)
+  // and disappears the moment the window closes, without a reload.
+  const reopenAllowed = reopenWindow.ready && reopenWindow.open;
   const citizenActions = (current?.nextActions || [])
     .filter((a) => Array.isArray(a?.roles) && a.roles.includes("CITIZEN"))
     .map((a) => a?.action)
     .filter((a) => a && a !== "COMMENT")
-    .filter((a) => a !== "REOPEN" || reopenWindowOpen);
+    .filter((a) => a !== "REOPEN" || reopenAllowed)
+    // WITHDRAW only inside its window (server-enforced too) and never after a
+    // reopen (UI rule) — see utils/withdraw.
+    .filter(
+      (a) =>
+        a !== "WITHDRAW" ||
+        (withdrawWindow.ready && withdrawWindow.open && !wasReopened(workflowData?.ProcessInstances))
+    );
 
   // Rendered INSIDE the current-state timeline row (legacy-checkpoint parity):
-  // action buttons while actions are open; the given star rating once rated.
+  // action buttons while actions are open; the given rating once rated.
   const rating = complaintDetails?.service?.rating;
   const currentStateChildren =
     rating || citizenActions.length > 0 ? (
       <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "0.75rem", marginTop: "0.5rem" }}>
-        {rating ? <StarRated text={t("CS_ADDCOMPLAINT_YOU_RATED")} rating={rating} /> : null}
+        {rating ? <EmojiRatingBadge text={t("CS_ADDCOMPLAINT_YOU_RATED")} rating={rating} /> : null}
         {citizenActions
           .filter((action) => !(rating && action === "RATE"))
           .map((action) => {
             const key = `CS_COMMON_${action}`;
             const label = t(key) === key ? action : t(key);
-            return (
+            const isWithdraw = action === "WITHDRAW";
+            const button = (
+              <button
+                type="button"
+                // The class is load-bearing: overrides.css restyles every
+                // CLASSLESS <button> with text-primary (near-black) !important,
+                // which on a dark-green primary read as black-on-green.
+                className="pgr-citizen-action-btn"
+                onClick={isWithdraw ? () => setWithdrawPopup({ open: true, submitting: false, failed: false }) : undefined}
+                style={{
+                  padding: "0.4rem 1.1rem",
+                  fontWeight: 600,
+                  // Same pair the design-system primary button uses; applyTheme
+                  // derives a readable text colour when the tenant omits it.
+                  color: "var(--color-button-primary-text, #fff)",
+                  background: "var(--color-button-primary-bg-default, var(--color-primary-1, var(--color-primary-main, #c84c0e)))",
+                  border: "none",
+                  borderRadius: "0.375rem",
+                  cursor: "pointer",
+                }}
+              >
+                {label}
+              </button>
+            );
+            // WITHDRAW is confirmed in a popup on this page; the other citizen
+            // actions have their own pages (/reopen, /rate).
+            return isWithdraw ? (
+              <React.Fragment key={action}>{button}</React.Fragment>
+            ) : (
               <Link key={action} to={`/${window?.contextPath || "digit-ui"}/citizen/pgr/${action.toLowerCase()}/${id}`}>
-                <button
-                  type="button"
-                  style={{
-                    padding: "0.4rem 1.1rem",
-                    fontWeight: 600,
-                    color: "#fff",
-                    background: "var(--color-primary-1, var(--color-primary-main, #c84c0e))",
-                    border: "none",
-                    borderRadius: "0.375rem",
-                    cursor: "pointer",
-                  }}
-                >
-                  {label}
-                </button>
+                {button}
               </Link>
             );
           })}
@@ -244,16 +319,30 @@ function WorkflowComponent({ complaintDetails, id }) {
     ) : null;
 
   return (
-    <TimelineWrapper
-      businessId={id}
-      isWorkFlowLoading={isWorkFlowLoading}
-      workflowData={workflowData}
-      labelPrefix="WF_PGR_"
-      currentStateChildren={currentStateChildren}
-      // QA #19 part 1 (sheet v4): the citizen must not see which employee
-      // handled the complaint — employee name + contact lines are omitted.
-      hideEmployeeContacts
-    />
+    <>
+      <TimelineWrapper
+        businessId={id}
+        isWorkFlowLoading={isWorkFlowLoading}
+        workflowData={workflowData}
+        labelPrefix="WF_PGR_"
+        currentStateChildren={currentStateChildren}
+        // QA #19 part 1 (sheet v4): the citizen must not see which employee
+        // handled the complaint — employee name + contact lines are omitted.
+        hideEmployeeContacts
+        // Internal department comments (assign, escalate, reassign, …) stay
+        // internal; the citizen reads the resolving / rejecting comment only.
+        citizenCommentActions={["RESOLVE", "REJECT"]}
+      />
+      {withdrawPopup.open ? (
+        <WithdrawComplaintPopup
+          onConfirm={withdrawComplaint}
+          onClose={() => setWithdrawPopup({ open: false, submitting: false, failed: false })}
+          isSubmitting={withdrawPopup.submitting}
+          hasError={withdrawPopup.failed}
+        />
+      ) : null}
+      {toast ? <Toast type={toast.type} label={toast.label} onClose={closeToast} /> : null}
+    </>
   );
 }
 
@@ -388,6 +477,11 @@ const ComplaintDetailsPage = () => {
           {tr(`${LOCALIZATION_KEY.CS_HEADER}_COMPLAINT_SUMMARY`, "Complaint Summary")}
         </h1>
         {status ? <StatusPill status={status} t={t} /> : null}
+        {!isLoading && complaintDetails?.service ? (
+          <div style={{ marginLeft: "auto" }}>
+            <ReceiptActions complaintDetails={complaintDetails} />
+          </div>
+        ) : null}
       </header>
       <div
         style={{

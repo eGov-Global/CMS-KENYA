@@ -9,10 +9,15 @@ const AssigneeComponent = ({ config, onSelect, formState, defaultValues }) => {
   const tenantId = Digit.ULBService.getCurrentTenantId();
   const hrmsContext = window?.globalConfigs?.getConfig("HRMS_CONTEXT_PATH") || "egov-hrms";
 
-  // Get roles from config populators. `allDepartments` is true only for a
-  // CMS_SCREENING_OFFICER, who routes across EVERY department in the tenant;
-  // everyone else stays scoped to the single primary `department`.
-  const { roles = [], department, allDepartments } = config?.populators || {};
+  // Get roles from config populators. `allDepartments` is true for a
+  // CMS_SCREENING_OFFICER (routes across EVERY department) and for REASSIGN
+  // (department-agnostic by design); everyone else stays scoped to the single
+  // primary `department`.
+  // `departmentsIn` / `excludeUuids` scope an LME-to-LME reassign: only the
+  // reassigning officer's own department(s), and never the officer themself
+  // (reassigning to yourself is a no-op). Both absent everywhere else, so
+  // every other picker is unchanged.
+  const { roles = [], department, allDepartments, departmentsIn, excludeUuids } = config?.populators || {};
 
   // Fetch employee data based on roles
   // Staff lists change on the scale of HRMS edits, not seconds. The hook's
@@ -31,6 +36,7 @@ const AssigneeComponent = ({ config, onSelect, formState, defaultValues }) => {
     params: {
       tenantId: tenantId,
       roles: roles.join(","),
+      isActive: true,
     },
     changeQueryName: `hrms-assignees-${tenantId}-${roles.join(",")}`,
     options: {
@@ -89,14 +95,20 @@ const AssigneeComponent = ({ config, onSelect, formState, defaultValues }) => {
       // pgr-services skips its department validation for these, so the actor may
       // route to ANY department — filtering by "NA" would empty the dropdown.
       const unscoped = allDepartments || !department || department === "NA";
+      // Deactivated employees are asked away server-side (isActive=true above);
+      // this guard keeps them out even where HRMS ignores that param.
+      const within = Array.isArray(departmentsIn) && departmentsIn.length > 0 ? new Set(departmentsIn) : null;
+      const excluded = new Set((excludeUuids || []).filter(Boolean));
       const filtered = employeeData.Employees.filter((e) => {
         const d = e?.assignments?.[0]?.department;
-        if (!d || !e?.user?.uuid) return false;
+        if (!d || !e?.user?.uuid || e?.isActive === false) return false;
+        if (excluded.has(e.user.uuid)) return false;
+        if (within) return within.has(d);
         return unscoped ? true : d === department;
       });
       setAssignees(transformData(filtered));
     }
-  }, [employeeData]);
+  }, [employeeData, department, allDepartments, departmentsIn, excludeUuids]);
 
   // Handle employee selection
   const handleEmployeeSelect = (employee) => {
@@ -128,6 +140,11 @@ const AssigneeComponent = ({ config, onSelect, formState, defaultValues }) => {
     );
   }
 
+  // One control: the dropdown's own input is the search box. Typing filters
+  // the department-grouped list by department OR person (the atom matches
+  // nested children, not just group headers).
+  const searchLabel = t("CS_COMMON_SEARCH_EMPLOYEE") === "CS_COMMON_SEARCH_EMPLOYEE" ? "Search by name or department" : t("CS_COMMON_SEARCH_EMPLOYEE");
+
   return (
     <div className="assignee-dropdown-container">
       <Dropdown
@@ -138,7 +155,8 @@ const AssigneeComponent = ({ config, onSelect, formState, defaultValues }) => {
         select={(value) => {
           handleEmployeeSelect(value);
         }}
-        placeholder={t("CS_COMMON_SELECT_EMPLOYEE")}
+        isSearchable
+        placeholder={searchLabel}
         label={t(config.label)}
         variant="nesteddropdown"
       />

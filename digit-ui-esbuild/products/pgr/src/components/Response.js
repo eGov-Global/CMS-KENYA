@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { ActionBar, SubmitBar, ArrowLeft, ArrowForward } from "@egovernments/digit-ui-react-components";
 import { Button } from "@egovernments/digit-ui-components";
 import { PanelCard } from "@egovernments/digit-ui-components";
+import ReceiptActions from "./ReceiptActions";
 
 const Response = () => {
   const { t } = useTranslation();
@@ -11,6 +12,7 @@ const Response = () => {
   const queryStrings = Digit.Hooks.useQueryParams();
   const { state } = useLocation();
   const back = state?.back ? state?.back : "BACK";
+  const receiptTitle = t("PGR_RECEIPT_TITLE") === "PGR_RECEIPT_TITLE" ? "Complaint Receipt" : t("PGR_RECEIPT_TITLE");
 
   return (
     <>
@@ -25,7 +27,9 @@ const Response = () => {
         customIcon=""
         description={t(state?.description)}
         footerChildren={[
-          <Button label={t(`PGR_CREATE_ANOTHER_COMPLAIN`)} onClick={
+          // Receipt for the complainant the officer just filed for (download /
+          // print / share); it loads the created record itself by id.
+          <Button key="another" label={t(`PGR_CREATE_ANOTHER_COMPLAIN`)} onClick={
             () => {
               history.push(`/${window.contextPath}/employee/pgr/create-complaint`);
             }
@@ -43,6 +47,14 @@ const Response = () => {
         style={{}}
         type={state?.state}
       ></PanelCard>
+      {state?.responseId ? (
+        // Own row below the panel: the legacy footer squeezes the buttons into one
+        // right-aligned line and leaves no room for the share sheet.
+        <section className="pgr-receipt-row" aria-label={receiptTitle}>
+          <p className="pgr-receipt-row__label">{receiptTitle}</p>
+          <ReceiptActions complaintId={state.responseId} tenantId={Digit.ULBService.getCurrentTenantId()} />
+        </section>
+      ) : null}
       <ActionBar className="mc_back">
         <Button
           data-analytics-event="pgr.complaint.response-go-home"

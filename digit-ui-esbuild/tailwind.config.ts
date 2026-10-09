@@ -17,6 +17,12 @@ const config: Config = {
   content: [
     "./packages/digit-ui-components-v2/src/**/*.{ts,tsx}",
     "./products/pgr/src/pages/citizen/**/*.{js,jsx,ts,tsx}",
+    // Employee home v2 is a full-page, shell-free surface built with the same
+    // v2 utility layer as the citizen landing, so it needs the same coverage.
+    // Scoped to that one folder rather than all of pages/employee/**: the
+    // legacy employee screens use the vendored CSS and must not start
+    // resolving Tailwind class names they never opted into.
+    "./products/pgr/src/pages/employee/EmployeeHomeV2/**/*.{js,jsx,ts,tsx}",
   ],
   theme: {
     container: {

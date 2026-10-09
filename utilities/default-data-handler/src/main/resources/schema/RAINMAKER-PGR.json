@@ -23,6 +23,46 @@
         "REOPENSLA": {
           "type": "number",
           "description": "Milliseconds a resolved or rejected complaint stays reopenable. Shipped default 259200000 (72 hours)."
+        },
+        "WITHDRAWSLA": {
+          "type": "number",
+          "description": "Milliseconds after filing during which a complaint can still be withdrawn, by the citizen or by a counter/call-centre employee on their behalf. Shipped default 259200000 (72 hours)."
+        },
+        "actionWindows": {
+          "type": "array",
+          "description": "Time-limited workflow actions. Each rule: action (workflow action code), windowKey (a millisecond property on this record, e.g. REOPENSLA) or windowMs (inline milliseconds), and measuredFrom (createdTime = filing, lastModifiedTime = last update). message / notOwnerMessage (optional) are the error texts once the window has passed / when a citizen acts on someone else's complaint. Actions not listed use the pgr-services deployment defaults (pgr.action.windows.defaults).",
+          "items": {
+            "type": "object",
+            "required": [
+              "action",
+              "measuredFrom"
+            ],
+            "properties": {
+              "action": {
+                "type": "string"
+              },
+              "windowKey": {
+                "type": "string"
+              },
+              "windowMs": {
+                "type": "number"
+              },
+              "measuredFrom": {
+                "type": "string",
+                "enum": [
+                  "createdTime",
+                  "lastModifiedTime"
+                ]
+              },
+              "message": {
+                "type": "string"
+              },
+              "notOwnerMessage": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          }
         }
       },
       "x-ref-schema": [],

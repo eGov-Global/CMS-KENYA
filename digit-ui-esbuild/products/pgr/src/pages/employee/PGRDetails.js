@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { complaintLabel } from "../../utils/complaintLabel";
 import { useTranslation } from "react-i18next";
 import { useHistory, useLocation, useParams } from "react-router-dom/cjs/react-router-dom.min";
@@ -16,9 +16,12 @@ import { buildExtendedAttributeRows, useExtendedAttributeOrder } from "../../com
 import { buildComplaintPath } from "../../utils/complaintHierarchyPath";
 import { selectServiceDefsFromComplaintHierarchy } from "../../utils";
 import { isPiiMaskingEnabled } from "../../utils/piiMasking";
-import useReopenWindow from "../../hooks/pgr/useReopenWindow";
+import useActionWindow from "../../hooks/pgr/useActionWindow";
+import { isConfirmationAction, wasReopened } from "../../utils/withdraw";
 import { findLatestAssigneeUuidByRole } from "../../utils/workflowAssignee";
+import { LAST_MILE_ROLE, narrowToLastMile } from "../../utils/autoAssign";
 import { EV, trackE } from "../../utils/analytics";
+import ReceiptActions from "../../components/ReceiptActions";
 
 // CCSD-2167 (employee side) — route-back / terminal actions derive their
 // assignee from the complaint's OWN workflow history, exactly like the citizen
@@ -99,14 +102,19 @@ const buildActionFormConfig = ({ action, assigneeRoles = [], isTerminal = false,
   // attach a file just to ask a question is wrong, so the attachment is
   // optional for this action regardless of the target state's flag.
   const ATTACHMENT_OPTIONAL_ACTIONS = ["AWAITINGINFORMATION"];
-  body.push({
-    type: "component",
-    isMandatory: !!docUploadRequired && !ATTACHMENT_OPTIONAL_ACTIONS.includes(action),
-    component: "PGRActionUploadComponent",
-    key: "SelectedDocuments",
-    label: "CS_COMMON_ATTACHMENTS",
-    populators: { name: "SelectedDocuments" },
-  });
+  // WITHDRAW closes the complaint on the complainant's behalf: the modal is a
+  // confirmation (message + reason), with nothing to attach.
+  const isConfirmation = isConfirmationAction(action);
+  if (!isConfirmation) {
+    body.push({
+      type: "component",
+      isMandatory: !!docUploadRequired && !ATTACHMENT_OPTIONAL_ACTIONS.includes(action),
+      component: "PGRActionUploadComponent",
+      key: "SelectedDocuments",
+      label: "CS_COMMON_ATTACHMENTS",
+      populators: { name: "SelectedDocuments" },
+    });
+  }
   body.push({
     type: "textarea",
     isMandatory: true,
@@ -115,7 +123,12 @@ const buildActionFormConfig = ({ action, assigneeRoles = [], isTerminal = false,
     populators: { name: "SelectedComments", maxLength: 1000, validation: { required: true }, error: "CORE_COMMON_REQUIRED_ERRMSG" },
   });
   return {
-    label: { heading: `CS_ACTION_${action}`, cancel: "CS_COMMON_CANCEL", submit: "CS_COMMON_SUBMIT" },
+    label: {
+      heading: `CS_ACTION_${action}`,
+      cancel: "CS_COMMON_CANCEL",
+      submit: isConfirmation ? `CS_COMMON_${action}` : "CS_COMMON_SUBMIT",
+    },
+    ...(isConfirmation ? { description: `CS_${action}_CONFIRM_MESSAGE` } : {}),
     form: [{ body }],
   };
 };
@@ -138,6 +151,25 @@ const PGRDetails = () => {
   const UpdateComplaintSession = Digit.Hooks.useSessionStorage("COMPLAINT_UPDATE", {});
   const [sessionFormData, setSessionFormData, clearSessionFormData] = UpdateComplaintSession;
 
+  // #75: the Take Action draft lives under ONE session key shared by every
+  // complaint, and only a successful submit cleared it — so text typed into a
+  // popup that was closed unsubmitted reappeared on the next complaint. This
+  // page is also a single component instance reused across complaints (route
+  // complaint-details/:id), so the hook's first-render read alone can't scope
+  // it. A draft now belongs to one complaint and one action:
+  //  - arriving at a complaint (in-app navigation, a typed URL, a new visit)
+  //    starts with an empty draft;
+  //  - picking a DIFFERENT action discards the draft, so an abandoned popup's
+  //    text — or its SelectedAssignee, which the modal submits along with the
+  //    rest of the draft — cannot ride into another action's payload.
+  // Re-opening the SAME action on the same complaint keeps what was typed, so
+  // an accidental close still does not lose the text.
+  const draftActionRef = useRef(null);
+  useEffect(() => {
+    draftActionRef.current = null;
+    clearSessionFormData();
+  }, [id]);
+
   // Service definitions (leaf complaint types) adapted from the single
   // RAINMAKER-PGR.ComplaintHierarchy master — drives department + category
   // lookups below. Legacy ServiceDefs shape preserved (serviceCode/menuPath/
@@ -152,10 +184,6 @@ const PGRDetails = () => {
     },
     { schemaCode: "PGR_COMPLAINT_HIERARCHY_DETAILS" }
   );
-
-  // Same REOPENSLA window the citizen timeline gates on, so employee and citizen can never
-  // disagree about the deadline. undefined => defer to pgr-services (see useReopenWindow).
-  const reopenWindowMs = useReopenWindow(tenantId);
 
   // Complaint classification hierarchy (configurable N levels). Absent on
   // un-migrated tenants -> buildComplaintPath returns null and the flat
@@ -231,6 +259,19 @@ const PGRDetails = () => {
   const isError = fromAdminSearch ? adminSearch.isError : pgrSearch.isError;
   const error = fromAdminSearch ? adminSearch.error : pgrSearch.error;
   const pgrData = fromAdminSearch ? adminSearch.data : pgrSearch.data;
+  // Reopen window: the complaint tenant's UIConstants fetched fresh, against this complaint's
+  // timestamps (see useActionWindow) — the rule the citizen page and pgr-services apply.
+  const reopenWindow = useActionWindow({
+    action: "REOPEN",
+    tenantId: pgrData?.ServiceWrappers?.[0]?.service?.tenantId || tenantId,
+    auditDetails: pgrData?.ServiceWrappers?.[0]?.service?.auditDetails,
+  });
+  // Withdraw window (WITHDRAWSLA from filing), same mechanism.
+  const withdrawWindow = useActionWindow({
+    action: "WITHDRAW",
+    tenantId: pgrData?.ServiceWrappers?.[0]?.service?.tenantId || tenantId,
+    auditDetails: pgrData?.ServiceWrappers?.[0]?.service?.auditDetails,
+  });
   const pgrSearchRevalidate = fromAdminSearch ? adminSearch.refetch : pgrSearch.revalidate;
   // CCSD-2123: schema x-order for the Additional Details rows (complainantName
   // pinned first inside buildExtendedAttributeRows regardless).
@@ -288,7 +329,10 @@ const PGRDetails = () => {
 
   // Fetch workflow details
   const { isLoading: isWorkflowLoading, data: workflowData, revalidate: workFlowRevalidate } = Digit.Hooks.useCustomAPIHook({
-    url: "/egov-workflow-v2/egov-wf/process/_search",
+    // Filtered chronology (pgr-services): same shape as the workflow API, but
+    // on a confidential complaint the complainant's identity inside the actor
+    // blocks is masked server-side for uncleared employees.
+    url: "/pgr-services/v2/request/_chronology",
     params: { tenantId: complaintTenantId, history: true, businessIds: id },
     config: { enabled: !!pgrData },
     changeQueryName: id,
@@ -300,6 +344,37 @@ const PGRDetails = () => {
     params: { tenantId: complaintTenantId, businessServices: "PGR" },
     config: { enabled: !!pgrData },
   });
+
+  // The logged-in employee's own HRMS record — the user token does not carry
+  // the department. Same query the create form makes (url, params and
+  // changeQueryName), so it is usually a cache hit. Drives the LME reassign
+  // scope below.
+  const hrmsContext = window?.globalConfigs?.getConfig?.("HRMS_CONTEXT_PATH") || "egov-hrms";
+  const currentTenantId = Digit.ULBService.getCurrentTenantId();
+  const { data: currentEmployeeData } = Digit.Hooks.useCustomAPIHook({
+    url: `/${hrmsContext}/employees/_search`,
+    params: { tenantId: currentTenantId, uuids: userInfo?.info?.uuid },
+    changeQueryName: `hrms-current-employee-${userInfo?.info?.uuid}`,
+    options: {
+      staleTime: 5 * 60 * 1000,
+      cacheTime: 10 * 60 * 1000,
+    },
+    config: { enabled: !!userInfo?.info?.uuid },
+  });
+  // Every department the employee is currently assigned to (a user can hold
+  // more than one), same semantics as the create form's department gate.
+  const actorDepartments = [];
+  (currentEmployeeData?.Employees || []).forEach((e) =>
+    (e?.assignments || [])
+      .filter((a) => a?.isCurrentAssignment !== false && a?.department)
+      .forEach((a) => { if (!actorDepartments.includes(a.department)) actorDepartments.push(a.department); })
+  );
+  // An LME correcting a wrong assignment: REASSIGN done by a PGR_LME hands the
+  // complaint directly to another last-mile officer of the SAME department
+  // (the workflow keeps it at PENDINGATLME). Other actors' REASSIGN is
+  // unchanged.
+  const isLmeReassign = (action) =>
+    action?.action === "REASSIGN" && (userInfo?.info?.roles || []).some((r) => r?.code === "PGR_LME");
 
   // Automatically dismiss toast messages after 3 seconds
   useEffect(() => {
@@ -323,7 +398,14 @@ const PGRDetails = () => {
   // When the scoped department has no eligible employee, AssigneeComponent now
   // says so explicitly instead of rendering an empty dropdown — staffing gaps
   // surface as a clear message, not as an ownerless complaint.
-  const isAssigneeMandatory = (action) => action?.action === "ASSIGN";
+  // An LME reassign must name the officer: without a pick there is nobody to
+  // hand the complaint to, and the no-pick derivation would re-select the
+  // current holder, making the action a silent no-op.
+  // A manual ESCALATE is a hand-off to the tier above: without a pick the
+  // complaint would sit at the escalated state in nobody's inbox (the "My" tab
+  // is assignee-driven).
+  const isAssigneeMandatory = (action) =>
+    action?.action === "ASSIGN" || action?.action === "ESCALATE" || isLmeReassign(action);
 
   // Prepare and submit the update complaint request
   const handleActionSubmit = async (_data) => {
@@ -426,6 +508,40 @@ const PGRDetails = () => {
     await workFlowRevalidate();
   };
 
+  // #57: this page can sit open for hours (a Director reading a complaint at
+  // the 23rd hour of a 24h escalation window). The global query defaults keep
+  // data for 15 minutes and every hook here opts out of refetchOnWindowFocus,
+  // so when the user comes back the timeline and the Take Action menu still
+  // describe a state the backend has long since escalated past. Refetch when
+  // the tab becomes visible again so they act on current data. Scoped to this
+  // page via a listener rather than flipping the codebase-wide focus-refetch
+  // convention; held in a ref so the effect subscribes once and always calls
+  // the latest revalidators.
+  const refreshRef = useRef(refreshData);
+  refreshRef.current = refreshData;
+  useEffect(() => {
+    const onVisible = () => {
+      if (document.visibilityState !== "visible") return;
+      refreshRef.current?.().catch((e) => console.warn("PGRDetails: refresh on tab focus did not complete", e));
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
+  }, []);
+
+  // #57: a failed update is the clearest signal the page is stale — the
+  // backend rejected the action against a state the UI no longer knows
+  // (INVALID ROLE after a further auto-escalation, in the reported case).
+  // The toast used to be the end of it, leaving the user staring at the
+  // outdated timeline with no way to see why. Refetch so the timeline and
+  // Take Action availability reflect what the backend actually holds. The
+  // refetch is best-effort: if it fails too, the original error toast must
+  // still stand, so it is logged rather than allowed to replace it.
+  const handleUpdateFailure = (actionCode) => {
+    trackE(EV.WORKFLOW_FAILED, actionCode);
+    setToast({ show: true, label: t("FAILED_TO_UPDATE_COMPLAINT"), type: "error" });
+    refreshData().catch((e) => console.warn("PGRDetails: refresh after failed update did not complete", e));
+  };
+
   // Handle response after updating complaint
   const handleResponseForUpdateComplaint = async (payload) => {
     setOpenModal(false);
@@ -433,15 +549,11 @@ const PGRDetails = () => {
     // bounded vocabulary, never the comment, assignee or complaint id.
     const actionCode = payload?.workflow?.action || "";
     await UpdateComplaintMutation(payload, {
-      onError: () => {
-        trackE(EV.WORKFLOW_FAILED, actionCode);
-        setToast({ show: true, label: t("FAILED_TO_UPDATE_COMPLAINT"), type: "error" });
-      },
+      onError: () => handleUpdateFailure(actionCode),
       onSuccess: async (responseData) => {
         const msg = payload.workflow.action || "RESOLVE";
         if (responseData?.ResponseInfo?.Errors) {
-          trackE(EV.WORKFLOW_FAILED, actionCode);
-          setToast({ show: true, label: t("FAILED_TO_UPDATE_COMPLAINT"), type: "error" });
+          handleUpdateFailure(actionCode);
         } else {
           trackE(EV.WORKFLOW_COMPLETED, actionCode);
           setToast({ show: true, label: t(`${msg}_SUCCESSFULLY`), type: "success" });
@@ -486,8 +598,28 @@ const PGRDetails = () => {
     // (e.g. a Supervisor doing REASSIGN / send-back), scoping to the complaint's
     // single department wrongly emptied the list ("no eligible employee") — the
     // screening officer usually sits in a different department. (CCSD-2167)
+    //
+    // REASSIGN is department-agnostic too: the reception/CSR actors who
+    // reassign are not mapped to any department, and a reassignment moves the
+    // complaint deliberately to a named person. Scoping the list to the type's
+    // department hid most of the staff, so it shows every department's users,
+    // grouped by department, and the picker is searchable by either.
+    // The ASSIGN that follows a reassign request (state PENDINGFORREASSIGNMENT)
+    // is the same re-routing decision, so it is unscoped as well.
+    const currentState = workflowData?.ProcessInstances?.[0]?.state?.state;
+    const lmeReassign = isLmeReassign(selectedAction);
     const allDepartments =
-      userRoles.includes("CMS_SCREENING_OFFICER") || roles.includes("CMS_SCREENING_OFFICER");
+      !lmeReassign &&
+      (userRoles.includes("CMS_SCREENING_OFFICER") ||
+        roles.includes("CMS_SCREENING_OFFICER") ||
+        selectedAction?.action === "REASSIGN" ||
+        currentState === "PENDINGFORREASSIGNMENT");
+    // LME reassign: other PGR_LME officers of the actor's own department(s),
+    // any jurisdiction (a wrong assignment is often the wrong ward, so the
+    // right officer may hold a different one), never the actor themself.
+    const assigneeRoles = lmeReassign ? ["PGR_LME"] : roles;
+    const departmentsIn = lmeReassign ? actorDepartments : undefined;
+    const excludeUuids = lmeReassign ? [userInfo?.info?.uuid] : undefined;
 
     return {
       ...actionConfig.formConfig,
@@ -497,9 +629,11 @@ const PGRDetails = () => {
           ...bodyItem,
           populators: {
             ...bodyItem.populators,
-            roles,
+            roles: assigneeRoles,
             department,
             allDepartments,
+            departmentsIn,
+            excludeUuids,
             // Filestore is tenant-scoped — the uploader must write to the
             // COMPLAINT's tenant so the attachment renders later (the display
             // side fetches at service.tenantId).
@@ -513,21 +647,37 @@ const PGRDetails = () => {
 
   // Roles that should never appear in an assignee dropdown even if a workflow
   // state lists them (system or non-employee actors).
-  const NON_ASSIGNEE_ROLES = new Set(["CITIZEN", "AUTO_ESCALATE", "ANONYMOUS", "CMS_VIEWER"]);
+  const NON_ASSIGNEE_ROLES = new Set(["CITIZEN", "AUTO_ESCALATE", "ANONYMOUS", "CMS_VIEWER", "SYSTEM"]);
 
   // Compute the assignee role set for an action by looking at the *forward*
   // (non-self-looping) actions defined on the next state and unioning their
   // roles. Self-loops like ESCALATE / SLA_ESCALATE / COMMENT add noise (e.g.
   // GRO showing up in a PENDINGATLME assignment dropdown), so we exclude them.
-  // System roles (CITIZEN, AUTO_ESCALATE, ANONYMOUS) are filtered out too.
-  const computeAssigneeRoles = (nextStateUuid, businessServiceResponse) => {
+  // System / non-employee roles (NON_ASSIGNEE_ROLES) are filtered out too.
+  //
+  // Finally narrowed to the last-mile role when the state has one: on Nairobi
+  // the escalation tiers (CHIEF_OFFICER, CECM) may also act at PENDINGATLME,
+  // but a GRO assigns to the last-mile officer (PGR_LME, i.e. the directors);
+  // the tiers above receive a complaint only by escalation. Transitions whose
+  // target has no PGR_LME actor (REASSIGN → GRO queue, the CMS workflow) are
+  // unchanged.
+  const computeAssigneeRoles = (nextStateUuid, businessServiceResponse, action) => {
     const nextState = businessServiceResponse?.states?.find((s) => s.uuid === nextStateUuid);
     if (!nextState?.actions) return [];
     const forwardActions = nextState.actions.filter((act) => act.nextState && act.nextState !== nextStateUuid);
     const source = forwardActions.length > 0 ? forwardActions : nextState.actions; // fall back if no forward actions
     const set = new Set();
     source.forEach((act) => (act.roles || []).forEach((r) => set.add(r)));
-    return [...set].filter((r) => !NON_ASSIGNEE_ROLES.has(r));
+    const roles = [...set].filter((r) => !NON_ASSIGNEE_ROLES.has(r));
+    if (action === "ESCALATE") {
+      // A manual ESCALATE hands the complaint UP: offer the escalated state's
+      // actors minus the last-mile role — directors still act there, but
+      // escalating to a peer director is no escalation. A single-tier workflow
+      // keeps the full set so someone can still be picked.
+      const above = roles.filter((r) => r !== LAST_MILE_ROLE);
+      return above.length > 0 ? above : roles;
+    }
+    return narrowToLastMile(roles);
   };
 
   // Get list of valid actions for current user and state
@@ -538,6 +688,15 @@ const PGRDetails = () => {
     const userRoles = userInfo?.info?.roles?.map((role) => role.code) || [];
     return matchingState.actions
       ? matchingState.actions.filter((action) => action.roles.some((role) => userRoles.includes(role)))
+        // REOPEN is offered only while its window is known to be open.
+        .filter((action) => action.action !== "REOPEN" || (reopenWindow.ready && reopenWindow.open))
+        // WITHDRAW on the citizen's behalf only inside its window (server-enforced too)
+        // and never after a reopen (UI rule) — see utils/withdraw.
+        .filter(
+          (action) =>
+            action.action !== "WITHDRAW" ||
+            (withdrawWindow.ready && withdrawWindow.open && !wasReopened(workflowData?.ProcessInstances))
+        )
         .map((action) => {
           // Look up the target state so the modal can adapt generically (terminal → no assignee,
           // docUploadRequired → future doc capture) with no per-action code.
@@ -549,7 +708,7 @@ const PGRDetails = () => {
             name: action.action,
             roles: action.roles,
             nextState: action.nextState,
-            assigneeRoles: computeAssigneeRoles(action.nextState, businessServiceResponse),
+            assigneeRoles: computeAssigneeRoles(action.nextState, businessServiceResponse, action.action),
             isTerminal: !!nextStateData?.isTerminateState,
             docUploadRequired: !!nextStateData?.docUploadRequired,
             uuid: action.uuid,
@@ -596,20 +755,13 @@ const PGRDetails = () => {
 
   // CCSD-2130: confidential complaints must not expose the complainant.
   //
-  // The backend ALREADY masks service.extendedAttributes on these — verified
-  // against a live confidential complaint: complainantName / witnessName /
-  // witnessAddress / witnessNote all come back "****". What it does NOT mask is
-  // the service.citizen block, which pgr-services enriches from egov-user on
-  // every search and where every attribute is defaultVisibility PLAIN — so
-  // name, mobileNumber and correspondenceAddress arrive in clear.
-  //
-  // This masks exactly those citizen-derived rows, matching the backend's own
-  // "****" convention so the two sources read consistently. It is a DISPLAY
-  // control only: the values are still present in the API response, so the
-  // durable fix is backend masking gated on CONFIDENTIAL_COMPLAINT_VIEWER (the
-  // role ComplaintTemplateType.allowedViewerRoles already names but which does
-  // not yet exist). Tracked separately — do not treat this as enforcement.
-  // Gated on the PGR_PII_MASKING deploy switch (utils/piiMasking.js): Kenya/
+  // pgr-services masks both service.extendedAttributes and the service.citizen
+  // block (name, mobile, e-mail, address, account link) for every caller who is
+  // neither the complainant nor a cleared viewer, so the values below already
+  // arrive as "****". This display-side mask is kept for the fields that can
+  // still reach the client in clear from other services (e.g. the typed
+  // correspondenceAddress when it comes via a user-service lookup) and for
+  // older backends. It is gated on the PGR_PII_MASKING deploy switch —
   // Bomet runs no confidentiality programme and shows the complainant in clear.
   const isConfidentialComplaint =
     isPiiMaskingEnabled() && complaintService?.extendedAttributes?.isConfidential === true;
@@ -621,8 +773,15 @@ const PGRDetails = () => {
   return (
     <div className="v2-pgr-details v2-scope">
       {/* Header */}
-      <header className="v2-employee-page-header">
+      <header className="v2-employee-page-header" style={{ display: "flex", alignItems: "center", gap: "16px", flexWrap: "wrap" }}>
         <h1>{t("CS_COMPLAINT_DETAILS_COMPLAINT_DETAILS")}</h1>
+        {complaintService?.serviceRequestId ? (
+          <ReceiptActions
+            className="ml-auto"
+            complaintId={complaintService.serviceRequestId}
+            tenantId={complaintService.tenantId || tenantId}
+          />
+        ) : null}
       </header>
 
       {/* Complaint Summary Card */}
@@ -707,13 +866,21 @@ const PGRDetails = () => {
                   // alongside the complainant name/mobile. The
                   // extendedAttributes.complainantAddress fallback already
                   // arrives masked, so the mask is idempotent for that branch.
-                  ...((pgrData?.ServiceWrappers?.[0]?.service?.citizen?.correspondenceAddress ||
+                  // address.street FIRST: it is where both create forms now write
+                  // the optional typed address (#21). The two legacy sources stay
+                  // as fallbacks so complaints filed before the change, and any
+                  // Mozambique complaint still using extendedAttributes, keep
+                  // rendering exactly as they did. Row is omitted entirely when
+                  // none of the three is set, so a blank address adds no row.
+                  ...((pgrData?.ServiceWrappers?.[0]?.service?.address?.street ||
+                      pgrData?.ServiceWrappers?.[0]?.service?.citizen?.correspondenceAddress ||
                       pgrData?.ServiceWrappers?.[0]?.service?.extendedAttributes?.complainantAddress)
                     ? [
                         {
                           inline: true,
                           label: t("ES_CREATECOMPLAINT_ADDRESS"),
                           value: maskIfConfidential(
+                            pgrData.ServiceWrappers[0].service.address?.street ||
                             pgrData.ServiceWrappers[0].service.citizen?.correspondenceAddress ||
                             pgrData.ServiceWrappers[0].service.extendedAttributes?.complainantAddress
                           ),
@@ -876,9 +1043,9 @@ const PGRDetails = () => {
               key="action-button"
               label={t("ES_COMMON_TAKE_ACTION")}
               onOptionSelect={(selected) => {
+                // A menu opened just before the deadline can still offer REOPEN: check the clock now.
                 if (selected.action === "REOPEN") {
-                  const lastModifiedTime = pgrData?.ServiceWrappers?.[0]?.service?.auditDetails?.lastModifiedTime;
-                  if (reopenWindowMs && lastModifiedTime && Date.now() - lastModifiedTime > reopenWindowMs) {
+                  if (!reopenWindow.isOpenNow()) {
                     setToast({
                       show: true,
                       type: "error",
@@ -886,6 +1053,10 @@ const PGRDetails = () => {
                     });
                     return;
                   }
+                }
+                if (draftActionRef.current !== selected?.action) {
+                  clearSessionFormData();
+                  draftActionRef.current = selected?.action || null;
                 }
                 setSelectedAction(selected);
                 setOpenModal(true);
