@@ -5136,6 +5136,18 @@
         "locale": "default"
     },
     {
+        "code": "CS_REASSIGNTOGRO_DONE_HEADING",
+        "message": "Sent back to the GRO",
+        "module": "rainmaker-pgr",
+        "locale": "default"
+    },
+    {
+        "code": "CS_REASSIGNTOGRO_DONE_MESSAGE",
+        "message": "This complaint is back with the GRO for re-assignment and is no longer on your list. Taking you to your inbox in {SECONDS} seconds.",
+        "module": "rainmaker-pgr",
+        "locale": "default"
+    },
+    {
         "code": "WF_PGR_REJECT",
         "message": "Rejected",
         "module": "rainmaker-pgr",
