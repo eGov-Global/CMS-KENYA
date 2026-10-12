@@ -5112,6 +5112,30 @@
         "locale": "default"
     },
     {
+        "code": "REASSIGNTOGRO",
+        "message": "Reassign to GRO",
+        "module": "rainmaker-pgr",
+        "locale": "default"
+    },
+    {
+        "code": "CS_ACTION_REASSIGNTOGRO",
+        "message": "Reassign to GRO",
+        "module": "rainmaker-pgr",
+        "locale": "default"
+    },
+    {
+        "code": "REASSIGNTOGRO_SUCCESSFULLY",
+        "message": "Reassigned to GRO successfully",
+        "module": "rainmaker-pgr",
+        "locale": "default"
+    },
+    {
+        "code": "WF_PGR_REASSIGNTOGRO",
+        "message": "Reassigned to GRO",
+        "module": "rainmaker-pgr",
+        "locale": "default"
+    },
+    {
         "code": "WF_PGR_REJECT",
         "message": "Rejected",
         "module": "rainmaker-pgr",
