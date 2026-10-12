@@ -18,6 +18,7 @@ import { selectServiceDefsFromComplaintHierarchy } from "../../utils";
 import { isPiiMaskingEnabled } from "../../utils/piiMasking";
 import useActionWindow from "../../hooks/pgr/useActionWindow";
 import { isConfirmationAction, wasReopened } from "../../utils/withdraw";
+import { RETURN_TO_GRO_ACTION, buildReturnToGroRequest, isReturnToGroAction } from "../../utils/reassignToGro";
 import { findLatestAssigneeUuidByRole } from "../../utils/workflowAssignee";
 import { LAST_MILE_ROLE, narrowToLastMile } from "../../utils/autoAssign";
 import { EV, trackE } from "../../utils/analytics";
@@ -77,7 +78,8 @@ const buildActionFormConfig = ({ action, assigneeRoles = [], isTerminal = false,
   // QA #22 (sheet v4 decision): AWAITINGINFORMATION is a state update — the
   // complaint waits on the CITIZEN, so picking a "next level user" makes no
   // sense and mis-assigned it to another case manager. No assignee here either.
-  const NO_ASSIGNEE_ACTIONS = ["REJECT", "AWAITINGINFORMATION"];
+  // REASSIGNTOGRO hands the complaint back to the GRO pool, not to a person.
+  const NO_ASSIGNEE_ACTIONS = ["REJECT", "AWAITINGINFORMATION", RETURN_TO_GRO_ACTION];
   if (!NO_ASSIGNEE_ACTIONS.includes(action) && !isTerminal && (assigneeRoles?.length || 0) > 0) {
     body.push({
       type: "component",
@@ -115,12 +117,13 @@ const buildActionFormConfig = ({ action, assigneeRoles = [], isTerminal = false,
       populators: { name: "SelectedDocuments" },
     });
   }
+  const commentRequired = !isReturnToGroAction(action);
   body.push({
     type: "textarea",
-    isMandatory: true,
+    isMandatory: commentRequired,
     key: "SelectedComments",
     label: "CS_COMMON_EMPLOYEE_COMMENTS",
-    populators: { name: "SelectedComments", maxLength: 1000, validation: { required: true }, error: "CORE_COMMON_REQUIRED_ERRMSG" },
+    populators: { name: "SelectedComments", maxLength: 1000, validation: { required: commentRequired }, error: "CORE_COMMON_REQUIRED_ERRMSG" },
   });
   return {
     label: {
@@ -440,6 +443,13 @@ const PGRDetails = () => {
         label: t("CS_COMMON_REQUIRED_FIELDS_MISSING") + ": " + missingFields.join(", "),
         type: "error",
       });
+      return;
+    }
+    if (isReturnToGroAction(selectedAction.action)) {
+      const service = pgrData?.ServiceWrappers[0].service;
+      handleResponseForUpdateComplaint(
+        buildReturnToGroRequest(service, parseAdditionalDetail(service?.additionalDetail), _data?.SelectedComments, _data?.SelectedDocuments)
+      );
       return;
     }
     // Forward the rejection-reason picker into the workflow comment so
