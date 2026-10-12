@@ -24,6 +24,7 @@ import { UtilityBar, LanguageOption, DEFAULT_LANGUAGES } from "./components/Util
 import { WhatsAppFab } from "./components/WhatsAppFab";
 
 import { getEntry, RenderCtx, Slot } from "./config/sectionRegistry";
+import type { LandingArtwork } from "./config/sectionRegistry";
 import type { LandingSectionConfig, ResolvedLandingConfig } from "./config/types";
 
 export interface LandingRendererProps {
@@ -38,6 +39,8 @@ export interface LandingRendererProps {
   channelsOrbImageUrl?: string;
   emblemUrl?: string;
   footerLogoUrl?: string;
+  artwork?: LandingArtwork;
+  areasPhotoUrl?: string;
   languages?: LanguageOption[];
   onLanguageChange?: (code: string) => void;
   tokens?: Partial<LandingTokens>;
@@ -59,6 +62,8 @@ export function LandingRenderer({
   channelsOrbImageUrl,
   emblemUrl,
   footerLogoUrl,
+  artwork,
+  areasPhotoUrl,
   languages = DEFAULT_LANGUAGES,
   onLanguageChange,
   tokens,
@@ -70,12 +75,13 @@ export function LandingRenderer({
   const routes = React.useMemo(() => mergeRoutes(routeOverrides), [routeOverrides]);
   const tokenStyle = React.useMemo(() => buildTokenStyle(tokens), [tokens]);
 
-  // Sticky nav (48px) vs keyboard-focus / skip-link jumps (WCAG 2.4.11); the
-  // scroll container is <html>, so set for the page's lifetime and restore.
+  // Sticky masthead (up to 74px) vs keyboard-focus / skip-link / section-link
+  // jumps (WCAG 2.4.11); the scroll container is <html>, so set for the page's
+  // lifetime and restore.
   React.useEffect(() => {
     const el = document.documentElement;
     const prev = el.style.scrollPaddingTop;
-    el.style.scrollPaddingTop = "4rem";
+    el.style.scrollPaddingTop = "5.25rem";
     return () => {
       el.style.scrollPaddingTop = prev;
     };
@@ -92,8 +98,8 @@ export function LandingRenderer({
   const fabOn = hasSections && (showWhatsAppFab ?? page.showWhatsAppFab ?? true);
 
   const ctx: RenderCtx = React.useMemo(
-    () => ({ routes, news, heroImageUrl, heroImageSmallUrl, bandImageUrl, personImageUrl, stepsOrbImageUrl, channelsOrbImageUrl, emblemUrl, footerLogoUrl }),
-    [routes, news, heroImageUrl, heroImageSmallUrl, bandImageUrl, personImageUrl, stepsOrbImageUrl, channelsOrbImageUrl, emblemUrl, footerLogoUrl]
+    () => ({ routes, news, heroImageUrl, heroImageSmallUrl, bandImageUrl, personImageUrl, stepsOrbImageUrl, channelsOrbImageUrl, emblemUrl, footerLogoUrl, artwork, areasPhotoUrl }),
+    [routes, news, heroImageUrl, heroImageSmallUrl, bandImageUrl, personImageUrl, stepsOrbImageUrl, channelsOrbImageUrl, emblemUrl, footerLogoUrl, artwork, areasPhotoUrl]
   );
 
   // Group the ordered, visible sections into DOM slots; unknown types (no
