@@ -288,17 +288,19 @@ const STEP_SLUGS = ["complaint-type", "location", "details"] as const;
 const CREATE_DRAFT_KEY = "PGR_CREATE_CITIZEN_DRAFT";
 
 // The saved draft (answers AND step position) may only be restored when the
-// document itself was RELOADED (mid-flow F5) — and only by the first wizard
-// mount after it. Any other entry (SPA links, and sidebar items that
-// hard-navigate like "Citizen Complaint Resolution System") is a FRESH start:
-// the stored draft is discarded entirely — answers included (user feedback:
-// re-entering via "File a Complaint" with pre-filled fields reads as stale
-// state, matching the pre-draft behaviour). The flag is consumed on first use
-// so later SPA re-entries within the same document also start clean.
+// document itself was RELOADED on the wizard (mid-flow F5) — and only by the
+// first wizard mount after it. Any other entry (SPA links, sidebar items that
+// hard-navigate like "Citizen Complaint Resolution System", and a reload on
+// another screen, e.g. into a new build — src/buildRefresh.js) is a FRESH
+// start: the stored draft is discarded entirely — answers included (user
+// feedback: re-entering via "File a Complaint" with pre-filled fields reads as
+// stale state, matching the pre-draft behaviour). The flag is consumed on first
+// use so later SPA re-entries within the same document also start clean.
 let RESTORE_STEP_ARMED = (() => {
   try {
     const nav = performance.getEntriesByType("navigation")[0] as PerformanceNavigationTiming | undefined;
-    return nav?.type === "reload";
+    // nav.name is the URL the document was loaded at; in-app navigation keeps it.
+    return nav?.type === "reload" && /\/create-complaint(\/|$)/.test(new URL(nav.name).pathname);
   } catch (e) {
     return false;
   }

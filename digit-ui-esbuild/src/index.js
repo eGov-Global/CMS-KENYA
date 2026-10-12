@@ -4,6 +4,7 @@ import { initLibraries } from "@egovernments/digit-ui-libraries";
 import { isKeycloakAuth } from "../packages/libraries/src/services/auth/authSurface";
 import "./index.css";
 import App from './App';
+import { dropCachesFromOtherBuild, readBuildId, startBuildWatcher } from "./buildRefresh";
 import { applyTheme } from "./theme/applyTheme";
 import defaultTheme from "./theme/default.json";
 
@@ -72,6 +73,11 @@ const normalizeLocale = () => {
 };
 
 async function bootstrap() {
+  // Before anything reads the cached labels or session caches: a new deploy
+  // must not start from what the previous build cached (see buildRefresh.js).
+  const buildId = readBuildId(document);
+  dropCachesFromOtherBuild({ buildId, local: window.localStorage, session: window.sessionStorage });
+
   if (isKeycloakAuth()) {
     const { initAuthAdapter } = await import(
       "../packages/libraries/src/services/auth/index"
@@ -165,6 +171,7 @@ async function bootstrap() {
     </React.StrictMode>,
     document.getElementById('root')
   );
+  startBuildWatcher({ buildId });
 }
 
 bootstrap();

@@ -11,14 +11,27 @@
 // (auth, locale, selected city, initData) stay in localStorage via Storage.js —
 // so there is NO sync-tier / boot-hydration machinery to maintain.
 //
-// Key→{value,expiry} with a per-entry TTL (seconds); expired entries are dropped
-// on read. Every method fails soft (null / false) so a missing or blocked
-// IndexedDB never breaks a caller — it just looks like a cache miss → refetch.
-// No external dependency.
+// Key→{value,expiry,build} with a per-entry TTL (seconds); expired entries are
+// dropped on read. Every method fails soft (null / false) so a missing or
+// blocked IndexedDB never breaks a caller — it just looks like a cache miss →
+// refetch. No external dependency.
+//
+// An entry written by another build is a miss too: MDMS.js caches its
+// TRANSFORMED value, whose shape is that build's code, and a tab still open on
+// the previous build keeps writing here after a deploy. The id is the one
+// esbuild.build.js stamps into the page (see src/buildRefresh.js); dev builds
+// have none.
 
 const DB_NAME = "digit-ui";
 const STORE_NAME = "mdms_cache";
 const DEFAULT_TTL_SECS = 86400;
+const BUILD_ID = (() => {
+  try {
+    return document.querySelector('meta[name="digit-build-id"]')?.getAttribute("content") || null;
+  } catch {
+    return null;
+  }
+})();
 
 let dbPromise = null;
 
@@ -64,6 +77,7 @@ export const idbCache = {
         idbCache.remove(key); // fire-and-forget
         return null;
       }
+      if ((entry.build || null) !== BUILD_ID) return null; // the refetch overwrites it
       return entry.value;
     } catch {
       return null;
@@ -80,7 +94,7 @@ export const idbCache = {
       }
       const db = await openDB();
       const tx = db.transaction(STORE_NAME, "readwrite");
-      tx.objectStore(STORE_NAME).put({ value, expiry: Date.now() + ttlSecs * 1000 }, key);
+      tx.objectStore(STORE_NAME).put({ value, expiry: Date.now() + ttlSecs * 1000, build: BUILD_ID }, key);
       await awaitTx(tx);
       return true;
     } catch {
