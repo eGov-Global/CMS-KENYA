@@ -181,7 +181,7 @@ export function LandingFooter({ routes, logoUrl, emblemUrl, section }: LandingFo
           <address className="not-italic">
             <p className={FOOT_HEAD}>{c("FOOTER_CONTACT")}</p>
             <ul className="m-0 mt-4 flex list-none flex-col gap-2 p-0 text-sm">
-              {/* One link per number: a single link over both dialled only the first. */}
+              {/* One link per number: a single link over them all dialled only the first. */}
               <li className="m-0 p-0">
                 <span className={FOOT_MUTED}>{c("CONTACT_HOTLINE")}: </span>
                 {CONTACT.hotlines.map((line, i) => (
@@ -199,18 +199,9 @@ export function LandingFooter({ routes, logoUrl, emblemUrl, section }: LandingFo
               </li>
               <li className="m-0 p-0">
                 <span className={FOOT_MUTED}>{c("CONTACT_EMAIL")}: </span>
-                {CONTACT.emails.map((address, i) => (
-                  <React.Fragment key={address}>
-                    {i > 0 && (
-                      <span aria-hidden className={FOOT_MUTED}>
-                        {" · "}
-                      </span>
-                    )}
-                    <a href={`mailto:${address}`} className={FOOT_LINK}>
-                      {address}
-                    </a>
-                  </React.Fragment>
-                ))}
+                <a href={`mailto:${CONTACT.email}`} className={FOOT_LINK}>
+                  {CONTACT.email}
+                </a>
               </li>
               <li className="m-0 p-0 leading-relaxed">
                 <span className={FOOT_MUTED}>{c("CONTACT_POST")}: </span>

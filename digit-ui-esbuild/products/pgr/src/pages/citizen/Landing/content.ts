@@ -341,31 +341,27 @@ export type LandingCopyKey = keyof typeof LANDING_COPY;
 
 // County contact details ----------------------------------------------------
 //
-// Taken from the county's public website (nairobi.go.ke header and footer,
-// 2026-09-22), plus the Bonga Nai lines and email the county sent on
-// 2026-10-12 (0725 624 489 is staffed 24/7). Deliberately NOT i18n copy: a
-// phone number, an email address and a postal address read identically in
-// every language.
+// The phone lines and email are the ones the county sent for Bonga Nai on
+// 2026-10-12 (0725 624 489 is staffed 24/7). They replace the lines and email
+// on nairobi.go.ke on purpose; the postal address is from that site's footer
+// (2026-09-22). Deliberately NOT i18n copy: a phone number, an email address
+// and a postal address read identically in every language.
 //
 // `hotline` is the single source of truth for the number — routes.ts builds
 // GREEN_LINE/PHONE from it, so editing it here also updates every help-line
 // CTA (utility bar, channels section, footer). Keep it digits-only. Where the
-// numbers are shown on screen, use `hotlines`: the county publishes a mobile
-// and a landline, and each is its own tel: link — one link over both could
-// only ever dial the first. The BRD's dedicated Nai Pepea call-centre number
-// is not yet assigned; until it is, the county's published help line is used.
+// numbers are shown on screen, use `hotlines`: the county publishes several
+// lines, and each is its own tel: link — one link over them all could only
+// ever dial the first. The BRD's dedicated Nai Pepea call-centre number is
+// not yet assigned; until it is, the county's published help line is used.
 export const CONTACT = {
   hotline: "+254725624489",
   hotlines: [
     { tel: "+254725624489", display: "0725 624 489 (24/7)" },
     { tel: "+254730047047", display: "0730 047 047" },
     { tel: "+254207247047", display: "020 724 7047" },
-    { tel: "+254202224281", display: "020 222 4281" },
   ],
-  // `email` is the county's general address (the footer's mail icon);
-  // `emails` is every address the footer's contact list shows.
-  email: "info@nairobi.go.ke",
-  emails: ["info@nairobi.go.ke", "lydiagatheru@yahoo.com"],
+  email: "lydiagatheru@yahoo.com",
   poBox: "City Hall, P.O. Box 30075-00100, Nairobi, Kenya",
 } as const;
 
@@ -467,9 +463,9 @@ export interface HelplineItem {
 
 // Emergency helplines shown on the landing page (Nairobi UAT). 999 / 112 are
 // Kenya's national emergency numbers; the fire card carries the Nairobi City
-// County Fire Brigade lines and the county card the county help line, which
-// nairobi.go.ke also lists as the Disaster Management & Coordination help
-// line (0725 624 489 / 020 222 4281) — so there is no separate disaster card.
+// County Fire Brigade lines and the county card the county help lines, whose
+// 24/7 line (0725 624 489) nairobi.go.ke also lists as the Disaster Management
+// & Coordination help line — so there is no separate disaster card.
 // Override any card via the MDMS LandingSection items (labelKey / descKey /
 // navigationUrl "tel:…").
 export const HELPLINES: HelplineItem[] = [
