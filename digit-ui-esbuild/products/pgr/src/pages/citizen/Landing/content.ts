@@ -342,8 +342,10 @@ export type LandingCopyKey = keyof typeof LANDING_COPY;
 // County contact details ----------------------------------------------------
 //
 // Taken from the county's public website (nairobi.go.ke header and footer,
-// 2026-09-22). Deliberately NOT i18n copy: a phone number, an email address
-// and a postal address read identically in every language.
+// 2026-09-22), plus the Bonga Nai lines and email the county sent on
+// 2026-10-12 (0725 624 489 is staffed 24/7). Deliberately NOT i18n copy: a
+// phone number, an email address and a postal address read identically in
+// every language.
 //
 // `hotline` is the single source of truth for the number — routes.ts builds
 // GREEN_LINE/PHONE from it, so editing it here also updates every help-line
@@ -355,10 +357,15 @@ export type LandingCopyKey = keyof typeof LANDING_COPY;
 export const CONTACT = {
   hotline: "+254725624489",
   hotlines: [
-    { tel: "+254725624489", display: "+254 725 624 489" },
+    { tel: "+254725624489", display: "0725 624 489 (24/7)" },
+    { tel: "+254730047047", display: "0730 047 047" },
+    { tel: "+254207247047", display: "020 724 7047" },
     { tel: "+254202224281", display: "020 222 4281" },
   ],
+  // `email` is the county's general address (the footer's mail icon);
+  // `emails` is every address the footer's contact list shows.
   email: "info@nairobi.go.ke",
+  emails: ["info@nairobi.go.ke", "lydiagatheru@yahoo.com"],
   poBox: "City Hall, P.O. Box 30075-00100, Nairobi, Kenya",
 } as const;
 

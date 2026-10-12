@@ -199,9 +199,18 @@ export function LandingFooter({ routes, logoUrl, emblemUrl, section }: LandingFo
               </li>
               <li className="m-0 p-0">
                 <span className={FOOT_MUTED}>{c("CONTACT_EMAIL")}: </span>
-                <a href={`mailto:${CONTACT.email}`} className={FOOT_LINK}>
-                  {CONTACT.email}
-                </a>
+                {CONTACT.emails.map((address, i) => (
+                  <React.Fragment key={address}>
+                    {i > 0 && (
+                      <span aria-hidden className={FOOT_MUTED}>
+                        {" · "}
+                      </span>
+                    )}
+                    <a href={`mailto:${address}`} className={FOOT_LINK}>
+                      {address}
+                    </a>
+                  </React.Fragment>
+                ))}
               </li>
               <li className="m-0 p-0 leading-relaxed">
                 <span className={FOOT_MUTED}>{c("CONTACT_POST")}: </span>
