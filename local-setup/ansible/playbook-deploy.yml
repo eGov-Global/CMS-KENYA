@@ -2711,9 +2711,10 @@
         cd /opt/digit-ui-esbuild
         # Quick freshness check: if build/index.html is newer than the
         # most-recent source file, skip the rebuild (~5s saved on
-        # repeat deploys).
+        # repeat deploys). Every input of esbuild.build.js counts, the
+        # app shell (src/) and the build script itself included.
         if [ -f build/index.html ]; then
-          newest_src=$(find products packages public package.json -type f -newer build/index.html 2>/dev/null | head -1)
+          newest_src=$(find products packages public src package.json esbuild.build.js tailwind.config.ts -type f -newer build/index.html 2>/dev/null | head -1)
           if [ -z "$newest_src" ]; then
             echo "build/ is up-to-date — skipping rebuild"
             exit 0
