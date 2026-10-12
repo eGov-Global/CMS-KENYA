@@ -67,12 +67,14 @@ works with zero translations seeded), and the compiled Tailwind CSS from
 | --- | --- | --- |
 | `routes` | `DEFAULT_LANDING_ROUTES` | Destination map — every CTA resolves through it. `"#"` renders a disabled control instead of a dead link. |
 | `news` | `DEFAULT_NEWS` | Updates-grid cards (pass CMS content in production). |
-| `heroImageUrl` | none | Hero photo, rendered under a deep-green gradient scrim; flat green without it. |
-| `heroImageSmallUrl` | none | Narrow-viewport cut of the hero photo, offered through `srcSet`. |
+| `heroImageUrl` | none | Hero artwork, the skyline panel beside (xl+) or under the copy. |
+| `heroImageSmallUrl` | none | Smaller cut of the same artwork, offered through `srcSet`. |
+| `artwork` | none | Top-of-page artwork: hero edge pattern, service-category photos (keyed by category id), slogan-band mosaics and skyline art. |
+| `areasPhotoUrl` | hero artwork | Photo for the areas section's phone photo card. |
 | `bandImageUrl` | none | Photo for the circular artwork beside the channels title. |
 | `personImageUrl` | none | Portrait of a resident in the closing call to action; a megaphone tile stands in without it. |
-| `emblemUrl` | none | County emblem in the masthead (falls back to a glyph). |
-| `languages` | `en_IN` | Language switcher options (`{ code, label }`). |
+| `emblemUrl` | none | County crest in the masthead and footer (falls back to a glyph). |
+| `languages` | `en_IN` | Language menu options (`{ code, label }`); `AppEntry.tsx` passes the tenant's StateInfo languages. |
 | `onLanguageChange` | platform localization service | Override for locale switching. |
 | `tokens` | Nairobi green & gold | Design-token overrides (HSL triples — see `tokens.ts`). |
 | `showWhatsAppFab` | `true` | Floating WhatsApp action; renders nothing while the route is `"#"`. |
@@ -139,6 +141,7 @@ Landing/
 ├── tokens.ts            design tokens (HSL triples), focus-ring constants
 ├── content.ts           copy deck + section data (types, steps, channels, news)
 ├── useLandingCopy.ts    copy resolution (MDMS → deck → empty)
+├── topOfPage.ts        pure helpers for the strip and slogan band (unit-tested)
 ├── config/
 │   ├── types.ts             config row shapes
 │   ├── defaults.ts          built-in layout used when MDMS is empty
@@ -153,10 +156,11 @@ Landing/
     ├── CtaLink.tsx      link-as-button variants
     ├── Section.tsx      section shell (rhythm, heading + accent bar, landmarks)
     ├── DotGrid.tsx      decorative dot pattern for the dark bands
-    ├── UtilityBar.tsx   gov strip: hotline, phone, language toggle, sign-in
-    ├── LandingHeader.tsx masthead + sticky nav + mobile menu
-    ├── HeroSection.tsx  H1, dual CTA, trust markers, channel chips
-    ├── TypesSection.tsx service areas (Health, Water, Administration)
+    ├── UtilityBar.tsx   gov strip: county name, help line, language menu, sign-in
+    ├── LandingHeader.tsx masthead + sticky nav + search + mobile menu
+    ├── HeroSection.tsx  wordmark, headline, dual CTA, benefits, skyline panel
+    ├── TypesSection.tsx service categories as photo cards + pilot notice
+    ├── TaglineBand.tsx  "Let's Make NAIROBI Work" band
     ├── HowItWorksSection.tsx  6-step ordered list + deadlines note
     ├── ChannelsSection.tsx    ways to reach the service
     ├── PrivacySection.tsx     data-protection block + link to the notice

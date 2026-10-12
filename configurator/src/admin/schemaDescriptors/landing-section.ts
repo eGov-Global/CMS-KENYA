@@ -26,7 +26,7 @@ export const landingSectionDescriptor: SchemaDescriptor = {
     { path: 'code', widget: 'text', required: true, label: 'Code',
       help: 'Unique section id (e.g. "hero"). Also the tenant-override join key.' },
     { path: 'type', widget: 'text', required: true, label: 'Type',
-      help: 'Section component. v1 catalog: hero | navigation | types | steps | channels | privacy | news | institutions | cta | footer. Unknown types are skipped by the page.' },
+      help: 'Section component. v1 catalog: hero | navigation | types | tagline | steps | channels | helplines | privacy | news | institutions | cta | footer. Unknown types are skipped by the page.' },
     { path: 'order', widget: 'integer', min: 0, label: 'Order',
       help: 'Sort position on the page (ascending). The page re-sorts on reload.' },
     { path: 'enabled', widget: 'boolean', label: 'Enabled',
