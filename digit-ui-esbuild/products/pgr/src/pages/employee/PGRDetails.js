@@ -23,6 +23,7 @@ import { findLatestAssigneeUuidByRole } from "../../utils/workflowAssignee";
 import { LAST_MILE_ROLE, narrowToLastMile } from "../../utils/autoAssign";
 import { EV, trackE } from "../../utils/analytics";
 import ReceiptActions from "../../components/ReceiptActions";
+import ReturnedToGroNotice from "../../components/ReturnedToGroNotice";
 
 // CCSD-2167 (employee side) — route-back / terminal actions derive their
 // assignee from the complaint's OWN workflow history, exactly like the citizen
@@ -146,6 +147,7 @@ const PGRDetails = () => {
   const { id } = useParams();
   const [selectedAction, setSelectedAction] = useState(null);
   const [toast, setToast] = useState({ show: false, label: "", type: "" });
+  const [returnedToGro, setReturnedToGro] = useState(false);
   // Derived address levels (County / Sub-County / Ward …) for the summary card.
   const [boundaryRows, setBoundaryRows] = useState([]);
   const userInfo = Digit.UserService.getUser();
@@ -566,6 +568,13 @@ const PGRDetails = () => {
           handleUpdateFailure(actionCode);
         } else {
           trackE(EV.WORKFLOW_COMPLETED, actionCode);
+          if (isReturnToGroAction(actionCode)) {
+            // Off this officer's list now: no refetch of a complaint they can no
+            // longer see; the notice takes them to their inbox instead.
+            clearSessionFormData();
+            setReturnedToGro(true);
+            return;
+          }
           setToast({ show: true, label: t(`${msg}_SUCCESSFULLY`), type: "success" });
           await refreshData();
           clearSessionFormData();
@@ -1087,6 +1096,7 @@ const PGRDetails = () => {
 
       {/* Toast Message */}
       {toast?.show && <Toast type={toast?.type} label={toast?.label} isDleteBtn onClose={handleToastClose} />}
+      {returnedToGro && <ReturnedToGroNotice />}
 
       {/* Workflow Modal for Actions */}
       {openModal && selectedAction && (
