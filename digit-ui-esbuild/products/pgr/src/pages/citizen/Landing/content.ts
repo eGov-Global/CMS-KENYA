@@ -53,6 +53,9 @@ import {
   Bell,
   Phone,
   MapPin,
+  ShieldAlert,
+  Siren,
+  Flame,
 } from "lucide-react";
 import { RoadIcon } from "./components/Illustrations";
 import type { LandingRoutes } from "./routes";
@@ -171,18 +174,22 @@ export const LANDING_COPY = {
       "You are notified by SMS when your case is registered, assigned, escalated, resolved and closed. The same deadline applies to every complaint, whichever channel you used.",
   },
 
-  // Customer Service help lines ("helplines" section) -----------------—---
-  HELPLINES_CS_EYEBROW: { en: "Customer service" },
-  HELPLINES_CS_TITLE: { en: "Call Customer Service" },
-  HELPLINES_CS_INTRO: {
-    en: "Speak to a call agent: they log your complaint for you and read your case number back to you.",
+  // Emergency helplines ------------------------------------------------—---
+  HELPLINES_EYEBROW: { en: "Emergency" },
+  HELPLINES_TITLE: { en: "Emergency Helplines" },
+  HELPLINES_INTRO: {
+    en: "For emergencies call the services below directly — this portal is for county service complaints, not emergencies.",
   },
-  HELPLINE_CS_NOTE: { en: "Calling about a complaint you have already filed? Have your case number ready." },
+  HELPLINE_POLICE_TITLE: { en: "Police" },
+  HELPLINE_POLICE_DESC: { en: "Crime, accidents and threats to safety" },
+  HELPLINE_AMBULANCE_TITLE: { en: "Ambulance" },
+  HELPLINE_AMBULANCE_DESC: { en: "Medical emergencies" },
+  HELPLINE_FIRE_TITLE: { en: "Fire & Rescue" },
+  HELPLINE_FIRE_DESC: { en: "Fire, flooding and rescue" },
   HELPLINE_COUNTY_TITLE: { en: "County Help Line" },
-  // Labels on the help-line tiles (CONTACT.hotlines).
-  HELPLINE_LINE_24_7: { en: "Open 24/7" },
-  HELPLINE_LINE_MOBILE: { en: "Mobile" },
-  HELPLINE_LINE_LANDLINE: { en: "Landline" },
+  HELPLINE_COUNTY_DESC: { en: "County services and the Disaster Management & Coordination help line — call agents log your complaint for you" },
+  HELPLINE_DISASTER_TITLE: { en: "Disaster Management" },
+  HELPLINE_DISASTER_DESC: { en: "Building collapse, major incidents" },
   HELPLINES_CALL: { en: "Call" },
 
   // Channels -----------------------------------------------------------—---
@@ -347,24 +354,15 @@ export type LandingCopyKey = keyof typeof LANDING_COPY;
 // lines, and each is its own tel: link — one link over them all could only
 // ever dial the first. The BRD's dedicated Nai Pepea call-centre number is
 // not yet assigned; until it is, the county's published help line is used.
-export interface HotlineNumber {
-  tel: string;
-  display: string;
-  /** Short qualifier shown after the number in running text, e.g. "24/7". */
-  note?: string;
-  /** Label on the number's help-line tile. */
-  labelKey?: LandingCopyKey;
-}
-
 export const CONTACT = {
   hotline: "+254725624489",
   // The same line as the utility strip shows it, in international form.
   hotlineDisplay: "+254 725 624 489",
   hotlines: [
-    { tel: "+254725624489", display: "0725 624 489", note: "24/7", labelKey: "HELPLINE_LINE_24_7" },
-    { tel: "+254730047047", display: "0730 047 047", labelKey: "HELPLINE_LINE_MOBILE" },
-    { tel: "+254207247047", display: "020 724 7047", labelKey: "HELPLINE_LINE_LANDLINE" },
-  ] as ReadonlyArray<HotlineNumber>,
+    { tel: "+254725624489", display: "0725 624 489 (24/7)" },
+    { tel: "+254730047047", display: "0730 047 047" },
+    { tel: "+254207247047", display: "020 724 7047" },
+  ],
   email: "lydiagatheru@yahoo.com",
   poBox: "City Hall, P.O. Box 30075-00100, Nairobi, Kenya",
 } as const;
@@ -469,16 +467,31 @@ export interface HelplineItem {
   numberDisplay: string;
   /** More than one line for the same service: each number renders as its own
    *  tel: link (href/numberDisplay then describe the first). */
-  numbers?: ReadonlyArray<HotlineNumber>;
+  numbers?: ReadonlyArray<{ tel: string; display: string }>;
 }
 
-// The help lines shown on the landing page: Nairobi City County Customer
-// Service only. The county asked on 2026-10-12 for the police, ambulance and
-// fire numbers to come off the page. The tiles take their numbers and labels
-// from CONTACT.hotlines. Override via the MDMS LandingSection items
-// (labelKey / descKey / navigationUrl "tel:…").
+// Emergency helplines shown on the landing page (Nairobi UAT). 999 / 112 are
+// Kenya's national emergency numbers; the fire card carries the Nairobi City
+// County Fire Brigade lines and the county card the county help lines, whose
+// 24/7 line (0725 624 489) nairobi.go.ke also lists as the Disaster Management
+// & Coordination help line — so there is no separate disaster card.
+// Override any card via the MDMS LandingSection items (labelKey / descKey /
+// navigationUrl "tel:…").
 export const HELPLINES: HelplineItem[] = [
-  { id: "county", icon: Phone, titleKey: "HELPLINE_COUNTY_TITLE", descKey: "HELPLINE_CS_NOTE", href: `tel:${CONTACT.hotline}`, numberDisplay: CONTACT.hotlines[0].display, numbers: CONTACT.hotlines },
+  { id: "police", icon: ShieldAlert, titleKey: "HELPLINE_POLICE_TITLE", descKey: "HELPLINE_POLICE_DESC", href: "tel:999", numberDisplay: "999" },
+  { id: "ambulance", icon: Siren, titleKey: "HELPLINE_AMBULANCE_TITLE", descKey: "HELPLINE_AMBULANCE_DESC", href: "tel:112", numberDisplay: "112" },
+  // Nairobi City County Fire Brigade (nairobi.go.ke/emergency-services): the
+  // two county fire lines plus the toll-free short code.
+  {
+    id: "fire", icon: Flame, titleKey: "HELPLINE_FIRE_TITLE", descKey: "HELPLINE_FIRE_DESC",
+    href: "tel:+254202222181", numberDisplay: "020 222 2181",
+    numbers: [
+      { tel: "+254202222181", display: "020 222 2181" },
+      { tel: "+254202344599", display: "020 234 4599" },
+      { tel: "1508", display: "1508 (toll-free)" },
+    ],
+  },
+  { id: "county", icon: Phone, titleKey: "HELPLINE_COUNTY_TITLE", descKey: "HELPLINE_COUNTY_DESC", href: `tel:${CONTACT.hotline}`, numberDisplay: CONTACT.hotlines[0].display, numbers: CONTACT.hotlines },
 ];
 
 export interface InstitutionItem {
