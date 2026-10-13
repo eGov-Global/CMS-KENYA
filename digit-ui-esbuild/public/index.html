@@ -7,7 +7,7 @@
   <link
     href="https://fonts.googleapis.com/css2?family=Roboto+Condensed:wght@400;500;700&family=Roboto:wght@400;500;700&family=Caveat:wght@600&display=swap"
     rel="stylesheet" type="text/css" />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet"
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"
     type="text/css" />
   <link rel="stylesheet" href="/digit-ui/vendor/digit-ui-components-css.css" />
   <link rel="stylesheet" href="/digit-ui/vendor/digit-ui-health-css.css" />
@@ -46,9 +46,7 @@
     // mid-form. Override every scroll for the first 3s after a route
     // change OR until the user explicitly scrolls.
     (function () {
-      // A change of #hash alone is a jump within the page, not a new page.
-      var pageUrl = function () { return location.href.split("#")[0]; };
-      var lastUrl = pageUrl();
+      var lastUrl = location.href;
       var clamping = false;
       var clampUntil = 0;
       var userScrolled = false;
@@ -66,22 +64,19 @@
         }
         requestAnimationFrame(tick);
       }
-      // Treat wheel/touch/key as user intent; stop clamping immediately. Pages
-      // that scroll on the user's behalf (the landing page's section links)
-      // say so with a `digit:user-scroll` event.
-      ["wheel", "touchmove", "keydown", "digit:user-scroll"].forEach(function (evt) {
+      // Treat wheel/touch/key as user intent; stop clamping immediately.
+      ["wheel", "touchmove", "keydown"].forEach(function (evt) {
         window.addEventListener(evt, function () { userScrolled = true; }, { passive: true, capture: true });
       });
-      // Trigger on initial load and route changes. A visitor who has already
-      // scrolled (or jumped to a section) before the load event keeps their place.
+      // Trigger on initial load and route changes.
       if (document.readyState === "complete") {
         startClamp();
       } else {
-        window.addEventListener("load", function () { if (!userScrolled) startClamp(); });
+        window.addEventListener("load", startClamp);
       }
       setInterval(function () {
-        if (pageUrl() !== lastUrl) {
-          lastUrl = pageUrl();
+        if (location.href !== lastUrl) {
+          lastUrl = location.href;
           startClamp();
         }
       }, 200);
