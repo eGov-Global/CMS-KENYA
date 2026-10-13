@@ -39,52 +39,41 @@ export interface SkylineProps {
   variant?: "blob" | "silhouette";
 }
 
-/** Stylised Nairobi skyline — the KICC cylinder and helipad, Times Tower,
- *  UAP Old Mutual — with trees, for the "green city" feel. */
+/** Stylised Bomet highlands — tea-country ridges, a farmhouse and a stand
+ *  of trees — for the county's green, rural feel. Keeps the framework's
+ *  "skyline" slot name so the sections that mount it are unchanged. */
 export function SkylineIllustration({ className, variant = "blob" }: SkylineProps) {
   const solid = variant === "silhouette";
   const f = (alpha: number) => (solid ? P : `hsl(var(--pgrl-primary) / ${alpha})`);
   return (
     <svg aria-hidden viewBox="0 0 360 220" className={cn("block", className)}>
       {!solid && <ellipse cx="196" cy="150" rx="164" ry="68" fill={T} />}
-      {/* back row */}
-      <rect x="52" y="112" width="26" height="76" rx="2" fill={f(0.3)} />
-      <rect x="84" y="96" width="30" height="92" rx="2" fill={f(0.42)} />
-      <rect x="292" y="104" width="28" height="84" rx="2" fill={f(0.32)} />
-      <rect x="324" y="126" width="18" height="62" rx="2" fill={f(0.26)} />
-      {/* Times Tower */}
-      <rect x="118" y="74" width="30" height="114" rx="2" fill={f(0.62)} />
-      <rect x="126" y="58" width="14" height="18" rx="1" fill={f(0.62)} />
-      {/* KICC */}
-      <rect x="156" y="46" width="34" height="142" rx="7" fill={f(0.92)} />
-      <ellipse cx="173" cy="46" rx="31" ry="9" fill={solid ? P : D} />
-      <rect x="166" y="26" width="14" height="20" rx="2" fill={f(0.92)} />
-      <g stroke={W} strokeOpacity={solid ? 0 : 0.22} strokeWidth="2">
-        <line x1="165" y1="62" x2="165" y2="182" />
-        <line x1="173" y1="62" x2="173" y2="182" />
-        <line x1="181" y1="62" x2="181" y2="182" />
+      {/* far ridge */}
+      <path d="M20 150 C 70 96, 120 92, 170 118 C 210 138, 250 100, 300 110 C 322 114, 338 126, 350 136 L350 192 L20 192 Z" fill={f(0.28)} />
+      {/* middle ridge */}
+      <path d="M20 168 C 60 134, 110 124, 160 142 C 196 155, 232 126, 272 134 C 306 141, 330 156, 350 166 L350 192 L20 192 Z" fill={f(0.52)} />
+      {/* near slope with tea rows */}
+      <path d="M20 192 C 70 162, 130 158, 190 170 C 240 180, 290 168, 350 182 L350 192 Z" fill={f(0.9)} />
+      <g stroke={W} strokeOpacity={solid ? 0 : 0.22} strokeWidth="2" fill="none">
+        <path d="M60 184 C 110 168, 160 166, 210 176" />
+        <path d="M100 190 C 150 176, 200 174, 250 184" />
+        <path d="M200 190 C 250 180, 300 178, 340 186" />
       </g>
-      {/* UAP tower + neighbours */}
-      <rect x="200" y="66" width="40" height="122" rx="3" fill={f(0.74)} />
-      <path d="M200 66 L220 52 L240 66 Z" fill={f(0.74)} />
-      <rect x="248" y="98" width="30" height="90" rx="2" fill={f(0.52)} />
-      <g stroke={W} strokeOpacity={solid ? 0 : 0.18} strokeWidth="2">
-        <line x1="210" y1="80" x2="210" y2="182" />
-        <line x1="220" y1="80" x2="220" y2="182" />
-        <line x1="230" y1="80" x2="230" y2="182" />
-      </g>
+      {/* farmhouse */}
+      <rect x="236" y="138" width="30" height="18" rx="1" fill={f(0.9)} />
+      <path d="M232 139 L251 126 L270 139 Z" fill={solid ? P : D} />
+      <rect x="249" y="146" width="6" height="10" fill={W} opacity={solid ? 0 : 0.7} />
       {/* ground */}
-      <rect x="30" y="186" width="310" height="6" rx="3" fill={f(0.5)} />
+      <rect x="30" y="190" width="310" height="6" rx="3" fill={f(0.5)} />
       {/* trees */}
       {!solid && (
         <g>
-          <rect x="66" y="176" width="4" height="14" fill={f(0.6)} />
-          <circle cx="68" cy="172" r="12" fill={LEAF} />
-          <rect x="300" y="174" width="4" height="16" fill={f(0.6)} />
-          <circle cx="302" cy="170" r="14" fill={LEAF} />
-          <rect x="334" y="180" width="3" height="10" fill={f(0.6)} />
-          <circle cx="335.5" cy="176" r="9" fill={LEAF} />
-          <circle cx="34" cy="180" r="9" fill={LEAF} opacity="0.8" />
+          <rect x="84" y="152" width="4" height="22" fill={f(0.6)} />
+          <circle cx="86" cy="146" r="13" fill={LEAF} />
+          <rect x="112" y="156" width="4" height="18" fill={f(0.6)} />
+          <circle cx="114" cy="152" r="10" fill={LEAF} />
+          <rect x="300" y="160" width="4" height="18" fill={f(0.6)} />
+          <circle cx="302" cy="156" r="11" fill={LEAF} />
         </g>
       )}
     </svg>

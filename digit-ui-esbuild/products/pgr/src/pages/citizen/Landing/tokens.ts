@@ -14,11 +14,10 @@
 // the whole page without touching this file, while the page still renders a
 // complete government identity with zero configuration.
 //
-// Default palette: Nairobi City County brand — the green and gold of the county
-// crest and of nairobi.go.ke, softened for long-form reading (lighter brand
-// green, warmed gold, green-tinted charcoal text, off-white page) with the
-// site's burgundy as a categorical accent. Contrast-checked for WCAG 2.2 AA;
-// hex and role noted inline below.
+// Default palette: County Government of Bomet brand — the county blue of the
+// live theme (header, buttons, links) with a deep navy for the hero and footer
+// and a soft blue tint for bands. Contrast-checked for WCAG 2.2 AA; hex and
+// role noted inline below.
 
 import * as React from "react";
 
@@ -66,29 +65,30 @@ export interface LandingTokens {
 }
 
 export const DEFAULT_LANDING_TOKENS: LandingTokens = {
-  primary: "152 62% 22%",       // #15583A  brand green, one step lighter than the crest's #003D1E so large
-                                //          text areas read calm rather than heavy; still 7.9:1 on white
-  primaryHover: "152 70% 16%",  // #0C4529
-  secondary: "334 62% 36%",     // #94245A  softened burgundy from nairobi.go.ke — reserved
-  deep: "153 60% 11%",          // #0B2D1E  footer, closing band, hero scrim base
-  accent: "47 92% 56%",         // #F5C842  county gold, slightly warmed and desaturated from the crest's
-                                //          #FBE116 so it sits with photography without glaring
-  accentHover: "45 85% 49%",    // #E6B420
-  onPrimary: "0 0% 100%",       // white on green
-  onAccent: "153 60% 11%",      // #0B2D1E  deep green on gold — 10.6:1
-  ink: "160 14% 15%",           // #21302A  body text, green-tinted charcoal instead of near-black
-  inkSoft: "155 9% 36%",        // #546560  secondary text — 6.3:1 on white, 5.6:1 on the page tint
+  primary: "205.2 77.2% 46.5%", // #1B85D2  header, nav, section titles, primary buttons/links
+  primaryHover: "207.3 77.8% 37.1%", // #1565A8  hover for primary buttons/links
+  secondary: "119.5 98.3% 23.5%",    // #027701  reserved, currently unused
+  deep: "198 80% 17%",          // #093B50  hero, footer, CTA band
+  accent: "204 72% 71%",        // #7FC0EA  buttons, accent bars, active nav
+  accentHover: "204 71% 63%",   // #5FAFE4
+  onPrimary: "0 0% 100%",       // white text on blue
+  onAccent: "198 80% 17%",      // #093B50  deep navy on the light-blue accent —
+                                // 6.06:1, softer than a neutral near-black and
+                                // tonally part of the blue palette. ink-soft
+                                // would only reach 3.33:1 here.
+  ink: "221 28% 16%",           // #1D2433  body text
+  inkSoft: "270 3% 37%",        // #5F5C62
   surface: "0 0% 100%",         // white cards
-  page: "120 14% 97%",          // #F6F8F6  warm off-white page
-  line: "140 10% 88%",          // #DCE3DF
-  ring: "152 62% 22%",
-  tint: "150 32% 93%",          // #E7F1EB  soft green band / icon tiles
-  tintGold: "47 90% 93%",       // #FEF6DC  soft gold highlight
-  typeComplaint: "152 62% 22%",    // Urban Development & Planning — brand green
-  typeGrievance: "334 62% 36%",    // Finance & Economic Planning — burgundy
-  typePetition: "120 45% 35%",     // Environment / Green Nairobi — leaf green
-  typeReport: "36 70% 40%",        // Boroughs & Sub-County Administration — earth
-  radius: "0.875rem",           // 14px — rounder cards, in keeping with current government portals
+  page: "0 0% 98%",             // #FAFAFA
+  line: "30 2% 84%",            // #D6D5D4
+  ring: "207 78% 37%",
+  tint: "204 70% 94%",          // #E4F1FA  soft blue band / icon tiles
+  tintGold: "204 70% 94%",      // no gold in the Bomet palette: the same soft blue
+  typeComplaint: "210 60% 36%", // Health Services
+  typeGrievance: "28 85% 38%",  // Administration & Governance
+  typePetition: "275 45% 42%",  // Water & Sanitation
+  typeReport: "0 65% 42%",
+  radius: "0.375rem",
 };
 
 /** kebab-case CSS var name for a token key, e.g. typeReport -> --pgrl-type-report */

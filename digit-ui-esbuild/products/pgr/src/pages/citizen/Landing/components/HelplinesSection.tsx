@@ -1,4 +1,4 @@
-// Emergency helpline numbers (Nairobi UAT). The portal handles county service
+// Emergency helpline numbers. The portal handles county service
 // complaints, so people in an emergency must find the right number to call
 // without reading anything else: one card per service, the number as the
 // biggest text on the card, and the whole card dials it on phones (a service

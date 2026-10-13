@@ -188,6 +188,7 @@ async function start() {
       ".css": "css",
       ".png": "file",
       ".jpg": "file",
+      ".webp": "file",
       ".jpeg": "file",
       ".gif": "file",
       ".svg": "file",

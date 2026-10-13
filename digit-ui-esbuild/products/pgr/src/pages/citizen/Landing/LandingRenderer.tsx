@@ -23,7 +23,7 @@ import { useLandingCopy } from "./useLandingCopy";
 import { UtilityBar, LanguageOption, DEFAULT_LANGUAGES } from "./components/UtilityBar";
 import { WhatsAppFab } from "./components/WhatsAppFab";
 
-import { getEntry, RenderCtx, Slot } from "./config/sectionRegistry";
+import { getEntry, isLandingLayout, LandingLayout, RenderCtx, Slot } from "./config/sectionRegistry";
 import type { LandingSectionConfig, ResolvedLandingConfig } from "./config/types";
 
 export interface LandingRendererProps {
@@ -44,6 +44,9 @@ export interface LandingRendererProps {
   /** Explicit override; when undefined the LandingPageConfig toggle governs. */
   showWhatsAppFab?: boolean;
   showUtilityBar?: boolean;
+  /** Deployment default; LandingPageConfig.theme.layout wins when it names a
+   *  known layout, so a tenant can switch without a build. */
+  layout?: LandingLayout;
   className?: string;
 }
 
@@ -64,6 +67,7 @@ export function LandingRenderer({
   tokens,
   showWhatsAppFab,
   showUtilityBar,
+  layout: layoutProp,
   className,
 }: LandingRendererProps) {
   const { c } = useLandingCopy();
@@ -82,6 +86,8 @@ export function LandingRenderer({
   }, []);
 
   const page = config.page || {};
+  const configLayout = page.theme?.layout;
+  const layout: LandingLayout = isLandingLayout(configLayout) ? configLayout : layoutProp ?? "classic";
   // Off by default: the header is a single self-contained bar now, and the
   // strip's own content (gov name, sign-in) duplicated the header/footer.
   // Still restorable per tenant via LandingPageConfig.showUtilityBar.
@@ -101,14 +107,14 @@ export function LandingRenderer({
   const slots = React.useMemo(() => {
     const out: Record<Slot, LandingSectionConfig[]> = { header: [], main: [], footer: [] };
     (config.sections || []).forEach((s) => {
-      const entry = getEntry(s.type);
+      const entry = getEntry(s.type, layout);
       if (entry) out[entry.slot].push(s);
     });
     return out;
-  }, [config.sections]);
+  }, [config.sections, layout]);
 
   const renderSection = (s: LandingSectionConfig, i: number) => {
-    const entry = getEntry(s.type);
+    const entry = getEntry(s.type, layout);
     if (!entry) return null;
     const { Component, buildProps } = entry;
     return <Component key={s.code ?? `${s.type}-${i}`} {...buildProps(s, ctx)} />;

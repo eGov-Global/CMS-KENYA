@@ -14,20 +14,20 @@ import type { LandingRoutes } from "./routes";
 // Tenant branding belongs to the deployment entry, not the reusable page:
 // esbuild's `file` loader emits the asset and returns its URL. An MDMS
 // `navigation` section with a media.imageId still overrides this.
-import nairobiEmblem from "./assets/nairobi-emblem.png";
-import nairobiFooterLogo from "./assets/nairobi-footer-logo.png";
-// Photography (see assets/CREDITS.md): the County's customer-service centre for
-// the hero; Wikimedia Commons photos for the closing band and portrait.
-import nairobiHero from "./assets/nairobi-hero.jpg";
-import nairobiHeroSm from "./assets/nairobi-hero-sm.jpg";
-import nairobiBand from "./assets/nairobi-band.jpg";
-// Resident portrait in the closing band (Commons, CC BY-SA 4.0 — see
-// CREDITS.md). Swap for a county-supplied photo when one is available.
-import nairobiPerson from "./assets/nairobi-person.jpg";
-// Square cuts for the circular photo orbs. Reusing the wide hero/band photos
-// meant a 1.9 image in a 1.0 box — object-fit:cover threw away ~47% of it.
-import nairobiOrbSteps from "./assets/nairobi-orb-steps.jpg";
-import nairobiOrbChannels from "./assets/nairobi-orb-channels.jpg";
+import bometLogo from "./assets/bomet-logo.jpg";
+import bometFooterLogo from "./assets/bomet-footer-logo.jpg";
+// The county highlands already shipped as the sign-in backdrop, re-cut to the
+// hero's two sizes as webp (see assets/CREDITS.md). No portrait or orb photos yet:
+// the orb props are set to "" so those sections render without a photo instead
+// of cropping the wide hero into circles. The palette comes from tokens.ts
+// (Bomet defaults) and the MDMS theme; no per-entry override needed.
+//
+// `layout="editorial"`: Bomet's own composition (split hero over a light page,
+// a figures band, service rows, a timeline, a dark channels band, a helpline
+// strip, a light footer) — the sibling Bonga Nai page keeps "classic".
+import bometHero from "./assets/bomet-hero.webp";
+import bometHeroSm from "./assets/bomet-hero-sm.webp";
+
 
 export function PGRLandingEntry() {
   const ctx = (typeof window !== "undefined" && (window as any)?.contextPath) || "digit-ui";
@@ -47,14 +47,14 @@ export function PGRLandingEntry() {
   return (
     <PGRLandingPage
       routes={routes}
-      emblemUrl={nairobiEmblem}
-      footerLogoUrl={nairobiFooterLogo}
-      heroImageUrl={nairobiHero}
-      heroImageSmallUrl={nairobiHeroSm}
-      bandImageUrl={nairobiBand}
-      personImageUrl={nairobiPerson}
-      stepsOrbImageUrl={nairobiOrbSteps}
-      channelsOrbImageUrl={nairobiOrbChannels}
+      emblemUrl={bometLogo}
+      footerLogoUrl={bometFooterLogo}
+      heroImageUrl={bometHero}
+      heroImageSmallUrl={bometHeroSm}
+      bandImageUrl={bometHero}
+      stepsOrbImageUrl=""
+      channelsOrbImageUrl=""
+      layout="editorial"
     />
   );
 }
