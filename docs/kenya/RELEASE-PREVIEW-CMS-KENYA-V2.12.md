@@ -3,7 +3,7 @@
 **Release:** `v2.12-kenya` — Bonga Nai (Nairobi City County, tenant `nb`) and Bomet Feedback Hub (Bomet County, tenant `bo`)
 **Code:** `nairobi-prod` @ `8e6289e86` (13 Oct 2026) · bgrm landing page: `nairobi-prod-bgrm-changes` @ `78444ee4e` · bgrm complaint service: `feat/bomet-uat` @ `6eb6b853c`
 **Product baseline:** `egovernments/Citizen-Complaint-Resolution-System` @ `815b2374` (tag `product-base-2026-08-13`)
-**Prepared:** 13 Oct 2026. The GitHub release body is [RELEASE-NOTES-CMS-KENYA-V2.12.md](RELEASE-NOTES-CMS-KENYA-V2.12.md); this document is the evidence behind it.
+**Prepared:** 13 Oct 2026. The GitHub release body is [RELEASE-NOTES-CMS-KENYA-V2.12.md](RELEASE-NOTES-CMS-KENYA-V2.12.md) and the plain-language note for the counties is [COUNTY-RELEASE-NOTE-CMS-KENYA-V2.12.md](COUNTY-RELEASE-NOTE-CMS-KENYA-V2.12.md); this document is the evidence behind both.
 
 ## Contents
 
@@ -1362,6 +1362,7 @@ The checks mostly used real officer accounts rather than an administrator. A for
 ## 12. Documentation
 
 - [Release notes (GitHub release body)](RELEASE-NOTES-CMS-KENYA-V2.12.md)
+- [County release note (plain language)](COUNTY-RELEASE-NOTE-CMS-KENYA-V2.12.md)
 - [CMS Mozambique V2.12 release](https://github.com/eGov-Global/CMS-MOZAMBIQUE/releases/tag/v2.12-mozambique) and its [technical reference](https://github.com/eGov-Global/CMS-MOZAMBIQUE/blob/master/docs/mozambique/RELEASE-PREVIEW-CMS-MOZ-V2.12.md)
 - [Bomet onboarding runbook](../../local-setup/ansible/runbooks/03-bomet-onboarding.md)
 - [County host_vars templates](../../local-setup/ansible/inventory/host_vars/)

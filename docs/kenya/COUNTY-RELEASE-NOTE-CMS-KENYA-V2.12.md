@@ -1,0 +1,160 @@
+# Complaint Management System: Release Note, Version 2.12
+
+**Bonga Nai** (Nairobi City County) · **Bomet Feedback Hub** (Bomet County)
+Updates live as of 13 October 2026
+
+---
+
+## Overview
+
+Over recent weeks we have delivered a series of updates to the complaint management systems of Nairobi City County (Bonga Nai) and Bomet County (Bomet Feedback Hub). Most respond directly to feedback from user acceptance testing in both counties. They have four goals:
+
+- making it easier for residents to file and follow up a complaint, including on basic phones and slow connections;
+- protecting the privacy of residents who complain;
+- helping county officers route, escalate and resolve complaints faster;
+- giving county leadership reports they can take away and share.
+
+Both counties run the same application. Each county has its own public website, and behaviour differs where each county's settings differ: complaint categories, the steps a complaint goes through, and time limits. Those differences are set out below.
+
+---
+
+## Highlights
+
+- **Confidential complaints.** A resident, or a staff member filing for a resident, can ask for the resident's identity to be kept confidential. The system hides the complainant's name and contact details from county staff, and leaves them out of staff notifications.
+- **Complaint receipt.** After filing, a resident can download, print or share an official PDF receipt of the complaint.
+- **Faster to open.** The application downloads less than half as much data when it starts, so it opens noticeably faster on mobile data.
+- **Officers can escalate.** An officer can pass a complaint to the next level of seniority directly, without waiting for the automatic, time-based escalation.
+- **Dashboard export.** County leadership can export the dashboard as an Excel workbook, a CSV file or a PDF report.
+- **Clear time limits.** Residents can reopen or withdraw a complaint only within the period the County has set. The option disappears automatically when that period ends.
+- **English and Kiswahili** in both counties.
+
+---
+
+## For residents
+
+### Filing a complaint
+- Residents accept the **Terms & Conditions** before submitting, and their consent is recorded with the complaint.
+- A **"Keep my details confidential"** option is available on every complaint.
+- The optional **address** field is on the first screen, next to the complaint category. What the resident types is saved and shown to the officer handling the complaint.
+- Complaint types and sub-types are listed **alphabetically**, with "Others" at the end.
+- The **map** opens at the county centre with a pin the resident can move to the exact spot. If the pin is not moved, the county centre is recorded as the location. Clearing a search keeps the map where it is instead of zooming out.
+- Questions whose answers the system could not keep (name, address and e-mail on the first screen) have been removed, so residents no longer type information that is then lost.
+
+### After filing
+- **Complaint receipt:** Download, Print and Share buttons appear on the confirmation screen and on the complaint page. Share offers e-mail, WhatsApp, SMS and other apps. On phones, the PDF receipt itself is shared. The message includes the complaint number, status, category, date and description, and **never** the complainant's name or phone number.
+- **Rating with faces:** residents rate the service by choosing one of five faces, each with a short label, instead of stars. The rating works with a keyboard and screen readers. Earlier ratings are kept.
+- **Progress timeline:** residents see what has happened to their complaint and when. Officers' names, phone numbers and internal comments are not shown.
+- **Reopening:** a resident can reopen a resolved or rejected complaint within **3 days** in both counties. The Reopen option disappears when the period ends, even on a page left open.
+- **Withdrawing:** a resident can withdraw a complaint they no longer need, after a short confirmation with an optional reason. The complaint is marked "Withdrawn" straight away.
+  - **Nairobi:** within 1 day of filing, while the complaint is still waiting to be assigned.
+  - **Bomet:** within 3 days of filing.
+  - A complaint that has been reopened cannot be withdrawn.
+- **Location by name:** the complaint page shows the location as County, Sub-County and Ward names.
+- **Escalation status:** an escalated complaint shows its escalation level instead of "Open".
+
+### Signing in and everyday use
+- A one-time password (OTP) can be re-sent after **3 minutes**.
+- The browser tab shows the county's name and logo.
+- When we release an update, people who have the application open move to the new version automatically.
+- A brief network problem no longer sends people to a maintenance page. An expired session goes to the sign-in page and keeps any half-filled complaint.
+
+---
+
+## For county officers and staff
+
+### Filing on a resident's behalf (front desk and call centre)
+- Staff can tick **"Keep details confidential"** when filing for a resident.
+- Filing a complaint with an address no longer fails.
+- After filing, staff can download, print or share the receipt for the resident.
+- Staff can **withdraw** a complaint on a resident's behalf within the County's time limit, after confirming and giving a reason.
+
+### Working on complaints
+- **Manual escalation:** an officer can escalate a complaint to the next level, and chooses the senior officer who receives it.
+- **Assigning:** the officer list is a single search box that finds people by name or department. It lists only the officers who work complaints directly; senior officers receive complaints through escalation. Deactivated accounts are no longer listed.
+- **Nairobi, reassigning:** an officer who receives a complaint by mistake can pass it to another officer of the same department, in any ward.
+- **Nairobi, sending back:** an officer can send a complaint back to the Grievance Redressal Officers (GROs) for reassignment, with an optional comment.
+- **No carried-over notes:** a note typed for one complaint and not submitted no longer appears when the officer opens another complaint.
+- **Always up to date:** the complaint page refreshes when the officer returns to it. It also refreshes if an action fails because the complaint changed in the meantime, for example after an automatic escalation.
+- **Reopen and Withdraw** appear in the officer's action menu only while the County's time limit allows them.
+- **Inbox:** the default list shows resolved and rejected complaints as well as escalated ones. The sub-type filter works, and escalation levels have proper names.
+- **Timeline:** when a complaint is escalated, the timeline shows who escalated it.
+
+### Home page and account
+- Directors, Chief Officers and CECMs in both counties, and the Ombudsman in Bomet, see the **Complaints** card on their home page.
+- Officers are greeted by **designation** (for example "Hello, Director"), and the profile menu shows their department by name.
+- **Forgot password** sends the one-time password to the mobile number the officer types.
+- A notice warns an officer when **another account signs in** in the same browser, so one session does not silently replace another.
+
+---
+
+## Privacy and data protection
+
+- **Confidential complaints are protected by the system itself, not only on screen.** For a confidential complaint, the complainant's name, phone number, e-mail and address are hidden from all county staff, including the staff member who filed it, unless the County has authorised that person to view confidential complaints. The details are also left out of staff notifications. Residents always see their own details.
+- **Residents do not see which officer handled their complaint.** Officers' names and phone numbers are not shown to residents.
+- **Receipts and shared messages** never include the complainant's name or phone number.
+
+---
+
+## For county leadership
+
+- **Dashboard export:** the Export button offers an **Excel workbook**, a **CSV file** or a **PDF report**. Each export records the filters and period applied and the key figures compared with the previous period. It includes every chart, table and map on the dashboard as a data table.
+- **Bomet, usage statistics:** the County's own analytics service counts how residents use the public website and the complaint form, for example how many start and finish a complaint. Personal details are removed.
+
+---
+
+## How the two counties differ
+
+| | Nairobi: Bonga Nai | Bomet: Bomet Feedback Hub |
+|---|---|---|
+| Public website | Bonga Nai front page | Bomet Feedback Hub front page |
+| Area covered | 6 sub-counties, 17 wards | 5 sub-counties, 25 wards |
+| Where a new complaint goes | To the Grievance Redressal Officers, who assign it to an officer | Straight to the responsible officer, chosen automatically by department and location |
+| Escalation | 2 levels: Chief Officer, then CECM | 3 levels within the department: Director, Chief Officer, CECM (Water: Chief Officer, then CECM) |
+| Withdraw | Within 1 day, before the complaint is assigned | Within 3 days of filing |
+| Reopened complaints go to | The Grievance Redressal Officers | The responsible officer |
+| Complaint categories | 21 types, 39 sub-types | 48 types, 94 sub-types (Health, Water & Sewage, Administration) |
+| Complaint number example | BNG-2026-125 | BFH-2026-000020 |
+| Languages | English, Kiswahili | English, Kiswahili |
+
+### Nairobi City County: Bonga Nai
+- **Public website** redesigned to the County's design of 12 October, with a single **"Call Customer Service"** panel: 0725 624 489 (24 hours), 0730 047 047 and 020 724 7047. At the County's request, other emergency numbers are no longer listed.
+- **Complaint workflow:** Grievance Redressal Officers review and assign complaints; the assigned officer works them; complaints escalate to Chief Officers and then CECMs. Officers can escalate manually, reassign within their department, or send a complaint back to the GROs.
+- **New "Others" complaint type** for complaints that do not fit an existing category.
+- **Shorter complaint numbers**, for example BNG-2026-125 instead of BNG-2026-000125. Older numbers can still be searched.
+
+### Bomet County: Bomet Feedback Hub
+- **Public website:** the Bomet Feedback Hub front page, with Bomet's own wording, sub-counties and help lines.
+- **Automatic routing of residents' complaints:** each complaint a resident submits goes straight to an officer of the responsible department for its ward. If there is no ward officer, it goes to the sub-county officer, then the county-level officer. Complaints go to the officers who work them, not to senior officers.
+- **Escalation** through the department's Director, Chief Officer and CECM; escalated complaints appear in the inbox with their level.
+- **Withdraw:** residents and front-desk staff can withdraw a complaint within 3 days of filing.
+- **Bomet branding:** the county crest, and a Bomet landscape on the sign-in screens.
+
+---
+
+## Other fixes
+
+- Error and "page not found" screens show their image and a clear button back to the home page.
+- Buttons and confirmation dialogs are readable in each county's colours.
+- The sign-in screens fill the whole screen on every device size.
+- The application shows a default logo if a county logo fails to load.
+
+---
+
+## Known issues
+
+- **Bomet:** complaints filed by front-desk or call-centre staff are not yet routed automatically. They wait at the officer stage without a named officer, though officers of that department and area can act on them.
+- A resident with more than 10 complaints may see an error on the "My Complaints" page.
+- **Bomet:** complaint numbers have six digits (BFH-2026-000020); the seven-digit format the County requested is not yet in place.
+- No SMS or e-mail is sent when a complaint is withdrawn (both counties), sent back to the GROs (Nairobi) or escalated (Bomet).
+- **Nairobi:** video attachments larger than about 4 MB may fail to upload.
+
+---
+
+## What we need from the Counties
+
+1. **Helpline number on receipts (both counties):** receipts print a placeholder number (0000000000). Please share the official public helpline number, and the official contact e-mail.
+2. **Viewing confidential complaints (both counties):** please name the staff who may see the identity of confidential complainants. Until then, no staff member can see it.
+3. **Bomet, complainants' contact details:** under the current settings, complainants' names and phone numbers are visible only to front-desk staff and the Ombudsman. Please confirm which officers need them, for example to call a complainant back.
+4. **Bomet, escalation times:** 11 complaint categories still have test values for their escalation times (2 minutes). Please confirm the intended times.
+5. **Time limits:** please confirm the reopen period (3 days in both counties) and the withdraw period (Nairobi 1 day; Bomet 3 days).
+6. **Nairobi:** please confirm the contact e-mail shown at the foot of the Bonga Nai website.
