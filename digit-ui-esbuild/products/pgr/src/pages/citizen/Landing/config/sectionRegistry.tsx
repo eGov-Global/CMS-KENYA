@@ -156,7 +156,7 @@ export const SECTION_REGISTRY: Record<string, SectionEntry> = {
   helplines: {
     Component: HelplinesSection,
     slot: "main",
-    buildProps: (s, ctx) => ({ routes: ctx.routes, skylineUrl: ctx.artwork?.bandSkyline, section: withItems(s, HELPLINES, ctx.routes) }),
+    buildProps: (s, ctx) => ({ routes: ctx.routes, section: withItems(s, HELPLINES, ctx.routes) }),
   },
   privacy: {
     Component: PrivacySection,
