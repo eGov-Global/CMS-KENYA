@@ -39,6 +39,36 @@ One code line serves two counties:
 
 ---
 
+## Highlights
+
+- **Security fixes.**
+  - Confidential complainants are masked by the server, the resident timeline comes from a role-filtered API, and REOPEN/WITHDRAW windows are enforced server-side.
+  - From the product: gateway enforcement (`ENFORCE_UNAUTH` / `ENFORCE_RBAC`), policy-based complaint search and the jsPDF CVE fix.
+  - The product's pgr-services hardening not yet taken is listed too. See "In detail › Security fixes".
+- **File scan changes.** Optional ClamAV scanning of every upload, with a 90-day quarantine, clear messages for the uploader, and refusal rather than pass-through when the scanner is down (#157, #158). Load-tested:
+  - every infected file blocked;
+  - no clean file wrongly blocked;
+  - no slowdown up to 50 parallel uploads.
+- **Quota exceeded limit.** The browser's `QuotaExceededError` is fixed:
+  - master data is cached in IndexedDB instead of the 5 MB `localStorage`;
+  - a full store no longer crashes the page;
+  - caches are dropped after every deploy (#148).
+- **UI enhancements picked from the product.**
+  - **Dashboard:** refreshed header, filters, KPI tiles, "updated … ago" stamps and batched queries.
+  - **Staff screens:** the working-context chip in the top bar, logo and colour handling for dark headers, and inbox visibility tabs.
+  - **Attachments:** photos, screenshots and videos that play in the browser.
+- **For residents and staff:**
+  - a public website for each county;
+  - consent and a confidentiality option when filing;
+  - an official PDF receipt;
+  - start-up download more than halved;
+  - manual escalation;
+  - live reopen and withdraw windows;
+  - dashboard export to Excel, CSV and PDF;
+  - English and Kiswahili.
+
+---
+
 ## What's Included
 
 ### For residents

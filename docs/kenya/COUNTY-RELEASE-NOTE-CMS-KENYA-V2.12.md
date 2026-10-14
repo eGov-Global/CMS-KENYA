@@ -27,6 +27,10 @@ Both counties run the same application. Each county has its own public website, 
 - **Dashboard export.** County leadership can export the dashboard as an Excel workbook, a CSV file or a PDF report.
 - **Clear time limits.** Residents can reopen or withdraw a complaint only within the period the County has set. The option disappears automatically when that period ends.
 - **English and Kiswahili** in both counties.
+- **Security fixes.** Residents' privacy and the County's data are protected by the system itself, not only on screen. Confidential complainants' details, the residents' timeline and the time limits are all enforced by the server. Access checks are stricter, and the PDF component has a security fix.
+- **Virus scanning of uploaded files.** When switched on, every photo, video or document is checked for viruses before it is stored. Infected files are refused and kept aside for investigation.
+- **No more "storage full" errors.** Large settings no longer fill up the browser and stop the page with a "quota exceeded" error. Old cached data is cleared after every update.
+- **Improvements from the core product.** A refreshed dashboard, a clearer staff top bar, correct county logos and colours, inbox tabs in Bomet, and videos and screenshots that play and display directly in complaints.
 
 ---
 
