@@ -1,7 +1,7 @@
 # CMS Kenya V2.12 — Release Documentation (Technical Reference)
 
 **Release:** `v2.12-kenya` — Bonga Nai (Nairobi City County, tenant `nb`) and Bomet Feedback Hub (Bomet County, tenant `bo`)
-**Code:** `nairobi-prod` @ `8e6289e86` (13 Oct 2026) · bgrm landing page: `nairobi-prod-bgrm-changes` @ `78444ee4e` · bgrm complaint service: `feat/bomet-uat` @ `6eb6b853c`
+**Code:** `nairobi-prod` @ `32a56d27d` (13 Oct 2026; tests ran at `8e6289e86`, and the only later commit adds the scan proxy's load-test tooling) · bgrm landing page: `nairobi-prod-bgrm-changes` @ `78444ee4e` · bgrm complaint service: `feat/bomet-uat` @ `6eb6b853c`
 **Product baseline:** `egovernments/Citizen-Complaint-Resolution-System` @ `815b2374` (tag `product-base-2026-08-13`)
 **Prepared:** 13 Oct 2026. The GitHub release body is [RELEASE-NOTES-CMS-KENYA-V2.12.md](RELEASE-NOTES-CMS-KENYA-V2.12.md) and the plain-language note for the counties is [COUNTY-RELEASE-NOTE-CMS-KENYA-V2.12.md](COUNTY-RELEASE-NOTE-CMS-KENYA-V2.12.md); this document is the evidence behind both.
 
@@ -19,6 +19,7 @@
 10. Known limitations and open issues
 11. Not verified
 12. Documentation
+13. Topic index: security, file scan, storage quota, sessions, product contributions
 
 ---
 ## 1. About this document
@@ -41,7 +42,7 @@
 | Mozambique layer | `35504b797` merges Mozambique `master` @ `df7ca8d08` (`kenya-layer-start`) | 31 Aug | 636 commits, carried in by PRs #4–#9 |
 | Product sync | `626864567` (front end) and `2176984d7` (backend, infrastructure, configurator; 905 files) | 16–17 Sep | Upstream product `7ee88f83`, squashed |
 | Kenya layer | `kenya-layer-start..nairobi-prod` | 30 Aug – 13 Oct | 220 commits (156 non-merge), PRs #1–#157 |
-| Release code | `nairobi-prod` @ `8e6289e86` | 13 Oct | To be merged into `master` |
+| Release code | `nairobi-prod` @ `32a56d27d` | 13 Oct | To be merged into `master` |
 
 Layer tags used in §8:
 - **[S]** shared pre-fork work (product and Mozambique);
@@ -1284,33 +1285,34 @@ The checks mostly used real officer accounts rather than an administrator. A for
 1. **Bomet: complaints filed by staff are not auto-assigned.** They reach the officer stage without an assignee, so they appear in no one's "assigned to me" list. A last-mile officer of that department whose area covers the complaint can still act on them. The fix (#81) is on `kenya-prod` and has not been brought to `nairobi-prod`.
 2. **Bomet: a staff reopen without choosing an officer leaves the complaint unassigned** (#50, with #78 and #82, not brought over).
 3. **"My Complaints" fails for a resident with more than 10 complaints** (`WORKFLOW_NOT_FOUND`) unless the workflow service's default page limit has been raised (not verified in either county); the fix (`5d429bd08`) is on neither county's code.
-4. Not brought over from `kenya-prod`: readable messages when location access is refused (#55; the `CS_GEOLOCATION_*` labels are also unseeded) and the anonymous `/citizen` → login redirect (#59).
+4. **Request validation is not enforced in pgr-services.** It still pins Hibernate Validator 6.0.16 (javax) under Spring Boot 3.2.2, the setup the product found silently disables `@Valid`, `@NotNull`, `@Size` and `@Pattern`. The product's fix (`b0fad2383`) was not taken by the Kenya sync; see "Security fixes". (Diagnosis taken from the product commit; not probed at runtime here.)
+5. Not brought over from `kenya-prod`: readable messages when location access is refused (#55; the `CS_GEOLOCATION_*` labels are also unseeded) and the anonymous `/citizen` → login redirect (#59).
 
 **Configuration to complete in the counties**
-5. **No officer can see a confidential complainant** — the `CONFIDENTIAL_COMPLAINT_VIEWER` role does not exist in either county.
-6. **Bomet: last-mile officers, department tiers and GROs see complainant names and phone numbers redacted.** Bomet's search policy on action 2008 shows them only to the complainant and to staff whose roles reach every department and area (CSR, OMBUDSMAN_OFFICER). If officers must call complainants back, add the department-and-area clause Bonga uses. This comes from the policy code; not checked on screen.
-7. **Bomet: 11 categories still have 2-minute test escalation timers** in `RAINMAKER-PGR.EscalationConfig`: 8 on all three levels and 3 Water categories on levels 1–2. Examples are maternal emergencies, ambulance delays, corruption and water pipes. These complaints escalate at the next scheduler run (every 5 minutes by default). Escalation beyond level 1 runs automatically only if `PGR_ESCALATION_STATES` includes the escalated states (not verified).
-8. **Receipts print `0000000000`** as the county's phone; the county e-mail is a placeholder and the `StateInfo` name reads "Demo" (both counties).
-9. **No SMS or e-mail** is sent for WITHDRAW (both counties), REASSIGNTOGRO (Bonga) or ESCALATE (Bomet): no notification templates exist.
-10. The distinct menu icons for Create and Search Complaint (#90) need an MDMS data update in both counties.
-11. Bomet: six sample departments, sample designations and 18 Hindi notification templates remain; the `StateInfo` banner points to a missing image; the analytics endpoint value starts with a tab character.
-12. Bonga: novu-bridge's OTP consumer defaults to tenant `bo`; Bonga must set `NOVU_BRIDGE_USER_OTP_DEFAULT_TENANT_ID=nb` (not verified from here).
-13. The deploy templates are behind novu-bridge: they still pass the removed `NOVU_BRIDGE_SMSCOUNTRY_*` variables and do not pass the direct-SMS or OTP variables, so those must be set by hand on each server.
-14. The configurator edits only `REOPENSLA`; `WITHDRAWSLA` and `actionWindows` are changed through the MDMS API.
+6. **No officer can see a confidential complainant** — the `CONFIDENTIAL_COMPLAINT_VIEWER` role does not exist in either county.
+7. **Bomet: last-mile officers, department tiers and GROs see complainant names and phone numbers redacted.** Bomet's search policy on action 2008 shows them only to the complainant and to staff whose roles reach every department and area (CSR, OMBUDSMAN_OFFICER). If officers must call complainants back, add the department-and-area clause Bonga uses. This comes from the policy code; not checked on screen.
+8. **Bomet: 11 categories still have 2-minute test escalation timers** in `RAINMAKER-PGR.EscalationConfig`: 8 on all three levels and 3 Water categories on levels 1–2. Examples are maternal emergencies, ambulance delays, corruption and water pipes. These complaints escalate at the next scheduler run (every 5 minutes by default). Escalation beyond level 1 runs automatically only if `PGR_ESCALATION_STATES` includes the escalated states (not verified).
+9. **Receipts print `0000000000`** as the county's phone; the county e-mail is a placeholder and the `StateInfo` name reads "Demo" (both counties).
+10. **No SMS or e-mail** is sent for WITHDRAW (both counties), REASSIGNTOGRO (Bonga) or ESCALATE (Bomet): no notification templates exist.
+11. The distinct menu icons for Create and Search Complaint (#90) need an MDMS data update in both counties.
+12. Bomet: six sample departments, sample designations and 18 Hindi notification templates remain; the `StateInfo` banner points to a missing image; the analytics endpoint value starts with a tab character.
+13. Bonga: novu-bridge's OTP consumer defaults to tenant `bo`; Bonga must set `NOVU_BRIDGE_USER_OTP_DEFAULT_TENANT_ID=nb` (not verified from here).
+14. The deploy templates are behind novu-bridge: they still pass the removed `NOVU_BRIDGE_SMSCOUNTRY_*` variables and do not pass the direct-SMS or OTP variables, so those must be set by hand on each server.
+15. The configurator edits only `REOPENSLA`; `WITHDRAWSLA` and `actionWindows` are changed through the MDMS API.
 
 **Behaviour to be aware of**
-15. The map pin starts at the county centre. If the resident does not move it, the complaint is recorded at the centre.
-16. Resolved and rejected complaints show in the default inbox — requested by Bomet; Nairobi's issue #144 asks for the opposite.
-17. The citizen logout question reads "Are you sure you want to" (fix #72 not merged); the browser tab shows "DIGIT" until the county's labels load.
-18. Video uploads over about 3.9 MB fail on Bonga (likely a web-server limit, issue #137). Re-sending an OTP does not invalidate the earlier one (#135, closed without a fix).
-19. Manual escalation does not record the escalation-level bookkeeping that automatic escalation uses; this may explain the wrong level reported in issue #141.
-20. The workflow definitions for `nb` and `bo` are not versioned in the repository.
+16. The map pin starts at the county centre. If the resident does not move it, the complaint is recorded at the centre.
+17. Resolved and rejected complaints show in the default inbox — requested by Bomet; Nairobi's issue #144 asks for the opposite.
+18. The citizen logout question reads "Are you sure you want to" (fix #72 not merged); the browser tab shows "DIGIT" until the county's labels load.
+19. Video uploads over about 3.9 MB fail on Bonga (likely a web-server limit, issue #137). Re-sending an OTP does not invalidate the earlier one (#135, closed without a fix).
+20. Manual escalation does not record the escalation-level bookkeeping that automatic escalation uses; this may explain the wrong level reported in issue #141.
+21. The workflow definitions for `nb` and `bo` are not versioned in the repository.
 
 **Inherited from CMS Mozambique V2.12**
-21. Several deploy steps still use the default bootstrap password, so changing the bootstrap secrets breaks a full deploy (CMS Mozambique Known Limitation 1).
-22. The staff filing form offers Mozambique's "Green Line" (Linha Verde) channel. Kenya's call-centre complaints have no channel of their own.
-23. The product sync removed the role-action grants of the Mozambique CMS roles from the seed, and the configurator's role-action create/edit screens (the buttons remain). Kenya does not use those roles.
-24. The configurator's telemetry is on by default (`kill: false`). Operator scripts keep Mozambique defaults (`enable-escalation.sh`: `TENANT=mz`; `deploy-pilot-fe.sh`: `release-v2.12-moz`).
+22. Several deploy steps still use the default bootstrap password, so changing the bootstrap secrets breaks a full deploy (CMS Mozambique Known Limitation 1).
+23. The staff filing form offers Mozambique's "Green Line" (Linha Verde) channel. Kenya's call-centre complaints have no channel of their own.
+24. The product sync removed the role-action grants of the Mozambique CMS roles from the seed, and the configurator's role-action create/edit screens (the buttons remain). Kenya does not use those roles.
+25. The configurator's telemetry is on by default (`kill: false`). Operator scripts keep Mozambique defaults (`enable-escalation.sh`: `TENANT=mz`; `deploy-pilot-fe.sh`: `release-v2.12-moz`).
 
 ### 10.2 Open issues that bear on shipped changes
 
@@ -1371,3 +1373,20 @@ The checks mostly used real officer accounts rather than an administrator. A for
 - [Escalation runbook](../pgr-escalation/RUNBOOK.md)
 - [Analytics setup](../analytics-guide/)
 - [ClamAV scan proxy](../../backend/filestore-scan-proxy/README.md)
+- [Scan proxy load-test report](../../backend/filestore-scan-proxy/loadtest/report-8cpu-16gb.md)
+
+---
+
+## 13. Topic index: security, file scan, storage quota, sessions, product contributions
+
+The evidence behind the "In detail" section of the release notes.
+
+| Topic | Kenya changes | From the product or the Mozambique line | How it was verified |
+|---|---|---|---|
+| Security fixes | #103 (`df9aa019d`), #128 (`1a848286c`), #129, #142, #136 (`c6fee0995`), #157 (`0c7b3f640`); landing-link sanitising `safeHref` (PR #1, `b590fd6a0`) | Product sync `2176984d7`: Kong `ENFORCE_UNAUTH` / `ENFORCE_RBAC` set to `true`, policy scoping and field redaction, fail-closed `AccessControlUnavailableException`. `626864567`: jsPDF 2.5.1 → 4.2.1. Mozambique: ward-tooltip escaping `8c1120f9`, scope-bypass hardening `9e650397`, analytics host allow-list `e9a0f0e4` | `kong.yml` and `digit-ui-esbuild/package.json` at product-base vs `nairobi-prod`; class present only on `nairobi-prod` |
+| Product security fixes **not** taken | — | `b0fad2383` (bean validation: Hibernate Validator 8 / Jakarta), `4b373f5c9` (complainant validation), `9df954273` (`@SafeHtml` across the request graph), `687c6e8c6` (postgresql 42.7.11, jsoup removed), `b43f0d3d2` (code-base security scan), `939711f2f` (micro-UI Dependabot) | `nairobi-prod` pgr-services `pom.xml`: hibernate-validator 6.0.16.Final, postgresql 42.7.1, jsoup 1.10.2. 33 main-source files still import `javax.validation`. Only the legacy `security-scan.yml` workflow exists |
+| File scan | #157 / #158 (`0c7b3f640`); load test `32a56d27d` | — | `backend/filestore-scan-proxy/src/app.js` (responses, quarantine, fail-closed), `loadtest/report-8cpu-16gb.md` |
+| Browser storage quota | #148 (`eb71852f7`: IndexedDB entries tagged with the build; caches dropped on a new build) | Product `8fd9f8088` (MDMS cache moved to IndexedDB; in the baseline); the `Digit.Storage` write guard | `idbCache.js`, `Storage.js` and `MDMS.js` on `nairobi-prod` |
+| Session and browser handling | #148, #131 (`ae5fc2c53`), #96 / #147, #142 (`792faf7e8`), `f0f518102`, #103 (`c16c75208`), #140 (`a95b7e9de`), forgot password (`fa8b6588a`, `857f76e29`, `98c335803`) | Mozambique ports: session collision (`30bb121e9` … `117a1ed1f`, from `fa7b7b456`); request-failure classification (`adef886be`, from `2963c39d3`) | Commit messages and the test notes in each PR |
+| Screenshots and videos | Virus scan of every attachment when enabled (#157) | Mozambique line: `e81431c28` (video and audio play), `33a5477dd` (full-screen controls, timeline thumbnail), `c175d74e4` and `230cf3746` (uniform size, CSS fix), `721e44c84` (accept list matches the filestore allow-list), `430690a9f` (staff-form attachments), `065908088` / `291f01f7c` (reopen uploads) | `PgrFileUpload.js` (`DEFAULT_ACCEPT`, 5 MB, 5 files) and `attachmentKind.js` on `nairobi-prod` |
+| UI enhancements from the product | — | `626864567` (front-end subset of upstream `7ee88f83`): dashboard header, filters, footer, KPI tiles, `CardUpdatedStamp`, `analyticsBatch`, `LanguageMenu`; TopBar working-context chip; `applyTheme` header tone; `ImageComponent` fallback; inbox visibility tabs; reopen window in the timeline | File list and message of `626864567` |

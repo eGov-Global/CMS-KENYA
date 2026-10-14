@@ -100,6 +100,50 @@ Both counties run the same application. Each county has its own public website, 
 - **Dashboard export:** the Export button offers an **Excel workbook**, a **CSV file** or a **PDF report**. Each export records the filters and period applied and the key figures compared with the previous period. It includes every chart, table and map on the dashboard as a data table.
 - **Bomet, usage statistics:** the County's own analytics service counts how residents use the public website and the complaint form, for example how many start and finish a complaint. Personal details are removed.
 
+## Security, reliability and improvements from the core product
+
+### Security
+- **Protection happens in the system, not only on screen.**
+  - Confidential complainants' details are hidden by the server itself.
+  - Residents' progress timelines leave out officers' names, contacts and internal comments.
+  - Receipts never carry the complainant's name or phone number.
+- **Time limits cannot be bypassed.** Reopen and withdraw are refused outside the County's period even if someone calls the system directly.
+- **Stricter access checks.** The system is set up to block requests from anyone who is not signed in or lacks the right role, instead of only recording them. Search results follow each officer's department and area.
+- **Up-to-date components.** The PDF component used for receipts and reports was updated to a version with a known security problem fixed.
+- **Still to come.** Some security improvements made in the core product in September are not yet included. The most important is stricter checking of the data sent with each complaint. We recommend including them in the next update.
+
+### Virus scanning of uploaded files
+- When switched on, every photo, video or document uploaded to a complaint is checked for viruses before it is stored.
+  - A file that fails the check is refused, and the person uploading sees a clear message. The file is kept aside securely for 90 days for investigation.
+  - A file that cannot be checked, for example a password-protected document, is refused and not kept.
+  - If the scanner is unavailable, uploads pause with a "try again later" message rather than letting unchecked files through.
+- **Tested under load** on a test server with 8 processors and 16 GB of memory:
+  - every test virus was caught;
+  - no genuine file was blocked;
+  - normal use (up to 50 uploads at the same moment) showed no noticeable slowdown.
+- The feature is **off until each County switches it on**. It needs about 2.5 GB of extra server memory. The test also showed that the file storage service should be given more memory before heavy use.
+
+### "Storage full" errors in the browser
+Browsers give each website only a small amount of storage. The system used to keep its reference data there, such as complaint categories and settings. With large configurations this filled up, and the browser stopped the page with a "quota exceeded" error. Now:
+- **More room:** reference data is kept in the browser's larger store.
+- **No crash:** when storage is full, the page carries on instead of failing.
+- **Clean-up:** old leftovers are cleared.
+- **Updates:** cached data is refreshed after every update.
+
+### Sessions and browsers
+- **Two officers sharing one computer.** One officer signing out or timing out no longer signs out another officer working in a different tab. If a second officer signs in, the first sees a notice explaining what happened; nothing is lost and nobody is signed out.
+- **Expired sessions.** When a session expires, the person is taken to the sign-in page and then returned to their work. Their language and any half-filled complaint are kept. A brief network problem shows a message on the page instead of a maintenance screen, which used to cause duplicate complaints.
+- **After an update.** Pages left open, such as an officer's inbox, move to the new version automatically at a safe moment, never in the middle of a form.
+- **Receipts on every browser.** Sharing and opening the PDF receipt now works on Safari (Mac) and desktop Chrome.
+- **Up-to-date pages.** The complaint page refreshes when the officer comes back to it.
+- **Faster start.** The application loads less than half as much data when it opens.
+
+### Improvements from the core product
+- **Photos, screenshots and videos on complaints.** Residents and staff can attach photos and screenshots, videos and documents (PDF, Word, Excel) when filing, and when acting on or reopening a complaint. Up to 5 files of 5 MB each. Videos play directly in the page with full-screen controls, and the timeline shows a preview.
+- **Dashboard.** Refreshed header, filters, figures and charts; each card shows when its data was last updated; faster loading; a language menu.
+- **Staff screens.** The top bar shows the officer's working role. The county's logo and colours display correctly on dark headers, and missing images fall back cleanly.
+- **Bomet inbox tabs.** Bomet officers' inboxes are organised into tabs.
+
 ---
 
 ## How the two counties differ
