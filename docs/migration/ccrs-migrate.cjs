@@ -18,6 +18,10 @@
  *    4. pgr-masters   ComplaintRelatedToMap / ComplaintTemplateType /
  *                     ComplaintExtendedAttributeSchema seed + v1 verify
  *    5. landing       landing sections + page config + PGR_LANDING_* keys
+ *    5b. loc          (opt-in: --loc) catch an EXISTING tenant up with the
+ *                     localisations/<locale>/<module>.json seeds — adds
+ *                     missing keys, overwrites ONLY keys named in
+ *                     --loc-update; PGR_LANDING_* stays with phase 5
  *    6. cms           (opt-in: --cms) CMS roles/actions/grants + workflow
  *    7. banner        tenant.citymodule schema/rows + PGR bannerImage
  *                     (rows create-missing-only; value set only with
@@ -43,6 +47,7 @@
  *         [--user ADMIN] [--pass 'eGov@123'] [--token <authToken>] \
  *         [--phases schemas,landing] [--only gzip] [--dry-run] [--cms] \
  *         [--update-wf] [--locale en_IN] [--hierarchy PGR] [--report out.json] \
+ *         [--loc] [--loc-modules rainmaker-pgr,rainmaker-common] [--loc-update KEY,KEY] \
  *         [--banner-url https://.../logo.png] [--gzip] [--nginx-conf /etc/nginx/...] \
  *         [--nginx-container digit-ui] \
  *         [--matomo] [--matomo-admin-pass '<pw>'] [--matomo-admin-user admin] \
@@ -57,7 +62,7 @@
  *
  *    Env-var equivalents (CLI wins): BASE_URL TENANT OAUTH_USER OAUTH_PASS
  *    OAUTH_BASIC TOKEN PHASES DRY_RUN CMS UPDATE_WF LOCALE HIERARCHY REPORT
- *    BANNER_URL GZIP NGINX_CONF NGINX_CONTAINER
+ *    BANNER_URL GZIP NGINX_CONF NGINX_CONTAINER LOC LOC_MODULES LOC_UPDATE
  *    · --nginx-container <name>: nginx runs in a docker container (the CCRS
  *      compose stacks — host /opt/digit/nginx/digit-ui.conf is mounted into
  *      the `digit-ui` container). Validate/reload happen via `docker exec`;
@@ -84,6 +89,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const { planLocUpserts } = require('./lib/loc-plan.cjs');
 const { URL } = require('url');
 
 /* ──────────────────────────────── config ──────────────────────────────── */
@@ -130,7 +136,7 @@ const CFG = {
   // silently skipped it — the exact "deployed but inert" failure the phase
   // exists to prevent. `matomo` is NOT here: it is opt-in via --matomo, like
   // cms/gzip, because it provisions server-side infrastructure.
-  phases: String(ARGS.phases || process.env.PHASES || 'auth,schemas,hierarchy,pgr-masters,landing,cms,analytics,matomo,banner,gzip,verify')
+  phases: String(ARGS.phases || process.env.PHASES || 'auth,schemas,hierarchy,pgr-masters,landing,loc,cms,analytics,matomo,banner,gzip,verify')
     .split(',').map((s) => s.trim()).filter(Boolean),
   dryRun: !!ARGS['dry-run'] || truthy(process.env.DRY_RUN),
   cms: !!ARGS.cms || truthy(process.env.CMS),
@@ -138,6 +144,13 @@ const CFG = {
   // the seed (default stays strictly add-if-missing / never-overwrites).
   updateMasters: !!ARGS['update-masters'] || truthy(process.env.UPDATE_MASTERS),
   updateWf: !!ARGS['update-wf'] || truthy(process.env.UPDATE_WF),
+  // ── loc phase (opt-in) ──
+  loc: !!ARGS.loc || truthy(process.env.LOC),
+  locModules: String(ARGS['loc-modules'] || process.env.LOC_MODULES || 'rainmaker-pgr,rainmaker-common')
+    .split(',').map((s) => s.trim()).filter(Boolean),
+  // The ONLY overwrite path of the loc phase: live text of these keys is
+  // replaced by the seed's. Everything else stays add-if-missing.
+  locUpdate: String(ARGS['loc-update'] || process.env.LOC_UPDATE || '').split(',').map((s) => s.trim()).filter(Boolean),
   locale: ARGS.locale || process.env.LOCALE || 'en_IN',
   hierarchy: ARGS.hierarchy || process.env.HIERARCHY || 'PGR',
   report: ARGS.report || process.env.REPORT || '',
@@ -191,7 +204,7 @@ if (CFG.tenants.some((t) => (t.includes('.') ? t.split('.')[0] : t) !== CFG.stat
 // Phases that never touch the API with credentials — they may run without a
 // successful auth phase (the driver skips everything else when RI is null).
 const AUTH_FREE_PHASES = new Set(['gzip']);
-const ALL_PHASES = ['auth', 'schemas', 'hierarchy', 'pgr-masters', 'landing', 'cms', 'analytics', 'matomo', 'banner', 'gzip', 'verify'];
+const ALL_PHASES = ['auth', 'schemas', 'hierarchy', 'pgr-masters', 'landing', 'loc', 'cms', 'analytics', 'matomo', 'banner', 'gzip', 'verify'];
 // --only <list>: run EXACTLY these phases and nothing else. Two conveniences
 // over --phases: (1) the listed phases' opt-in flags are implied (--only gzip
 // used to still SKIP without --gzip; same for cms), (2) auth is auto-prepended
@@ -206,6 +219,7 @@ if ('only' in ARGS) {
   if (only.includes('gzip')) CFG.gzip = true;
   if (only.includes('cms')) CFG.cms = true;
   if (only.includes('matomo')) CFG.matomo = true;
+  if (only.includes('loc')) CFG.loc = true;
 }
 // Fallback banner: with no --banner-url, an EMPTY bannerImage is filled with
 // the standard hero image. Overwriting an existing, different image still
@@ -223,6 +237,7 @@ const SEED = {
   landingConfig: path.join(REPO, 'utilities/default-data-handler/src/main/resources/mdmsData/RAINMAKER-PGR/RAINMAKER-PGR.LandingPageConfig.json'),
   locEn: path.join(REPO, 'utilities/default-data-handler/src/main/resources/localisations/en_IN/rainmaker-pgr.json'),
   locPt: path.join(REPO, 'utilities/default-data-handler/src/main/resources/localisations/pt_PT/rainmaker-pgr.json'),
+  locDir: path.join(REPO, 'utilities/default-data-handler/src/main/resources/localisations'),
   relatedToMap: path.join(__dirname, 'seed/ComplaintRelatedToMap.json'),
   templateType: path.join(__dirname, 'seed/ComplaintTemplateType.json'),
   extAttrSchema: path.join(__dirname, 'seed/ComplaintExtendedAttributeSchema.json'),
@@ -815,6 +830,81 @@ async function phaseLanding() {
   if (nSec >= sections.length && nCfg >= 1 && !failed) return record('landing', created ? OUTCOME.OK : OUTCOME.SKIPPED, detail);
   return record('landing', OUTCOME.PARTIAL, detail, 'LANDING_INCOMPLETE',
     failures.slice(0, 6).join(' | ') || 'Rows accepted but not yet v1-visible — async persister; re-run to verify.');
+}
+
+/* ═══════════════════════════════ PHASE: loc ═══════════════════════════════ */
+
+// Catch an EXISTING tenant up with the localisation seeds. A fresh tenant is
+// seeded by the MCP bootstrap, but keys added to the seeds after that never
+// reach a live tenant by themselves — the UI then shows the raw key. Per module
+// and for CFG.locale: adds what the tenant lacks, keeps everything it has
+// (operators reword texts on the tenant), and overwrites ONLY the keys named
+// in --loc-update. PGR_LANDING_* is left to the landing phase: on forks whose
+// landing copy lives in code, seeding those keys would override it.
+async function phaseLoc() {
+  if (!CFG.loc) return record('loc', OUTCOME.SKIPPED, 'opt-in phase — pass --loc to run');
+  const failures = [];
+  const seedCodes = new Set();
+  let added = 0, updated = 0, kept = 0, planned = 0, written = 0, failed = 0;
+  for (const module of CFG.locModules) {
+    const file = path.join(SEED.locDir, CFG.locale, `${module}.json`);
+    let seed;
+    try { seed = readJson(file); } catch (e) {
+      failed++; failures.push(`${module}: seed unreadable (${e.message})`);
+      bad(`${module}: no ${CFG.locale} seed at ${path.relative(REPO, file)}`);
+      continue;
+    }
+    for (const m of seed) if (m && m.code) seedCodes.add(m.code);
+    const r = await postJson(
+      `/localization/messages/v1/_search?tenantId=${encodeURIComponent(CFG.state)}&module=${encodeURIComponent(module)}&locale=${encodeURIComponent(CFG.locale)}`,
+      { RequestInfo: ri() });
+    const liveRows = parse(r.body)?.messages;
+    // A failed read must not be mistaken for "the tenant has nothing" — that
+    // would re-send the whole seed.
+    if (r.code < 200 || r.code >= 300 || !Array.isArray(liveRows)) {
+      failed++; failures.push(`${module}: live search HTTP ${r.code}`);
+      bad(`${module}: live search failed (HTTP ${r.code} ${truncate(r.body, 80)}) — nothing planned`);
+      continue;
+    }
+    const live = new Map(liveRows.map((m) => [m.code, m.message]));
+    const plan = planLocUpserts({ seed, live, updateKeys: CFG.locUpdate });
+    kept += plan.kept;
+    info(`${module}: ${liveRows.length} live, ${seed.length} in seed → ${plan.add.length} to add, ${plan.update.length} to overwrite, ${plan.kept} kept${plan.excluded ? `, ${plan.excluded} PGR_LANDING_* left to the landing phase` : ''}`);
+    const rows = [...plan.add, ...plan.update].map((m) => ({ code: m.code, message: m.message, module, locale: CFG.locale }));
+    if (!rows.length) { ok(`${module}: in sync`); continue; }
+    planned += rows.length;
+    if (CFG.dryRun) {
+      const sample = rows.slice(0, 8).map((m) => m.code).join(', ');
+      info(`dry-run: would upsert ${rows.length} ${module} keys (${sample}${rows.length > 8 ? ', …' : ''})`);
+      continue;
+    }
+    const { success, failed: f } = await upsertMessages(CFG.state, CFG.locale, rows);
+    written += success;
+    if (f) { failed += f; failures.push(`${module}: ${f} of ${rows.length} failed`); warn(`${module}: ${success} upserted, ${f} failed`); }
+    else { added += plan.add.length; updated += plan.update.length; ok(`${module}: ${plan.add.length} added, ${plan.update.length} overwritten`); }
+  }
+  // A mistyped --loc-update key would otherwise be a silent no-op.
+  const unknown = CFG.locUpdate.filter((k) => !seedCodes.has(k));
+  for (const k of unknown) warn(`--loc-update ${k}: not in any ${CFG.locale} seed of ${CFG.locModules.join(', ')}`);
+  if (CFG.dryRun) {
+    // A dry-run must surface the same problems the real run would, so the
+    // operator fixes the command before anything is written.
+    const problems = [...failures, ...unknown.map((k) => `unknown --loc-update key ${k}`)];
+    if (problems.length) return record('loc', OUTCOME.PARTIAL, `dry-run: ${planned} key(s) would be upserted; ${problems.join('; ')}`,
+      unknown.length && !failures.length ? 'LOC_UPDATE_UNKNOWN_KEY' : 'LOC_PARTIAL', 'Fix the module list / --loc-update keys, then re-run.');
+    return record('loc', OUTCOME.SKIPPED, `dry-run: ${planned} key(s) would be upserted — plan printed above`);
+  }
+  if (written) {
+    const cb = await cacheBust();
+    (cb.code >= 200 && cb.code < 300 ? ok : warn)(`localization cache-bust: HTTP ${cb.code}`);
+  }
+  const detail = `${added} added, ${updated} overwritten, ${kept} kept (${CFG.locale}; ${CFG.locModules.join(', ')})`;
+  if (failures.length || unknown.length) {
+    return record('loc', OUTCOME.PARTIAL, `${detail}; ${[...failures, ...unknown.map((k) => `unknown --loc-update key ${k}`)].join('; ')}`,
+      unknown.length && !failures.length ? 'LOC_UPDATE_UNKNOWN_KEY' : 'LOC_PARTIAL',
+      'Re-run with --dry-run to see the plan. If the UI still shows raw keys after a clean run, evict the serving box\'s cache: docker exec digit-redis redis-cli DEL computedMessages messages');
+  }
+  return record('loc', OUTCOME.OK, detail);
 }
 
 /* ═════════════════════════════ PHASE: cms ═════════════════════════════ */
@@ -1743,6 +1833,7 @@ async function phaseVerify() {
     ['hierarchy', phaseHierarchy],
     ['pgr-masters', phasePgrMasters],
     ['landing', phaseLanding],
+    ['loc', phaseLoc],
     ['cms', phaseCms],
     ['analytics', phaseAnalytics],
     ['matomo', phaseMatomo],
