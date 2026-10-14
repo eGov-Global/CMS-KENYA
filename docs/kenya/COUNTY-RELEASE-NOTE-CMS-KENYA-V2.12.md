@@ -1,4 +1,4 @@
-# Complaint Management System: Release Note, Version 2.12
+# CMS V2.12: Release Note for Kenya
 
 **Bonga Nai** (Nairobi City County) · **Bomet Feedback Hub** (Bomet County)
 Updates live as of 13 October 2026
@@ -7,7 +7,7 @@ Updates live as of 13 October 2026
 
 ## Overview
 
-Over recent weeks we have delivered a series of updates to the complaint management systems of Nairobi City County (Bonga Nai) and Bomet County (Bomet Feedback Hub). Most respond directly to feedback from user acceptance testing in both counties. They have four goals:
+Both counties now run CMS V2.12, the Complaint Management System, in its Kenya edition. Over recent weeks we have delivered a series of updates to the systems of Nairobi City County (Bonga Nai) and Bomet County (Bomet Feedback Hub). Most respond directly to feedback from user acceptance testing in both counties. They have four goals:
 
 - making it easier for residents to file and follow up a complaint, including on basic phones and slow connections;
 - protecting the privacy of residents who complain;
@@ -30,7 +30,7 @@ Both counties run the same application. Each county has its own public website, 
 - **Security fixes.** Residents' privacy and the County's data are protected by the system itself, not only on screen. Confidential complainants' details, the residents' timeline and the time limits are all enforced by the server. Access checks are stricter, and the PDF component has a security fix.
 - **Virus scanning of uploaded files.** When switched on, every photo, video or document is checked for viruses before it is stored. Infected files are refused and kept aside for investigation.
 - **No more "storage full" errors.** Large settings no longer fill up the browser and stop the page with a "quota exceeded" error. Old cached data is cleared after every update.
-- **Improvements from the core product.** A refreshed dashboard, a clearer staff top bar, correct county logos and colours, inbox tabs in Bomet, and videos and screenshots that play and display directly in complaints.
+- **Improvements from CMS V2.12.** A refreshed dashboard, a clearer staff top bar, correct county logos and colours, inbox tabs in Bomet, and videos and screenshots that play and display directly in complaints.
 
 ---
 
@@ -104,7 +104,7 @@ Both counties run the same application. Each county has its own public website, 
 - **Dashboard export:** the Export button offers an **Excel workbook**, a **CSV file** or a **PDF report**. Each export records the filters and period applied and the key figures compared with the previous period. It includes every chart, table and map on the dashboard as a data table.
 - **Bomet, usage statistics:** the County's own analytics service counts how residents use the public website and the complaint form, for example how many start and finish a complaint. Personal details are removed.
 
-## Security, reliability and improvements from the core product
+## Security, reliability and improvements from CMS V2.12
 
 ### Security
 - **Protection happens in the system, not only on screen.**
@@ -114,7 +114,7 @@ Both counties run the same application. Each county has its own public website, 
 - **Time limits cannot be bypassed.** Reopen and withdraw are refused outside the County's period even if someone calls the system directly.
 - **Stricter access checks.** The system is set up to block requests from anyone who is not signed in or lacks the right role, instead of only recording them. Search results follow each officer's department and area.
 - **Up-to-date components.** The PDF component used for receipts and reports was updated to a version with a known security problem fixed.
-- **Still to come.** Some security improvements made in the core product in September are not yet included. The most important is stricter checking of the data sent with each complaint. We recommend including them in the next update.
+- **Still to come.** Some security improvements made in CMS V2.12 in September are not yet included. The most important is stricter checking of the data sent with each complaint. We recommend including them in the next update.
 
 ### Virus scanning of uploaded files
 - When switched on, every photo, video or document uploaded to a complaint is checked for viruses before it is stored.
@@ -142,7 +142,7 @@ Browsers give each website only a small amount of storage. The system used to ke
 - **Up-to-date pages.** The complaint page refreshes when the officer comes back to it.
 - **Faster start.** The application loads less than half as much data when it opens.
 
-### Improvements from the core product
+### Improvements from CMS V2.12
 - **Photos, screenshots and videos on complaints.** Residents and staff can attach photos and screenshots, videos and documents (PDF, Word, Excel) when filing, and when acting on or reopening a complaint. Up to 5 files of 5 MB each. Videos play directly in the page with full-screen controls, and the timeline shows a preview.
 - **Dashboard.** Refreshed header, filters, figures and charts; each card shows when its data was last updated; faster loading; a language menu.
 - **Staff screens.** The top bar shows the officer's working role. The county's logo and colours display correctly on dark headers, and missing images fall back cleanly.

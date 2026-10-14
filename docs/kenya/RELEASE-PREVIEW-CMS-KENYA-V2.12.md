@@ -2,7 +2,7 @@
 
 **Release:** `v2.12-kenya` — Bonga Nai (Nairobi City County, tenant `nb`) and Bomet Feedback Hub (Bomet County, tenant `bo`)
 **Code:** `nairobi-prod` @ `32a56d27d` (13 Oct 2026; tests ran at `8e6289e86`, and the only later commit adds the scan proxy's load-test tooling) · bgrm landing page: `nairobi-prod-bgrm-changes` @ `78444ee4e` · bgrm complaint service: `feat/bomet-uat` @ `6eb6b853c`
-**Product baseline:** `egovernments/Citizen-Complaint-Resolution-System` @ `815b2374` (tag `product-base-2026-08-13`)
+**Built on:** CMS V2.12 (`egovernments/Citizen-Complaint-Resolution-System`; baseline `815b2374`, tag `product-base-2026-08-13`; updated on 16 Sep 2026 to `7ee88f83`)
 **Prepared:** 13 Oct 2026. The GitHub release body is [RELEASE-NOTES-CMS-KENYA-V2.12.md](RELEASE-NOTES-CMS-KENYA-V2.12.md) and the plain-language note for the counties is [COUNTY-RELEASE-NOTE-CMS-KENYA-V2.12.md](COUNTY-RELEASE-NOTE-CMS-KENYA-V2.12.md); this document is the evidence behind both.
 
 ## Contents
@@ -13,20 +13,20 @@
 4. Kenya-layer change inventory
 5. Changes not in this release
 6. `nairobi-prod` vs `nairobi-prod-bgrm-changes`
-7. Inherited from the product and CMS Mozambique
-8. Configuration delta against the product
+7. Included from CMS V2.12
+8. Configuration changes against CMS V2.12
 9. Testing status
 10. Known limitations and open issues
 11. Not verified
 12. Documentation
-13. Topic index: security, file scan, storage quota, sessions, product contributions
+13. Topic index: security, file scan, storage quota, sessions, CMS V2.12 contributions
 
 ---
 ## 1. About this document
 
 ### Sources and method
 
-- **Git:** the fetched refs of `eGov-Global/CMS-KENYA`, with `eGov-Global/CMS-MOZAMBIQUE` and the upstream product as remotes. Commands: `git log`, `git diff`, `git cherry`, `git merge-base`, and code read at `nairobi-prod`.
+- **Git:** the fetched refs of `eGov-Global/CMS-KENYA`, with the upstream CMS V2.12 repository as a remote. Commands: `git log`, `git diff`, `git cherry`, `git merge-base`, and code read at `nairobi-prod`.
 - **GitHub:** the body of every PR merged into the Kenya line, and the open issues that bear on it.
 - **Live counties:** read-only search calls against `bonga.nairobi.go.ke` and `bgrm.bomet.go.ke` on 13 Oct 2026, without signing in. Captured: every MDMS master, the `PGR` workflow, boundaries, labels (`en_IN`, `sw_KE`), the served UI bundle and `globalConfigs.js`. Nothing was written.
 - **Tests:** run on a clean checkout of `nairobi-prod` @ `8e6289e86` (§9).
@@ -37,23 +37,23 @@
 
 | Step | Ref | Date | What |
 |---|---|---|---|
-| Product baseline | `815b23747` (`product-base-2026-08-13`) | 13 Aug | The same baseline as CMS Mozambique V2.12 |
-| First Kenya change | PR #1 `d92def1d0` | 19 Aug | Bomet landing page on the product |
-| Mozambique layer | `35504b797` merges Mozambique `master` @ `df7ca8d08` (`kenya-layer-start`) | 31 Aug | 636 commits, carried in by PRs #4–#9 |
-| Product sync | `626864567` (front end) and `2176984d7` (backend, infrastructure, configurator; 905 files) | 16–17 Sep | Upstream product `7ee88f83`, squashed |
+| CMS V2.12 baseline | `815b23747` (`product-base-2026-08-13`) | 13 Aug | CMS V2.12 |
+| First Kenya change | PR #1 `d92def1d0` | 19 Aug | Bomet landing page on CMS V2.12 |
+| CMS V2.12 line merged | `35504b797` merges `df7ca8d08` (`kenya-layer-start`) | 31 Aug | 636 commits, carried in by PRs #4–#9 |
+| CMS V2.12 update | `626864567` (front end) and `2176984d7` (backend, infrastructure, configurator; 905 files) | 16–17 Sep | Upstream `7ee88f83`, squashed |
 | Kenya layer | `kenya-layer-start..nairobi-prod` | 30 Aug – 13 Oct | 220 commits (156 non-merge), PRs #1–#157 |
 | Release code | `nairobi-prod` @ `32a56d27d` | 13 Oct | To be merged into `master` |
 
 Layer tags used in §8:
-- **[S]** shared pre-fork work (product and Mozambique);
-- **[P]** the product sync inside the Kenya range;
+- **[S]** CMS V2.12 work before the fork;
+- **[P]** the 16 Sep CMS V2.12 update inside the Kenya range;
 - **[K]** Kenya-authored work.
 
-### Volume (product baseline → `nairobi-prod`)
+### Volume (CMS V2.12 baseline → `nairobi-prod`)
 
 - **In total:** 856 commits (541 non-merge), 1,360 files changed, +167,291 / −38,804 lines.
 - **Before the fork:** 636 commits, 332 files.
-- **After the fork:** 220 commits, 1,174 files. The product sync alone touches 905 of these files.
+- **After the fork:** 220 commits, 1,174 files. The CMS V2.12 update alone touches 905 of these files.
 
 ---
 ## 2. Deployments and what they run
@@ -129,6 +129,10 @@ Read from both counties on 13 Oct 2026 (read-only searches).
 | Languages | English, Kiswahili | English, Kiswahili |
 | Behaviour analytics | not configured | Matomo |
 | Notification templates | 28, all English (SMS, e-mail, WhatsApp), including SMS escalation notices to the resident | 45 records: 27 English and 18 Hindi (`hi_IN`) leftovers; no escalation template |
+
+### Landing pages
+
+The landing pages were separated at the last moment. `nairobi-prod`'s landing page has been Nairobi's since 23 Sep. When bgrm's UI moved to `nairobi-prod` on 9 Oct, its front page therefore showed Nairobi branding, and the Bonga Nai redesign (#154, #155) made it more visible. On 13 Oct bgrm's UI moved to its own branch, `nairobi-prod-bgrm-changes`. That branch is `nairobi-prod` plus one change: it brings back the Bomet landing page bgrm had before 9 Oct. The change spans 61 files: the landing page, its styles, an image loader in the build and the configurator's landing editor. Everything else is identical, and every non-landing change is merged into both branches (as #157 and #158 were). When `nairobi-prod` is merged into `master`, `master` carries the **Bonga Nai** landing page; bgrm keeps building from its branch until the landing page can be chosen per county by configuration.
 
 ### 3.2 Workflow `PGR` (egov-workflow-v2 BusinessService `PGR`, SLA 432000000 ms = 5 days)
 
@@ -211,7 +215,7 @@ Field redaction (`onDeny: REDACT`) of `citizen.name`, `citizen.mobileNumber`, `c
 ---
 ## 4. Kenya-layer change inventory
 
-Everything in `kenya-layer-start..nairobi-prod`: every PR, roll-up and direct commit, with the live configuration it depends on. **County:** *Both* = shared code that affects both counties; *Bonga* or *Bomet* = only that county sees an effect, because of its workflow, data or branding; *Both (code)* = shared code whose effect differs by tenant. Roll-up #40 carried 84 commits into `master`, including the product-sync squash `2176984d7` and `626864567`; #11–#19, #21, #24–#28 and #41–#46 are issues, not PRs.
+Everything in `kenya-layer-start..nairobi-prod`: every PR, roll-up and direct commit, with the live configuration it depends on. **County:** *Both* = shared code that affects both counties; *Bonga* or *Bomet* = only that county sees an effect, because of its workflow, data or branding; *Both (code)* = shared code whose effect differs by tenant. Roll-up #40 carried 84 commits into `master`, including the CMS V2.12 update squash `2176984d7` and `626864567`; #11–#19, #21, #24–#28 and #41–#46 are issues, not PRs.
 
 ### 4.1 Bomet line, reached master via roll-up #40 (2026-09-21)
 
@@ -219,22 +223,22 @@ Everything in `kenya-layer-start..nairobi-prod`: every PR, roll-up and direct co
 |---|---|---|---|---|---|
 | `2b62f7007`, `82b0ad29b` | 2026-08-14 | docs | — | Sets CODEOWNERS so protected branches need maintainer review. | none |
 | #1 (`d92def1d0`, base develop) | 2026-08-19 | public landing | Bomet (originally) | Adds the public landing page at `/digit-ui/landing`: config-driven sections, privacy page, Bomet copy and logo, theme bridge. On nairobi-prod it was later re-branded for Nairobi (§4.3). Bomet's version comes back only on `nairobi-prod-bgrm-changes` (`bae16acca`). | Optional MDMS `RAINMAKER-PGR.LandingSection`/`LandingPageConfig` rows and `PGR_LANDING_*` labels override the built-in copy. #154 says no such rows existed on nb/bo on 12 Oct. |
-| #3 (`35504b797`) | 2026-08-31 | deploy/ops (sync) | — | Merges CMS-MOZAMBIQUE master into `syncwithmoz` (636 commits, all before `kenya-layer-start`). The conflict resolution kept the Bomet landing page. No Kenya feature of its own. | none |
-| #4 (`79bf0a3b8`) | 2026-09-02 | citizen UI + routing | Both (code) | **Citizen complaints are assigned automatically at submit** to an officer in the complaint type's department, narrowest area first: ward → sub-county → county → department only. Best effort; it never blocks a submit. Citizen reopen goes back to the previous handler. The map follows the pin and uses a vector street map, with a raster fallback where WebGL is missing (port of CMS-MOZAMBIQUE#50). | `RAINMAKER-PGR.ComplaintHierarchy` department on each leaf type; HRMS department and jurisdiction assignments; workflow roles at the APPLY target state; optional `RAINMAKER-PGR.MapConfig`; browsers must reach `tiles.openfreemap.org`. On **Bonga** every sub-type's department is `NA` (live, 13 Oct), so no officer matches and complaints wait in the GRO queue. |
-| #5 (`101262ebf`) | 2026-09-02 | citizen UI + employee UI | Both | Error, maintenance and not-found screens get their own "Go home" button label, a working illustration (the S3 image returned 403) and a layout that fits inside the app shell. Port of CMS-MOZAMBIQUE#53/#54. | Labels `CORE_ERROR_GO_HOME`, `MODULE_NOT_FOUND`, `CORE_UNDER_MAINTENANCE`. |
+| #3 (`35504b797`) | 2026-08-31 | deploy/ops (sync) | — | Merges the CMS V2.12 line into the sync branch (636 commits, all before `kenya-layer-start`). The conflict resolution kept the Bomet landing page. No Kenya feature of its own. | none |
+| #4 (`79bf0a3b8`) | 2026-09-02 | citizen UI + routing | Both (code) | **Citizen complaints are assigned automatically at submit** to an officer in the complaint type's department, narrowest area first: ward → sub-county → county → department only. Best effort; it never blocks a submit. Citizen reopen goes back to the previous handler. The map follows the pin and uses a vector street map, with a raster fallback where WebGL is missing (from CMS V2.12). | `RAINMAKER-PGR.ComplaintHierarchy` department on each leaf type; HRMS department and jurisdiction assignments; workflow roles at the APPLY target state; optional `RAINMAKER-PGR.MapConfig`; browsers must reach `tiles.openfreemap.org`. On **Bonga** every sub-type's department is `NA` (live, 13 Oct), so no officer matches and complaints wait in the GRO queue. |
+| #5 (`101262ebf`) | 2026-09-02 | citizen UI + employee UI | Both | Error, maintenance and not-found screens get their own "Go home" button label, a working illustration (the S3 image returned 403) and a layout that fits inside the app shell. From CMS V2.12. | Labels `CORE_ERROR_GO_HOME`, `MODULE_NOT_FOUND`, `CORE_UNDER_MAINTENANCE`. |
 | #6 (`f38d29e54`) | 2026-09-02 | citizen UI | Both | Fixes a crash on the citizen reopen page (a hook was not registered). | none |
-| `82ba44d57` (direct, syncwithmoz) | 2026-09-02 | novu-bridge | Both, wherever novu-bridge runs | Adds the **Bongatech** SMS gateway alongside Ozeki, either through Novu or by direct HTTP. | `NOVU_BRIDGE_SMS_PROVIDER`/`NOVU_BRIDGE_OTP_SMS_PROVIDER`/`NOVU_BRIDGE_DIRECT_SMS_PROVIDER=bongatech`, `NOVU_BRIDGE_SMS_SENDER_ID`, `NOVU_BRIDGE_DIRECT_SMS_BASE_URL`/`_TOKEN`, `NOVU_BRIDGE_DIRECT_CHANNELS`. |
+| `82ba44d57` (direct, sync branch) | 2026-09-02 | novu-bridge | Both, wherever novu-bridge runs | Adds the **Bongatech** SMS gateway alongside Ozeki, either through Novu or by direct HTTP. | `NOVU_BRIDGE_SMS_PROVIDER`/`NOVU_BRIDGE_OTP_SMS_PROVIDER`/`NOVU_BRIDGE_DIRECT_SMS_PROVIDER=bongatech`, `NOVU_BRIDGE_SMS_SENDER_ID`, `NOVU_BRIDGE_DIRECT_SMS_BASE_URL`/`_TOKEN`, `NOVU_BRIDGE_DIRECT_CHANNELS`. |
 | #8 (`805e45c9f`) | 2026-09-03 | citizen UI + routing | Both (code) | Auto-assignment picks the **last-mile officer (PGR_LME)**, not senior viewers, whenever the workflow has a PGR_LME role. | HRMS PGR_LME holders per department. |
 | #7 (`7f013197a`, base develop) | 2026-09-04 | public landing | Bomet | Restyles the Bomet landing: white hero and footer, blue palette, county logo lockup; drops WhatsApp and the privacy link. Superseded on nairobi-prod by the Nairobi re-brand (`32617c679`). | none |
-| #9 (`abf6406b6`) | 2026-09-04 | deploy/ops (sync) | — | Merges `syncwithmoz` into `develop` (carries #3–#8). | none |
+| #9 (`abf6406b6`) | 2026-09-04 | deploy/ops (sync) | — | Merges the sync branch into `develop` (carries #3–#8). | none |
 | #10 (`d10f9a405`, base master) | 2026-09-10 | docs | — | Issue templates and CONTRIBUTING point to CMS-KENYA and project board #17; the Source field becomes PROD/UAT. | none |
 | #20 (`e22f3a552`) | 2026-09-15 | employee UI | Both (Bomet roles) | Bomet department-tier roles (HEALTH/WATER/ADMIN × DIRECTOR/CHIEF_OFFICER/CECM) see the Complaints card. The default inbox status list now comes from the live workflow, so escalated complaints appear without ticking a filter. | Role codes in HRMS; workflow BusinessService. |
 | #22 (`28eefc9ae`) | 2026-09-15 | citizen UI + employee UI + MDMS/config | Both | Display masking of names and phone numbers moves behind a deploy switch, **off for Kenya**, so timelines show identities in clear. Server-side masking is separate. | globalConfigs `PGR_PII_MASKING` (Ansible `pgr_pii_masking`, default `false`). |
 | #23 (`584c07e6c`) | 2026-09-15 | employee UI + localization | Both (Bomet states) | Labels for the escalation states ESCALATEDLEVEL1–3; the "assigned to me / all" choice returns to the legacy inbox filter. | Labels `CS_COMMON_PGR_STATE_ESCALATEDLEVEL1..3`, `CS_COMMON_ESCALATEDLEVEL1..3` (#23 says these were upserted on bgrm). |
 | #29 (`3861b8498`) | 2026-09-16 | citizen UI | Both | Citizen complaint details show a named address and County / Sub-County / Ward rows, and no empty "Complaint Location" card for complaints without a pin. Its "no default map pin" part was reversed two days later by `16c6e311f`. | Boundary-name labels (module `rainmaker-boundary-<hierarchy>`); globalConfigs `HIERARCHY_TYPE`. |
-| #34 (`eff52826f`) | 2026-09-16 | citizen UI + MDMS/config | Both (code) | Matomo behaviour analytics: complaint funnel events, each wizard step counted as a page view, outcome pages, landing and tutorial pages tracked. Cherry-pick of CMS-MOZAMBIQUE #145. | `common-masters.AnalyticsProvider` MATOMO row; Matomo stack (`docker-compose.matomo.yml`); nginx `/matomo/`. Live 13 Oct: bgrm has the provider row and serves `/matomo/matomo.js`; Bonga has neither. |
-| `626864567` + merge `4ad2fc176` (direct, kenya-prod) | 2026-09-16 / 2026-09-18 | citizen UI + employee UI + dashboard | Both | Front-end part of **product sync 2026-09-16** (upstream `7ee88f83`):<br>• "working context" chip in the employee top bar;<br>• inbox visibility tabs;<br>• dashboard refinements (language menu, footer, "updated … ago" stamps, batched analytics queries);<br>• jsPDF security bump.<br>`4ad2fc176` restored six Kenya PGR files that `2176984d7` had overwritten. | `RAINMAKER-PGR.InboxVisibilityConfig` (tabs stay off without it). |
-| `2176984d7` (direct, kenya-prod) | 2026-09-17 | backend pgr-services + deploy/ops + MDMS/config | Both | **Product v2.12 backend, infrastructure and configurator sync, squashed** (905 files; the title understates it):<br>• search scoping by policy (department or jurisdiction per role, read from the access-control action record);<br>• capability checks for analytics;<br>• employee working-context API;<br>• Helm and CI validation workflows;<br>• updates to the `ansible/nairobi-mdms` packs;<br>• reopen fallback window cut from 10 days to 72 h (the enforced value is `UIConstants.REOPENSLA`). | `egov.accesscontrol.host`; `PGR_EMPLOYEE_CONTEXT_*_ROLE_CODES`; optional policy on the `/pgr-services/v2/request/_search` record in `ACCESSCONTROL-ACTIONS-TEST`; `PGR_COMPLAIN_IDLE_TIME`. |
+| #34 (`eff52826f`) | 2026-09-16 | citizen UI + MDMS/config | Both (code) | Matomo behaviour analytics: complaint funnel events, each wizard step counted as a page view, outcome pages, landing and tutorial pages tracked. Cherry-picked from CMS V2.12. | `common-masters.AnalyticsProvider` MATOMO row; Matomo stack (`docker-compose.matomo.yml`); nginx `/matomo/`. Live 13 Oct: bgrm has the provider row and serves `/matomo/matomo.js`; Bonga has neither. |
+| `626864567` + merge `4ad2fc176` (direct, kenya-prod) | 2026-09-16 / 2026-09-18 | citizen UI + employee UI + dashboard | Both | Front-end part of the **CMS V2.12 update of 2026-09-16** (upstream `7ee88f83`):<br>• "working context" chip in the employee top bar;<br>• inbox visibility tabs;<br>• dashboard refinements (language menu, footer, "updated … ago" stamps, batched analytics queries);<br>• jsPDF security bump.<br>`4ad2fc176` restored six Kenya PGR files that `2176984d7` had overwritten. | `RAINMAKER-PGR.InboxVisibilityConfig` (tabs stay off without it). |
+| `2176984d7` (direct, kenya-prod) | 2026-09-17 | backend pgr-services + deploy/ops + MDMS/config | Both | **CMS V2.12 backend, infrastructure and configurator sync, squashed** (905 files; the title understates it):<br>• search scoping by policy (department or jurisdiction per role, read from the access-control action record);<br>• capability checks for analytics;<br>• employee working-context API;<br>• Helm and CI validation workflows;<br>• updates to the `ansible/nairobi-mdms` packs;<br>• reopen fallback window cut from 10 days to 72 h (the enforced value is `UIConstants.REOPENSLA`). | `egov.accesscontrol.host`; `PGR_EMPLOYEE_CONTEXT_*_ROLE_CODES`; optional policy on the `/pgr-services/v2/request/_search` record in `ACCESSCONTROL-ACTIONS-TEST`; `PGR_COMPLAIN_IDLE_TIME`. |
 | `7eaefc863` | 2026-09-17 | deploy/ops | — | Configurator build fixed after the sync (a duplicate `visibleNavGroups`). | none |
 | `d72391231` (direct) | 2026-09-18 | backend pgr-services | Both | Employee department and jurisdiction scope wired into search. The department-name cache keeps serving its last good value during a brief MDMS outage, so an officer's results are not narrowed. | `jurisdictionSubtreeCacheTtlMs` (default 5 min). |
 | `5d9420775` | 2026-09-18 | localization | Both | Seeds two labels that showed as raw keys on the employee home. | Upsert `DASHBOARD_CARD_HEADER`, `ULBGRADE_STATE`. |
@@ -242,8 +246,8 @@ Everything in `kenya-layer-start..nairobi-prod`: every PR, roll-up and direct co
 | `f19dbd4a0` | 2026-09-18 | MDMS/config | New environments | Seeds an enabled Matomo destination row for fresh Kenya environments. | Matomo siteId 1, goals 1/2, dimensions 1–4. |
 | `6bef31ae4` | 2026-09-18 | MDMS/config | Both | `PGR_PII_MASKING=false` declared in the repo's globalConfigs (local and dev builds). | none live (the Ansible template already defaults to false). |
 | `adef886be` (cherry-pick) | 2026-09-18 (authored 09-07) | citizen UI + employee UI | Both | A failed request no longer throws the user onto the maintenance page. An expired session goes to the right login page and keeps drafts, language and caches. The citizen wizard checks the session before submitting. | none |
-| `30bb121e9`, `763726dcd`, `e4c056c02`, `4dc8c4bea`, `d27899dd8`, `5d732f538`, `117a1ed1f` | 2026-09-18 (authored 09-07/08) | citizen UI + employee UI | Both | If another account signs in in another tab of the same browser, a notice explains what happened (it only informs). One tab's logout no longer wipes another tab's session. Ported from CMS-MOZAMBIQUE (CCSD-2231). | Labels `CORE_SESSION_COLLISION_*` (English fallbacks exist). |
-| `16c6e311f` | 2026-09-18 | citizen UI | Both | **The citizen map opens at the tenant centre at street zoom with a pin and coordinates already filled in** (Mozambique behaviour, requested explicitly). A citizen who never touches the map submits the centre point. | `RAINMAKER-PGR.MapConfig` `center`/`defaultZoom`, or globalConfigs `MAP_CENTER` (Ansible `map_center`, required). |
+| `30bb121e9`, `763726dcd`, `e4c056c02`, `4dc8c4bea`, `d27899dd8`, `5d732f538`, `117a1ed1f` | 2026-09-18 (authored 09-07/08) | citizen UI + employee UI | Both | If another account signs in in another tab of the same browser, a notice explains what happened (it only informs). One tab's logout no longer wipes another tab's session. From CMS V2.12 (CCSD-2231). | Labels `CORE_SESSION_COLLISION_*` (English fallbacks exist). |
+| `16c6e311f` | 2026-09-18 | citizen UI | Both | **The citizen map opens at the tenant centre at street zoom with a pin and coordinates already filled in** (CMS V2.12 behaviour, requested explicitly). A citizen who never touches the map submits the centre point. | `RAINMAKER-PGR.MapConfig` `center`/`defaultZoom`, or globalConfigs `MAP_CENTER` (Ansible `map_center`, required). |
 | `fdb91d0ce` | 2026-09-18 | citizen UI + employee UI | Both (Bomet image) | Bomet highlands photo behind both login screens. It is set with `body::before` in `overrides.css` and **is not tenant-scoped**. Tenants with `StateInfo.bannerUrl` show their own photo on top (23 Sep rules in `src/index.css`). | `StateInfo.bannerUrl` on non-Bomet tenants. |
 | `4c2bb1f75` | 2026-09-21 | MDMS/config | Bomet | Bundles the Bomet crest at `/digit-ui/brand/bomet-logo-round.png`. | Live 13 Oct: bgrm's `StateInfo.logoUrl` (`/static-assets/bomet-logo-round.png`) returns the crest. |
 | `5f947bdeb`, `d82ce0435` | 2026-09-21 | citizen UI + employee UI | Both | Escalated complaints show "Escalated (Level n)" instead of "Open" or a raw key in My Complaints, the inbox, admin search and citizen details. | Labels `CS_COMMON_PGR_STATE_<STATUS>`. |
@@ -299,7 +303,7 @@ Cherry-picked from the `nairobi` branch (#47, OPEN). Reviewed in PR #49 (OPEN, m
 | #90 | 2026-09-28 | MDMS/config | Both (data) | Distinct sidebar icons for Create and Search Complaint. **Changes seed files only.** | Each live tenant's `ACCESSCONTROL-ACTIONS-TEST` records need `leftIcon` set to `Search` and `Add` by an MDMS_ADMIN. **Not applied on either county** (both still `PGRIcon`, 13 Oct). |
 | #95 | 2026-09-29 | citizen UI + employee UI | Both | The optional free-text address is saved in `address.street` on both create forms. **Employee create no longer fails with `INVALID_CASE_RELATED_TO`** (port of #58). Its "any GRO can pick up the queue" part was removed by #134. | none |
 | #96 | 2026-09-29 | citizen UI + employee UI | Both | The citizen "Your details" card is hidden where its values would be thrown away (port of #53 / issue #51). A Take Action draft belongs to one complaint and one action (port of #92 / issue #75). | none |
-| #103 (`df9aa019d`) | 2026-10-05 | backend pgr-services | Both (bgrm via #133) | **Confidential complaints are masked on the server.** Name, phone, e-mail and address are hidden from everyone who is neither the complainant nor a `CONFIDENTIAL_COMPLAINT_VIEWER`. Searches by person exclude confidential complaints, and notifications and events carry no complainant identity. New **filtered timeline API** `/v2/request/_chronology` (ported from CMS-MOZAMBIQUE): citizens see no officer names, contacts or internal comments, while the closing comment stays. | Deploy pgr-services first; **action 2635 plus role grants** (without them the timeline is empty, and there is no fallback on nairobi-prod); role `CONFIDENTIAL_COMPLAINT_VIEWER` (missing on bo per #133). |
+| #103 (`df9aa019d`) | 2026-10-05 | backend pgr-services | Both (bgrm via #133) | **Confidential complaints are masked on the server.** Name, phone, e-mail and address are hidden from everyone who is neither the complainant nor a `CONFIDENTIAL_COMPLAINT_VIEWER`. Searches by person exclude confidential complaints, and notifications and events carry no complainant identity. New **filtered timeline API** `/v2/request/_chronology` (from CMS V2.12): citizens see no officer names, contacts or internal comments, while the closing comment stays. | Deploy pgr-services first; **action 2635 plus role grants** (without them the timeline is empty, and there is no fallback on nairobi-prod); role `CONFIDENTIAL_COMPLAINT_VIEWER` (missing on bo per #133). |
 | #103 (`ee3f83a44`) | 2026-10-05 | citizen UI + employee UI | Both | **Mandatory Terms & Conditions consent** on citizen create (saved in `additionalDetail.consents`); "Keep details confidential" always offered; both timelines read the chronology API; **complaint receipt**: offline PDF with Download, Print and Share; complaint type and sub-type pickers sorted A–Z with "Others" last; **manual ESCALATE**: the assignee pick is mandatory and the list offers the tier above. | Labels `PGR_CONSENT_*`, `PGR_EXT_IS_CONFIDENTIAL_HINT`, `PGR_RECEIPT_*`. Workflow ESCALATE grants, live 13 Oct — nb: PENDINGATLME (PGR_LME, SYSTEM), ESCALATEDLEVEL1 (CHIEF_OFFICER, SYSTEM); bo: PENDINGATLME (PGR_LME, SYSTEM), ESCALATEDLEVEL1 (ADMIN_DIRECTOR, HEALTH_DIRECTOR, WATER_CHIEF_OFFICER, PGR_LME, SYSTEM), ESCALATEDLEVEL2 (ADMIN_CHIEF_OFFICER, HEALTH_CHIEF_OFFICER, WATER_CECM, PGR_LME, SYSTEM). `tenant.tenants.contactNumber` is printed on the receipt. |
 | #103 (`24a6358a1`) | 2026-10-05 | public landing | Bonga | Emergency helplines section, motion and accessibility pass (contrast, 44 px targets). **The emergency numbers were removed again by #155.** | `LandingSection` helplines row only if the landing is MDMS-driven. |
 | #103 (`c16c75208`) | 2026-10-05 | citizen UI + employee UI + deploy/ops | Both | **Lazy loading**: heavy screens, maps and PDF libraries load on demand; the startup download drops from 9.5 MB to 4.55 MB. | Deploy the whole `build/` folder, including `build/chunks/`. |
@@ -375,8 +379,8 @@ Other open PRs worth knowing about:
 | #101 | kenya-prod | feat/bomet-uat | Draft; the branch is bgrm's backend source. |
 | #126 | nairobi-prod | `loc` migration phase | Catches up missing labels; #126 counted 70+ missing keys on nb on 7 Oct. |
 | #49 | master | master ← nairobi-prod | Review PR; master is still at #48. |
-| #47 | syncwithmoz | `nairobi` branch | Review draft |
-| #30, #33, #35, #36, #38 | various | Product-sync PRs | Superseded by the direct commits `626864567` and `2176984d7`. |
+| #47 | sync branch | `nairobi` branch | Review draft |
+| #30, #33, #35, #36, #38 | various | CMS V2.12 update PRs | Superseded by the direct commits `626864567` and `2176984d7`. |
 | #37 | upgrade-master (merged) | — | Not in nairobi-prod. |
 
 ---
@@ -411,315 +415,44 @@ Other open PRs worth knowing about:
 ---
 
 ---
-## 7. Inherited from the product and CMS Mozambique
+## 7. Included from CMS V2.12
 
-Every feature in the CMS Mozambique V2.12 release documents, checked against `nairobi-prod`. Survival is the share of a commit's substantive added lines still present verbatim at `nairobi-prod`. P K N M = present at product-base, `kenya-layer-start`, `nairobi-prod`, Mozambique `master`.
+CMS Kenya includes CMS V2.12 as merged on 31 Aug and its 16 Sep update (`7ee88f83`). The table lists the CMS V2.12 features that matter
+in Kenya, their state in the two counties (live 13–14 Oct) and where the code lives on `nairobi-prod`.
 
-### 7.1 Main table: Mozambique V2.12 features vs Kenya (origin/nairobi-prod)
-
-#### A. Backend: pgr-services (Moz preview §3)
-
-| Mozambique feature | In Kenya code? | Evidence | Enabled / applicable in Kenya? | Notes |
-|---|---|---|---|---|
-| Department-scoped search (`fe7cab60`) | Yes | `backend/pgr-services/.../service/EmployeeDepartmentScopeService.java` (P- K✓ N✓ M✓). Called at `PGRService.java:181`; re-wired after the product sync by Kenya `d72391231`. 95% of lines survive. | **Off by default.** `pgr.department.scope.roles=` is empty (`application.properties:180`). No compose, Helm or Ansible file in NP sets `PGR_DEPARTMENT_SCOPE_ROLES`. Live env unverified. | NP now also runs the product's policy scoping, `SearchAccessPolicyService` (`PGRService.java:196,215`, from `2176984d7`). |
-| Jurisdiction-scoped search incl. boundary subtrees (`9e650397`, `79dae4ef`) | Yes | `EmployeeJurisdictionScopeService.java`, `util/BoundaryUtil.java`, `web/models/EmployeeJurisdiction.java` (all P- K✓ N✓). `79dae4ef` 100% survives. | **Off by default.** `pgr.jurisdiction.scope.roles=` is empty (`application.properties:185`). Live unverified. | Kenya moved the subtree-cache TTL key (`d72391231`). |
-| Admin cross-department search API `POST /v2/request/_admin/_search` (`dae9ec08`) | Yes | `web/controllers/AdminComplaintSearchController.java:46`, `AdminComplaintSearchService.java` (96% survives) | **Not granted in either county.** No access-control action for `_admin/_search` is seeded on any ref (DDH `ACCESSCONTROL-ACTIONS-TEST.actions-test.json`, DB dump; moz/master included), and neither `nb` nor `bo` has one (live, 13 Oct). | |
-| "Filed on behalf of" `createdBy` filter (`1f9b68a2`) | Yes | `RequestSearchCriteria` `createdBy`; `PGRQueryBuilder` `ser.createdby IN` (100%) | **Available but unused by Kenya.** The generic API stays available; its UI consumer, the reception inbox (C6), is inert in Kenya. | |
-| Department search field (`4a6537c3`) | Yes | `RequestSearchCriteria` `department` (86%) | Applicable (generic) | |
-| Selective confidential-field visibility `x-no-mask` (`8746bcab`) | Yes | `service/EncryptionDecryptionService.java` `noMaskFields` (100%) | **Inert.** It needs a `ComplaintTemplateType` with x-no-mask fields; the repo seeds are IGE/IGSAE only (`mdmsData-dev/RAINMAKER-PGR/RAINMAKER-PGR.ComplaintTemplateType.json`). | Kenya's own confidentiality is a citizen opt-in with server-side complainant masking (`df9aa019d`, `1a848286c`). It accepts `extendedAttributes` carrying only `isConfidential`, with no template. The backend model (`allowedViewerRoles`, `CONFIDENTIAL_COMPLAINT_VIEWER`) is already in the product (`ComplaintTemplateTypeConfig.java` P✓). |
-| Configurable escalation states `pgr.escalation.states` (`718d65b1`) | Yes | `PGRConfiguration` (`@Value pgr.escalation.states`); `application.properties:241` default `PENDINGATLME,PENDINGFORASSIGNMENT` (100%) | **Applicable: Kenya escalates.** Bomet labels ESCALATEDLEVEL1-3 (`203432ac5`). The live Bomet workflow has ESCALATE on PENDINGATLME/ESCALATEDLEVEL3 (`digit-ui-esbuild/products/pgr/src/utils/workflowStates.test.js:9-12,35-37`). No repo config sets `PGR_ESCALATION_STATES` for Kenya, so the live value is unverified. | |
-| New intake channels email/inperson/letter/linhaverde (`b2272873`) | Yes | `allowed.source=…,email,inperson,letter,linhaverde` (`application.properties:194`) | **Accepted by the backend.** The employee form always sends one of these codes (C15). | `linhaverde` is Mozambique's hotline. |
-| Notification recipient = newest workflow step; terminal transition keeps assignee (`f05c52d5`) | Yes | `NotificationService` `newestTime`; `WorkflowService` `isTargetStateTerminal` (100%) | **Live-relevant:** every REJECT/RESOLVE/RATE goes through it. | Kenya's own follow-up (`5044d5333`, PR #82, "send no assignee on REJECT / RESOLVE") is **not** on NP. |
-| Department display three-tier fallback; acting-employee placeholders (`4fa8964c`) | Yes | `NotificationService.getHRMSEmployee` (`resolveComplaintHierarchyDepartment` → `readAdditionalDetailsDepartment` → HRMS, lines 757-764); `putAssignerPlaceholders` (100%) | **Live-relevant on the config-driven path.** `buildPlaceholderValues` → `getHRMSEmployee` (`NotificationService.java:1329-1337`). `local-setup/docker-compose.bomet.yml` sets `PGR_NOTIFICATION_CONFIG_DRIVEN: "true"`. | |
-| Deep-link placeholders `{website}`, `{rate_link}`, `{reopen_link}` (`15ec1db5`) | Yes | `NotificationService.java:1256-1276`, used by `processConfigDriven` (`:945`, `:962`) (100%) | **Applicable, but depends on `egov.ui.app.host.map`.** The default is `{"pg":…}` (`application.properties:165`). The playbook rewrites the key to `state_root` (`local-setup/ansible/playbook-deploy.yml:4248-4252`). The Kenya value is unverified. | |
-| Sort by last-modified (`1f9b68a2`) | Yes | `RequestSearchCriteria` (lastModifiedTime) | Applicable (generic) | |
-| Scope-bypass hardening (`9e650397`) | Yes | `RequestsApiController` scope-flag handling (3 references; P has 0) | Effective only when scoping is on | |
-| "0 database migrations" claim | Holds for Kenya | Backend `.sql` set (25 files) is identical across P/K/N; `git diff product-base origin/nairobi-prod` on them is empty | n/a | |
-
-#### B. Backend: novu-bridge (Moz preview §3)
-
-| Mozambique feature | In Kenya code? | Evidence | Enabled / applicable in Kenya? | Notes |
-|---|---|---|---|---|
-| Direct delivery mode, SMS + SMTP without Novu (`91aded4c`) | Yes (extended) | `service/DirectDeliveryService.java` (93%). `application.properties:81` `novu.bridge.direct.channels` (empty default), `:83` `direct.sms.provider` (default `ozeki`), `:98-106` SMTP. | **This is the code path Kenya's own SMS gateways extend.** Bongatech was added in `82ba44d57` and Source Code in `84c45ada2`. Which mode and gateway each county runs is not in the repo: compose `NOVU_BRIDGE_SMS_PROVIDER: ${…:-}` at `docker-compose.egov-digit.yaml:2538`. Unverified. | |
-| Ozeki SMS via Novu, complaint + OTP (`a95f8df2`, `a3be88e5`) | Yes (modified) | `service/provider/OzekiOverridesBuilder.java` present. Kenya replaced the boolean Ozeki switches with `SmsProviderOverridesFactory` (Ozeki or Bongatech) in `82ba44d57`; `a95f8df2` dropped from 91% at KLS to 36% at NP. | **Not used.** Ozeki is selectable but not configured for Kenya in the repo; Kenya's gateways are Bongatech and Source Code. | |
-| OTP delivery pipeline (`a3be88e5`) | Yes (extended) | `DispatchPipelineService` OTP path. Kenya added `consumer/UserOtpSmsConsumer.java` (`2631f102c`); Moz's post-fork equivalent is `371ecab7b`. | **Live-relevant for OTP.** `novu.bridge.user-otp.default.tenant.id` defaults to **`bo`** (`application.properties:27`, Kenya `2631f102c`; Moz defaults to `mz`). Bonga (`nb`) would need `NOVU_BRIDGE_USER_OTP_DEFAULT_TENANT_ID`, which no repo config sets. Unverified. | |
-| OTP message wording, 10 → 5 minutes (`0ac4b3f0`) | Yes (translated) | `DispatchPipelineService.java:308-309` reads "…It expires in 5 minutes…" in English. Kenya `82ba44d57` translated the Moz Portuguese text. | Applicable | Real OTP lifetime is set by the platform OTP service. |
-
-#### C. Frontend (Moz preview §4, rows 1-21)
-
-| Mozambique feature | In Kenya code? | Evidence | Enabled / applicable in Kenya? | Notes |
-|---|---|---|---|---|
-| 1. Public landing + privacy + tutorial site (`ccd8b576`, `0737156a`, `0dce489b`, `cec2b6fe`) | Partial | `products/pgr/src/pages/citizen/Landing/` with renderer, config and `PrivacyPolicyPage.tsx`; route `/${contextPath}/landing` at `packages/modules/core/src/App.js:109`. **`TutorialPage.tsx` is absent** (M✓ N-); `cec2b6fe`, `4cfeaa7b7` and `7e9561c24` are not in Kenya. | **Live-relevant as the Bonga Nai landing.** `Landing/AppEntry.tsx:15-50` imports Nairobi/Bonga assets (Kenya commits `32617c679`, `64fd0e0e9`, `3c85ba791`, `2e7c68e9d`). No Mozambique, IGSAE, Maputo or Linha Verde strings remain under `Landing/`. Live 13 Oct: both counties serve `/digit-ui/landing`; bgrm's build comes from `nairobi-prod-bgrm-changes` (Bomet page). | `ccd8b576` dropped from 90% at KLS to 49% at NP (Kenya rebrand). See §1 lineage: landing code arrived via `b590fd6a0` and the `35504b797` merge. `Landing/` exists on origin/master, develop, syncwithmoz, kenya-prod and NP (36+ files). |
-| 2. Analytics loader, default-off, PII-scrubbed (`e9a0f0e4`, `4a2e8117`) | Yes (unioned with the product version) | `digit-ui-esbuild/public/analytics.js`, `tests/analytics.shim.test.js` (98%). `626864567` unioned the product shim with Moz behaviour analytics. | **Enabled by data for Kenya:**<ul><li>DDH seed `common-masters.AnalyticsProvider.json` has row `matomo-bomet`, `enabled: true` (`f19dbd4a0`).</li><li>The kill switch defaults to false (`globalConfigs.js.j2:97`).</li><li>On-box Matomo needs `enable_matomo`, which defaults to false (`group_vars/digit.yml:77`). `local-setup/scripts/enable-uat-extras.sh` (`3ae0b4e07`) turns it on, defaulting to `DOMAIN=bgrm.bomet.go.ke`.</li></ul>Live 13 Oct: Matomo provider row and `/matomo/matomo.js` on bgrm; neither on Bonga. | Upstream `7ee88f839` also ships `public/analytics.js`. |
-| 3. Admin cross-department search screen + Excel (`a0e18a4b`, `8da74a9e`, `ec222582`) | Yes | `pages/employee/AdminSearch.js`; `Module.js:37`; link at `components/PGRCard.js:57`; Kenya employee home `pages/employee/EmployeeHomeV2/tiers.js:114` (`ADMIN_SEARCH_ROLES = ["SUPERUSER","CMS_ADMIN"]`) | **Not usable in either county:** neither `nb` nor `bo` has an access-control action for `/v2/request/_admin/_search` (live, 13 Oct). CMS_ADMIN is not a Kenya role. | The "N+" count quirk is inherited (`AdminSearch.js:509`). |
-| 4. Workflow-driven employee action modals (`772a5986`, `aa500b8d`) | Yes (extended) | `pages/employee/PGRDetails.js`, `components/PGRWorkflowModal.js` (72% / 93%) | **Live-relevant.** Kenya's GRO/LME/escalation workflows render through it. Kenya added REASSIGNTOGRO (`utils/reassignToGro.js`, `b6e1da18a`), action windows (`c6fee0995`) and withdraw (`962aca541`). | |
-| 5. History-derived routing: reopen → Supervisor, rate → Case Manager (`adbf2da4`, `4d268d8f`) | Yes (modified) | `utils/workflowAssignee.js`; Kenya `utils/workflowHistory.js`. `ReopenComplaint/AddtionalDetails.js:114-130`: rule 1 keeps CMS_SUPERVISOR, then Kenya rules (last LME at PENDINGATLME, …). | **Live-relevant for Kenya's reopen rules.** The Moz "rate → CMS_CASE_MANAGER" lookup (`Rating/SelectRating.js:148`) finds nobody in Kenya, so rating goes without an assignee. | `adbf2da4` dropped from 83% at KLS to 35% at NP (Kenya `801bff999`, `2163f7ecf`, `d4a4a5453`). |
-| 6. Reception-officer inbox + "only my complaints" (`74eac21c`, `46d9081d`) | Yes | `components/OnlyMyComplaintsFilter.js`; `configs/UICustomizations.js:133,1633-1650`; `configs/PGRSearchInboxConfig.js:215-239` | **Inert.** It keys on `CMS_RECEPTION_OFFICER`; Kenya files complaints as `CSR` (`PGRCard.js:54`). | |
-| 7. Confidential-complaint masking on details/timeline (`992735af`, `c0c6f30b`) | Yes (gated) | Gate `utils/piiMasking.js:10-19` (Kenya `05d714058`); `TimeLineWrapper.js`, `PGRDetails.js` | **Off for Kenya:** `PGR_PII_MASKING=false` at `globalConfigs.js.j2:61` (default false), `host_vars/_example.yml:160`, `local-setup/nginx/globalConfigs.js:73` (`6bef31ae4`). | Kenya instead masks complainant identity **at the API** for opted-in confidential complaints (`df9aa019d`, `1a848286c`; UI `ee3f83a44`, `4a31fbae1`). Moz V2.12 lists that API masking as its open gap (Known Limitation 2). |
-| 8. Attachments everywhere: uploader, video/audio, per-step evidence (`6bf0084a`, `e81431c2`, `721e44c8`) | Yes | `components/PgrFileUpload.js`, `utils/attachmentKind.js` (92-100%) | **Live-relevant** | Kenya added a ClamAV scan proxy (`0c7b3f640`) and filestore security (PR #157, NP head). |
-| 9. Citizen create wizard: 3 steps, hierarchy, dynamic fields, drafts, consent (`81054330`, `be6c9eaa`, `22b8e38a`, `a3365a70`) | Yes (extended) | `pages/citizen/Create/CreatePGRFlowV2.tsx` (80-95%) | **Live-relevant** for the steps, hierarchy pickers, drafts and consents. The authority step renders only when `ComplaintRelatedToMap` is seeded (`:128`, `:745`), and dynamic fields need `ComplaintTemplateType`. The repo seeds for both are IGE/IGSAE only, so these are **inert for Kenya** unless seeded live (unverified). | Kenya added the T&C consent (`:229-239`), the address on step 1 (`0c7baffdf`) and auto-assignment at submit (`79bf0a3b8`; stamp `additionalDetail.autoAssignment`, `:2090-2095`). |
-| 10. Reopen/rating overhaul: routing data preserved, 72 h window, mandatory reason (`92eaec23`, `2debbcfc`, `8597982d`) | Partial | **Present:**<ul><li>Merge-not-replace: `utils/additionalDetail.js:51`, `AddtionalDetails.js:155-162`, `SelectRating.js:125`.</li><li>Mandatory reason: `AddtionalDetails.js:93`.</li><li>Escalation reset on reopen: `resetEscalation: true`, `:161`.</li></ul>**Absent:** FE fresh-fetch `2debbcfc` (0%) and FE 72 h fallback `8597982d` (0%). | **Live-relevant.** Kenya's window comes from MDMS `UIConstants.REOPENSLA`/`actionWindows` (`a22a4fe90`, `74bbabef3`, `c6fee0995`). The backend fallback is 72 h (`pgr.complain.idle.time=259200000` in `application.properties`). | Kenya stamps the department at create (`autoAssignment`), not at ASSIGN, so the stale-cache scenario `2debbcfc` fixed may differ. Not re-assessed; unverified. Moz's product decision `aafa912b` (rate stale cache) is not in Kenya. |
-| 11. Localization mechanics: city overlay, default language honoured, raw-key guards (`3289ac3f`, `e33e801d`, `812b36b8`, `dd746026`, `0466b6d9`) | Yes | 79-100% | Applicable (generic). Kenya's default locale is `en` (`group_vars/digit.yml:150-151`). | |
-| 12. Branding: Fala Cidadão name/emblem/favicon; theme colours from config (`954e134d`, `11c372d8`, `9597f0ab`) | **Mechanism yes; Moz branding no** | <ul><li>`954e134d` (MDMS `ThemeConfig` drives colours) 100%. Kenya uses it (`ansible/nairobi-mdms/mdms/common-masters/ThemeConfig.json`, `32617c679`).</li><li>Tab title and favicon follow the tenant (`a95b7e9de`).</li><li>`public/index.html` is generic DIGIT.</li></ul> | **The theme mechanism is live.** However, Moz "Fala Cidadão" strings remain in the DDH **en_IN** seeds: 8 keys in `localisations/en_IN/rainmaker-common.json` (e.g. `MODULE_PGR`, `CS_COMMON_HOME_COMPLAINTS`, `ACTION_TEST_PGR`) and 3 in `rainmaker-pgr.json` (incl. `PGR_LANDING_PRIVACY_PAGE_P1`). They are not in the DB dump (0 matches). | Risk: `docs/migration/ccrs-migrate.cjs` seeds missing `PGR_LANDING_*` keys from this en_IN file (`:224`). Live Kenya messages unverified. |
-| 13. Maps: authority tenant, geocode loop guard, safe tooltip (`62335750`, `60c5198c`, `8c1120f9`) | Yes | `components/GeoLocations.js`, `hooks/pgr/useMapConfig.js` (100%) | Applicable | Moz post-fork vector basemap `bb4e2b600` was ported by Kenya (`79bf0a3b8`, `16c6e311f`), 100% of lines present; OpenFreeMap style at `useMapConfig.js:28`. |
-| 14. Boundary picker reliability; readable address; postal-code input retired (`da545a8a`, `4aa5aa3b`, `4e2dbb5a`) | Yes | `components/BoundaryComponent.js`. No postal input in `CreateComplaintConfig.js` or `CreatePGRFlowV2.tsx` (comments only). | Applicable | |
-| 15. Channel-of-receipt chips on employee create (`6de45287`, `b2272873`) | Yes | `components/ChannelChipsComponent.js:15-18`; always rendered via `configs/CreateComplaintConfig.js:24` | **Rendered for Kenya CSRs.** The hardcoded options include Moz's "Linha Verde" (`PGR_CHANNEL_LINHA_VERDE`). Any Kenya relabel or hide is unverified. | |
-| 16. Dashboard breadcrumb + gutter when embedded (`aeea2cd4`) | Yes | 100% | Applicable | Kenya added dashboard export (`706082ffc`). |
-| 17. Testing-tenant scoping, `/digit-ui-test` (`d83aa600`, `7423ae44`) | Yes | `utils/testingTenant.js` (94%); configurator `resources/tenants/TestingTenantToggle.tsx`; `playbook-deploy.yml:1437-1535`; `globalConfigs.js.j2:115-123` | **Off by default:** `testing_ui_enabled` defaults to false and is not set in `bomet.yml.example` or `nairobi.yml.example`. | |
-| 18. Citizen navigation: single-module sidebar, avatar, logout (`7a1afeeb`, `295b0756`) | Yes | 94-100% | Applicable | |
-| 19. Error screens: button wording, image fallback, layout (`20ef8760`, `01446716`) | Ported | Cherry-picks `84d4e5b4e`, `64614e16c`, `6d6b72621`, patch-equivalent per `git cherry` (100%) | Applicable | |
-| 20. Login/OTP: m:ss resend countdown, country code, tenant scoping (`8fda161f`, `04ba4806`, `78ccee51`) | Yes (modified) | `packages/modules/core/src/pages/citizen/Login/SelectOtp.js:134` sets `RESEND_COOLDOWN_SECS = 180` (Kenya `dfbb2ba26`; Moz 120). m:ss format kept. Country code passed (`3a33af489`, `20cc8c0b7`). | Applicable (+254) | |
-| 21. Performance: request cache, IndexedDB master data, staff-list caching (`ba8a7c27`, `5a096d23`) | Yes; **IndexedDB itself is product** | `ba8a7c27`/`5a096d23` 100%. `packages/libraries/src/services/atoms/Utils/idbCache.js` is P✓ (product `8fd9f8088`). | Applicable | |
-
-#### D. N-level complaint classification hierarchy (Moz preview §5)
-
-| Mozambique feature | In Kenya code? | Evidence | Enabled / applicable in Kenya? | Notes |
-|---|---|---|---|---|
-| Foundation: N-level `ComplaintHierarchyDefinition`/`ComplaintHierarchy`, one-to-many departments, admin management, guided 2→N migration (`be6c9eaa`) | **Product** | Product twin `019b15946`. `ComplaintTypeDepartments`/`ComplaintHierarchyDefinition` seeds are in product-base. Configurator `api/services/hierarchyMigration.ts`, `components/ComplaintHierarchySetup.tsx` and `resources/complaint-hierarchies/*` are P✓. `docs/migration/complaint-type-2level-to-Nlevel.md` and `operator-runbook.md` are P✓. | **Live:** Kenya routes on the hierarchy department. Live data unverified. | The Moz doc itself says this is product. |
-| Routed-department stamping on ASSIGN (`0c1123c8`) | Yes | `pages/employee/PGRDetails.js:473-500` (100%) | **Live where the workflow has ASSIGN** (Bonga's GRO step: `utils/reassignToGro.js:1-2`). Where APPLY goes straight to PENDINGATLME with no ASSIGN step (`CreatePGRFlowV2.tsx:1914-1918`; fixture `utils/autoAssign.test.js:50`), citizen create now stamps `additionalDetail.autoAssignment` (`CreatePGRFlowV2.tsx:2090-2095`). | |
-| No-department operation (`394e6136`, `af818c2d`; later `aa500b8d` made ASSIGN assignee mandatory with a message) | Yes | 100% / 36% (superseded by `aa500b8d`, 93%) | **Live on Bonga:** every Bonga sub-type maps to department `NA` (13 Oct). Bomet maps real departments (Health, Water & Sewage, Administration). | |
-| Department survives reopen/rate (`92eaec23`, `2debbcfc`) | Partial | See C10 | Live | |
-| Department names in notifications (`4fa8964c`) | Yes | See A | Live | |
-| Localized hierarchy labels `COMPLAINT_HIERARCHY.*` + city overlay (`23326ca2`, `3289ac3f`) | Yes | 87% / 79% | Applicable; live keys unverified | |
-| Leaf-type complaint titles (`d109187b`) | Yes | 100% | Applicable | |
-| Hierarchy fetched at the complaint's tenant (`5a096d23`, `9a29c3de`) | Yes | 100% | Applicable | |
-| Wizard hierarchy pickers with draft persistence (`a3365a70`) | Yes | 95% | Applicable | |
-| Seeding/migration phase in `ccrs-migrate.cjs` (`16b91133`) | Yes | `docs/migration/ccrs-migrate.cjs` (92%) | Tooling; use on `bo`/`nb` unverified | |
-| Design record `docs/complaint-hierarchy-withnew-parameters.md` | Yes | K✓ N✓ | Doc | |
-
-#### E. Workflow (Moz preview §6)
-
-| Mozambique feature | In Kenya code? | Evidence | Enabled / applicable in Kenya? | Notes |
-|---|---|---|---|---|
-| CMS four-tier workflow variant (`bffdce15`, `d37299b4`), selected by `pgr.workflow.variant` | Yes (data + tooling) | `utilities/default-data-handler/src/main/resources/CmsPgrWorkflowConfig.json`; `DataHandlerService.java:64,501` | **Not used.** Kenya workflows (live 13 Oct): Bonga is GRO triage → LME → 2 escalation levels, with REASSIGN, REASSIGNTOGRO and WITHDRAW before assignment; Bomet is APPLY → LME (auto-assigned) → 3 departmental escalation levels, with WITHDRAW at the LME stage. See `reassignToGro.js:1-2`, `workflowStates.test.js:9-12,35-37`, `AddtionalDetails.js:107-122`, `pages/citizen/ComplaintDetails.js:189-215`. | DDH is not a compose service in any ref (product removed it in `03f32d5bc`), so the variant only matters to seeding tools. |
-| Production `mz` BusinessService (2026-08-21 REOPEN → REFERRED) | n/a | Moz live data | n/a | |
-| Escalation enablement script + runbook (`718d65b1`) | Yes | `local-setup/scripts/enable-escalation.sh`, `docs/pgr-escalation/RUNBOOK.md` | **Not adapted for Kenya.** Moz defaults are untouched (no Kenya commits): `TENANT=mz` (`:68`), `ESCALATE_STATE=INVESTIGATION` (`:74`), and a default admin credential (`:70`, value not reproduced). They must be overridden. | |
-| Reopen restarts the escalation clock (`92eaec23`) | Yes | `AddtionalDetails.js:155-162` (`resetEscalation: true`) | Live | |
-| Terminal transitions accept an assignee; FE retries rating without one (`f05c52d5`, `43d4c8ac`) | Yes | `SelectRating.js:165-176` | Live | |
-| Attachments on every action; mandatory only where the state demands (`6bf0084a`, `7dfa7eb8`) | Yes | 92% / 100% | Live | |
-
-#### F. Configuration and master data (Moz preview §7)
-
-| Mozambique feature | In Kenya code? | Evidence | Enabled / applicable in Kenya? | Notes |
-|---|---|---|---|---|
-| Masters `ComplaintRelatedToMap`, `ComplaintTemplateType`, `ComplaintExtendedAttributeSchema` | Seeds present; **files and backend handling are product** | `mdmsData-dev/RAINMAKER-PGR.{ComplaintRelatedToMap,ComplaintTemplateType,ComplaintExtendedAttributeSchema}.json` exist in product-base. Moz changed them only slightly (P→K +7/−5, +1/−1, +2: `8cbbbb6be`, `8746bcab`, `21ff33d5`). No Kenya change (K→N empty). | **Inert:** the content is IGE/IGSAE (codes `IGE`, `IGSAE`). | `21ff33d5` (IGSAE off, root-tenant routing) changes data only. |
-| Landing masters `LandingSection`, `LandingPageConfig` (`421db133`) | Yes | `mdmsData/RAINMAKER-PGR/RAINMAKER-PGR.Landing{Section,PageConfig}.json`; `schema/rainmaker-pgr-landing.json` | **Live:** Kenya added a helplines row (`64e5dee4e`). | |
-| `AnalyticsProvider` (`9fd66cdfc`, `f4d37bbd`) | Yes + Kenya seed | `common-masters.AnalyticsProvider.json` (Kenya `f19dbd4a0`) | Live (enabled row) | Kenya `cfe9947f9` added the missing write actions. |
-| Privacy policy module corrected to `commonMDMSConfig.PrivacyPolicy` (`c3e42214`) | Yes | `mdmsData/commonMDMSConfig/commonMDMSConfig.PrivacyPolicy.json` (100%) | Applicable | |
-| Tenant banner image (`00ffd59f`, `ba39a55d`) | Yes | `docs/migration/fix-citymodule.sh`; citymodule schema | Applicable (Kenya banner work `23290a2ca`) | |
-| New backend settings: scope roles, escalation states, `allowed.source`, boundary-relationship URL, `novu.bridge.*`, `egov.ui.app.host.map` | Yes | pgr-services `application.properties:165,180,185,194,227,241`; novu-bridge `application.properties:57,69,81-106` | **Repo defaults only;** Kenya's live overrides are unverified. | |
-| Configurator: JSON/object-table widgets, 7 new schema descriptors | Yes | `configurator/src/admin/schemaDescriptors/` grew from 13 (P) to 20 (K). The added descriptors (`analytics-provider`, `city-module`, `data-security`, `encryption-policy`, `landing-page-config`, `landing-section`, `ui-homepage`) are the same set in N. | Applicable | |
-
-#### G. Roles and permissions (Moz preview §9)
-
-| Mozambique feature | In Kenya code? | Evidence | Enabled / applicable in Kenya? | Notes |
-|---|---|---|---|---|
-| 13 new roles: CENTRAL_USER, CMS_ADMIN, CMS_CASE_MANAGER, CMS_DASHBOARD_VIEWER, CMS_RECEPTION_OFFICER, CMS_SUPERVISOR, CMS_VIEWER, COMPLAINTS_CREATOR, COMPLAINTS_EDITOR, COMPLAINTS_VIEWER, CONFIDENTIAL_COMPLAINT_VIEWER, DEPARTMENT_USER, DGRO | **Role definitions yes; grants no** | `mdmsData/ACCESSCONTROL-ROLE/ACCESSCONTROL-ROLES.roles.json` has all 13 (35 roles; identical to KLS). `ACCESSCONTROL-ROLEACTIONS.roleactions.json`: KLS has 731 rows incl. grants for 12 of them (e.g. CMS_SUPERVISOR 37, COMPLAINTS_EDITOR 35). **NP has 462 rows with only CMS_SCREENING_OFFICER 38 + CONFIDENTIAL_COMPLAINT_VIEWER 1.** Dropped by the product sync `2176984d7`, which replaced the file with upstream's (upstream `7ee88f839` has only CMS_SCREENING_OFFICER 37). | **Kenya uses its own roles:**<ul><li>GRO, PGR_LME, CSR, DGRO, PGR_VIEWER</li><li>Nairobi's bare CECM/CHIEF_OFFICER/DIRECTOR (`0a9260b17`)</li><li>Bomet's `<DEPT>_{DIRECTOR,CHIEF_OFFICER,CECM}` (`62b0c121f`)</li><li>OMBUDSMAN_OFFICER (`b953b2145`)</li><li>`pgr.employee.context.resolver-role-codes` default `PGR_LME,GRO,DGRO` (`application.properties`)</li></ul>**CONFIDENTIAL_COMPLAINT_VIEWER is live-relevant** as the default viewer role in Kenya's masking (`PGRConstants.java:261`, `ChronologyService.java:73`). | `ccrs-migrate.cjs --cms` reads grants from that DDH file (`:229-230`, `:822`, `:870`). Run from NP, it would register the CMS roles **without** grants. The DB dump has no CMS grants on either line; the Moz runner relies on the DDH file. |
-| Layered role model; manual registration of 3 roles; CMS_VIEWER privilege note | n/a | Moz doc §9 | n/a | |
-
-#### H. Localization (Moz preview §8)
-
-| Mozambique feature | In Kenya code? | Evidence | Enabled / applicable in Kenya? | Notes |
-|---|---|---|---|---|
-| pt_PT first-class: packs, default for `mz`, honoured on first load (`f42ad659`, `21a6f1f2`, `812b36b8`) | Seeds yes | `localisations/pt_PT/` (2 files) | **Not applicable:**<ul><li>Ansible default locale is `en` (`group_vars/digit.yml:151`).</li><li>The Nairobi `StateInfo` seed lists `[en_IN]` only (`ansible/nairobi-mdms/mdms/common-masters/StateInfo.json`).</li><li>The **local-only** `local-setup/nginx/globalConfigs.js:12-13` still says `localeRegion "PT"` / `localeDefault "pt"` (Moz leftover; this file is not deployed, per `43359302a`).</li></ul> | No `sw_KE`/Kiswahili seeds exist in NP. |
-| City-level wording overlay (`3289ac3f`, `e33e801d`) | Yes | 79% / 100% | Applicable mechanism | |
-| "Fala Cidadão" rebrand of packs (`9597f0ab`) | Present in seeds | 94%; 11 en_IN keys still say "Fala Cidadão" (see C12) | **Unwanted for Kenya.** Seed risk only. | |
-| Raw-key / double-translation fixes (`0466b6d9`, `dd746026`, `dac66d9e`) | Yes | 100% / 100% / 70% | Applicable | |
-| Translation workbook (Google Sheet) | n/a | External link in the Moz doc | n/a | |
-
-#### I. Integrations and analytics (Moz preview §10)
-
-| Mozambique feature | In Kenya code? | Evidence | Enabled / applicable in Kenya? | Notes |
-|---|---|---|---|---|
-| Ozeki SMS gateway (`a95f8df2`, `91aded4c`) | Yes (generalised) | See B | **Not configured.** Kenya uses Bongatech (`service/provider/BongatechOverridesBuilder.java`, `82ba44d57`) and Source Code (`84c45ada2`). | |
-| SMTP direct email (`91aded4c`) | Yes | novu-bridge `application.properties:98-106` | Off by default | |
-| Novu/Twilio WhatsApp | Upstream | Unchanged | Unverified for Kenya | |
-| Matomo self-hosted (`1abef50f`) | Yes; also product | `local-setup/docker-compose.matomo.yml` (also in upstream `7ee88f839`); `local-setup/scripts/enable-matomo.sh` arrived via product sync `2176984d7`; `ccrs-migrate --matomo`. Kenya fixes: `8b62a3119`, `ec5a09b0c`, `0a247d679`, `33a15c186`, `b1e2252d1`. | **Default off.** Kenya enables it via `enable-uat-extras.sh` (bgrm defaults); live on bgrm (13 Oct). | |
-| PostHog / GA4 / custom destinations (`e9a0f0e4`) | Yes | Shim + editor | Off (no rows except Kenya's Matomo) | |
-| Nominatim / CARTO / OpenFreeMap | Product + Moz basemap | Nominatim and CARTO references are in product-base. OpenFreeMap comes from Moz `bb4e2b600`, ported by Kenya `79bf0a3b8` (`useMapConfig.js:28`). | Live | |
-| youtube-nocookie tutorial streaming (`cec2b6fe`) | **No** | 0 references in NP; present in moz/master | n/a | |
-
-#### J. Configurator / admin console and Landing Page Builder (Moz preview §7)
-
-| Mozambique feature | In Kenya code? | Evidence | Enabled / applicable in Kenya? | Notes |
-|---|---|---|---|---|
-| Visual Landing Page Builder (`c2803e7f`) | Yes | `configurator/src/admin/landingBuilder/` (14 files); route `App.tsx:196`; nav `DigitLayout.tsx:92` (90%) | Applicable to the Bonga Nai landing. Kenya-only sections (HelplinesSection, TaglineBand) were added in Kenya. | |
-| Analytics destinations editor + own kill switch (`1fd0711e`) | Yes | `admin/analytics/AnalyticsProvidersEditor.tsx` (route `App.tsx:187`), `lib/telemetryGate.ts` (97%) | **Live** (Kenya's Matomo row) | |
-| Write-role gating on sensitive masters (`a82a9508`) | Yes | `hooks/useCanWriteResource.ts` (98%) | Applicable | |
-| **Role-actions editable from the UI** (`31048d69`, `6135b38f`) | **Regressed** | `configurator/src/App.tsx:159` registers `role-actions` with `list`/`show` only. That is the product version from `2176984d7`; upstream `7ee88f839:App.tsx:158` is the same, while moz/master `App.tsx:145` also has `edit`/`create`. `RoleActionList.tsx`/`RoleActionShow.tsx` still pass `hasCreate`/`hasEdit` (from `6135b38f`). `31048d69` dropped from 100% at KLS to 64% at NP. | **Not available in Kenya.** The Create/Edit buttons probably lead nowhere (browser check not done; unverified). | |
-| Testing-tenant checkbox with guard rails (`0cfebb60`) | Yes | `resources/tenants/TenantEdit.tsx:31` (100%) | Present; the entrance itself is off (C17) | |
-| Boots in default language; translations propagate on save (`833f759d`, `3d6fc082`) | Yes | 100% / 100% | Applicable | |
-| Configurator telemetry kill switch (Moz Known Limitation 6) | Yes (inherited as-is) | `configurator/public/telemetry-config.js` has `kill: false`. The product Sentry DSN and PostHog key are embedded at `configurator/src/main.tsx:17,33` (values not reproduced; P✓). No Kenya build or deploy sets `VITE_CFG_TELEMETRY_KILL` (`git grep` across local-setup, .github, devops: none). | **Telemetry on by default:** an inherited limitation. | |
-
-#### K. Deployment and ops tooling (Moz preview §7, matrix rows 41-45, release notes)
-
-| Mozambique feature | In Kenya code? | Evidence | Enabled / applicable in Kenya? | Notes |
-|---|---|---|---|---|
-| `ccrs-migrate.cjs` unified idempotent runner (`16b91133`, `852ab0a9`, `1abef50f`) | Yes | `docs/migration/ccrs-migrate.cjs` and siblings (80-92%) | **Tooling.** Kenya fixed its Matomo/install paths (above); whether it was run on `bo`/`nb` is unverified. | The `--cms` phase lacks grants on NP (G). |
-| gzip + Cache-Control on `/digit-ui` (`874ec205`) | Yes | `local-setup/ansible/templates/nginx-site.conf.j2`, `local-setup/nginx/digit-ui.conf`, `docs/ops/digit-ui-compression.md`, `docs/migration/enable-gzip.sh` (95%) | Applicable | Kenya added post-deploy cache busting (`eb71852f7`). |
-| Password-gated testing entrance, default off (`06ee871e`) | Yes | `playbook-deploy.yml:1437-1535` | Off | `seed-testing-tenant.py` is absent on every ref (dropped by Moz `ad34756f7`). |
-| default-data-handler retired; seeds in DB dump (`6e72eed5`, `f4d37bbd`) | Yes; **also product** | No DDH service in the compose files of P, K or N; product did the same in `03f32d5bc` (2026-07-20) | Applicable | |
-| Pilot frontend deploy script (`b0d99e14`) | Yes | `local-setup/scripts/deploy-pilot-fe.sh` (84%); default `BRANCH="release-v2.12-moz"` (`:33`) | **Used by Kenya:** `enable-uat-extras.sh:184` calls it with `ui --no-pull`. | |
-| HTTPS / Let's Encrypt guide (`938623bd`) | Yes | `docs/enabling-https-with-letsencrypt.md` (100%) | Applicable | |
-| Ansible tenant template `stateige.yml.example` (`124678e5`) | Yes | `local-setup/ansible/inventory/host_vars/stateige.yml.example` | **Moz-specific.** It still holds literal sample `bootstrap_secrets` values; Moz replaced them with `<change-me>` in `f7a2eb226`/`fc6c9de99`, which Kenya lacks. Values not reproduced. | |
-| Known issue: deploy breaks when default passwords change (Moz §14) | **Inherited** | `local-setup/ansible/playbook-deploy.yml`: 17 lines contain the default bootstrap password literal (KLS 15, moz/master 15) | Applies to Kenya deployments | |
-
-#### L. Security and operations (Moz preview §11 "added on master after the initial documentation")
-
-| Mozambique feature | In Kenya code? | Evidence | Enabled / applicable in Kenya? | Notes |
-|---|---|---|---|---|
-| Self-contained deep security scanner `security-scan/`, later `security_scan/` (`866a0b69`; follow-ups `9494e8cd`, `960c6574`, `7333bc9d`, `858cdaca`, `9542a1c7`; moz/master later `67dca27b9`, `981c945da`, `0a58572e6`, `3e347b6b7`) | **No** | `security-scan/` and `security_scan/` are absent in NP (`security_scan/` exists in moz/master) | n/a | Kenya keeps the **legacy** CI pipeline that Moz replaced: `.github/workflows/security-scan.yml` (Checkov + KICS + optional Strix; manual trigger; gh-pages dashboard) and `.github/scripts/*` (`bc0ecdac` #13, `844edab5`, Gemini enrichment `e87007b1f` #15 … `8f9a4bc40` #34). No `origin/gh-pages` branch was found among the fetched refs. Whether it has ever been run for Kenya is unverified. |
-| Grafana hardening: login required, no anonymous (`d6e5e1e1`) | Equivalent present, **via product** | NP `local-setup/docker-compose.egov-digit.yaml:121-123` and `docker-compose.registry.yml:56-57` have `GF_AUTH_ANONYMOUS_ENABLED: ${GF_ANONYMOUS_ENABLED:-false}`; `templates/digit.env.j2:11`. It came from `2176984d7` (upstream `1bda54261`, `381b365e5`). Product-base and KLS still had anonymous **Admin**. | Applicable (default safe) | The Moz commit itself is not an ancestor. |
-| OpenSSF Scorecard, SECURITY.md, Dependabot (`1a175c0cd`, `7cfecaf26`) | **No** | `.github/workflows/scorecard.yml` and `SECURITY.md` are absent in NP | n/a | |
-
-#### M. Fixes and improvements (Moz preview §11)
-
-| Moz fix | In Kenya? | Evidence |
+| CMS V2.12 feature | In the counties | Evidence on `nairobi-prod` |
 |---|---|---|
-| Reopen/rate no longer wipe routed department (+ stale-cache follow-up) | Partial | `92eaec23` yes (100%); `2debbcfc` no (0%) |
-| Complaint-details crash; employee-create crash | Yes | `12d0a960` (fix holds: `useMyContext` appears only in a comment at `TimeLineWrapper.js:8`); `57d6b242` 100% |
-| Map: geocode loop, ward tooltip escaped, authority-tenant boundaries | Yes | `60c5198c`, `8c1120f9`, `62335750`, each 100% |
-| Boundary picker first visit; readable addresses; postal code retired | Yes | `4e2dbb5a` 100%, `4aa5aa3b` 92% |
-| Video/audio playback incl. upstream CSS fix | Yes | `e81431c2` 96%, `230cf374` 100% |
-| Login double-translate; logout destination | Yes | `0466b6d9`, `295b0756`, both 100% |
-| Notification recipient + department resolution | Yes | `f05c52d5`, `4fa8964c`, both 100% |
-| MDMS cache in IndexedDB (product) + staff-list caching | Yes | `idbCache.js` P✓; `ba8a7c27` 100% |
-| UI bundle gzip + cache headers | Yes | `874ec205` 95% |
-| Grafana login required | Equivalent via product | See L |
+| 3-step resident form: category pickers, drafts that survive a refresh, consent capture | live | `pages/citizen/Create/CreatePGRFlowV2.tsx` |
+| Attachments when filing and on every action; video and audio play in the browser; accept list matches the filestore | live | `components/PgrFileUpload.js`, `utils/attachmentKind.js` |
+| Action screens built from the county's workflow; reopen and rate keep routing data; reopen needs a reason and restarts escalation | live | `pages/employee/PGRDetails.js`, `components/PGRWorkflowModal.js`, `ReopenComplaint/AddtionalDetails.js` |
+| Complaint categories as data (`ComplaintHierarchy`, N levels) | live; both counties use 2 levels | `RAINMAKER-PGR.ComplaintHierarchyDefinition` |
+| Notifications to the newest workflow step, department names, acting-officer and deep-link placeholders | live | `pgr-services` `NotificationService.java` |
+| Configurable escalation states (`pgr.escalation.states`) | default `PENDINGATLME,PENDINGFORASSIGNMENT` | `application.properties` |
+| Direct SMS / e-mail delivery and the OTP pipeline (novu-bridge) | in use; Kenya added the Bongatech and Source Code gateways; each county's gateway not verified | `DirectDeliveryService.java`, `UserOtpSmsConsumer.java` |
+| Analytics framework (host allow-list, personal data scrubbed, kill switch), destinations editor, Matomo provisioning | Matomo live on bgrm; not configured on Bonga | `public/analytics.js`, `configurator/src/admin/analytics/` |
+| Landing-page renderer and the configurator's Landing Page Builder | live (county landing pages) | `pages/citizen/Landing/`, `configurator/src/admin/landingBuilder/` |
+| Theme colours from MDMS (`ThemeConfig`) | live | `src/theme/applyTheme.js` |
+| Master data cached in IndexedDB; compressed, always-revalidated UI delivery | live | `idbCache.js`, `nginx-site.conf.j2` |
+| Policy-driven complaint search (action 2008 scope and redaction) | live, county policies differ (§3.4.1) | `pgr-services` `policy/` |
+| Role-list search scoping (`pgr.department.scope.roles`, `pgr.jurisdiction.scope.roles`) | off (empty); the policy above is used instead | `EmployeeDepartmentScopeService.java`, `EmployeeJurisdictionScopeService.java` |
+| Admin cross-department search | not usable: neither county has an access-control action for `/v2/request/_admin/_search` | `AdminComplaintSearchController.java` |
+| On-screen PII masking | off (`PGR_PII_MASKING=false`); Kenya masks confidential complainants on the server instead | `utils/piiMasking.js` |
+| Intake channel chips on the staff form | shown; the "Green Line" option is not used in Kenya | `components/ChannelChipsComponent.js` |
+| Password-gated testing entrance | off | `local-setup/ansible/playbook-deploy.yml` |
+| Reception-officer inbox; four-tier CMS workflow and its roles | unused | `OnlyMyComplaintsFilter.js`, `CmsPgrWorkflowConfig.json` |
+| Authority picker and per-authority questions | unused (no Kenya data) | `CreatePGRFlowV2.tsx` |
+| Portuguese language packs; Ozeki SMS gateway | unused | `localisations/pt_PT/`, `OzekiOverridesBuilder.java` |
+| Migration runner `ccrs-migrate.cjs` | operator tooling | `docs/migration/ccrs-migrate.cjs` |
+| Configurator role-action create / edit | removed by the 16 Sep update (the buttons remain) | `configurator/src/App.tsx` |
 
-#### N. Moz Known Limitations (Moz release notes / preview §16): status in Kenya
-
-1. **Default bootstrap password hardcoded in deploy:** inherited (17 lines; see K).
-2. **Complainant identity masked only on screen:** Kenya's code closes this at the API for confidential complaints (`df9aa019d`, `1a848286c`; tests `PGRServiceConfidentialComplainantTest.java` are N✓ M-).
-3. **Three roles need manual registration:** moot. Kenya does not use them, and NP's DDH grants for them are gone (G).
-4. **No templates for AWAITINGINFORMATION/COMMENT:** CMS-specific, n/a.
-5. **IGSAE switched off:** n/a (IGE/IGSAE data inert).
-6. **Admin search "N+" count:** inherited (`AdminSearch.js:509`).
-7. **Configurator telemetry kill switch must be engaged:** inherited, not engaged (J).
-
----
-
-### 7.2 Mozambique commits after the fork: status in Kenya
-
-There are 94 non-merge commits in `kenya-layer-start..moz/master`; 17 are patch-equivalent in NP (`git cherry`). Survival percentages come from `survival-moz-postfork.txt`.
-
-| Moz item (date) | Moz SHAs | In Kenya? | Evidence |
-|---|---|---|---|
-| Error-screen fixes (09-02) | `20ef8760a`/`11bf3b547`, `7968f7963`/`de708fea6`, `01446716d`/`94d2d5952` | **Ported** (patch-equal) | `84d4e5b4e`, `64614e16c`, `6d6b72621` (PR #5 `101262ebf`) |
-| Session-collision notice (09-07/08) | `fa7b7b456`, `ca983011e`, `7be64daa7`, `f927ada36`, `116a77990`, `e1eb42239` | **Ported** (patch-equal) | `30bb121e9`, `763726dcd`, `e4c056c02`, `4dc8c4bea`, `d27899dd8`, `5d732f538` |
-| Classify request failures instead of the error page (09-07) | `2963c39d3` | **Ported** | `adef886be` (same subject; 98% of lines) |
-| Behaviour analytics, `_paq` survival, tutorial tracking (09-07/11) | `5ed5480f8`/`655fd37d7`, `45991da6f`/`53fded7dd`, `521e4f872` | **Ported** | `88d00d91f`, `2ef69811d`, `12f0db480` (the tutorial page itself is absent) |
-| Employee forgot-password OTP fixes (09-10/11) | `0d578b13c`, `b2ab4777c` | **Ported** | `fa8b6588a`, `857f76e29` (+ Kenya `98c335803`) |
-| Stop tracking the node_modules symlink | `d0f66de82`/`ada1bceaf` | **Ported** | `eceaa91e5` |
-| Vector basemap + camera framing (08-31) | `bb4e2b600` | **Ported** (100% of lines) | `79bf0a3b8` ("port the vector basemap"), `16c6e311f` |
-| Filtered chronology endpoint + hardening + RBAC (09-08…15) | `1346bbb2d`/`29a43e05c`, `80d76849e`/`c6087808f`, `36a01e6f1`/`8a7c7a835`, `4a0e41dae`/`bc4d372bb`, `d9f58a844`+`f7f033094` | **Ported** (82-100%) | `ChronologyService.java` (N✓); `df9aa019d`; grants `64e5dee4e`; UI `/pgr-services/v2/request/_chronology` at `pages/citizen/ComplaintDetails.js:176`, `PGRDetails.js:340` |
-| Chronology visibility "CRQ v2" flag-driven citizen PII | `981ef3c64`/`8fd77df36` | **No** (0%) | Kenya has its own masking (`df9aa019d`, `1a848286c`) |
-| Citizen timeline: hide internal notes, info requests; CMS step labels | `75a4a9ce1`/`dad1ea85b` (12%), `9090ca596`/`ac3d4de43` (90%), `64d4f612a`/`4ddbf0696` (~42%) | Partial | Kenya filtered timelines `ee3f83a44` |
-| Offline citizen receipt + receipt fixes | `a9272ffbe` (73%), `b07b253d5` (69%), `487e91bbd` (33%), `b9b96624e` (10%) | **Ported / reworked** | `components/ReceiptActions.js`, `utils/complaintReceipt.js`, `hooks/pgr/useComplaintReceiptModel.js` (`ee3f83a44`, `945f668eb`, `dfbb2ba26`, `615cdc67f`) |
-| user-otp SMS consumer for pass-through (09-09) | `371ecab7b` (98%) | **Equivalent** | `UserOtpSmsConsumer.java` (Kenya `2631f102c`; default tenant `bo`, Moz `mz`) |
-| Double-click files the complaint twice (09-07) | `3a299b851` | **No** (0%) | Kenya's citizen button has `loading={submitting}` but `disabled={!stepIsValid}` and no early return (`CreatePGRFlowV2.tsx:2057,2225-2226`). Whether `loading` blocks clicks is unverified. |
-| Reopen FRESH fetch; FE 72 h fallback; reopen/rate docs (08-31) | `2debbcfc4`, `8597982d1`, `f7dd51cc1`, `0d5c6b803`, `aafa912b8` | **No** | Kenya uses its own windows (C10) |
-| Localize sidebar labels via `CORE_COMMON_*` (08-29) | `19360ef9f` | **No** (0%) | |
-| CMS-only: no operator picker when recording the citizen's answer (FC-0002) | `3a97e440c` | No (n/a for Kenya) | |
-| Fala Cidadão landing branding, Tutorial page, manual link (08-28…30) | `822b575fe`, `4cfeaa7b7`, `cec2b6fef`, `7e9561c24` | **No** (by design) | Kenya landing is Bonga Nai |
-| Mobile app: Flutter WebView under `mobile/` (09-04) | `f50c91a27` | **No** | `mobile/` has 0 files in NP (91 in moz/master) |
-| Security scanner + dashboards; legacy-CI fixes (09-02…11) | `5b9563f5d`, `8bc3d3ae3`, `19b5b03df`, `57e28906b`, `866a0b69f`, `9494e8cd4`, `960c65740`, `7333bc9de`, `858cdacad`, `9542a1c7d`, `67dca27b9`, `981c945da`, `0a58572e6`, `3e347b6b7`, `c5f9b897d`, `6e0a1f387` | **No** | §7.1-L |
-| OpenSSF Scorecard / hardening (09-10) | `1a175c0cd`, `7cfecaf26` | **No** | |
-| Grafana login required (09-07) | `d6e5e1e12` | **Equivalent via product sync** | §7.1-L |
-| Password placeholders in `stateige.yml.example` (09-09) | `f7a2eb226`, `fc6c9de99` | **No** | §7.1-K |
-| Align backend versions to 2.12.0 (09-09) | `7bf389b2d` | **No** | NP poms: pgr-services `3.0.0`, novu-bridge `1.1.0`; moz/master: `2.12.0` / `2.12.0` |
-| Moz release documents (09-04…09) | `b29daec4f` … `e90af9f8a`, `cf5c3867b`, `7e1146ba0`, `f6df25bae` | **No** | `docs/mozambique/` absent in NP; `docs/mozambique-customizations.md` (older) is present |
-| Retarget issue tracking to CMS-MOZAMBIQUE | `f12635268` | Kenya equivalent | `1653da46b` (retarget to CMS-KENYA) |
-| moz/develop only (09-16 → 10-07): 11 dashboard/analytics fixes | `447cc0251`, `0b267be9b`, `19a0441cc`, `d67c2cd43`, `e226b27a8`, `9617456e4`, `0c0fd6529`, `14b8df682`, `754628020`, `f7daa385a`, `0705295d4` | **No** | `git cherry origin/nairobi-prod moz/develop moz/master`: all `+` |
+**Not included in this release:** the mobile app wrapper, the tutorial page, the self-contained security scanner and OpenSSF Scorecard
+(Kenya keeps the CI security pipeline, `.github/workflows/security-scan.yml`), the reopen fresh-fetch fix, and the double-submit guard
+on filing (`3a299b851`).
 
 ---
+## 8. Configuration changes against CMS V2.12
 
-### 7.3 Product → Kenya changes in `product-base..kenya-layer-start` that the Moz docs don't describe
-
-#### 7.3.1 Size and shape
-
-- **Commits:** 636 (385 non-merge), dated 2026-06-20 → 2026-08-30.
-- **Diff `product-base-2026-08-13..kenya-layer-start`:** 332 files, +43,827 / −3,099. (The Moz doc's 658 commits / 343 files / +44,876 run to moz/master on 2026-09-03.)
-- **Files by area:** frontend (`digit-ui-esbuild`) 131 · configurator 61 · docs 32 · local-setup 26 · utilities/seeders 25 · backend/pgr-services 25 · backend/novu-bridge 15 · .github 13 · tests 2 · other 2.
-- **Commits by conventional-commit scope (non-merge):**
-  - **Large:** fix(pgr) 123 · feat(pgr) 63 · no-conventional prefix 26
-  - **Mid-size:** fix(migration) 12 · fix(l10n) 11 · feat(migration) 10 · feat(analytics) 10 · fix(core) 8 · feat(configurator) 7 · fix(ops) 6 · fix(ui) 5 · fix(analytics) 5 · feat(security) 5
-  - **Small:** fix(ddh) 4 · fix(configurator) 4 · fix(citizen) 4 · feat(core) 4 · docs(analytics) 4 · chore(migration) 4 · fix(loc) 3 · feat(pgr-citizen) 3 · feat(novu-bridge) 3 · feat(configurator+pgr) 3 · chore(pgr) 3 · and about 40 scopes with 1-2 commits each.
-- **Coverage by the Moz docs:** 115 of the 385 non-merge SHAs are cited directly. Most of the rest are review follow-ups, polish, or cherry-pick twins (the Moz doc §12 counts about 45 cherry-pick pairs).
-
-#### 7.3.2 Notable changes not described in the Moz docs (all still in NP; survival %)
-
-1. **Legacy CI security pipeline evolution.** This is the pipeline Kenya still has; the Moz docs only say it was replaced.
-   - Gemini AI triage/verify/summary: `e87007b1f` (#15, 60%), `a37d71add` (#21), `883145d93` (#23), `753f2317b` (#24).
-   - Deployment-aware triage + Excel audit workbook: `bf617b420` (#25, 48%).
-   - Live-grounded custom rules + Ansible dry-run + dashboard redesign: `7ba1e0bc6` (#29, 95%).
-   - P0-P3 palette and Excel: `96ed2b4e0`, `e4682b54c` (#31).
-   - CRITICAL→P0 floor: `8f9a4bc40` (#34).
-   - Strix: `844edab5`.
-2. **Employee create-complaint form additions:**
-   - Attachment upload: `430690a9f` (80%).
-   - Complainant Address field: `8ddab1998` (50%).
-   - Per-category dynamic fields + custom date picker: `a62db6880` (89%).
-   - Map pin wired into the payload: `3d29b4db0` (100%).
-   - Just-submitted draft not restored: `37953fe46` (100%).
-3. **Complaint details:**
-   - `extendedAttributes` shown on citizen and employee pages: `af906c561` (80%).
-   - Complainant Details card: `bf6a4b49e` (71%).
-   - Typed-address / landmark rows: `575fb99af`, `499c25ed9`, `7f085cc30`.
-   - Address line without the tenant token: `deb51ed8a`.
-4. **Workflow UX:**
-   - Employee route-back actions derive the assignee from history: `d0a6bd9d4` (81%).
-   - Rate & Close copy + feedback options: `d1ebff88c` (100%).
-   - Citizen RATE/REOPEN actions restored on details: `93c66097c` (50%).
-   - Reopen reasons, uploads, mandatory details: `065908088` (97%).
-   - 5 MB limit on the reopen upload: `291f01f7c` (100%).
-   - REJECT modal rejection-reason picker removed: `12a0ef88d`. NP's `PGRDetails.js:50,459` still mentions a `RejectionReasons` dropdown, so current behaviour is unverified.
-5. **Boundary and map:**
-   - Boundary labels from the tree's tenant: `f36ddfab3` (100%).
-   - No mount-time boundary prefetch: `49af0b69b` (100%).
-   - Employee boundary picker shows the full tree (jurisdiction gate disabled): `0d66e6d3a` (50%).
-   - Geolocate timeout / toast / geocoder country: `97633209d` (87%).
-   - **WebView support** (file chooser + geolocation errors): `a52e0b682` (62%). This is the groundwork for the later mobile app.
-6. **Platform and form robustness:**
-   - Never serialize a RegExp into the native `pattern` attribute: `7dba6a111` (100%).
-   - Register `common-masters.FormValidations`: `cdc20c299` (100%).
-   - MDMS schema creation tolerates an extraneous `tenantId`: `ce4bacd57` (86%).
-   - ASCII-sanitized schema descriptions: `75fe06295` (100%).
-   - Duplicate `createdBy` compile fix after merge #1656: `d983f3188`.
-7. **Configurator:**
-   - Logo goes home + "open portal" link: `390fe5667` (100%).
-   - `tenant.citymodule` bannerImage descriptor: `927687b73`.
-8. **Citizen shell:**
-   - Home banner sizing: `2381c71f8`, `e619f0b6f`.
-   - Sidebar avatar shows the uploaded photo: `35cc94246` (100%).
-   - Navigation derives the context path (no hardcoded `/digit-ui/`): `2b1b34429` (100%).
-9. **Moz design documents carried into Kenya's `docs/`:**
-   - PRD/solution design: `docs/superpowers/specs/mozambique-prd/2026-06-22-mozambique-prd-solution-design.md` (`ab8c3a2c`, `02b7ebbe0`).
-   - Design notes: hierarchy parameters, department/city master fallback, agency category mapping, encryption/confidentiality, complaint search (`279310456`, `e6b949013`, `56b5cd51d`, `864e3b7ed`, `a8f57e319`).
-10. **Moz-only localization and QA batches (pt_PT):** for example `29f9b7f4d`, `d70996b29`, `bf8484e13`, `a8e0767d3`, `df8138fab`. They are in the code but not applicable to Kenya (`en`).
-11. **Precursors of documented features:** OTP resend 30→60 s (`e69c50292`, later superseded); the Admin Search v2/v3 design passes; the Landing "IGE alignment" steps A-G (`ef671ee22` … `89ca9e2ef`, overwritten by Kenya's landing).
-
-#### 7.3.3 Outside the range, but it changes the baseline Kenya actually runs on
-
-The product sync to upstream `7ee88f839` (`626864567` + `2176984d7`, 2026-09-16/17) is **not** part of `product-base..kenya-layer-start`. It nonetheless moved Kenya's product layer 760 upstream commits past `815b23747`. Effects relevant to the inherited layer:
-
-- **Lost:** the 12 Moz roles' DDH grants (§7.1-G) and configurator role-action create/edit (§7.1-J).
-- **Removed:** the analytics `PrincipalScopeResolver.java`/`AnalyticsScope.java` (deleted in NP).
-- **Added:**
-  - Product policy-driven search scoping (`policy/SearchAccessPolicyService`)
-  - Grafana anonymous-off (§7.1-L)
-  - `enable-matomo.sh`
-  - Helm/seed parity CI (`.github/workflows/deploy-as-code-validation.yml`, `k8s-seed-dump-sync.yml`, `analytics-seed-parity.yml`)
-- **Frontend sync** (per the `626864567` message): inbox visibility tabs (MDMS `RAINMAKER-PGR.InboxVisibilityConfig`, default off) and the TopBar working-context chip.
-
-A Kenya release note that compares against `815b2374` (as Moz did) should attribute these to "product (later sync)", not to the Mozambique layer.
-
----
-
----
-## 8. Configuration delta against the product
-
-Operator-level changes between the product baseline and `nairobi-prod`: backend settings, migrations, MDMS, workflow, access control, labels, deployment and image tagging. Layer tags are explained in §1.
+Operator-level changes between the CMS V2.12 baseline and `nairobi-prod`: backend settings, migrations, MDMS, workflow, access control, labels, deployment and image tagging. Layer tags are explained in §1.
 
 ### 8(a) Backend settings: `backend/*/src/main/resources/application.properties`
 
@@ -849,7 +582,7 @@ How they are applied:
 
 Summary only; detail is in section (e).
 - `ACCESSCONTROL-ACTIONS-TEST` gains 2635, 2640–2648, 2650 and 2651. Actions 2008 and 2513 gain `resource` policies, and 2553/2554 get new `leftIcon` values.
-- `ACCESSCONTROL-ROLEACTIONS` gains grants for those actions and loses all Moz `CMS_*` grants (seed for new tenants: `utilities/.../mdmsData/ACCESSCONTROL-*`).
+- `ACCESSCONTROL-ROLEACTIONS` gains grants for those actions and loses all `CMS_*` officer-role grants (seed for new tenants: `utilities/.../mdmsData/ACCESSCONTROL-*`).
 - The same new actions appear in `ansible/nairobi-mdms/mdms/ACCESSCONTROL-*` for 7 reference tenants (+70 actions, +415 grants in the Kenya range).
 
 #### c.3 Landing page
@@ -913,7 +646,7 @@ These apply to reference tenant `ke` only; live `nb`/`bo` are unverified.
 | File | Changed? | Content |
 |---|---|---|
 | `utilities/default-data-handler/src/main/resources/PgrWorkflowConfig.json` | **unchanged** since base | Standard PGR (see the summary below) |
-| `utilities/.../CmsPgrWorkflowConfig.json` | **added [S]** `bffdce15e` | Moz 3-level CMS chain, selected only by `pgr.workflow.variant=cms`. Roles are `CMS_*`: `PENDINGFORASSIGNMENT` → `REFERRED` → `INVESTIGATION` ↔ `INFOFROMCITIZEN` → `RESOLVED`/`REJECTED`. |
+| `utilities/.../CmsPgrWorkflowConfig.json` | **added [S]** `bffdce15e` | 3-level CMS officer chain, selected only by `pgr.workflow.variant=cms`. Roles are `CMS_*`: `PENDINGFORASSIGNMENT` → `REFERRED` → `INVESTIGATION` ↔ `INFOFROMCITIZEN` → `RESOLVED`/`REJECTED`. |
 | `local-setup/dataloader/templates/PgrWorkflowConfig.json` | moved from `jupyter/` [P] | No content change |
 | `ansible/nairobi-mdms/mdms/Workflow/*.json` | **unchanged** | `ke` reference data |
 
@@ -1092,7 +825,7 @@ Every `getConfig` key present at nairobi-prod but not at base, per file. Exact `
 | same | **`HIERARCHY_TYPE`** (`"BOMET-Hierarchy"`) | Boundary hierarchy type for employee boundary queries | [K] `43359302a` |
 | same, value changes | `stateTenantId` `ke` → **`bo`** | | [K] `43359302a` |
 | same, value changes | Footer logos S3 → `/digit-ui/brand/digit-footer{,-bw}.png` | | [P] `2176984d7` |
-| same, value changes | `localeRegion`/`localeDefault` `IN`/`en` → **`PT`/`pt`** (a leftover from Moz; both live counties' files have `localeDefault = "en"`) | | [S] `21a6f1f2e` |
+| same, value changes | `localeRegion`/`localeDefault` `IN`/`en` → **`PT`/`pt`** (a leftover from another deployment; both live counties' files have `localeDefault = "en"`) | | [S] `21a6f1f2e` |
 | `digit-ui-esbuild/public/globalConfigs.js` (dev/default copy) | `PGR_PII_MASKING` (`false`) | as above | [K] `6bef31ae4` |
 | same | `ANALYTICS_KILL_SWITCH` (`false`) | Hard-disables all analytics when `true` | [S] `e9a0f0e43` |
 | same | `ANALYTICS_SCRIPT_HOSTS` (`[]`) | Extra allowed analytics script hosts | [S] `e9a0f0e43` |
@@ -1102,7 +835,7 @@ Every `getConfig` key present at nairobi-prod but not at base, per file. Exact `
 | same | `ANALYTICS_*` ×3 (host_vars `analytics_kill_switch`/`analytics_script_hosts`/`analytics_custom_enabled`) | as above | [S] `e9a0f0e43` |
 | same | `TESTING_MODE`, `TESTING_TENANT_ID` (only when `testing_ui_enabled`) | `/testing-ui` entrance | [S] `06ee871e6` |
 | `configs/assets/globalConfigsPGR.js`, `local-setup/configs/assets/globalConfigsPGR.js`, `frontend/micro-ui/web/public/globalConfigs.example.js` | none (footer-logo values only) | | [P] |
-| **NEW** `devops/deploy-as-code/charts/urban/digit-ui/files/globalConfigs.js.tpl` and `templates/globalconfigs-configmap.yaml` (Helm renders `globalConfigs.js`; no S3 upload) | 34 keys from `values.yaml` `globalConfigs:` | **Lacks `PGR_PII_MASKING`, `ANALYTICS_*` and `TESTING_*`**, so a Helm-rendered config masks PII. Several keys use names the UI does not read: `FOOTER_LOGO_URL`/`FOOTER_BW_LOGO_URL` (UI reads `DIGIT_FOOTER`/`DIGIT_FOOTER_BW`), `ASSET_S3_BUCKET` (`S3BUCKET`), `CONFIG_MODULE_NAME` (`UICONFIG_MODULENAME`), `BOUNDARYTYPE` (`BOUNDARY_TYPE`), `CENTRAL_INSTANCE_ENABLED` (`ENABLE_SINGLEINSTANCE`). `JWT_TOKEN` and `MDMS_V1/V2_CONTEXT_PATH` are also absent. This is a product issue. Both live counties' `globalConfigs.js` are generated by Ansible (`host_vars/nairobi.yml`, `host_vars/bometnew.yml`, per the files' header). | [P] `2176984d7` |
+| **NEW** `devops/deploy-as-code/charts/urban/digit-ui/files/globalConfigs.js.tpl` and `templates/globalconfigs-configmap.yaml` (Helm renders `globalConfigs.js`; no S3 upload) | 34 keys from `values.yaml` `globalConfigs:` | **Lacks `PGR_PII_MASKING`, `ANALYTICS_*` and `TESTING_*`**, so a Helm-rendered config masks PII. Several keys use names the UI does not read: `FOOTER_LOGO_URL`/`FOOTER_BW_LOGO_URL` (UI reads `DIGIT_FOOTER`/`DIGIT_FOOTER_BW`), `ASSET_S3_BUCKET` (`S3BUCKET`), `CONFIG_MODULE_NAME` (`UICONFIG_MODULENAME`), `BOUNDARYTYPE` (`BOUNDARY_TYPE`), `CENTRAL_INSTANCE_ENABLED` (`ENABLE_SINGLEINSTANCE`). `JWT_TOKEN` and `MDMS_V1/V2_CONTEXT_PATH` are also absent. This is a CMS V2.12 issue. Both live counties' `globalConfigs.js` are generated by Ansible (`host_vars/nairobi.yml`, `host_vars/bometnew.yml`, per the files' header). | [P] `2176984d7` |
 
 Runtime keys **read by the UI** that are new against base: `PGR_PII_MASKING` [K] (the only new one in the Kenya range), plus `ANALYTICS_*` and `TESTING_*` [S]. Extracted from all `getConfig`/`cfg`/`gc` call sites.
 
@@ -1225,7 +958,7 @@ Deploy-config differences, np → bomet-uat:
   - filestore-scan-proxy or digit-ui-esbuild built by `spa-build.yml` from nairobi-prod would also be tagged **`nairobi-prod-8e6289e`**.
   - A GitHub release named `X` yields `egovio/<image>:X` for every image.
   - The image actually running Bonga's pgr-services is **unverified**: it is not in the repository or the rollout notes.
-- Default image pins in the repo (product 2.12 release build): `egovio/pgr-services:2.12-5137119` and the others in g.1. These are **not** Kenya builds.
+- Default image pins in the repo (CMS V2.12 release build): `egovio/pgr-services:2.12-5137119` and the others in g.1. These are **not** Kenya builds.
 - UI delivery: Ansible `digit_ui_mode: static` builds `digit-ui-esbuild` on the box (`host_vars/_example.yml:236-258`), or uses an optional `digit_ui_bundle_image`. bgrm's rollout shipped a prebuilt bundle, so live UI provenance is per build id, not an image tag.
 
 ---
@@ -1238,7 +971,7 @@ Deploy-config differences, np → bomet-uat:
 | Suite | Command (from the workspace) | Result |
 |---|---|---|
 | Frontend shell unit tests | `cd digit-ui-esbuild && npm test` | **192 / 192 pass** |
-| Frontend product unit tests | `node --test $(find products -name '*.test.js')` (36 files) | **316 / 316 pass** |
+| Frontend PGR and dashboard unit tests | `node --test $(find products -name '*.test.js')` (36 files) | **316 / 316 pass** |
 | Production UI build | `npm run build` | **pass** |
 | Module-alias check | `npm run check-aliases` | **17 / 17 resolve** |
 | Configurator unit tests | `cd configurator && (cd packages/data-provider && npm install && npm run build) && npm ci && npx vitest run` | **228 / 229 pass** (28 / 29 files) |
@@ -1263,7 +996,7 @@ Deploy-config differences, np → bomet-uat:
 | Local Setup CI | **fails**; no completed success in 66 runs since 4 Sep |
 | Tilt CI | **fails** on every run since 15 Sep; last passed 4 Sep |
 
-Both failing workflows stop at "Start services": the CI log reads "pull access denied for minio/minio". The minio image reference is identical at the product baseline, `kenya-layer-start` and `nairobi-prod`, so the failure is external and not caused by this release.
+Both failing workflows stop at "Start services": the CI log reads "pull access denied for minio/minio". The minio image reference is identical at the CMS V2.12 baseline, `kenya-layer-start` and `nairobi-prod`, so the failure is external and not caused by this release.
 
 ### Manual / UAT
 
@@ -1285,7 +1018,7 @@ The checks mostly used real officer accounts rather than an administrator. A for
 1. **Bomet: complaints filed by staff are not auto-assigned.** They reach the officer stage without an assignee, so they appear in no one's "assigned to me" list. A last-mile officer of that department whose area covers the complaint can still act on them. The fix (#81) is on `kenya-prod` and has not been brought to `nairobi-prod`.
 2. **Bomet: a staff reopen without choosing an officer leaves the complaint unassigned** (#50, with #78 and #82, not brought over).
 3. **"My Complaints" fails for a resident with more than 10 complaints** (`WORKFLOW_NOT_FOUND`) unless the workflow service's default page limit has been raised (not verified in either county); the fix (`5d429bd08`) is on neither county's code.
-4. **Request validation is not enforced in pgr-services.** It still pins Hibernate Validator 6.0.16 (javax) under Spring Boot 3.2.2, the setup the product found silently disables `@Valid`, `@NotNull`, `@Size` and `@Pattern`. The product's fix (`b0fad2383`) was not taken by the Kenya sync; see "Security fixes". (Diagnosis taken from the product commit; not probed at runtime here.)
+4. **Request validation is not enforced in pgr-services.** It still pins Hibernate Validator 6.0.16 (javax) under Spring Boot 3.2.2, the setup CMS V2.12 found silently disables `@Valid`, `@NotNull`, `@Size` and `@Pattern`. CMS V2.12's fix (`b0fad2383`) was not taken by the Kenya sync; see "Security fixes". (Diagnosis taken from the CMS V2.12 commit; not probed at runtime here.)
 5. Not brought over from `kenya-prod`: readable messages when location access is refused (#55; the `CS_GEOLOCATION_*` labels are also unseeded) and the anonymous `/citizen` → login redirect (#59).
 
 **Configuration to complete in the counties**
@@ -1308,11 +1041,11 @@ The checks mostly used real officer accounts rather than an administrator. A for
 20. Manual escalation does not record the escalation-level bookkeeping that automatic escalation uses; this may explain the wrong level reported in issue #141.
 21. The workflow definitions for `nb` and `bo` are not versioned in the repository.
 
-**Inherited from CMS Mozambique V2.12**
-22. Several deploy steps still use the default bootstrap password, so changing the bootstrap secrets breaks a full deploy (CMS Mozambique Known Limitation 1).
-23. The staff filing form offers Mozambique's "Green Line" (Linha Verde) channel. Kenya's call-centre complaints have no channel of their own.
-24. The product sync removed the role-action grants of the Mozambique CMS roles from the seed, and the configurator's role-action create/edit screens (the buttons remain). Kenya does not use those roles.
-25. The configurator's telemetry is on by default (`kill: false`). Operator scripts keep Mozambique defaults (`enable-escalation.sh`: `TENANT=mz`; `deploy-pilot-fe.sh`: `release-v2.12-moz`).
+**Inherited from CMS V2.12**
+22. Several deploy steps still use the default bootstrap password, so changing the bootstrap secrets breaks a full deploy.
+23. The staff filing form offers a "Green Line" channel that Kenya does not use, and Kenya's call-centre complaints have no channel of their own.
+24. The 16 Sep CMS V2.12 update removed the role-action grants of the `CMS_*` officer roles from the seed, and the configurator's role-action create/edit screens (the buttons remain). Kenya does not use those roles.
+25. The configurator's telemetry is on by default (`kill: false`). Operator scripts keep defaults from another deployment (`enable-escalation.sh` tenant and state, `deploy-pilot-fe.sh` branch); set them before use.
 
 ### 10.2 Open issues that bear on shipped changes
 
@@ -1320,7 +1053,7 @@ The checks mostly used real officer accounts rather than an administrator. A for
 |---|---|---|
 | #144 | OPEN | Resolved and rejected shown in the inbox by default; conflicts with `31edfa212`. |
 | #143 | OPEN | Reopen past SLA; #145 addresses it. |
-| #141 | OPEN | Auto-escalation level number wrong after a manual escalation (product issue CCRS#2142). The nairobi-prod manual escalate does not write the level keys that #98 wrote. |
+| #141 | OPEN | Auto-escalation level number wrong after a manual escalation (CMS V2.12 issue CCRS#2142). The nairobi-prod manual escalate does not write the level keys that #98 wrote. |
 | #138 | OPEN | Share receipt; #142 says "Fixes #138". |
 | #139 | OPEN | Share panel cosmetics. |
 | #137 | OPEN | Video upload 413 at 3.9 MB on Bonga (nginx limit). |
@@ -1356,8 +1089,8 @@ The checks mostly used real officer accounts rather than an administrator. A for
 4. **The workflow service's default page limit** (`egov.wf.default.limit`). It decides whether a resident with more than 10 complaints hits `WORKFLOW_NOT_FOUND`.
 5. **pgr-services escalation states** (`PGR_ESCALATION_STATES`) on bgrm. Automatic escalation beyond level 1 needs `ESCALATEDLEVEL1,ESCALATEDLEVEL2` added.
 6. **The environment variable behind Bonga's unpadded complaint numbers.** The property is evidently on, because Bonga's numbers are unpadded.
-7. **Filing twice on a double click.** Whether this can happen without Mozambique's double-submit guard (`3a299b851`) was not tested.
-8. **The configurator's role-action Create/Edit buttons** after the product sync removed their routes (not browser-checked).
+7. **Filing twice on a double click.** Whether this can happen without the CMS V2.12 double-submit guard (`3a299b851`) was not tested.
+8. **The configurator's role-action Create/Edit buttons** after the CMS V2.12 update removed their routes (not browser-checked).
 9. **Bomet's redaction rule on screen.** The policy code (`PolicyInputBuilder`: tenant-wide means no department and no area restriction) says last-mile officers, department tiers and GROs on Bomet see complainant names and phone numbers redacted (§3.4.1). Not checked on an officer's screen.
 
 ---
@@ -1365,7 +1098,6 @@ The checks mostly used real officer accounts rather than an administrator. A for
 
 - [Release notes (GitHub release body)](RELEASE-NOTES-CMS-KENYA-V2.12.md)
 - [County release note (plain language)](COUNTY-RELEASE-NOTE-CMS-KENYA-V2.12.md)
-- [CMS Mozambique V2.12 release](https://github.com/eGov-Global/CMS-MOZAMBIQUE/releases/tag/v2.12-mozambique) and its [technical reference](https://github.com/eGov-Global/CMS-MOZAMBIQUE/blob/master/docs/mozambique/RELEASE-PREVIEW-CMS-MOZ-V2.12.md)
 - [Bomet onboarding runbook](../../local-setup/ansible/runbooks/03-bomet-onboarding.md)
 - [County host_vars templates](../../local-setup/ansible/inventory/host_vars/)
 - [Reopen window](../reopen-window.md)
@@ -1377,16 +1109,16 @@ The checks mostly used real officer accounts rather than an administrator. A for
 
 ---
 
-## 13. Topic index: security, file scan, storage quota, sessions, product contributions
+## 13. Topic index: security, file scan, storage quota, sessions, CMS V2.12 contributions
 
 The evidence behind the "In detail" section of the release notes.
 
-| Topic | Kenya changes | From the product or the Mozambique line | How it was verified |
+| Topic | Kenya changes | From CMS V2.12 | How it was verified |
 |---|---|---|---|
-| Security fixes | #103 (`df9aa019d`), #128 (`1a848286c`), #129, #142, #136 (`c6fee0995`), #157 (`0c7b3f640`); landing-link sanitising `safeHref` (PR #1, `b590fd6a0`) | Product sync `2176984d7`: Kong `ENFORCE_UNAUTH` / `ENFORCE_RBAC` set to `true`, policy scoping and field redaction, fail-closed `AccessControlUnavailableException`. `626864567`: jsPDF 2.5.1 → 4.2.1. Mozambique: ward-tooltip escaping `8c1120f9`, scope-bypass hardening `9e650397`, analytics host allow-list `e9a0f0e4` | `kong.yml` and `digit-ui-esbuild/package.json` at product-base vs `nairobi-prod`; class present only on `nairobi-prod` |
-| Product security fixes **not** taken | — | `b0fad2383` (bean validation: Hibernate Validator 8 / Jakarta), `4b373f5c9` (complainant validation), `9df954273` (`@SafeHtml` across the request graph), `687c6e8c6` (postgresql 42.7.11, jsoup removed), `b43f0d3d2` (code-base security scan), `939711f2f` (micro-UI Dependabot) | `nairobi-prod` pgr-services `pom.xml`: hibernate-validator 6.0.16.Final, postgresql 42.7.1, jsoup 1.10.2. 33 main-source files still import `javax.validation`. Only the legacy `security-scan.yml` workflow exists |
+| Security fixes | #103 (`df9aa019d`), #128 (`1a848286c`), #129, #142, #136 (`c6fee0995`), #157 (`0c7b3f640`); landing-link sanitising `safeHref` (PR #1, `b590fd6a0`) | CMS V2.12 update `2176984d7`: Kong `ENFORCE_UNAUTH` / `ENFORCE_RBAC` set to `true`, policy scoping and field redaction, fail-closed `AccessControlUnavailableException`. `626864567`: jsPDF 2.5.1 → 4.2.1. Earlier CMS V2.12: ward-tooltip escaping `8c1120f9`, scope-bypass hardening `9e650397`, analytics host allow-list `e9a0f0e4` | `kong.yml` and `digit-ui-esbuild/package.json` at product-base vs `nairobi-prod`; class present only on `nairobi-prod` |
+| CMS V2.12 security fixes **not** taken | — | `b0fad2383` (bean validation: Hibernate Validator 8 / Jakarta), `4b373f5c9` (complainant validation), `9df954273` (`@SafeHtml` across the request graph), `687c6e8c6` (postgresql 42.7.11, jsoup removed), `b43f0d3d2` (code-base security scan), `939711f2f` (micro-UI Dependabot) | `nairobi-prod` pgr-services `pom.xml`: hibernate-validator 6.0.16.Final, postgresql 42.7.1, jsoup 1.10.2. 33 main-source files still import `javax.validation`. Only the legacy `security-scan.yml` workflow exists |
 | File scan | #157 / #158 (`0c7b3f640`); load test `32a56d27d` | — | `backend/filestore-scan-proxy/src/app.js` (responses, quarantine, fail-closed), `loadtest/report-8cpu-16gb.md` |
-| Browser storage quota | #148 (`eb71852f7`: IndexedDB entries tagged with the build; caches dropped on a new build) | Product `8fd9f8088` (MDMS cache moved to IndexedDB; in the baseline); the `Digit.Storage` write guard | `idbCache.js`, `Storage.js` and `MDMS.js` on `nairobi-prod` |
-| Session and browser handling | #148, #131 (`ae5fc2c53`), #96 / #147, #142 (`792faf7e8`), `f0f518102`, #103 (`c16c75208`), #140 (`a95b7e9de`), forgot password (`fa8b6588a`, `857f76e29`, `98c335803`) | Mozambique ports: session collision (`30bb121e9` … `117a1ed1f`, from `fa7b7b456`); request-failure classification (`adef886be`, from `2963c39d3`) | Commit messages and the test notes in each PR |
-| Screenshots and videos | Virus scan of every attachment when enabled (#157) | Mozambique line: `e81431c28` (video and audio play), `33a5477dd` (full-screen controls, timeline thumbnail), `c175d74e4` and `230cf3746` (uniform size, CSS fix), `721e44c84` (accept list matches the filestore allow-list), `430690a9f` (staff-form attachments), `065908088` / `291f01f7c` (reopen uploads) | `PgrFileUpload.js` (`DEFAULT_ACCEPT`, 5 MB, 5 files) and `attachmentKind.js` on `nairobi-prod` |
-| UI enhancements from the product | — | `626864567` (front-end subset of upstream `7ee88f83`): dashboard header, filters, footer, KPI tiles, `CardUpdatedStamp`, `analyticsBatch`, `LanguageMenu`; TopBar working-context chip; `applyTheme` header tone; `ImageComponent` fallback; inbox visibility tabs; reopen window in the timeline | File list and message of `626864567` |
+| Browser storage quota | #148 (`eb71852f7`: IndexedDB entries tagged with the build; caches dropped on a new build) | CMS V2.12 `8fd9f8088` (MDMS cache moved to IndexedDB; in the baseline); the `Digit.Storage` write guard | `idbCache.js`, `Storage.js` and `MDMS.js` on `nairobi-prod` |
+| Session and browser handling | #148, #131 (`ae5fc2c53`), #96 / #147, #142 (`792faf7e8`), `f0f518102`, #103 (`c16c75208`), #140 (`a95b7e9de`), forgot password (`fa8b6588a`, `857f76e29`, `98c335803`) | CMS V2.12: session collision (`30bb121e9` … `117a1ed1f`); request-failure classification (`adef886be`) | Commit messages and the test notes in each PR |
+| Screenshots and videos | Virus scan of every attachment when enabled (#157) | CMS V2.12: `e81431c28` (video and audio play), `33a5477dd` (full-screen controls, timeline thumbnail), `c175d74e4` and `230cf3746` (uniform size, CSS fix), `721e44c84` (accept list matches the filestore allow-list), `430690a9f` (staff-form attachments), `065908088` / `291f01f7c` (reopen uploads) | `PgrFileUpload.js` (`DEFAULT_ACCEPT`, 5 MB, 5 files) and `attachmentKind.js` on `nairobi-prod` |
+| UI enhancements from CMS V2.12 | — | `626864567` (front-end subset of upstream `7ee88f83`): dashboard header, filters, footer, KPI tiles, `CardUpdatedStamp`, `analyticsBatch`, `LanguageMenu`; TopBar working-context chip; `applyTheme` header tone; `ImageComponent` fallback; inbox visibility tabs; reopen window in the timeline | File list and message of `626864567` |
