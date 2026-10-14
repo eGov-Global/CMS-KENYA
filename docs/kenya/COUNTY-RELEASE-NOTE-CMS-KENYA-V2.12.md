@@ -188,16 +188,6 @@ Browsers give each website only a small amount of storage. The system used to ke
 
 ---
 
-## Known issues
-
-- **Bomet:** complaints filed by front-desk or call-centre staff are not yet routed automatically. They wait at the officer stage without a named officer, though officers of that department and area can act on them.
-- A resident with more than 10 complaints may see an error on the "My Complaints" page.
-- **Bomet:** complaint numbers have six digits (BFH-2026-000020); the seven-digit format the County requested is not yet in place.
-- No SMS or e-mail is sent when a complaint is withdrawn (both counties), sent back to the GROs (Nairobi) or escalated (Bomet).
-- **Nairobi:** video attachments larger than about 4 MB may fail to upload.
-
----
-
 ## What we need from the Counties
 
 1. **Helpline number on receipts (both counties):** receipts print a placeholder number (0000000000). Please share the official public helpline number, and the official contact e-mail.
@@ -206,3 +196,12 @@ Browsers give each website only a small amount of storage. The system used to ke
 4. **Bomet, escalation times:** 11 complaint categories still have test values for their escalation times (2 minutes). Please confirm the intended times.
 5. **Time limits:** please confirm the reopen period (3 days in both counties) and the withdraw period (Nairobi 1 day; Bomet 3 days).
 6. **Nairobi:** please confirm the contact e-mail shown at the foot of the Bonga Nai website.
+
+---
+
+## Known issues
+
+- **Bomet:** complaints filed by front-desk or call-centre staff are not yet routed automatically. They wait at the officer stage without a named officer, though officers of that department and area can act on them.
+- **Bomet:** complaint numbers have six digits (BFH-2026-000020); the seven-digit format the County requested is not yet in place.
+- No SMS or e-mail is sent when a complaint is withdrawn (both counties), sent back to the GROs (Nairobi) or escalated (Bomet).
+- **Nairobi:** video attachments larger than about 4 MB may fail to upload.
