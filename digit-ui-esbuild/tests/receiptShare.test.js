@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { shareReceipt, buildShareLinks, buildReceiptShareText, canShareFiles } from "../products/pgr/src/utils/receiptShare.js";
+import { shareReceipt, buildShareLinks, buildReceiptShareText, canShareFiles, receiptActionsFor, MOBILE_VIEW_QUERY } from "../products/pgr/src/utils/receiptShare.js";
 
 const err = (name) => Object.assign(new Error(name), { name });
 const harness = (nav, { downloads = [] } = {}) => ({
@@ -112,4 +112,16 @@ test("canShareFiles: true only when share() and canShare() accept a PDF file", (
   assert.equal(canShareFiles({ share: async () => {}, canShare: () => false }, probe), false);
   assert.equal(canShareFiles({ share: async () => {}, canShare: (d) => !!d.files }, probe), true);
   assert.equal(canShareFiles({ share: async () => {}, canShare: () => { throw new Error("x"); } }, probe), false);
+});
+
+test("Share is offered in the mobile view only; Download and Print everywhere", () => {
+  const all = ["download", "print", "share"];
+  assert.deepEqual(receiptActionsFor(all, { mobileView: true }), all);
+  assert.deepEqual(receiptActionsFor(all, { mobileView: false }), ["download", "print"]);
+  assert.deepEqual(receiptActionsFor(["download"], { mobileView: true }), ["download"]);
+  assert.deepEqual(receiptActionsFor(undefined, { mobileView: true }), []);
+});
+
+test("the mobile view is the shared Header's breakpoint", () => {
+  assert.equal(MOBILE_VIEW_QUERY, "(max-width: 768px)");
 });

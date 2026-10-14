@@ -16,6 +16,13 @@
 // first place by handing share() a prebuilt file synchronously inside the click.
 export const isUserCancel = (e) => e?.name === "AbortError";
 
+// Share is offered in the mobile view only. On a phone the PDF goes straight into
+// the native share sheet; on a computer the share half-worked (issue #138, Safari on
+// Mac) and Download / Print already cover it. The breakpoint is the shared Header's
+// mobile width, so the button follows the same layout switch as the rest of the page.
+export const MOBILE_VIEW_QUERY = "(max-width: 768px)";
+export const receiptActionsFor = (actions, { mobileView }) => (actions || []).filter((a) => a !== "share" || !!mobileView);
+
 /** Whether this browser can hand a PDF to another app (Web Share API level 2). */
 export const canShareFiles = (nav, makeProbeFile) => {
   if (!nav?.share || typeof nav.canShare !== "function") return false;
