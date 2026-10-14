@@ -513,8 +513,35 @@ Known on 13 Oct 2026:
 
 ---
 
+## Training videos and support package
+
+A narrated video walkthrough of the whole complaint workflow comes with this release, together with a support package for the teams who run the two sites.
+
+**Videos** — 11 short parts, about 17 minutes in total, each with English narration and subtitles. They were recorded on cms-pilot (the test twin of Bonga Nai) with fictional test users, so the screens are the real CMS Kenya V2.12 screens; any other person's name is hidden and phone numbers are masked.
+
+| Part | What it shows |
+|---|---|
+| 00 | Introduction: the roles and the path a complaint takes |
+| 01 | A resident signs in with a one-time code and files a complaint in three steps |
+| 02 | The front desk files a complaint on a caller's behalf |
+| 03 | The GRO checks new complaints, assigns them to a last-mile officer, and the Reject option |
+| 04 | The last-mile officer resolves one complaint and escalates another |
+| 04b | The officer sends a complaint that belongs to another department back to the GRO (Bonga only) |
+| 05 | The Chief Officer resolves the escalated complaint |
+| 06 | The resident rates one complaint, reopens one and withdraws a duplicate |
+| 07 | Back in the GRO's queue, and a complaint escalated automatically after its deadline |
+| 08 | The leadership dashboard and export to Excel, CSV or PDF |
+| 09 | Summary: where each complaint ended up |
+
+The walkthrough follows Bonga Nai. On Bomet there is no GRO step (complaints go straight to the department officer), no "send back to GRO", three escalation levels, and a 3-day withdraw period.
+
+**Support package** — for the eGov support desk (L1), platform operators (L2) and engineering (L3): a support matrix (who owns which issue and when to escalate), a video catalogue, storyboards and narration scripts, a troubleshooting guide with on-screen messages, step-by-step procedures, a knowledge-transfer plan, and a traceability matrix from each release change to its evidence. It is in the repository under `docs/kenya/support/` (pull request #163); `support-package.html` shows all seven parts on one page, and a PDF copy is in the shared folder.
+
+**Where to find them:** [CMS Kenya V2.12 – videos and support documents (Google Drive)](https://drive.google.com/drive/folders/1QiImno9XX1cxhgQtSXCFc0TS7GU6FUDG?usp=sharing). Open `1-videos` to play any part in the browser; `2-support-documents` holds the support package and its PDF.
+
 ## Documentation
 
+- [Support package](https://github.com/eGov-Global/CMS-KENYA/tree/master/docs/kenya/support) — L1/L2/L3 support matrix, procedures, troubleshooting, training video scripts and traceability
 - [Release audit / evidence document](https://github.com/eGov-Global/CMS-KENYA/blob/master/docs/kenya/RELEASE-PREVIEW-CMS-KENYA-V2.12.md) — full comparison with CMS V2.12, PR inventory and live-configuration capture behind these notes
 - [County release note](https://github.com/eGov-Global/CMS-KENYA/blob/master/docs/kenya/COUNTY-RELEASE-NOTE-CMS-KENYA-V2.12.md) — plain-language summary for Nairobi City County and Bomet County officials
 - [Bomet onboarding runbook](https://github.com/eGov-Global/CMS-KENYA/blob/master/local-setup/ansible/runbooks/03-bomet-onboarding.md)

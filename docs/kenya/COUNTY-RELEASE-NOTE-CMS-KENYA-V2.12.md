@@ -191,6 +191,14 @@ Browsers give each website only a small amount of storage. The system used to ke
 
 ---
 
+## Training videos
+
+A short video course shows the whole complaint journey on screen, with a voice explaining each step: a resident filing a complaint, the front desk filing one for a caller, the officer who checks and assigns complaints, the officer who resolves them, escalation to the Chief Officer, and the resident rating, reopening or withdrawing. There are 11 parts of one to three minutes each, about 17 minutes in total, with subtitles. They use test accounts, not real residents' data.
+
+Watch them here: [CMS Kenya V2.12 – videos and support documents](https://drive.google.com/drive/folders/1QiImno9XX1cxhgQtSXCFc0TS7GU6FUDG?usp=sharing) (folder `1-videos`). They suit training new officers and front-desk staff, and briefing county leadership.
+
+---
+
 ## What we need from the Counties
 
 1. **Helpline number on the PDF application (both counties):** it prints a placeholder number (0000000000). Please share the official public helpline number, and the official contact e-mail.
