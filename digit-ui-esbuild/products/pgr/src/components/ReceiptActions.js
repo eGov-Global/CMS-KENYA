@@ -5,9 +5,10 @@
 // The PDF is drawn locally from data already in memory (see
 // utils/complaintReceipt), so Download works on a dropped connection. The only
 // network call is the optional tenant logo, fetched with a short timeout and
-// omitted on failure. Share opens a modal dialog: open the PDF, Email,
-// WhatsApp, SMS (phones) and "More apps". What is shared is the receipt PDF
-// itself — never the complaint number or a tracking link. Where the browser can
+// omitted on failure. Share is offered in the mobile view only (see
+// receiptActionsFor) and opens a modal dialog: open the PDF, Email, WhatsApp and
+// SMS. What is shared is the receipt PDF itself — never the complaint number or a
+// tracking link. Where the browser can
 // hand a file to another app (Web Share API level 2: Android Chrome, iOS and
 // macOS Safari) every tile opens the device's share sheet with the PDF in it.
 // Elsewhere the PDF is downloaded first and the tile opens the app empty, for
@@ -25,7 +26,7 @@ import { useTranslation } from "react-i18next";
 import { Download, FileText, Mail, MessageCircle, MessageSquare, Printer, Share2, X } from "lucide-react";
 import { Button } from "@egovernments/digit-ui-components-v2";
 import { RECEIPT_FALLBACKS } from "../utils/receiptCopy";
-import { buildShareLinks, canShareFiles } from "../utils/receiptShare";
+import { buildShareLinks, canShareFiles, MOBILE_VIEW_QUERY, receiptActionsFor } from "../utils/receiptShare";
 import useComplaintReceiptModel from "../hooks/pgr/useComplaintReceiptModel";
 
 const loadReceipt = () => import("../utils/complaintReceipt");
@@ -40,7 +41,6 @@ export const RECEIPT_ACTION_FALLBACKS = {
   email: "Email",
   whatsapp: "WhatsApp",
   sms: "SMS",
-  more: "More apps",
   hintPdf: "Every option sends the receipt PDF. On a computer the PDF is downloaded first — attach it in the app that opens.",
   downloadedOnly: "Receipt PDF saved to your downloads.",
   attach: "Receipt PDF saved to your downloads — attach it in the app that opened.",
@@ -52,6 +52,25 @@ const ALL_ACTIONS = ["download", "print", "share"];
 // employee screens (e.g. the complaint-success panel) have no such ancestor, so carry it here.
 const scoped = (className) => ["v2-scope", className].filter(Boolean).join(" ");
 const logoCache = new Map();
+
+// Follows the viewport live, so rotating a tablet or resizing the window shows or
+// hides Share without a reload.
+const useMobileView = () => {
+  const [mobile, setMobile] = useState(() => typeof window !== "undefined" && !!window.matchMedia?.(MOBILE_VIEW_QUERY)?.matches);
+  useEffect(() => {
+    const mq = typeof window !== "undefined" ? window.matchMedia?.(MOBILE_VIEW_QUERY) : null;
+    if (!mq) return undefined;
+    const onChange = (e) => setMobile(e.matches);
+    if (mq.addEventListener) mq.addEventListener("change", onChange);
+    else mq.addListener?.(onChange);
+    setMobile(mq.matches);
+    return () => {
+      if (mq.removeEventListener) mq.removeEventListener("change", onChange);
+      else mq.removeListener?.(onChange);
+    };
+  }, []);
+  return mobile;
+};
 
 const stampNow = () => {
   const now = new Date();
@@ -147,6 +166,10 @@ const ReceiptActionsReady = ({ complaintDetails, actions, variant, className }) 
   const [notice, setNotice] = useState(null); // { tone: "error" | "info", text }
   const [dialogOpen, setDialogOpen] = useState(false);
   const [preparing, setPreparing] = useState(false); // PDF being drawn for the open dialog
+  const mobileView = useMobileView();
+  useEffect(() => {
+    if (!mobileView) setDialogOpen(false); // the Share button is gone outside the mobile view
+  }, [mobileView]);
   const downloadedRef = useRef(false); // a repeat share must not save a second copy
   const firstOptionRef = useRef(null);
   const { service, details, classification, extendedRows } = useComplaintReceiptModel(complaintDetails);
@@ -180,7 +203,6 @@ const ReceiptActionsReady = ({ complaintDetails, actions, variant, className }) 
   }, [service, details, classification, extendedRows, t, tr]);
 
   const nav = typeof navigator !== "undefined" ? navigator : null;
-  const canNativeShare = typeof nav?.share === "function";
   // Probed once per mount: whether this browser can hand the PDF to another app.
   const fileShare = useMemo(() => canShareFiles(nav), [nav]);
   const coarsePointer = typeof window !== "undefined" && !!window.matchMedia?.("(pointer: coarse)")?.matches;
@@ -276,8 +298,8 @@ const ReceiptActionsReady = ({ complaintDetails, actions, variant, className }) 
         return Promise.resolve();
       }
       if (action === "share") {
-        // Any tile on a file-sharing browser, and "More apps" everywhere: the PDF goes
-        // into the native share sheet; a browser that refuses (no file support, or the
+        // Any tile on a file-sharing browser: the PDF goes into the native share sheet;
+        // a browser that refuses (no file support, or the
         // activation ran out) gets the download instead — see utils/receiptShare.
         return ref.mod
           .shareReceiptArtifacts(ref.artifacts, { title: ref.message?.subject || subjectFallback, text: ref.message?.text, alreadyDownloaded: downloadedRef.current })
@@ -342,7 +364,6 @@ const ReceiptActionsReady = ({ complaintDetails, actions, variant, className }) 
     { key: "email", icon: Mail, label: tr("PGR_RECEIPT_SHARE_EMAIL", RECEIPT_ACTION_FALLBACKS.email), onClick: channel("email") },
     { key: "whatsapp", icon: MessageCircle, label: tr("PGR_RECEIPT_SHARE_WHATSAPP", RECEIPT_ACTION_FALLBACKS.whatsapp), onClick: channel("whatsapp") },
     coarsePointer && { key: "sms", icon: MessageSquare, label: tr("PGR_RECEIPT_SHARE_SMS", RECEIPT_ACTION_FALLBACKS.sms), onClick: channel("sms") },
-    canNativeShare && { key: "more", icon: Share2, label: tr("PGR_RECEIPT_SHARE_MORE", RECEIPT_ACTION_FALLBACKS.more), onClick: () => run("share") },
   ].filter(Boolean);
 
   const noticeEl = notice ? (
@@ -424,7 +445,7 @@ const ReceiptActionsReady = ({ complaintDetails, actions, variant, className }) 
   return (
     <div ref={rootRef} className={scoped(className)} style={{ display: "flex", flexDirection: "column", gap: "6px", alignItems: "flex-start" }}>
       <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }} onPointerEnter={prefetch} onFocusCapture={prefetch} onTouchStart={prefetch}>
-        {actions.filter((a) => buttons[a]).map((a) => {
+        {receiptActionsFor(actions, { mobileView }).filter((a) => buttons[a]).map((a) => {
           const { icon: Icon, label, onClick } = buttons[a];
           const extra = a === "share" ? { "aria-expanded": dialogOpen, "aria-haspopup": "dialog", "aria-controls": dialogId } : {};
           return (
