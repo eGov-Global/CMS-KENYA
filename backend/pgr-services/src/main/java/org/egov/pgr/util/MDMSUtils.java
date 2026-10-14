@@ -43,7 +43,7 @@ import static org.egov.pgr.util.PGRConstants.MDMS_NOTIFICATION_PROVIDER_TEMPLATE
 import static org.egov.pgr.util.PGRConstants.MDMS_NOTIFICATION_PROVIDER_TEMPLATE_JSONPATH;
 import static org.egov.pgr.util.PGRConstants.MDMS_UI_CONSTANTS_MASTER;
 import static org.egov.pgr.util.PGRConstants.MDMS_UI_CONSTANTS_JSONPATH;
-import static org.egov.pgr.util.PGRConstants.MDMS_REOPEN_SLA_KEYWORD;
+import static org.egov.pgr.util.PGRConstants.MDMS_ACTION_WINDOWS_KEYWORD;
 
 @Slf4j
 @Component
@@ -94,18 +94,14 @@ public class MDMSUtils {
     private final Map<String, TimedRows> notificationTemplateCache = new ConcurrentHashMap<>();
     private final Map<String, TimedRows> notificationProviderTemplateCache = new ConcurrentHashMap<>();
 
-    // Reopen window (RAINMAKER-PGR.UIConstants.REOPENSLA) in millis, cached with the same short
-    // TTL as the notification masters so a configurator edit takes effect without a pgr-services
-    // restart. Keyed by the REQUESTING tenant, not the state tenant: UIConstants may be overridden
-    // city-side (data/<state>/<city>/RAINMAKER-PGR/UIConstants.json), so a state-keyed entry would
-    // serve one city's window to its siblings. Only successful lookups are cached — a transient
-    // MDMS miss is retried on the next reopen attempt rather than pinning the property fallback.
-    private final Map<String, TimedReopenWindow> reopenWindowCache = new ConcurrentHashMap<>();
+    // RAINMAKER-PGR.UIConstants record (window values + actionWindows rules), cached per
+    // REQUESTING tenant with the same short TTL as the notification masters — see getUiConstants.
+    private final Map<String, TimedUiConstants> uiConstantsCache = new ConcurrentHashMap<>();
 
-    private static final class TimedReopenWindow {
-        final Long millis;
+    private static final class TimedUiConstants {
+        final List<Map<String, Object>> layers;
         final long fetchedAt;
-        TimedReopenWindow(Long millis) { this.millis = millis; this.fetchedAt = System.currentTimeMillis(); }
+        TimedUiConstants(List<Map<String, Object>> layers) { this.layers = layers; this.fetchedAt = System.currentTimeMillis(); }
         boolean fresh(long ttlMs) { return System.currentTimeMillis() - fetchedAt < ttlMs; }
     }
 
@@ -290,50 +286,208 @@ public class MDMSUtils {
     }
 
     /**
-     * The reopen window in millis for the tenant, read from MDMS
-     * RAINMAKER-PGR.UIConstants.REOPENSLA — the same knob the citizen UI gates on, so the
-     * employee/CSR path and the server-side check enforce exactly one configured window
-     * (issue #925). Cached per REQUESTING tenant (not the state tenant) with a short TTL,
-     * because UIConstants may be overridden city-side.
+     * The time window for a workflow action on this tenant, or empty when the action is not
+     * time-limited. Config-driven so any action can be windowed without code:
      *
-     * Falls back to the pgr.complain.idle.time property only when MDMS has no usable
-     * REOPENSLA (unseeded tenant or MDMS outage) — reopen must not silently become
-     * unbounded, nor start rejecting everything, just because MDMS blipped.
+     * <pre>
+     * RAINMAKER-PGR.UIConstants (DEFAULT record)
+     *   "REOPENSLA":   259200000,
+     *   "WITHDRAWSLA": 259200000,
+     *   "actionWindows": [
+     *     { "action": "REOPEN",   "windowKey": "REOPENSLA",   "measuredFrom": "lastModifiedTime" },
+     *     { "action": "WITHDRAW", "windowKey": "WITHDRAWSLA", "measuredFrom": "createdTime" }
+     *   ]
+     * </pre>
+     *
+     * A rule names its window either by {@code windowKey} (a millisecond property on the same
+     * record — e.g. REOPENSLA, the single value the UI also gates on, issue #925) or inline as
+     * {@code windowMs}; optional {@code message} / {@code notOwnerMessage} are the error texts once
+     * the window has passed / when a citizen acts on someone else's complaint.
+     * Actions the tenant does not list fall back to the deployment defaults
+     * (pgr.action.windows.defaults), so an unconfigured tenant — or an MDMS outage — never leaves a
+     * windowed action unbounded. A default rule may carry {@code fallbackMs}, used when its
+     * {@code windowKey} value is missing from MDMS. No action is named in code.
+     *
+     * Fails closed: a rule with an unknown {@code measuredFrom}, or with no resolvable window, throws
+     * INVALID_ACTION_WINDOW_CONFIG instead of letting the action through unchecked.
      */
-    public long getReopenWindowMillis(RequestInfo requestInfo, String tenantId) {
-        String stateTenant = multiStateInstanceUtil.getStateLevelTenant(tenantId);
-        long ttl = config.getNotificationMdmsCacheTtlMs();
+    public Optional<ActionWindow> getActionWindow(RequestInfo requestInfo, String tenantId, String action) {
+        if (action == null || action.isBlank())
+            return Optional.empty();
 
-        TimedReopenWindow cached = reopenWindowCache.get(tenantId);
-        if (cached != null && cached.fresh(ttl)) return cached.millis;
-
-        Long fetched = fetchReopenWindowMillis(requestInfo, tenantId, stateTenant);
-        if (fetched != null) {
-            reopenWindowCache.put(tenantId, new TimedReopenWindow(fetched));
-            return fetched;
+        List<Map<String, Object>> layers = getUiConstants(requestInfo, tenantId);
+        Map<String, Object> rule = null;
+        for (Map<String, Object> layer : layers) {
+            rule = findRule(configuredRules(layer, tenantId), action);
+            if (rule != null)
+                break;
         }
-        // Serve a stale-but-known value over the property fallback: it is the configured
-        // intent, whereas the property is only a deployment-level backstop.
-        if (cached != null) return cached.millis;
+        Map<String, Object> defaultRule = findRule(defaultRules(), action);
+        if (rule == null)
+            rule = defaultRule;
+        if (rule == null)
+            return Optional.empty();
 
-        log.warn("REOPENSLA not available from MDMS for tenant {} — falling back to "
-                + "pgr.complain.idle.time ({} ms)", tenantId, config.getComplainMaxIdleTime());
-        return config.getComplainMaxIdleTime();
+        ActionWindow.MeasuredFrom measuredFrom = ActionWindow.MeasuredFrom.fromConfig(rule.get("measuredFrom"));
+        if (measuredFrom == null) {
+            log.error("UIConstants.actionWindows rule for action {} on tenant {} has invalid measuredFrom '{}' — failing closed",
+                    action, tenantId, rule.get("measuredFrom"));
+            throw new CustomException("INVALID_ACTION_WINDOW_CONFIG",
+                    "Time window for action " + action + " is misconfigured (measuredFrom)");
+        }
+
+        Long windowMillis = resolveWindowMillis(layers, rule, defaultRule, tenantId, action);
+        if (windowMillis == null) {
+            log.error("UIConstants.actionWindows rule for action {} on tenant {} has no usable window — failing closed",
+                    action, tenantId);
+            throw new CustomException("INVALID_ACTION_WINDOW_CONFIG",
+                    "Time window for action " + action + " is misconfigured (window)");
+        }
+        return Optional.of(new ActionWindow(action.toUpperCase(Locale.ROOT), windowMillis, measuredFrom,
+                ruleText(rule, defaultRule, "message"), ruleText(rule, defaultRule, "notOwnerMessage")));
+    }
+
+    // pgr.action.windows.defaults, parsed once. A plain ObjectMapper, not the injected one: this is
+    // a fixed deployment property, parsed independently of the service's JSON configuration.
+    private volatile List<Map<String, Object>> defaultRules;
+
+    /**
+     * The deployment's default action-window rules (pgr.action.windows.defaults, a JSON list).
+     * Fails closed: an unparseable value throws INVALID_ACTION_WINDOW_CONFIG on use, rather than
+     * silently dropping every default and leaving those actions unbounded.
+     */
+    @SuppressWarnings("unchecked")
+    private List<Map<String, Object>> defaultRules() {
+        List<Map<String, Object>> rules = defaultRules;
+        if (rules != null)
+            return rules;
+        String raw = config.getActionWindowDefaults();
+        if (raw == null || raw.isBlank()) {
+            rules = List.of();
+        } else {
+            try {
+                List<Object> parsed = new ObjectMapper().readValue(raw, List.class);
+                List<Map<String, Object>> maps = new ArrayList<>();
+                for (Object o : parsed)
+                    if (o instanceof Map)
+                        maps.add((Map<String, Object>) o);
+                rules = Collections.unmodifiableList(maps);
+            } catch (Exception e) {
+                log.error("pgr.action.windows.defaults is not a valid JSON list of rules — failing closed: {}", e.getMessage());
+                throw new CustomException("INVALID_ACTION_WINDOW_CONFIG",
+                        "Default action windows (pgr.action.windows.defaults) are misconfigured");
+            }
+        }
+        defaultRules = rules;
+        return rules;
+    }
+
+    @SuppressWarnings("unchecked")
+    private List<Map<String, Object>> configuredRules(Map<String, Object> row, String tenantId) {
+        Object raw = row == null ? null : row.get(MDMS_ACTION_WINDOWS_KEYWORD);
+        if (raw == null)
+            return List.of();
+        if (!(raw instanceof List)) {
+            log.warn("Ignoring non-list UIConstants.{} for tenant {}", MDMS_ACTION_WINDOWS_KEYWORD, tenantId);
+            return List.of();
+        }
+        List<Map<String, Object>> rules = new ArrayList<>();
+        for (Object o : (List<Object>) raw)
+            if (o instanceof Map)
+                rules.add((Map<String, Object>) o);
+        return rules;
+    }
+
+    /** A text field from the rule, else from the matching default rule; null when unset. */
+    private static String ruleText(Map<String, Object> rule, Map<String, Object> defaultRule, String field) {
+        Object v = rule.get(field) != null ? rule.get(field) : defaultRule != null ? defaultRule.get(field) : null;
+        return v == null || v.toString().isBlank() ? null : v.toString();
+    }
+
+    private static Map<String, Object> findRule(List<Map<String, Object>> rules, String action) {
+        for (Map<String, Object> rule : rules) {
+            Object ruleAction = rule.get("action");
+            if (ruleAction != null && action.equalsIgnoreCase(ruleAction.toString().trim()))
+                return rule;
+        }
+        return null;
     }
 
     /**
-     * Reads REOPENSLA for the tenant, trying the city tenant first then the state tenant
-     * (mirrors mDMSCall's fallback). Returns null when MDMS yields no usable positive value,
-     * so the caller can apply its own fallback.
+     * Inline windowMs, else [windowKey] from the city record then the state record, else the rule's
+     * fallbackMs, else the matching default rule's fallbackMs (so a tenant rule that reuses a
+     * default's windowKey keeps its backstop).
      */
-    private Long fetchReopenWindowMillis(RequestInfo requestInfo, String tenantId, String stateTenant) {
-        Long value = doFetchReopenWindowMillis(requestInfo, tenantId);
-        if (value == null && !stateTenant.equals(tenantId))
-            value = doFetchReopenWindowMillis(requestInfo, stateTenant);
-        return value;
+    private Long resolveWindowMillis(List<Map<String, Object>> layers, Map<String, Object> rule, Map<String, Object> defaultRule,
+                                     String tenantId, String action) {
+        Long inline = positiveMillis(rule.get("windowMs"), "actionWindows[" + action + "].windowMs", tenantId);
+        if (inline != null)
+            return inline;
+
+        Object keyObj = rule.get("windowKey");
+        String key = keyObj == null ? null : keyObj.toString().trim();
+        if (key != null) {
+            for (Map<String, Object> layer : layers) {
+                Long configured = positiveMillis(layer.get(key), key, tenantId);
+                if (configured != null)
+                    return configured;
+            }
+        }
+
+        Long fallback = positiveMillis(rule.get("fallbackMs"), "actionWindows[" + action + "].fallbackMs", tenantId);
+        if (fallback == null && defaultRule != null && defaultRule != rule)
+            fallback = positiveMillis(defaultRule.get("fallbackMs"), "pgr.action.windows.defaults[" + action + "].fallbackMs", tenantId);
+        if (fallback != null)
+            log.warn("{} not available from MDMS for tenant {} — falling back to the deployment default ({} ms)",
+                    key != null ? key : action, tenantId, fallback);
+        return fallback;
     }
 
-    private Long doFetchReopenWindowMillis(RequestInfo requestInfo, String tenantId) {
+    private static Long positiveMillis(Object raw, String name, String tenantId) {
+        if (!(raw instanceof Number))
+            return null;
+        long millis = ((Number) raw).longValue();
+        // A non-positive window would silently block the action forever; treat it as
+        // misconfigured and let the caller fall back rather than bricking the action.
+        if (millis <= 0) {
+            log.warn("Ignoring non-positive {} ({}) for tenant {}", name, millis, tenantId);
+            return null;
+        }
+        return millis;
+    }
+
+    /**
+     * The UIConstants records that apply to a tenant, most specific first: the city record, then
+     * the state record (mirrors mDMSCall's fallback, and the pre-actionWindows REOPENSLA lookup,
+     * which read each value city-first then state). Cached per REQUESTING tenant (not the state
+     * tenant) with the same short TTL as the notification masters, because UIConstants may be
+     * overridden city-side and a configurator edit must take effect without a restart. Only
+     * successful lookups are cached; when every lookup fails a stale result is served over nothing
+     * — it is the configured intent. Empty when MDMS has never answered for this tenant.
+     */
+    private List<Map<String, Object>> getUiConstants(RequestInfo requestInfo, String tenantId) {
+        long ttl = config.getNotificationMdmsCacheTtlMs();
+        TimedUiConstants cached = uiConstantsCache.get(tenantId);
+        if (cached != null && cached.fresh(ttl)) return cached.layers;
+
+        List<Map<String, Object>> layers = new ArrayList<>();
+        Map<String, Object> city = doFetchUiConstants(requestInfo, tenantId);
+        if (city != null)
+            layers.add(city);
+        String stateTenant = multiStateInstanceUtil.getStateLevelTenant(tenantId);
+        if (!stateTenant.equals(tenantId)) {
+            Map<String, Object> state = doFetchUiConstants(requestInfo, stateTenant);
+            if (state != null)
+                layers.add(state);
+        }
+        if (!layers.isEmpty()) {
+            uiConstantsCache.put(tenantId, new TimedUiConstants(Collections.unmodifiableList(layers)));
+            return layers;
+        }
+        return cached != null ? cached.layers : List.of();
+    }
+
+    private Map<String, Object> doFetchUiConstants(RequestInfo requestInfo, String tenantId) {
         try {
             List<MasterDetail> masterDetails = new ArrayList<>();
             masterDetails.add(MasterDetail.builder().name(MDMS_UI_CONSTANTS_MASTER).build());
@@ -349,20 +503,9 @@ public class MDMSUtils {
             Object result = serviceRequestRepository.fetchResult(getMdmsSearchUrl(), req);
             List<Map<String, Object>> rows = JsonPath.read(result, MDMS_UI_CONSTANTS_JSONPATH);
             if (rows == null || rows.isEmpty()) return null;
-
-            Object raw = rows.get(0).get(MDMS_REOPEN_SLA_KEYWORD);
-            if (!(raw instanceof Number)) return null;
-
-            long millis = ((Number) raw).longValue();
-            // A non-positive window would silently block every reopen; treat it as misconfigured
-            // and let the caller fall back rather than bricking the action.
-            if (millis <= 0) {
-                log.warn("Ignoring non-positive REOPENSLA ({}) for tenant {}", millis, tenantId);
-                return null;
-            }
-            return millis;
+            return rows.get(0);
         } catch (Exception e) {
-            log.error("Failed to read REOPENSLA from RAINMAKER-PGR.UIConstants for tenant {}", tenantId, e);
+            log.error("Failed to read RAINMAKER-PGR.UIConstants for tenant {}", tenantId, e);
             return null;
         }
     }

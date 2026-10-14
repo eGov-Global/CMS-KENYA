@@ -20,6 +20,8 @@ import org.springframework.web.util.UriComponentsBuilder;
 import java.net.URI;
 import java.util.Map;
 
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
@@ -171,6 +173,110 @@ class DirectDeliveryServiceTest {
         NovuClient.NovuResponse response = service.sendSms("+254712345678", "Hello", "txn-9");
 
         assertEquals(401, response.getStatusCode());
+    }
+
+    @Test
+    void sendSms_sourcecodeSuccess_putsApiKeyInBodyNotHeader() {
+        config.setDirectSmsProvider("sourcecode");
+        config.setDirectSmsBaseUrl("https://api.sourcecode.co.ke/sms/sendsms");
+        config.setDirectSmsToken("api-key-123");
+        config.setDirectSmsServiceId("7");
+        config.setSmsSenderId("BOMET036");
+
+        Map<String, Object> body = Map.of("status_code", "1000", "status_desc", "Success",
+                "message_id", 10, "credit_balance", -100);
+        when(restTemplate.exchange(eq("https://api.sourcecode.co.ke/sms/sendsms"), eq(HttpMethod.POST),
+                any(HttpEntity.class), eq(Map.class)))
+                .thenReturn(new ResponseEntity<>(body, HttpStatus.OK));
+
+        NovuClient.NovuResponse response = service.sendSms("254712345678", "Hello there", "txn-sc1");
+
+        assertEquals(200, response.getStatusCode());
+        assertEquals("1000", response.getResponse().get("status_code"));
+
+        ArgumentCaptor<HttpEntity> entityCaptor = ArgumentCaptor.forClass(HttpEntity.class);
+        verify(restTemplate).exchange(eq("https://api.sourcecode.co.ke/sms/sendsms"), eq(HttpMethod.POST),
+                entityCaptor.capture(), eq(Map.class));
+        HttpEntity<Map<String, Object>> sentEntity = entityCaptor.getValue();
+        // Source Code authenticates via a body field — there must be NO Authorization header.
+        assertNull(sentEntity.getHeaders().getFirst(HttpHeaders.AUTHORIZATION));
+        assertEquals("api-key-123", sentEntity.getBody().get("api_key"));
+        assertEquals(7, sentEntity.getBody().get("service_id"));
+        assertEquals("254712345678", sentEntity.getBody().get("mobile"));
+        assertEquals("BOMET036", sentEntity.getBody().get("shortcode"));
+        assertEquals("Hello there", sentEntity.getBody().get("message"));
+        assertEquals("json", sentEntity.getBody().get("response_type"));
+    }
+
+    @Test
+    void sendSms_sourcecodeBlankServiceId_defaultsToZero_andDoesNotBreakStartup() {
+        config.setDirectSmsProvider("sourcecode");
+        config.setDirectSmsBaseUrl("https://api.sourcecode.co.ke/sms/sendsms");
+        config.setDirectSmsServiceId("");   // how `| default('')` templating renders it
+
+        when(restTemplate.exchange(any(String.class), eq(HttpMethod.POST), any(HttpEntity.class), eq(Map.class)))
+                .thenReturn(new ResponseEntity<>(Map.of("status_code", "1000"), HttpStatus.OK));
+
+        service.sendSms("254712345678", "Hi", "txn-sc5");
+
+        ArgumentCaptor<HttpEntity> captor = ArgumentCaptor.forClass(HttpEntity.class);
+        verify(restTemplate).exchange(any(String.class), eq(HttpMethod.POST), captor.capture(), eq(Map.class));
+        assertEquals(0, ((Map<String, Object>) captor.getValue().getBody()).get("service_id"));
+    }
+
+    @Test
+    void sendSms_sourcecodeResponse_masksEchoedMsisdnBeforeItIsPersisted() {
+        config.setDirectSmsProvider("sourcecode");
+        config.setDirectSmsBaseUrl("https://api.sourcecode.co.ke/sms/sendsms");
+
+        // Source Code echoes the full recipient back; nb_dispatch_log must not store it raw.
+        Map<String, Object> body = Map.of("status_code", "1000", "mobile_number", "254712345678");
+        when(restTemplate.exchange(any(String.class), eq(HttpMethod.POST), any(HttpEntity.class), eq(Map.class)))
+                .thenReturn(new ResponseEntity<>(body, HttpStatus.OK));
+
+        NovuClient.NovuResponse response = service.sendSms("254712345678", "Hi", "txn-sc6");
+
+        assertEquals("254712345678", body.get("mobile_number")); // source map untouched
+        assertNotEquals("254712345678", response.getResponse().get("mobile_number"));
+    }
+
+    @Test
+    void sendSms_sourcecodeNumericSuccessCode_isAccepted() {
+        config.setDirectSmsProvider("sourcecode");
+        config.setDirectSmsBaseUrl("https://api.sourcecode.co.ke/sms/sendsms");
+
+        // The bulk endpoint documents status_code as a number, the single-send one as a string.
+        Map<String, Object> body = Map.of("status_code", 1000, "status_desc", "Success");
+        when(restTemplate.exchange(any(String.class), eq(HttpMethod.POST), any(HttpEntity.class), eq(Map.class)))
+                .thenReturn(new ResponseEntity<>(body, HttpStatus.OK));
+
+        assertEquals(200, service.sendSms("254712345678", "Hi", "txn-sc2").getStatusCode());
+    }
+
+    @Test
+    void sendSms_sourcecodeLowCredits_mapsToFailureResponse_withoutThrowing() {
+        config.setDirectSmsProvider("sourcecode");
+        config.setDirectSmsBaseUrl("https://api.sourcecode.co.ke/sms/sendsms");
+
+        // HTTP 200 with a failure status_code — the reason this provider needs body-level parsing.
+        Map<String, Object> body = Map.of("status_code", "1004", "status_desc", "Low bulk credits");
+        when(restTemplate.exchange(any(String.class), eq(HttpMethod.POST), any(HttpEntity.class), eq(Map.class)))
+                .thenReturn(new ResponseEntity<>(body, HttpStatus.OK));
+
+        NovuClient.NovuResponse response = service.sendSms("254712345678", "Hello", "txn-sc3");
+
+        assertEquals(502, response.getStatusCode());
+        assertEquals("Low bulk credits", response.getResponse().get("status_desc"));
+    }
+
+    @Test
+    void sendSms_unknownProvider_stillFallsBackToOzeki() {
+        config.setDirectSmsProvider("something-else");
+        config.setDirectSmsBaseUrl("http://ozeki-host:9501/api");
+        when(restTemplate.getForObject(any(URI.class), eq(String.class)))
+                .thenReturn("<response><statuscode>0</statuscode></response>");
+
+        assertEquals(200, service.sendSms("+254712345678", "Hi", "txn-sc4").getStatusCode());
     }
 
     @Test

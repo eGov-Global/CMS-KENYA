@@ -8933,7 +8933,7 @@
         "module": "rainmaker-common",
         "locale": "en_IN"
     },
-        {
+    {
         "code": "HR_COMMON_CREATE_EMPLOYEE_HEADER",
         "message": "Create Employee",
         "module": "rainmaker-common",
@@ -8966,6 +8966,12 @@
     {
         "code": "ACTION_TEST_LOCALISATION",
         "message": "Manage Localisation",
+        "module": "rainmaker-common",
+        "locale": "en_IN"
+    },
+    {
+        "code": "CORE_APP_TITLE",
+        "message": "Citizen Complaint Resolution System",
         "module": "rainmaker-common",
         "locale": "en_IN"
     }

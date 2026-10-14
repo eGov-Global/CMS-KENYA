@@ -3,11 +3,11 @@
 
 <head>
   <meta charset="utf-8" />
-  <link rel="icon" href="https://egov-dev-assets.s3.ap-south-1.amazonaws.com/browser-icon.png" />
+  <link rel="icon" type="image/png" href="/digit-ui/brand/digit-logo.png" />
   <link
-    href="https://fonts.googleapis.com/css2?family=Roboto+Condensed:wght@400;500;700&family=Roboto:wght@400;500;700&display=swap"
+    href="https://fonts.googleapis.com/css2?family=Roboto+Condensed:wght@400;500;700&family=Roboto:wght@400;500;700&family=Caveat:wght@600&display=swap"
     rel="stylesheet" type="text/css" />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet"
     type="text/css" />
   <link rel="stylesheet" href="/digit-ui/vendor/digit-ui-components-css.css" />
   <link rel="stylesheet" href="/digit-ui/vendor/digit-ui-health-css.css" />
@@ -16,7 +16,7 @@
   <link rel="stylesheet" href="/digit-ui/vendor/tailwind.css" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta name="theme-color" content="#00bcd1" />
+  <meta name="theme-color" content="#1565A8" />
   <title>DIGIT</title>
   <script>if(typeof process==="undefined"){window.process={env:{NODE_ENV:"production",REACT_APP_STATE_LEVEL_TENANT_ID:""}}}</script>
   <script src="/digit-ui/globalConfigs.js"></script>
@@ -46,7 +46,9 @@
     // mid-form. Override every scroll for the first 3s after a route
     // change OR until the user explicitly scrolls.
     (function () {
-      var lastUrl = location.href;
+      // A change of #hash alone is a jump within the page, not a new page.
+      var pageUrl = function () { return location.href.split("#")[0]; };
+      var lastUrl = pageUrl();
       var clamping = false;
       var clampUntil = 0;
       var userScrolled = false;
@@ -64,19 +66,22 @@
         }
         requestAnimationFrame(tick);
       }
-      // Treat wheel/touch/key as user intent; stop clamping immediately.
-      ["wheel", "touchmove", "keydown"].forEach(function (evt) {
+      // Treat wheel/touch/key as user intent; stop clamping immediately. Pages
+      // that scroll on the user's behalf (the landing page's section links)
+      // say so with a `digit:user-scroll` event.
+      ["wheel", "touchmove", "keydown", "digit:user-scroll"].forEach(function (evt) {
         window.addEventListener(evt, function () { userScrolled = true; }, { passive: true, capture: true });
       });
-      // Trigger on initial load and route changes.
+      // Trigger on initial load and route changes. A visitor who has already
+      // scrolled (or jumped to a section) before the load event keeps their place.
       if (document.readyState === "complete") {
         startClamp();
       } else {
-        window.addEventListener("load", startClamp);
+        window.addEventListener("load", function () { if (!userScrolled) startClamp(); });
       }
       setInterval(function () {
-        if (location.href !== lastUrl) {
-          lastUrl = location.href;
+        if (pageUrl() !== lastUrl) {
+          lastUrl = pageUrl();
           startClamp();
         }
       }, 200);

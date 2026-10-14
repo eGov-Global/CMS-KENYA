@@ -76,6 +76,13 @@ public class PGRConfiguration {
     @Value("${egov.idgen.pgr.serviceRequestId.format}")
     private String serviceRequestIdGenFormat;
 
+    // egov-idgen always expands [SEQ_*] with a six-digit zero pad, which no format string can turn
+    // off. Deployments that want bare complaint numbers (BNG-2026-125 rather than BNG-2026-000125)
+    // opt in here. Defaults to off so an existing deployment's numbering cannot change shape on a
+    // redeploy; only the generated id is affected - search always accepts both spellings.
+    @Value("${egov.idgen.pgr.serviceRequestId.strip-sequence-padding:false}")
+    private Boolean stripServiceRequestIdSequencePadding;
+
     //Workflow Config
     @Value("${pgr.business.codes}")
     private List<String> businessServiceList;
@@ -100,6 +107,12 @@ public class PGRConfiguration {
 
     @Value("${pgr.complain.idle.time}")
     private Long complainMaxIdleTime;
+
+    // Deployment-level default action windows (JSON list of rules), used for any action a
+    // tenant's MDMS UIConstants.actionWindows does not list, and while MDMS is unavailable.
+    // See application.properties and MDMSUtils#getActionWindow.
+    @Value("${pgr.action.windows.defaults:[]}")
+    private String actionWindowDefaults;
 
     @Value("${pgr.kafka.create.topic}")
     private String createTopic;

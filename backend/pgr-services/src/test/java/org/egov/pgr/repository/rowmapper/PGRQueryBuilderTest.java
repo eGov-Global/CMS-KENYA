@@ -174,4 +174,17 @@ class PGRQueryBuilderTest {
         assertTrue(query.contains("1 = 0"));
         assertFalse(query.contains("ads.locality IN"));
     }
+
+    @Test
+    void excludeConfidentialAddsThePredicateOnlyWhenSet() {
+        RequestSearchCriteria plain = RequestSearchCriteria.builder().tenantId("pg.city").build();
+        assertFalse(queryBuilder.getPGRSearchQuery(plain, new ArrayList<>(), null, PgrSearchScope.UNRESTRICTED).contains("isConfidential"));
+
+        RequestSearchCriteria guarded = RequestSearchCriteria.builder().tenantId("pg.city").build();
+        guarded.setExcludeConfidential(true);
+        String query = queryBuilder.getPGRSearchQuery(guarded, new ArrayList<>(), null, PgrSearchScope.UNRESTRICTED);
+        assertTrue(query.contains("COALESCE(ser.extended_attributes->>'isConfidential','false') <> 'true'"));
+        // count shares the filtered query, so the oracle is closed there too
+        assertTrue(queryBuilder.getCountQuery(guarded, new ArrayList<>(), null, PgrSearchScope.UNRESTRICTED).contains("isConfidential"));
+    }
 }

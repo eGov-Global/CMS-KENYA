@@ -1,4 +1,5 @@
 import PropTypes from "prop-types";
+import { filterDropdownOptions } from "./dropdownFilter";
 import React, { useEffect, useRef, useState } from "react";
 import { SVG } from "./SVG";
 import TreeSelect from "./TreeSelect";
@@ -249,15 +250,7 @@ const Dropdown = (props) => {
     setFilterVal(val);
   }
 
-  let filteredOption =
-    (props.option &&
-      props.option?.filter(
-        (option) =>
-          t(option[props?.optionKey])
-            ?.toUpperCase()
-            ?.indexOf(filterVal?.toUpperCase()) > -1
-      )) ||
-    [];
+  let filteredOption = filterDropdownOptions(props.option, filterVal, props?.optionKey, t);
   function selectOption(ind) {
     const optionsToSelect =
       props.variant === "nesteddropdown" || props.variant === "treedropdown"

@@ -141,8 +141,8 @@ const GeoLocations = ({ t, config, onSelect, formData, tenantId }) => {
   // the surrounding area instead of a single block at street level.
   const DEFAULT_CENTER = center;
   const DEFAULT_ZOOM = defaultZoom;
-  // Shown before any pin exists (and after Clear): a deliberately wide frame the
-  // citizen zooms in from. Clamped so it can't sit outside the tenant's bounds.
+  // Shown before any pin exists: a deliberately wide frame the citizen zooms in
+  // from. Clamped so it can't sit outside the tenant's bounds.
   const OVERVIEW_ZOOM = Math.max(minZoom, Math.min(5, maxZoom));
   const [coords, setCoords] = useState(DEFAULT_CENTER);
   const [markerPos, setMarkerPos] = useState([DEFAULT_CENTER.lat, DEFAULT_CENTER.lng]);
@@ -500,6 +500,10 @@ const GeoLocations = ({ t, config, onSelect, formData, tenantId }) => {
     setShowToast(null);
   };
 
+  // Clearing removes the selection (pin, search text, address, the form value)
+  // but leaves the camera where the citizen put it. It used to jump back to the
+  // county-wide overview, so correcting a wrong search meant zooming all the
+  // way in again from the whole region.
   const clearSearch = () => {
     setSearchQuery("");
     setAddress("");
@@ -507,10 +511,6 @@ const GeoLocations = ({ t, config, onSelect, formData, tenantId }) => {
     setSuggestions([]);
     setPolygonPoints([]);
     setCoords(DEFAULT_CENTER);
-    if (mapRef.current) {
-      mapRef.current.setView([DEFAULT_CENTER.lat, DEFAULT_CENTER.lng], OVERVIEW_ZOOM);
-    }
-    // Clear location from formData
     onSelect(config.key, null);
   };
 

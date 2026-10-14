@@ -364,5 +364,11 @@
         "message": "Início",
         "module": "rainmaker-common",
         "locale": "pt_PT"
+    },
+    {
+        "code": "CORE_APP_TITLE",
+        "message": "Sistema de Resolução de Reclamações dos Cidadãos",
+        "module": "rainmaker-common",
+        "locale": "pt_PT"
     }
 ]

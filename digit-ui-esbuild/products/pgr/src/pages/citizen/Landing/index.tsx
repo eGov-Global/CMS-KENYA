@@ -13,7 +13,9 @@
 //
 // Works with or without a react-router v5 <Router> above it; strings resolve
 // from MDMS localization (PGR_LANDING_* keys) with built-in EN fallbacks;
-// colors resolve from --pgrl-*-brand CSS vars with Bomet county defaults.
+// colors resolve from --pgrl-*-brand CSS vars with Nairobi City County defaults.
+// Photography is injected by the deployment entry (AppEntry.tsx); without it
+// the hero and the closing band render on flat brand green.
 
 import * as React from "react";
 
@@ -21,6 +23,7 @@ import { LandingRoutes } from "./routes";
 import { LandingTokens } from "./tokens";
 import { NewsItem } from "./content";
 import { LanguageOption } from "./components/UtilityBar";
+import type { LandingArtwork } from "./config/sectionRegistry";
 import { useLandingCopy } from "./useLandingCopy";
 import { useLandingConfig } from "./config/useLandingConfig";
 import { useLandingMessages } from "./config/useLandingMessages";
@@ -34,10 +37,24 @@ export interface PGRLandingPageProps {
   news?: NewsItem[];
   /** Optional hero photo (rendered under the brand scrim). */
   heroImageUrl?: string;
+  /** Narrow-viewport cut of the hero photo, offered via srcSet. */
+  heroImageSmallUrl?: string;
+  /** Optional photo for the circular artwork beside the channels title. */
+  bandImageUrl?: string;
+  /** Optional portrait of a resident for the closing call to action. */
+  personImageUrl?: string;
+  /** Square photo for the circular orb beside the steps. */
+  stepsOrbImageUrl?: string;
+  /** Square photo for the circular orb beside the channels title. */
+  channelsOrbImageUrl?: string;
   /** Government emblem for the masthead. */
   emblemUrl?: string;
   /** Wide logo lockup shown beside the identity text in the footer. */
   footerLogoUrl?: string;
+  /** Top-of-page artwork: hero edge pattern, category photos, slogan band. */
+  artwork?: LandingArtwork;
+  /** Phone photo card of the areas section (defaults to the hero photo). */
+  areasPhotoUrl?: string;
   /** Language switcher options. */
   languages?: LanguageOption[];
   /** Custom language-change handler (defaults to i18n.changeLanguage). */
@@ -136,4 +153,5 @@ export { DEFAULT_NEWS, LANDING_COPY } from "./content";
 export type { NewsItem, LandingCopyKey } from "./content";
 export { DEFAULT_LANGUAGES } from "./components/UtilityBar";
 export type { LanguageOption } from "./components/UtilityBar";
+export type { LandingArtwork } from "./config/sectionRegistry";
 export { useLandingCopy, LANDING_KEY_PREFIX } from "./useLandingCopy";
