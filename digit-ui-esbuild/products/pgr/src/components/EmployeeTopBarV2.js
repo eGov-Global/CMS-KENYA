@@ -6,6 +6,9 @@ import { departmentLabel } from "../utils/employeeLabels";
 
 const DEFAULT_EGOV_LOGO = "https://egov-dev-assets.s3.ap-south-1.amazonaws.com/egov-logo-2025.png";
 const DEFAULT_EGOV_LOGO_ON_DARK = "/digit-ui/brand/egov-logo-white.png";
+// Served with the bundle, so a fallback can never itself be a dead link.
+const BUNDLED_LOGO = "/digit-ui/brand/digit-logo.png";
+const BUNDLED_LOGO_ON_DARK = "/digit-ui/brand/digit-logo-white.png";
 
 // Session-scoped "last login": the user service doesn't return a previous-login
 // timestamp, so the closest honest value is when this session started. Stamped
@@ -508,6 +511,13 @@ const EmployeeTopBarV2 = (props) => {
   // designation (workbench/admin logins) and while the record loads.
   const designation = useEmployeeDesignation(cityDetails?.code || userDetails?.info?.tenantId, t);
   const greetingName = designation || name;
+  const logo = (loggedin ? cityDetails?.logoId : stateInfo?.statelogo) || (headerTone === "dark" ? DEFAULT_EGOV_LOGO_ON_DARK : DEFAULT_EGOV_LOGO);
+  // The tenant logo is operator data and can go dead (cms-pilot's pointed at an
+  // expiring Instagram CDN link). Prefer the county's own bundled state logo,
+  // else the bundled mark; Header swaps to it once if the logo fails to load.
+  const stateLogo = stateInfo?.statelogo || stateInfo?.logoUrl;
+  const logoFallback =
+    stateLogo && stateLogo.startsWith("/") && stateLogo !== logo ? stateLogo : headerTone === "dark" ? BUNDLED_LOGO_ON_DARK : BUNDLED_LOGO;
 
   return (
     <Header
@@ -515,7 +525,13 @@ const EmployeeTopBarV2 = (props) => {
         loggedin && name && (
           <span style={itemStyle}>
             <Glyph d={ICONS.person} />
-            <span style={{ fontWeight: 500 }} title={name}>
+            {/* Capped with an ellipsis: a long designation ("Director - Donor Coordination
+                and Stakeholders Engagement") otherwise pushes the language and profile
+                menus, and with them Logout, off the right edge. The full text is on hover. */}
+            <span
+              style={{ fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", maxWidth: "min(28rem, 34vw)" }}
+              title={designation && designation !== name ? `${designation} · ${name}` : name}
+            >
               {t("CORE_TOPBAR_HELLO")}, {greetingName}
             </span>
           </span>
@@ -540,7 +556,8 @@ const EmployeeTopBarV2 = (props) => {
       img={logoUrl}
       logoWidth={"40px"}
       logoHeight={"40px"}
-      logo={(loggedin ? cityDetails?.logoId : stateInfo?.statelogo) || (headerTone === "dark" ? DEFAULT_EGOV_LOGO_ON_DARK : DEFAULT_EGOV_LOGO)}
+      logo={logo}
+      logoFallback={logoFallback}
       onImageClick={() => {}}
       onLogoClick={() => {}}
       props={{}}
