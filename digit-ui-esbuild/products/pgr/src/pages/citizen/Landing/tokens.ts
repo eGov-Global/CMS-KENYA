@@ -55,24 +55,12 @@ export interface LandingTokens {
   tint: string;
   /** Soft gold tint — highlights that should not shout. */
   tintGold: string;
-  /** Card accent tints. Names are historical; the built-in service categories
-   *  use topGold / topLeaf, and MDMS-configured items may name any of these. */
+  /** Card accent tints. Names are historical; content.ts decides which service
+   *  area uses which one (see MANIFESTATION_TYPES accentVar). */
   typeComplaint: string;
   typeGrievance: string;
   typePetition: string;
   typeReport: string;
-  /** Top-of-page palette (utility strip, masthead, hero, service categories,
-   *  slogan band), sampled from the county's Bonga Nai design of 2026-10-12. */
-  topBar: string;
-  topBand: string;
-  topGreen: string;
-  topNavy: string;
-  topMuted: string;
-  topGold: string;
-  topLeaf: string;
-  topCream: string;
-  topMint: string;
-  topButter: string;
   /** Corner radius (CSS length, not an HSL triple). */
   radius: string;
 }
@@ -96,20 +84,10 @@ export const DEFAULT_LANDING_TOKENS: LandingTokens = {
   ring: "152 62% 22%",
   tint: "150 32% 93%",          // #E7F1EB  soft green band / icon tiles
   tintGold: "47 90% 93%",       // #FEF6DC  soft gold highlight
-  typeComplaint: "152 62% 22%",    // brand green
-  typeGrievance: "334 62% 36%",    // burgundy
-  typePetition: "120 45% 35%",     // leaf green
-  typeReport: "36 70% 40%",        // earth
-  topBar: "160 100% 13%",          // #00432D  utility strip
-  topBand: "161 100% 12%",         // #003D2A  slogan band (its artwork is cut on this colour)
-  topGreen: "163 96% 10%",         // #013123  wordmark, headings, eyebrows
-  topNavy: "213 74% 15%",          // #0A2342  navigation, lede, card titles
-  topMuted: "218 19% 37%",         // #4D5A70  descriptions — 6.9:1 on white
-  topGold: "46 99% 50%",           // #FEC101  "Nai", primary button, category icons
-  topLeaf: "164 98% 23%",          // #017656  green category icons
-  topCream: "60 22% 96.5%",        // #F8F8F4  hero background — the hero artwork is filled with this
-  topMint: "94 81% 85.5%",         // #D6F8BC  benefit icon tint
-  topButter: "47 98% 82%",         // #FEEBA3  benefit icon tint
+  typeComplaint: "152 62% 22%",    // Urban Development & Planning — brand green
+  typeGrievance: "334 62% 36%",    // Finance & Economic Planning — burgundy
+  typePetition: "120 45% 35%",     // Environment / Green Nairobi — leaf green
+  typeReport: "36 70% 40%",        // Boroughs & Sub-County Administration — earth
   radius: "0.875rem",           // 14px — rounder cards, in keeping with current government portals
 };
 
@@ -141,10 +119,6 @@ export function buildTokenStyle(overrides?: Partial<LandingTokens>): React.CSSPr
  * repo config: centered, 1rem gutter, capped at the xl breakpoint.
  */
 export const CONTAINER = "mx-auto w-full max-w-screen-xl px-4";
-
-/** Full-width gutter of the top-of-page design (strip, masthead, hero, service
- *  categories): it runs edge to edge, unlike the capped CONTAINER below it. */
-export const TOP_GUTTER = "w-full px-[clamp(16px,5vw,76px)]";
 
 /**
  * House style: no anchor underlines on hover, anywhere on the landing page.
