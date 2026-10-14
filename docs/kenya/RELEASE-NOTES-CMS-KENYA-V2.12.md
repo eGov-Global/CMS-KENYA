@@ -57,7 +57,7 @@ One code line serves two counties:
 - **For residents and staff:**
   - a public website for each county;
   - consent and a confidentiality option when filing;
-  - an official PDF receipt;
+  - an official PDF application of the complaint (Download and Print; Share on phones);
   - start-up download more than halved;
   - manual escalation;
   - live reopen and withdraw windows;
@@ -70,7 +70,7 @@ One code line serves two counties:
 
 ### For residents
 - **A public website for each county**, reachable without signing in (the site root opens it):
-  - **Bonga Nai** — the county's 12 Oct design (utility strip, county crest masthead, hero, photo category cards, slogan band) and a single "Call Customer Service" panel: 0725 624 489 (24/7), 0730 047 047 and 020 724 7047, with a contact e-mail supplied by the county in the footer (#152–#155).
+  - **Bonga Nai** — the county's 12 Oct design (utility strip, county crest masthead, hero, photo category cards, slogan band) and a single "Call Customer Service" panel: 0725 624 489 (24/7), 0730 047 047 and 020 724 7047, with a contact e-mail supplied by the county in the footer (renamed from Nai Pepea, #71; #152–#155).
   - **Bomet Feedback Hub** — the Bomet page with its own wording, sub-counties and help lines (`nairobi-prod-bgrm-changes`); its text is configurable through 172 `PGR_LANDING_*` labels.
 - **Filing a complaint**
   - **Terms & Conditions consent** is required before submitting and is stored with the complaint (#103).
@@ -80,11 +80,11 @@ One code line serves two counties:
   - The **map** opens at the county centre at street level with a pin the resident can move; it uses a vector street map with a fallback for older phones, and clearing a search keeps the current view (#4, #86, kenya-prod 18 Sep).
   - Questions whose answers could not be saved (name, address and e-mail on the first screen) are no longer asked (#96).
 - **After filing**
-  - **Complaint receipt** — an official PDF generated in the browser: Download, Print and Share on the confirmation and complaint pages. Share opens a dialog (Open PDF, E-mail, WhatsApp, SMS, More apps) and shares the PDF itself on phones. The prefilled message never contains the complainant's name or phone number (#103, #117, #119, #121, #129, #142).
+  - **Complaint PDF application** — an official PDF generated in the browser: Download and Print on the confirmation and complaint pages. **Share appears in the mobile view only** (768 px and narrower): it opens a dialog (Open PDF, E-mail, WhatsApp, SMS) and hands the PDF itself to the phone's share sheet. Computers, including Mac, get Download and Print. The prefilled message never contains the complainant's name or phone number (#103, #117, #119, #120, #121, #129, #142, #162).
   - **Progress timeline** without officers' names, phone numbers or internal comments (#103).
   - Escalated complaints show **"Escalated (Level n)"**, and the location reads as **County / Sub-County / Ward** names (#29, kenya-prod 21 Sep).
   - **Rating with five faces** instead of stars; earlier ratings are kept (#117).
-  - **Reopen** within the county's window — 3 days after the last update in both counties. The button disappears when the window closes, even on a page left open (#136, #145).
+  - **Reopen** within the county's window — 3 days after the last update in both counties. The button disappears when the window closes, even on a page left open (#136, #145). A reopened complaint goes back to an officer who can act on it, and the reopen form shows errors inline and blocks a double submit (#65, #85).
   - **Withdraw** a complaint that is no longer needed, after a short confirmation with an optional reason — Bonga: within 1 day, before it is assigned; Bomet: within 3 days, while it is with the officer; never after a reopen (#146).
 - **Everyday use**
   - The application downloads **less than half as much** at start-up (4.55 MB instead of 9.5 MB) — heavy screens, maps and PDF tools load only when needed (#103).
@@ -105,7 +105,9 @@ One code line serves two counties:
 - **New staff header** — greeting by designation ("Hello, Director"), live clock, language menu, profile card (department, role, location, last login); the city picker appears only for staff working in more than one city (kenya-prod 18–21 Sep, #132).
 - The **Complaints card** is shown to Directors, Chief Officers, CECMs, Bomet's department tiers and the Ombudsman (#20, #83, kenya-prod 18 Sep).
 - **Forgot password** sends the code to the mobile number entered with its country code, and no longer crashes (kenya-prod 10–21 Sep).
-- Receipt buttons on the staff "complaint submitted" page (#121); working error, maintenance and not-found screens (#5).
+- PDF application buttons on the staff "complaint submitted" page (#121); working error, maintenance and not-found screens (#5).
+- **Top bar** — when the county logo fails to load, the county's bundled emblem shows instead, and a long designation is shortened so the language and profile menus, with Logout, stay on screen (#161).
+- **Role-tiered staff home** at `/digit-ui/employee/home-v2` (oversight, casework, intake, read-only), recognising both counties' officer roles and showing real counts. It is reachable by URL and not yet linked from the menu (#56, #63, #80).
 
 ### For county leadership
 - **Dashboard export** — Excel (a summary plus a sheet per tile), CSV or a PDF report, each with the filters used, the KPIs against the previous period, and every chart, table and map as data (#130).
@@ -158,7 +160,7 @@ Not included from CMS V2.12:
 **Made for Kenya**
 - **Confidential complainants are masked by the server** (#103, #128). For a confidential complaint, the name, phone, e-mail and address are replaced for every officer, including the clerk who filed it, unless the officer holds `CONFIDENTIAL_COMPLAINT_VIEWER`. Searches by person leave confidential complaints out, and staff notifications and domain events carry no complainant identity.
 - **The resident's timeline comes from a role-filtered API** (`/pgr-services/v2/request/_chronology`, access-control action 2635; #103). Officer names, contacts and internal comments are removed on the server, not only hidden in the page.
-- **Receipts and share messages never contain the complainant's name or phone number** (#129, #142).
+- **The PDF application and share messages never contain the complainant's name or phone number** (#129, #142).
 - **Time limits are enforced by the server** (#136). REOPEN and WITHDRAW are refused outside the county's window even when the API is called directly, and a malformed window rule fails closed (`INVALID_ACTION_WINDOW_CONFIG`).
 - **Uploads are scanned for viruses** (#157); see "File scan" below.
 - **Landing-page links** that come from configuration are sanitised before they become navigation (PR #1).
@@ -166,7 +168,7 @@ Not included from CMS V2.12:
 **From CMS V2.12** (in this release)
 - **The gateway enforces access instead of only logging it.** Kong's `ENFORCE_UNAUTH` and `ENFORCE_RBAC` change from audit mode to enforced: a protected API called without a session gets 401, and a call without the role gets 403. This is the shipped configuration; the live gateways were not inspected.
 - **Policy-based complaint search** (access-control action 2008). Results are scoped by department and jurisdiction per role, the complainant's name and phone are redacted outside that scope, and the check fails closed when access control cannot be reached. Both counties' policies are described under "Configuration".
-- **jsPDF upgraded from 2.5.1 to 4.2.1** (CVE fix). It is the PDF library the UI uses for receipts and reports.
+- **jsPDF upgraded from 2.5.1 to 4.2.1** (CVE fix). It is the PDF library the UI uses for the complaint PDF and reports.
 - **Platform defaults:**
   - Grafana no longer allows anonymous access.
   - The Helm values turn off dev mode, the fixed OTP and HRMS dev mode.
@@ -245,9 +247,10 @@ Browsers allow a site only about 5 MB of `localStorage`. The platform kept maste
   - Ansible rebuilds the UI whenever its source changes.
 - **Up-to-date complaint pages** (#131). The page refreshes when the officer returns to the tab, and after an action fails because the complaint changed meanwhile.
 - **No carried-over notes** (#96). A Take Action draft belongs to one complaint and one action. An end-to-end test keeps it that way (#147).
-- **Receipts in every browser** (#142):
-  - The PDF is prepared when the share dialog opens, so Share, Open PDF and Download run inside the user's click. That is what Safari on Mac and desktop Chrome require.
-  - A refused share falls back to a download.
+- **Sharing the PDF application from phones** (#142, #162):
+  - Share appears in the mobile view only. On computers, sharing was unreliable (issue #138, Safari on Mac), so computers get Download and Print.
+  - "More apps" was removed: on a phone every tile already opens the device's own share sheet, which lists every app.
+  - The PDF is prepared when the share dialog opens, so Share, Open PDF and Download run inside the user's tap; a refused share falls back to a download.
   - Opening the PDF uses a ready-made file instead of navigating a blank pop-up.
 - **Faster first load on slow links** (#103): screens, maps and PDF tools load on demand, which halves the start-up download (9.5 MB to 4.55 MB).
 - **County identity in the tab** (#140): the browser tab shows the county's name and icon.
@@ -288,7 +291,7 @@ Both counties run the same resident and staff application code. They differ in t
 | Landing page | Bonga Nai design (`nairobi-prod`) | Bomet page (`nairobi-prod-bgrm-changes`) |
 | Complaint service | `nairobi-prod` | `feat/bomet-uat` — identical except the complaint-number option below |
 | Complaint numbers | `BNG-2026-125` (no zero padding) | `BFH-2026-000020` (6-digit zero padding; Bomet's requirement asks for 7 digits, issue #45) |
-| Where a new complaint goes | The GRO's queue; the GRO assigns a last-mile officer | **Straight to a last-mile officer.** Complaints filed by residents are assigned automatically (best effort) to an officer of the category's department, matched on the complaint's location: ward, then sub-county, county, department-wide. If nobody matches, the complaint stays unassigned. |
+| Where a new complaint goes | The GRO's queue; the GRO assigns a last-mile officer | **Straight to a last-mile officer.** Complaints filed by residents are assigned automatically (best effort) to a last-mile officer of the category's department, matched on the complaint's location: ward, then sub-county, county, department-wide. If nobody matches, the complaint stays unassigned (#4, #8). |
 | Escalation | 2 levels: Chief Officer → CECM | 3 levels per department: Director → Chief Officer → CECM (Water starts at its Chief Officer) |
 | Officer can hand back | Reassign within the department; send back to the GRO | — |
 | Withdraw | Before assignment, within 1 day of filing | While with the officer, within 3 days of filing |
@@ -386,16 +389,38 @@ Everything below is **opt-in or a fallback** unless stated. None of the Kenya-ad
 | **Backend (novu-bridge)** | Bongatech and Source Code SMS gateways · OTP consumer (needs user-otp's `SMS_TOPIC`) · SmsCountry removed |
 | **File uploads** | Optional ClamAV scanning proxy with quarantine (off by default) |
 | **Security** | Server-side confidential masking · role-filtered timeline · server-enforced time limits · upload virus scan · gateway enforcement and policy-based search (CMS V2.12) · jsPDF CVE fix · CMS V2.12's pgr-services validation fix still to take |
-| **Browser & session** | Storage-quota fix (IndexedDB; no crash on a full store) · safe cross-tab sessions · expired-session handling · new-build pickup after deploys · receipts that work in Safari and desktop Chrome |
+| **Browser & session** | Storage-quota fix (IndexedDB; no crash on a full store) · safe cross-tab sessions · expired-session handling · new-build pickup after deploys · Share on phones only |
 | **From CMS V2.12** | Photo, screenshot and video attachments that play in the browser · dashboard, top-bar, theme and inbox-tab enhancements |
-| **Frontend (residents)** | County landing pages · consent and confidentiality at filing · offline PDF receipt and share dialog · face rating · live reopen and withdraw windows · faster start-up · tab title per county |
-| **Frontend (staff)** | Manual escalation · reassign and send back to GRO (Bonga) · searchable assign picker · Take Action by role · new header with designation greeting · inbox defaults for escalated, resolved and rejected complaints |
+| **Frontend (residents)** | County landing pages · consent and confidentiality at filing · PDF application with Share on phones · face rating · live reopen and withdraw windows · faster start-up · tab title per county |
+| **Frontend (staff)** | Manual escalation · reassign and send back to GRO (Bonga) · searchable assign picker · Take Action by role · new header with designation greeting, logo fallback and long-title fix · inbox defaults for escalated, resolved and rejected complaints |
 | **Dashboard** | Export to Excel, CSV and PDF |
 | **Workflow** | Bonga: GRO-led 2-level escalation, reassign, reassign-to-GRO, withdraw · Bomet: auto-assigned 3-level departmental escalation, withdraw |
 | **Configuration / MDMS** | `UIConstants` action windows · `EscalationConfig`, `InboxVisibilityConfig`, `AnalyticsProvider` (Bomet) · county categories, numbering, branding |
 | **Roles & access** | County officer tiers · timeline action 2635 · analytics write actions (Bomet) |
 | **Localization** | English and Kiswahili on both counties · county app titles · Bomet landing text |
 | **Deployment** | Per-county Ansible host_vars · new-build pickup · ClamAV option · Matomo provisioning fixes |
+
+---
+
+## Fixes and Improvements
+
+Smaller fixes not listed above, all in this release:
+- **The citizen reopen page no longer crashes** (a hook was not registered) (#6).
+- **Readable buttons:**
+  - primary buttons are readable at rest in each county's colours;
+  - the citizen Rate and Re-open buttons are readable;
+  - the reopen heading falls back to English when its label is missing (#62, #63, #64).
+- **Sign-in screens** (kenya-prod 18–23 Sep):
+  - the top bar takes the county colour;
+  - the backdrop fills the screen on every device, with no white strips;
+  - Bomet's highland landscape shows behind both sign-in screens.
+- **The citizen home's Complaints card** has its own banner strip instead of reusing the sign-in photo (Nairobi).
+- **Landing page:**
+  - text on dark areas stays white even when a county's buttons are light;
+  - the Bomet landing page was restyled with a white hero and footer, a blue palette and the county logo lockup (#7).
+- **Labels:** two staff-home labels that showed as raw keys are seeded.
+- **The citizen footer** sits flush at the bottom, and a bundled DIGIT mark replaces a missing county logo in the citizen header (#131).
+- **Tests:** a new end-to-end test keeps a Take Action draft with its own complaint (#147).
 
 ---
 
@@ -420,7 +445,7 @@ Recorded CI:
 - #152–#155 triggered no checks.
 - **Local Setup CI and Tilt CI fail:** `minio/minio` can no longer be pulled in CI (Tilt CI last passed on 4 Sep). The image reference is unchanged since the CMS V2.12 baseline, so the failure is external and not caused by this release.
 
-Manual / UAT: the county flows were exercised on the live sites and on a local Bomet stack as each change was made — filing, auto-assignment, escalation, resolve / reopen / rate, withdraw, receipts, dashboard export — mostly with real officer accounts rather than an administrator. A formal UAT sign-off is not kept in the repository.
+Manual / UAT: the county flows were exercised on the live sites and on a local Bomet stack as each change was made — filing, auto-assignment, escalation, resolve / reopen / rate, withdraw, the PDF application, dashboard export — mostly with real officer accounts rather than an administrator. A formal UAT sign-off is not kept in the repository.
 
 ---
 
@@ -437,7 +462,7 @@ Manual / UAT: the county flows were exercised on the live sites and on a local B
 6. **No officer can see a confidential complainant** — the `CONFIDENTIAL_COMPLAINT_VIEWER` role does not exist in either county.
 7. **Bomet: last-mile officers, department tiers and GROs see complainant names and phone numbers redacted.** Bomet's search policy on action 2008 shows them only to the complainant and to staff whose roles reach every department and area (CSR, OMBUDSMAN_OFFICER). If officers must call complainants back, add the department-and-area clause Bonga uses. This comes from the policy code; not checked on screen.
 8. **Bomet: 11 categories still have 2-minute test escalation timers** in `RAINMAKER-PGR.EscalationConfig`: 8 on all three levels and 3 Water categories on levels 1–2. Examples are maternal emergencies, ambulance delays, corruption and water pipes. These complaints escalate at the next scheduler run (every 5 minutes by default). Escalation beyond level 1 runs automatically only if `PGR_ESCALATION_STATES` includes the escalated states (not verified).
-9. **Receipts print `0000000000`** as the county's phone; the county e-mail is a placeholder and the `StateInfo` name reads "Demo" (both counties).
+9. **The PDF application prints `0000000000`** as the county's phone; the county e-mail is a placeholder and the `StateInfo` name reads "Demo" (both counties).
 10. **No SMS or e-mail** is sent for WITHDRAW (both counties), REASSIGNTOGRO (Bonga) or ESCALATE (Bomet): no notification templates exist.
 11. The distinct menu icons for Create and Search Complaint (#90) need an MDMS data update in both counties.
 12. Bomet: six sample departments, sample designations and 18 Hindi notification templates remain; the `StateInfo` banner points to a missing image; the analytics endpoint value starts with a tab character.

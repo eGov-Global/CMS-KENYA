@@ -21,7 +21,7 @@ Both counties run the same application. Each county has its own public website, 
 ## Highlights
 
 - **Confidential complaints.** A resident, or a staff member filing for a resident, can ask for the resident's identity to be kept confidential. The system hides the complainant's name and contact details from county staff, and leaves them out of staff notifications.
-- **Complaint receipt.** After filing, a resident can download, print or share an official PDF receipt of the complaint.
+- **Complaint PDF.** After filing, a resident can download or print an official PDF application of the complaint, and share it from a phone.
 - **Faster to open.** The application downloads less than half as much data when it starts, so it opens noticeably faster on mobile data.
 - **Officers can escalate.** An officer can pass a complaint to the next level of seniority directly, without waiting for the automatic, time-based escalation.
 - **Dashboard export.** County leadership can export the dashboard as an Excel workbook, a CSV file or a PDF report.
@@ -45,7 +45,7 @@ Both counties run the same application. Each county has its own public website, 
 - Questions whose answers the system could not keep (name, address and e-mail on the first screen) have been removed, so residents no longer type information that is then lost.
 
 ### After filing
-- **Complaint receipt:** Download, Print and Share buttons appear on the confirmation screen and on the complaint page. Share offers e-mail, WhatsApp, SMS and other apps. On phones, the PDF receipt itself is shared. The message includes the complaint number, status, category, date and description, and **never** the complainant's name or phone number.
+- **Complaint PDF application:** Download and Print buttons appear on the confirmation screen and on the complaint page. On phones a Share button appears as well: it offers e-mail, WhatsApp and SMS and sends the PDF itself. Computers don't offer Share, because sharing was unreliable there (especially on Mac). The message includes the complaint number, status, category, date and description, and **never** the complainant's name or phone number.
 - **Rating with faces:** residents rate the service by choosing one of five faces, each with a short label, instead of stars. The rating works with a keyboard and screen readers. Earlier ratings are kept.
 - **Progress timeline:** residents see what has happened to their complaint and when. Officers' names, phone numbers and internal comments are not shown.
 - **Reopening:** a resident can reopen a resolved or rejected complaint within **3 days** in both counties. The Reopen option disappears when the period ends, even on a page left open.
@@ -69,7 +69,7 @@ Both counties run the same application. Each county has its own public website, 
 ### Filing on a resident's behalf (front desk and call centre)
 - Staff can tick **"Keep details confidential"** when filing for a resident.
 - Filing a complaint with an address no longer fails.
-- After filing, staff can download, print or share the receipt for the resident.
+- After filing, staff can download or print the PDF application for the resident, or share it from a phone.
 - Staff can **withdraw** a complaint on a resident's behalf within the County's time limit, after confirming and giving a reason.
 
 ### Working on complaints
@@ -87,6 +87,7 @@ Both counties run the same application. Each county has its own public website, 
 - Directors, Chief Officers and CECMs in both counties, and the Ombudsman in Bomet, see the **Complaints** card on their home page.
 - Officers are greeted by **designation** (for example "Hello, Director"), and the profile menu shows their department by name.
 - **Forgot password** sends the one-time password to the mobile number the officer types.
+- **Top bar:** the county logo always shows, and long job titles no longer push the profile menu and Logout off the screen.
 - A notice warns an officer when **another account signs in** in the same browser, so one session does not silently replace another.
 
 ---
@@ -95,7 +96,7 @@ Both counties run the same application. Each county has its own public website, 
 
 - **Confidential complaints are protected by the system itself, not only on screen.** For a confidential complaint, the complainant's name, phone number, e-mail and address are hidden from all county staff, including the staff member who filed it, unless the County has authorised that person to view confidential complaints. The details are also left out of staff notifications. Residents always see their own details.
 - **Residents do not see which officer handled their complaint.** Officers' names and phone numbers are not shown to residents.
-- **Receipts and shared messages** never include the complainant's name or phone number.
+- **The PDF application and shared messages** never include the complainant's name or phone number.
 
 ---
 
@@ -110,10 +111,10 @@ Both counties run the same application. Each county has its own public website, 
 - **Protection happens in the system, not only on screen.**
   - Confidential complainants' details are hidden by the server itself.
   - Residents' progress timelines leave out officers' names, contacts and internal comments.
-  - Receipts never carry the complainant's name or phone number.
+  - The PDF application never carries the complainant's name or phone number.
 - **Time limits cannot be bypassed.** Reopen and withdraw are refused outside the County's period even if someone calls the system directly.
 - **Stricter access checks.** The system is set up to block requests from anyone who is not signed in or lacks the right role, instead of only recording them. Search results follow each officer's department and area.
-- **Up-to-date components.** The PDF component used for receipts and reports was updated to a version with a known security problem fixed.
+- **Up-to-date components.** The PDF component used for the complaint PDF and reports was updated to a version with a known security problem fixed.
 - **Still to come.** Some security improvements made in CMS V2.12 in September are not yet included. The most important is stricter checking of the data sent with each complaint. We recommend including them in the next update.
 
 ### Virus scanning of uploaded files
@@ -138,7 +139,7 @@ Browsers give each website only a small amount of storage. The system used to ke
 - **Two officers sharing one computer.** One officer signing out or timing out no longer signs out another officer working in a different tab. If a second officer signs in, the first sees a notice explaining what happened; nothing is lost and nobody is signed out.
 - **Expired sessions.** When a session expires, the person is taken to the sign-in page and then returned to their work. Their language and any half-filled complaint are kept. A brief network problem shows a message on the page instead of a maintenance screen, which used to cause duplicate complaints.
 - **After an update.** Pages left open, such as an officer's inbox, move to the new version automatically at a safe moment, never in the middle of a form.
-- **Receipts on every browser.** Sharing and opening the PDF receipt now works on Safari (Mac) and desktop Chrome.
+- **Sharing from phones.** The Share option appears on phones only. On computers, where sharing was unreliable (especially on Mac), Download and Print are offered.
 - **Up-to-date pages.** The complaint page refreshes when the officer comes back to it.
 - **Faster start.** The application loads less than half as much data when it opens.
 
@@ -181,16 +182,18 @@ Browsers give each website only a small amount of storage. The system used to ke
 
 ## Other fixes
 
+- The reopen page opens reliably (it could fail to load).
 - Error and "page not found" screens show their image and a clear button back to the home page.
 - Buttons and confirmation dialogs are readable in each county's colours.
-- The sign-in screens fill the whole screen on every device size.
+- The sign-in screens fill the whole screen on every device size, with the county's colours and, in Bomet, a county landscape.
+- The residents' home page shows the complaints section with its own banner.
 - The application shows a default logo if a county logo fails to load.
 
 ---
 
 ## What we need from the Counties
 
-1. **Helpline number on receipts (both counties):** receipts print a placeholder number (0000000000). Please share the official public helpline number, and the official contact e-mail.
+1. **Helpline number on the PDF application (both counties):** it prints a placeholder number (0000000000). Please share the official public helpline number, and the official contact e-mail.
 2. **Viewing confidential complaints (both counties):** please name the staff who may see the identity of confidential complainants. Until then, no staff member can see it.
 3. **Bomet, complainants' contact details:** under the current settings, complainants' names and phone numbers are visible only to front-desk staff and the Ombudsman. Please confirm which officers need them, for example to call a complainant back.
 4. **Bomet, escalation times:** 11 complaint categories still have test values for their escalation times (2 minutes). Please confirm the intended times.
