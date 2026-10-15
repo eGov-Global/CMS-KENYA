@@ -582,6 +582,8 @@ Preparing the training videos and the support package meant running every workfl
 
 ## Documentation
 
+- [Training videos (Google Drive)](https://drive.google.com/drive/folders/1QiImno9XX1cxhgQtSXCFc0TS7GU6FUDG?usp=sharing) — 22 narrated parts with subtitles: the complaint workflow end to end, then security and confidentiality; also holds the support package as a PDF
+- [Training video player](https://claude.ai/artifact/872R5UhyNE99wWhFfd2QPR) — the same 22 parts with chapters and a clickable narration script (eGov staff only)
 - [Support package](https://github.com/eGov-Global/CMS-KENYA/tree/master/docs/kenya/support) — L1/L2/L3 support matrix, procedures, troubleshooting, training video scripts and traceability
 - [Release audit / evidence document](https://github.com/eGov-Global/CMS-KENYA/blob/master/docs/kenya/RELEASE-PREVIEW-CMS-KENYA-V2.12.md) — full comparison with CMS V2.12, PR inventory and live-configuration capture behind these notes
 - [County release note](https://github.com/eGov-Global/CMS-KENYA/blob/master/docs/kenya/COUNTY-RELEASE-NOTE-CMS-KENYA-V2.12.md) — plain-language summary for Nairobi City County and Bomet County officials
