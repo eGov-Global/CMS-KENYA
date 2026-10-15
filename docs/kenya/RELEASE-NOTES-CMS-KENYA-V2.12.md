@@ -550,6 +550,36 @@ The walkthrough follows Bonga Nai. On Bomet there is no GRO step (complaints go 
 
 **Where to find them:** [CMS Kenya V2.12 – videos and support documents (Google Drive)](https://drive.google.com/drive/folders/1QiImno9XX1cxhgQtSXCFc0TS7GU6FUDG?usp=sharing). Open `1-videos` to play any part in the browser; `2-support-documents` holds the support package and its PDF.
 
+## Support preparation: findings and follow-ups (14–15 Oct 2026)
+
+Preparing the training videos and the support package meant running every workflow end to end on cms-pilot and reading both live sites. This section records what was changed on the test environment, what was found, and what still needs a decision.
+
+### Changes made on cms-pilot (test environment only)
+
+| Change | Why | Rollback |
+|---|---|---|
+| Label cache refreshed and 15 labels added in English and Kiswahili (for example *Withdraw*, *Rate*, *Escalate Complaint*, *Reassign to GRO*) | Take Action menus, dialog titles and the resident's timeline showed raw keys such as `WITHDRAW` and `CS_ACTION_ESCALATE`. Bonga already had these labels. | Previous values saved in the QA kit |
+| Complaint sub-types set to department "NA", as on Bonga | A resident's reopen failed with `INVALID_ASSIGNMENT` on cms-pilot, where sub-types carried departments; Bonga's do not | Before-state of all 58 records saved in the QA kit |
+| Seven fictional test accounts created (resident, front desk, GRO, two last-mile officers, Chief Officer and CECM for Finance) | The earlier test officers were deactivated; the videos needed one account per role | Deactivate through HRMS |
+| 33 test complaints filed and worked through (`CMS-2026-47` to `CMS-2026-79`) | Recording the videos | Test data; no action needed |
+
+### Findings
+
+| # | Finding | Site | Impact | Owner | Status |
+|---|---|---|---|---|---|
+| 1 | Escalation timers are test values: `RAINMAKER-PGR.EscalationConfig` sets 2, 4 and 6 minutes per level on Bonga (2, 3 and 4 on cms-pilot) | Bonga live | If the escalation job runs on Bonga, complaints escalate within minutes of assignment. On cms-pilot a complaint escalated automatically about 2 minutes after it was assigned | County + L2 | Needs the county's intended times; whether the job runs on Bonga is not verified |
+| 2 | Reopen picks an assignee automatically (the GRO) and the server checks that assignee's department against the complaint's | Both | Works today on Bonga only because its sub-types have no department. If departments are mapped on Bonga, residents' reopens will fail with `INVALID_ASSIGNMENT` | L3 | Open: a reopen that returns to the GRO queue should not send an assignee |
+| 3 | A refused upload shows the file server's raw message with a typo: *"Inalvid input provided for file : exe, please upload any of the allowed formats…"* | Both (same file-server image) | Residents see a misspelt, technical message | L3 | Open |
+| 4 | Labels for the newer actions were missing on cms-pilot (see the first change above) | cms-pilot | Raw keys on screen during testing | L2 | Fixed on cms-pilot; present on Bonga |
+| 5 | The cms-pilot test officers used in September were deactivated, and cms-pilot sends real, paid SMS | cms-pilot | Testing needs current accounts, and test runs cost SMS credits | L2 | Use the agreed test numbers only |
+
+### Follow-ups
+
+1. **Before the training videos are shared outside eGov:** harden the cms-pilot test environment (account credentials and one-time-code settings), or deactivate the test accounts once the videos are final. The videos show the test environment's sign-in screens.
+2. **Counties:** confirm the intended escalation times for Nairobi (finding 1), alongside the Bomet request under *What we need from the Counties*.
+3. **Engineering:** findings 2 and 3.
+4. **Public sharing of the walkthrough page:** the eGov workspace does not allow public links for it; the shared Drive folder is the public route for the videos.
+
 ## Documentation
 
 - [Support package](https://github.com/eGov-Global/CMS-KENYA/tree/master/docs/kenya/support) — L1/L2/L3 support matrix, procedures, troubleshooting, training video scripts and traceability
