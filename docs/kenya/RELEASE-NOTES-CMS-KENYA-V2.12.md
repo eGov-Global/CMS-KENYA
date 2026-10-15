@@ -517,21 +517,32 @@ Known on 13 Oct 2026:
 
 A narrated video walkthrough of the whole complaint workflow comes with this release, together with a support package for the teams who run the two sites.
 
-**Videos** — 11 short parts, about 17 minutes in total, each with English narration and subtitles. They were recorded on cms-pilot (the test twin of Bonga Nai) with fictional test users, so the screens are the real CMS Kenya V2.12 screens; any other person's name is hidden and phone numbers are masked.
+**Videos** — 22 short parts, about 33 minutes in total, each with English narration and subtitles: the complaint workflow end to end, then the security and confidentiality features. They were recorded on cms-pilot (the test twin of Bonga Nai) with fictional test users, so the screens are the real CMS Kenya V2.12 screens; any other person's name is hidden and phone numbers are masked.
 
 | Part | What it shows |
 |---|---|
 | 00 | Introduction: the roles and the path a complaint takes |
+| 00b | The public website: Report an Issue, Track a Complaint, help lines |
 | 01 | A resident signs in with a one-time code and files a complaint in three steps |
 | 02 | The front desk files a complaint on a caller's behalf |
-| 03 | The GRO checks new complaints, assigns them to a last-mile officer, and the Reject option |
+| 02b | Staff sign-in (privacy consent, forgot password), the staff header and profile card, switching to Kiswahili, logout |
+| 03 | The GRO checks new complaints and assigns them to a last-mile officer |
+| 03b | The front desk withdraws a complaint for a caller (reason required) |
+| 03c | The GRO rejects a complaint with a reason, and what the resident then sees |
 | 04 | The last-mile officer resolves one complaint and escalates another |
 | 04b | The officer sends a complaint that belongs to another department back to the GRO (Bonga only) |
+| 04c | The officer re-assigns a complaint to a colleague in the same department |
 | 05 | The Chief Officer resolves the escalated complaint |
+| 05b | Escalation to level 2: the Chief Officer escalates to the CECM, who resolves it |
 | 06 | The resident rates one complaint, reopens one and withdraws a duplicate |
+| 06b | A resident on a phone: a photo attached, the PDF application downloaded, Share |
 | 07 | Back in the GRO's queue, and a complaint escalated automatically after its deadline |
 | 08 | The leadership dashboard and export to Excel, CSV or PDF |
 | 09 | Summary: where each complaint ended up |
+| S1 | Confidential complaints: identity hidden from every officer by the server; the resident's timeline without officer names or internal notes |
+| S2 | Safe sign-in and sessions: a wrong one-time code, the resend timer, the "another account signed in" notice, the not-found screen |
+| S3 | Safe uploads: size, type and number limits; virus scanning and quarantine (off on both counties) |
+| S4 | Rules the server enforces: time windows, role-based actions, the timeline as audit trail, the notification log |
 
 The walkthrough follows Bonga Nai. On Bomet there is no GRO step (complaints go straight to the department officer), no "send back to GRO", three escalation levels, and a 3-day withdraw period.
 
