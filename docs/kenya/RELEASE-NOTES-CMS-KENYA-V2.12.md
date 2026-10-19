@@ -582,15 +582,51 @@ Preparing the training videos and the support package meant running every workfl
 
 ## Documentation
 
+### This release
+
+- [Release notes](https://github.com/eGov-Global/CMS-KENYA/blob/master/docs/kenya/RELEASE-NOTES-CMS-KENYA-V2.12.md) — this document
+- [County release note](https://github.com/eGov-Global/CMS-KENYA/blob/master/docs/kenya/COUNTY-RELEASE-NOTE-CMS-KENYA-V2.12.md) — plain-language summary for Nairobi City County and Bomet County officials
+- [Release audit / evidence document](https://github.com/eGov-Global/CMS-KENYA/blob/master/docs/kenya/RELEASE-PREVIEW-CMS-KENYA-V2.12.md) — full comparison with CMS V2.12, PR inventory, live-configuration capture and open issues by priority
+
+### Training videos
+
 - [Training videos (Google Drive)](https://drive.google.com/drive/folders/1QiImno9XX1cxhgQtSXCFc0TS7GU6FUDG?usp=sharing) — 22 narrated parts with subtitles: the complaint workflow end to end, then security and confidentiality; also holds the support package as a PDF
 - [Training video player](https://claude.ai/artifact/872R5UhyNE99wWhFfd2QPR) — the same 22 parts with chapters and a clickable narration script (eGov staff only)
-- [Support package](https://github.com/eGov-Global/CMS-KENYA/tree/master/docs/kenya/support) — L1/L2/L3 support matrix, procedures, troubleshooting, training video scripts and traceability
-- [Release audit / evidence document](https://github.com/eGov-Global/CMS-KENYA/blob/master/docs/kenya/RELEASE-PREVIEW-CMS-KENYA-V2.12.md) — full comparison with CMS V2.12, PR inventory and live-configuration capture behind these notes
-- [County release note](https://github.com/eGov-Global/CMS-KENYA/blob/master/docs/kenya/COUNTY-RELEASE-NOTE-CMS-KENYA-V2.12.md) — plain-language summary for Nairobi City County and Bomet County officials
+
+### Support package (`docs/kenya/support/`)
+
+For the eGov support desk (L1), platform operators (L2) and engineering (L3).
+
+| Document | What it answers |
+|---|---|
+| [Package overview](https://github.com/eGov-Global/CMS-KENYA/blob/master/docs/kenya/support/README.md) | Who it is for, how to read the VERIFIED / RECOMMENDATION tags, rules for handling data |
+| [1. Support matrix](https://github.com/eGov-Global/CMS-KENYA/blob/master/docs/kenya/support/01-support-matrix.md) | Which level owns each issue type, what L1 checks first, when to escalate; who can act at each status; time windows |
+| [2. Video catalogue](https://github.com/eGov-Global/CMS-KENYA/blob/master/docs/kenya/support/02-video-catalogue.md) | Which training video to watch, by level |
+| [3. Storyboards and narration](https://github.com/eGov-Global/CMS-KENYA/blob/master/docs/kenya/support/03-storyboards-narration.md) | Scene-by-scene storyboards and English narration scripts |
+| [4. Troubleshooting guide](https://github.com/eGov-Global/CMS-KENYA/blob/master/docs/kenya/support/04-troubleshooting.md) | Symptoms with screenshots, and what each on-screen message means |
+| [5. Procedures](https://github.com/eGov-Global/CMS-KENYA/blob/master/docs/kenya/support/05-procedures.md) | Step-by-step L1, L2 and L3 procedures with verification and escalation |
+| [6. Knowledge-transfer guide](https://github.com/eGov-Global/CMS-KENYA/blob/master/docs/kenya/support/06-knowledge-transfer.md) | A five-session plan to bring a new support engineer up to speed |
+| [7. Traceability matrix](https://github.com/eGov-Global/CMS-KENYA/blob/master/docs/kenya/support/07-traceability-matrix.md) | Each release change → test evidence → video → procedure |
+| [Screen gallery](https://github.com/eGov-Global/CMS-KENYA/blob/master/docs/kenya/support/screenshots/README.md) | Every captured screen, by journey |
+| [One-page version](https://github.com/eGov-Global/CMS-KENYA/blob/master/docs/kenya/support/support-package.html) | All seven parts on one page with the screenshots (download and open in a browser; a PDF copy is in the Drive folder) |
+
+### Operations handbook (CMS V2.12, applies to both counties)
+
+- [Operations handbook overview](https://github.com/eGov-Global/CMS-KENYA/blob/master/docs/2.12/operations/README.md) — severities, how a problem moves from L1 to L2, monitoring links
+- [L1 first response](https://github.com/eGov-Global/CMS-KENYA/blob/master/docs/2.12/operations/l1-first-response.md) and [L2 diagnosis](https://github.com/eGov-Global/CMS-KENYA/blob/master/docs/2.12/operations/l2-diagnosis.md)
+- [Known issues](https://github.com/eGov-Global/CMS-KENYA/blob/master/docs/2.12/operations/known-issues.md), [incident report template](https://github.com/eGov-Global/CMS-KENYA/blob/master/docs/2.12/operations/incident-report.md) and [cheat sheet](https://github.com/eGov-Global/CMS-KENYA/blob/master/docs/2.12/operations/cheatsheet.md)
+- [Who sees which complaints (jurisdiction access control)](https://github.com/eGov-Global/CMS-KENYA/blob/master/docs/2.12/jurisdiction-access-control.md)
+- [Reopen window](https://github.com/eGov-Global/CMS-KENYA/blob/master/docs/reopen-window.md) — how the reopen time limit is set and enforced
+- [Dashboard configuration](https://github.com/eGov-Global/CMS-KENYA/blob/master/docs/2.12/dashboard/dashboard-configuration.md) and [notifications set-up](https://github.com/eGov-Global/CMS-KENYA/blob/master/docs/2.12/notifications/README.md)
+- [CMS V2.12 release notes](https://github.com/eGov-Global/CMS-KENYA/blob/master/docs/2.12/release-notes-v2.12.md) — what the base product changed
+
+### Deployment and configuration
+
 - [Bomet onboarding runbook](https://github.com/eGov-Global/CMS-KENYA/blob/master/local-setup/ansible/runbooks/03-bomet-onboarding.md)
 - [County host_vars templates](https://github.com/eGov-Global/CMS-KENYA/tree/master/local-setup/ansible/inventory/host_vars)
 - [Migration runner guide](https://github.com/eGov-Global/CMS-KENYA/blob/master/docs/migration/README.md)
 - [Escalation runbook](https://github.com/eGov-Global/CMS-KENYA/blob/master/docs/pgr-escalation/RUNBOOK.md)
+- [Virus scanning of uploads](https://github.com/eGov-Global/CMS-KENYA/blob/master/backend/filestore-scan-proxy/README.md) — enabling ClamAV and reading the quarantine
 - [Analytics setup](https://github.com/eGov-Global/CMS-KENYA/tree/master/docs/analytics-guide)
 
 <!-- ============================================================
