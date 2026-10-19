@@ -1,27 +1,139 @@
-# CMS Kenya V2.12 — Release Documentation (Technical Reference)
+# CMS Kenya V2.12 — release preview and evidence
 
-**Release:** `v2.12-kenya` — Bonga Nai (Nairobi City County, tenant `nb`) and Bomet Feedback Hub (Bomet County, tenant `bo`)
-**Code:** `nairobi-prod` @ `32a56d27d` (13 Oct 2026; tests ran at `8e6289e86`, and the only later commit adds the scan proxy's load-test tooling) · bgrm landing page: `nairobi-prod-bgrm-changes` @ `78444ee4e` · bgrm complaint service: `feat/bomet-uat` @ `6eb6b853c`
-**Built on:** CMS V2.12 (`egovernments/Citizen-Complaint-Resolution-System`; baseline `815b2374`, tag `product-base-2026-08-13`; updated on 16 Sep 2026 to `7ee88f83`)
-**Prepared:** 13 Oct 2026. The GitHub release body is [RELEASE-NOTES-CMS-KENYA-V2.12.md](RELEASE-NOTES-CMS-KENYA-V2.12.md) and the plain-language note for the counties is [COUNTY-RELEASE-NOTE-CMS-KENYA-V2.12.md](COUNTY-RELEASE-NOTE-CMS-KENYA-V2.12.md); this document is the evidence behind both.
+CMS Kenya V2.12 is the first official release of the Kenyan implementation of CMS V2.12, the DIGIT Complaint Management System, in which residents file complaints and county officers route, escalate and resolve them. One code line serves two live sites, Bonga Nai (Nairobi City County) and the Bomet Feedback Hub (Bomet County); in the technical text below, **bgrm** means the Bomet Feedback Hub site (bgrm.bomet.go.ke).
 
-## Contents
+**CMS Kenya V2.12:** **Release preview and evidence** (this page) · [Release notes](RELEASE-NOTES-CMS-KENYA-V2.12.md) · [County release note](COUNTY-RELEASE-NOTE-CMS-KENYA-V2.12.md)
 
-1. About this document
-2. Deployments and what they run
-3. Bonga vs bgrm: live configuration compared
-4. Kenya-layer change inventory
-5. Changes not in this release
-6. `nairobi-prod` vs `nairobi-prod-bgrm-changes`
-7. Included from CMS V2.12
-8. Configuration changes against CMS V2.12
-9. Testing status
-10. Known limitations and open issues
-11. Not verified
-12. Documentation
-13. Topic index: security, file scan, storage quota, sessions, CMS V2.12 contributions
+**Prepared:** 13 Oct 2026; updated 19 Oct 2026\
+**Release:** `v2.12-kenya` — Bonga Nai (Nairobi City County, tenant `nb`) and Bomet Feedback Hub (Bomet County, tenant `bo`)\
+**Code:** `nairobi-prod` @ `32a56d27d` (13 Oct 2026; tests ran at `8e6289e86`, and `32a56d27d` adds the scan proxy's load-test tooling; `723b680d7`, a server backup script of 14 Oct, came after the described code) · bgrm landing page: `nairobi-prod-bgrm-changes` @ `78444ee4e` · bgrm complaint service: `feat/bomet-uat` @ `6eb6b853c`\
+**Built on:** CMS V2.12 (`egovernments/Citizen-Complaint-Resolution-System`; baseline `815b23747`, tag `product-base-2026-08-13`; updated on 16 Sep 2026 to `7ee88f83`)
+
+## Who should read what
+
+This page is the entry point to the release and the evidence behind the other two documents.
+
+- **County administrators, operational teams and supervisors:** the [county release note](COUNTY-RELEASE-NOTE-CMS-KENYA-V2.12.md) explains in plain language what changes for residents, staff and leadership, and how the two counties differ.
+- **Release managers and reviewers:** the [release notes](RELEASE-NOTES-CMS-KENYA-V2.12.md) are the complete statement of what changed, what to know before deploying and what is not yet done. They are also the GitHub release body.
+- **Operators, the support desk and engineers:** the evidence below, above all [§2 on deployments](#2-deployments-and-what-they-run), [§3 on each county's live configuration](#3-bonga-vs-bgrm-live-configuration-compared), [§8 on configuration changes](#8-configuration-changes-against-cms-v212) and [§11 on what is not verified](#11-not-verified). The support package for L1 (eGov support desk), L2 (platform operators, county IT) and L3 (engineering) is in [pull request #163](https://github.com/eGov-Global/CMS-KENYA/pull/163); it cites §11 of this page (including §11.9) and the release notes' known limitations by number.
+
+## Themes and highest-value changes
+
+Each theme says what changed, then where it is explained (Read), where its evidence is on this page (Evidence) and which training video shows it (Watch).
+
+### Privacy and confidential complaints
+
+- A resident, or the front desk / call centre (role code CSR) filing for one, can tick "Keep details confidential". The server then hides the complainant's name, phone, e-mail and address from every officer without the `CONFIDENTIAL_COMPLAINT_VIEWER` role, which neither county has created yet ([limitation 6](RELEASE-NOTES-CMS-KENYA-V2.12.md#configuration-to-complete-in-the-counties)).
+- The resident's timeline comes from a role-filtered API, without officers' names, contacts or internal comments.
+- The PDF application prints the complainant's name and phone number as the person opening it may see them: in full on the resident's own copy, masked when staff without that role open a confidential complaint.
+- The message sent with a shared PDF never contains them, but Share hands over the PDF itself, so a resident who shares it also shares their own name and number.
+
+Read: [release notes › Security fixes](RELEASE-NOTES-CMS-KENYA-V2.12.md#security-fixes) · Evidence: [§4.4](#44-nairobi-prod-prs-and-direct-commits-2026-09-23-to-2026-10-13) (#103, #125, #128), [§3.4](#34-access-control-and-assets) · Watch: [part S1](RELEASE-NOTES-CMS-KENYA-V2.12.md#training-videos-and-support-package)
+
+### Security and virus scanning
+
+- Uploads can be scanned for viruses with ClamAV: infected files are refused and quarantined for 90 days, and while the scanner is down uploads are refused, never passed unscanned.
+- Scanning is off in both counties until it is switched on (issue #159). Memory: about 1.5 GB for ClamAV, plus up to 1 GB for the upload proxy under heavy load — budget about 2.5 GB.
+- From CMS V2.12 come gateway enforcement in the shipped configuration, policy-based search, safer platform defaults and a jsPDF fix for a published security vulnerability (CVE). Its pgr-services validation hardening is not yet taken ([limitation 4](RELEASE-NOTES-CMS-KENYA-V2.12.md#not-yet-in-this-release)).
+
+Read: [release notes › File scan: virus scanning of uploads](RELEASE-NOTES-CMS-KENYA-V2.12.md#file-scan-virus-scanning-of-uploads) and [› Security fixes](RELEASE-NOTES-CMS-KENYA-V2.12.md#security-fixes) · Evidence: [§4.4](#44-nairobi-prod-prs-and-direct-commits-2026-09-23-to-2026-10-13) (#157), [§8(g)](#8g-deployment), [§9](#9-testing-status) (load test), [§13](#13-topic-index-security-file-scan-storage-quota-sessions-cms-v212-contributions) · Watch: [part S3](RELEASE-NOTES-CMS-KENYA-V2.12.md#training-videos-and-support-package)
+
+### Time limits and workflow tools
+
+- The server enforces the time limits, even when the API is called directly: reopen within 3 days of the last update in both counties; withdraw within 1 day of filing and before assignment on Bonga Nai, or within 3 days of filing on the Bomet Feedback Hub — also by the front desk for a resident.
+- Officers can escalate by hand to the tier above.
+- On Bonga Nai a last-mile officer (role code PGR_LME) can also reassign a complaint within the department, or return it to the Grievance Routing Officer (GRO) with Reassign to GRO.
+
+Read: [release notes › For county officers and staff](RELEASE-NOTES-CMS-KENYA-V2.12.md#for-county-officers-and-staff) · Evidence: [§3.2](#32-workflow-pgr-egov-workflow-v2-businessservice-pgr-sla-432000000-ms--5-days), [§3.3](#33-mdms-rainmaker-pgruiconstants-and-others), [§8(c) c.1](#c1-rainmaker-pgruiconstants-and-action-windows) · Watch: [part 04](https://drive.google.com/file/d/1tvKw4p4HR3tefqVYnNFvf6W-X4398MAn/view), [part 06](https://drive.google.com/file/d/1RTcpg1XcTALHbSIseqY7uNgyA1EpOcrb/view)
+
+### The resident's experience and the PDF application
+
+- Each county has its own public website (landing page), open without signing in.
+- Filing takes three steps, with consent to the terms, an optional typed address, A–Z category pickers, a movable map pin and up to 5 attachments of 5 MB each (photos, documents or videos).
+- The resident then gets an official PDF application to download, print or share. In this build Share opens a dialog on every device and hands over the PDF itself (#142); pull request #162, still open, would show Share in the mobile view only.
+- Ratings use five faces instead of stars.
+
+Read: [release notes › For residents](RELEASE-NOTES-CMS-KENYA-V2.12.md#for-residents) and [› Session and browser handling](RELEASE-NOTES-CMS-KENYA-V2.12.md#session-and-browser-handling) · Evidence: [§4.4](#44-nairobi-prod-prs-and-direct-commits-2026-09-23-to-2026-10-13) (#103 to #146), [§5](#5-changes-not-in-this-release) (#162), [§6](#6-nairobi-prod-vs-nairobi-prod-bgrm-changes) · Watch: [part 01](https://drive.google.com/file/d/1E491DQuasfLP71Voj3G4FAa7tEA__tro/view), [part 06b](RELEASE-NOTES-CMS-KENYA-V2.12.md#training-videos-and-support-package)
+
+### Browser reliability
+
+- The "quota exceeded" error (browser storage) is fixed: master data is cached in IndexedDB instead of the 5 MB `localStorage`, a full store no longer stops the page, and caches are dropped after every deploy.
+- Open tabs move to a new build at the next hub screen; an expired session goes to the right sign-in page and keeps drafts; a notice explains when another account signs in from another tab.
+- The start-up download is about half what it was (a figure from PR #103, not re-measured).
+
+Read: [release notes › Browser storage limit ("quota exceeded")](RELEASE-NOTES-CMS-KENYA-V2.12.md#browser-storage-limit-quota-exceeded) and [› Session and browser handling](RELEASE-NOTES-CMS-KENYA-V2.12.md#session-and-browser-handling) · Evidence: [§13](#13-topic-index-security-file-scan-storage-quota-sessions-cms-v212-contributions), [§4.4](#44-nairobi-prod-prs-and-direct-commits-2026-09-23-to-2026-10-13) (#148) · Watch: [part S2](RELEASE-NOTES-CMS-KENYA-V2.12.md#training-videos-and-support-package)
+
+### Dashboard and export for leadership
+
+County leadership can export the dashboard as an Excel workbook (a summary plus a sheet per tile), a CSV file or a PDF report, each with the filters used and the key figures against the previous period. The dashboard also has CMS V2.12's refreshed header, filters, key-figure tiles and "updated … ago" stamps. The Bomet Feedback Hub records behaviour analytics (Matomo, self-hosted) with personal details removed.
+
+Read: [release notes › For county leadership](RELEASE-NOTES-CMS-KENYA-V2.12.md#for-county-leadership) · Evidence: [§4.4](#44-nairobi-prod-prs-and-direct-commits-2026-09-23-to-2026-10-13) (#130), [§7](#7-included-from-cms-v212) · Watch: [part 08](https://drive.google.com/file/d/1cPtgHFF9mG8jZGD2mTHDQvIgtpRhsrQV/view)
+
+## Feature highlights
+
+One row per change: where it is explained, where its evidence is on this page, and the training video that shows it. A video link opens the part in Google Drive where it is uploaded; the others lead to the release notes' list of parts.
+
+| Change | County | Explained in | Evidence here | Video |
+|---|---|---|---|---|
+| Confidential complaints: the option on both forms, masking by the server | Both | [Security fixes](RELEASE-NOTES-CMS-KENYA-V2.12.md#security-fixes) | [§4.4](#44-nairobi-prod-prs-and-direct-commits-2026-09-23-to-2026-10-13) #103, #125, #128; [§8(e)](#8e-roles-and-access-control) | [S1](RELEASE-NOTES-CMS-KENYA-V2.12.md#training-videos-and-support-package) |
+| Resident's timeline without officers' identity (role-filtered API) | Both | [Security fixes](RELEASE-NOTES-CMS-KENYA-V2.12.md#security-fixes) | [§4.4](#44-nairobi-prod-prs-and-direct-commits-2026-09-23-to-2026-10-13) #103; [§3.4](#34-access-control-and-assets) | [S1](RELEASE-NOTES-CMS-KENYA-V2.12.md#training-videos-and-support-package) |
+| Official PDF application: Download, Print and Share (Share on every device in this build) | Both | [Session and browser handling](RELEASE-NOTES-CMS-KENYA-V2.12.md#session-and-browser-handling) | [§4.4](#44-nairobi-prod-prs-and-direct-commits-2026-09-23-to-2026-10-13) #117 to #142; [§5](#5-changes-not-in-this-release) #162, open | [06b](RELEASE-NOTES-CMS-KENYA-V2.12.md#training-videos-and-support-package) |
+| Reopen and withdraw within the county's time limits | Both; limits differ | [For residents](RELEASE-NOTES-CMS-KENYA-V2.12.md#for-residents) | [§3.3](#33-mdms-rainmaker-pgruiconstants-and-others); [§4.4](#44-nairobi-prod-prs-and-direct-commits-2026-09-23-to-2026-10-13) #145, #146 | [06](https://drive.google.com/file/d/1RTcpg1XcTALHbSIseqY7uNgyA1EpOcrb/view) |
+| Time limits enforced by the server | Both | [Security fixes](RELEASE-NOTES-CMS-KENYA-V2.12.md#security-fixes) | [§4.4](#44-nairobi-prod-prs-and-direct-commits-2026-09-23-to-2026-10-13) #136; [§8(c) c.1](#c1-rainmaker-pgruiconstants-and-action-windows) | [S4](RELEASE-NOTES-CMS-KENYA-V2.12.md#training-videos-and-support-package) |
+| Manual escalation to the tier above | Both | [For county officers and staff](RELEASE-NOTES-CMS-KENYA-V2.12.md#for-county-officers-and-staff) | [§3.2](#32-workflow-pgr-egov-workflow-v2-businessservice-pgr-sla-432000000-ms--5-days); [§4.4](#44-nairobi-prod-prs-and-direct-commits-2026-09-23-to-2026-10-13) #103 | [04](https://drive.google.com/file/d/1tvKw4p4HR3tefqVYnNFvf6W-X4398MAn/view), [05](https://drive.google.com/file/d/1MioX4zeKG6EK6hU_0tXF0h_pblzGMCji/view) |
+| Reassign within the department; Reassign to GRO | Bonga Nai | [For county officers and staff](RELEASE-NOTES-CMS-KENYA-V2.12.md#for-county-officers-and-staff) | [§3.2](#32-workflow-pgr-egov-workflow-v2-businessservice-pgr-sla-432000000-ms--5-days); [§4.4](#44-nairobi-prod-prs-and-direct-commits-2026-09-23-to-2026-10-13) #93, #150, #151 | [04b](https://drive.google.com/file/d/13yyc01d2GyKFZ2BWctzkKws5oyXvr1Ai/view) |
+| Automatic assignment at filing | Bomet Feedback Hub | [How the two counties differ](RELEASE-NOTES-CMS-KENYA-V2.12.md#how-the-two-counties-differ) | [§3.1](#31-summary); [§4.1](#41-bomet-line-reached-master-via-roll-up-40-2026-09-21) #4, #8 | [03](https://drive.google.com/file/d/1Q4KzvacI9G53HbXSriyhZ_kgCBhOHsPZ/view) |
+| Escalation timers | Both; values differ | [How the two counties differ](RELEASE-NOTES-CMS-KENYA-V2.12.md#how-the-two-counties-differ) | [§3.1](#31-summary), [§3.3](#33-mdms-rainmaker-pgruiconstants-and-others) | [07](https://drive.google.com/file/d/1va2bjpyTdphBJ85bpt7RIJqGd4Gf17vH/view) |
+| Dashboard export to Excel, CSV and PDF | Both | [For county leadership](RELEASE-NOTES-CMS-KENYA-V2.12.md#for-county-leadership) | [§4.4](#44-nairobi-prod-prs-and-direct-commits-2026-09-23-to-2026-10-13) #130 | [08](https://drive.google.com/file/d/1cPtgHFF9mG8jZGD2mTHDQvIgtpRhsrQV/view) |
+| Virus scanning of uploads, off until switched on | Both | [File scan: virus scanning of uploads](RELEASE-NOTES-CMS-KENYA-V2.12.md#file-scan-virus-scanning-of-uploads) | [§4.4](#44-nairobi-prod-prs-and-direct-commits-2026-09-23-to-2026-10-13) #157; [§8(g)](#8g-deployment) | [S3](RELEASE-NOTES-CMS-KENYA-V2.12.md#training-videos-and-support-package) |
+| Gateway enforcement and policy-based search, from CMS V2.12 | Both, as shipped | [Security fixes](RELEASE-NOTES-CMS-KENYA-V2.12.md#security-fixes) | [§8(e) e.4](#e4-gateway-enforcement-p); [§3.4.1](#341-search-policy-on-action-2008-pgr-servicesv2request_search-resourcecomplaint) | — |
+| CMS V2.12 pgr-services hardening, not yet taken | Both | [Security fixes](RELEASE-NOTES-CMS-KENYA-V2.12.md#security-fixes); [limitation 4](RELEASE-NOTES-CMS-KENYA-V2.12.md#not-yet-in-this-release) | [§13](#13-topic-index-security-file-scan-storage-quota-sessions-cms-v212-contributions) | — |
+| "Quota exceeded" error (browser storage) fixed | Both | [Browser storage limit ("quota exceeded")](RELEASE-NOTES-CMS-KENYA-V2.12.md#browser-storage-limit-quota-exceeded) | [§13](#13-topic-index-security-file-scan-storage-quota-sessions-cms-v212-contributions) | — |
+| Sessions, sign-in and new builds in open tabs | Both | [Session and browser handling](RELEASE-NOTES-CMS-KENYA-V2.12.md#session-and-browser-handling) | [§4.1](#41-bomet-line-reached-master-via-roll-up-40-2026-09-21) `adef886be`; [§4.4](#44-nairobi-prod-prs-and-direct-commits-2026-09-23-to-2026-10-13) #148 | [S2](RELEASE-NOTES-CMS-KENYA-V2.12.md#training-videos-and-support-package) |
+| Start-up download about halved | Both | [Session and browser handling](RELEASE-NOTES-CMS-KENYA-V2.12.md#session-and-browser-handling) | [§4.4](#44-nairobi-prod-prs-and-direct-commits-2026-09-23-to-2026-10-13) #103 (`c16c75208`) | — |
+| Public website per county | Both, different pages | [For residents](RELEASE-NOTES-CMS-KENYA-V2.12.md#for-residents) | [§3, Landing pages](#landing-pages); [§6](#6-nairobi-prod-vs-nairobi-prod-bgrm-changes) | [00b](RELEASE-NOTES-CMS-KENYA-V2.12.md#training-videos-and-support-package) |
+| UI enhancements from CMS V2.12: dashboard, staff top bar, inbox tabs, attachments | Both; inbox tabs on Bomet only | [Contributed by CMS V2.12](RELEASE-NOTES-CMS-KENYA-V2.12.md#contributed-by-cms-v212) | [§7](#7-included-from-cms-v212); [§13](#13-topic-index-security-file-scan-storage-quota-sessions-cms-v212-contributions) | [08](https://drive.google.com/file/d/1cPtgHFF9mG8jZGD2mTHDQvIgtpRhsrQV/view) |
+| English and Kiswahili | Both | [How the two counties differ](RELEASE-NOTES-CMS-KENYA-V2.12.md#how-the-two-counties-differ) | [§3.5](#35-localization) | [02b](RELEASE-NOTES-CMS-KENYA-V2.12.md#training-videos-and-support-package) |
+
+## Training videos
+
+The [training videos in Google Drive](https://drive.google.com/drive/folders/1QiImno9XX1cxhgQtSXCFc0TS7GU6FUDG) are open to anyone with the link. The folder holds 11 of the 22 parts today; the other 11 and a PDF copy of the support package are being added. eGov staff can also use the [video player with chapters and the narration script](https://claude.ai/artifact/872R5UhyNE99wWhFfd2QPR) (eGov staff only).
+
+The 22 parts have English narration (text-to-speech) and subtitles. Each runs 32 s to 2 min 54 s, 33 min 47 s in total:
+
+- the complaint workflow, end to end: 18 parts, 27 min 14 s;
+- privacy and security: 4 parts, 6 min 33 s.
+
+The walkthrough follows Bonga Nai's workflow. On the Bomet Feedback Hub, complaints filed by residents are assigned to the department's officer automatically at filing (there is no GRO step), Reassign to GRO does not exist, withdraw is allowed for 3 days (Bonga Nai: 1 day, before assignment), and escalation runs through the department's Director, Chief Officer and CECM (County Executive Committee Member); in Water it runs from the Chief Officer to the CECM. The parts were recorded on cms-pilot (the test twin of Bonga Nai) with fictional test users; other people's names are hidden and phone numbers are masked.
+
+Start with three parts:
+
+- [Part 00, The complaint workflow, end to end](https://drive.google.com/file/d/10Bx1mr0iim0QsSckY0uh58s-H6vwf1-2/view) (0:46): the roles and the path of a complaint.
+- [Part 06b, A resident on a phone: a photo, the PDF application and Share](RELEASE-NOTES-CMS-KENYA-V2.12.md#training-videos-and-support-package) (1:34; not in the folder yet).
+- [Part S1, Confidential complaints](RELEASE-NOTES-CMS-KENYA-V2.12.md#training-videos-and-support-package) (2:24; not in the folder yet).
+
+Every part, with its length and the change it shows, is listed in the [release notes › Training videos and support package](RELEASE-NOTES-CMS-KENYA-V2.12.md#training-videos-and-support-package). Which parts each role should watch is in the [county release note › Training videos](COUNTY-RELEASE-NOTE-CMS-KENYA-V2.12.md#training-videos).
+
+## Contents of the evidence
+
+The numbered sections below are the evidence; the support package cites them by number. **Live 13 Oct** marks a statement read from a county's live site on 13 Oct 2026, "read 19 Oct" a re-check on 19 Oct, and **Unverified** a statement that neither the repository nor the live sites could confirm. Codes in capitals are stored workflow states, actions and role codes. Abbreviations: GRO (Grievance Routing Officer), CSR (front desk / call centre), PGR_LME (last-mile officer), CECM (County Executive Committee Member), MDMS (the configuration store), HRMS (the staff directory), PII (personal details), RBAC (role-based access checks), ABAC (policy-based access checks), SLA (time limit), OTP (one-time code), CVE (a published security vulnerability), UAT (user acceptance testing), CI (automated checks).
+
+1. [About this document](#1-about-this-document): sources, method, lineage and volume of the release.
+2. [Deployments and what they run](#2-deployments-and-what-they-run): which code and build each site runs, and the container images to record before tagging.
+3. [Bonga vs bgrm: live configuration compared](#3-bonga-vs-bgrm-live-configuration-compared): how the two counties differ in workflow, time limits, categories, access, escalation timers and labels.
+4. [Kenya-layer change inventory](#4-kenya-layer-change-inventory): every pull request and commit in the release, with the live configuration it depends on.
+5. [Changes not in this release](#5-changes-not-in-this-release): work merged elsewhere or still open, and what that means for each county.
+6. [`nairobi-prod` vs `nairobi-prod-bgrm-changes`](#6-nairobi-prod-vs-nairobi-prod-bgrm-changes): why the two sites build from different UI branches, and what differs.
+7. [Included from CMS V2.12](#7-included-from-cms-v212): which CMS V2.12 features are in use, switched off or left out.
+8. [Configuration changes against CMS V2.12](#8-configuration-changes-against-cms-v212): settings, migrations, configuration-store data, workflow, roles, labels, deployment and image tags.
+9. [Testing status](#9-testing-status): what was tested, what CI shows and what was not run.
+10. [Known limitations and open issues](#10-known-limitations-and-open-issues): where the limitations are listed, and how the open GitHub issues relate to the release.
+11. [Not verified](#11-not-verified): what neither the repository nor the live sites could confirm.
+12. [Documentation](#12-documentation): where the full documentation list is, and the files the evidence relies on.
+13. [Topic index: security, file scan, storage quota, sessions, CMS V2.12 contributions](#13-topic-index-security-file-scan-storage-quota-sessions-cms-v212-contributions): the evidence behind the release notes' "In detail" section.
 
 ---
+
 ## 1. About this document
 
 ### Sources and method
@@ -41,31 +153,35 @@
 | First Kenya change | PR #1 `d92def1d0` | 19 Aug | Bomet landing page on CMS V2.12 |
 | CMS V2.12 line merged | `35504b797` merges `df7ca8d08` (`kenya-layer-start`) | 31 Aug | 636 commits, carried in by PRs #4–#9 |
 | CMS V2.12 update | `626864567` (front end) and `2176984d7` (backend, infrastructure, configurator; 905 files) | 16–17 Sep | Upstream `7ee88f83`, squashed |
-| Kenya layer | `kenya-layer-start..nairobi-prod` | 30 Aug – 13 Oct | 220 commits (156 non-merge), PRs #1–#157 |
+| Kenya layer | `kenya-layer-start..nairobi-prod`, counted at `32a56d27d` | 30 Aug – 13 Oct | 221 commits (157 non-merge), PRs #1–#157 |
 | Release code | `nairobi-prod` @ `32a56d27d` | 13 Oct | To be merged into `master` |
 
 Layer tags used in §8:
+
 - **[S]** CMS V2.12 work before the fork;
 - **[P]** the 16 Sep CMS V2.12 update inside the Kenya range;
 - **[K]** Kenya-authored work.
 
 ### Volume (CMS V2.12 baseline → `nairobi-prod`)
 
-- **In total:** 856 commits (541 non-merge), 1,360 files changed, +167,291 / −38,804 lines.
+Counted at `32a56d27d`, the described code.
+
+- **In total:** 857 commits (542 non-merge), 1,365 files changed, +167,530 / −38,804 lines.
 - **Before the fork:** 636 commits, 332 files.
-- **After the fork:** 220 commits, 1,174 files. The CMS V2.12 update alone touches 905 of these files.
+- **After the fork:** 221 commits, 1,179 files. The CMS V2.12 update alone touches 905 of these files.
 
 ---
+
 ## 2. Deployments and what they run
 
 | | Bonga Nai | Bomet Feedback Hub |
 |---|---|---|
-| Address | https://bonga.nairobi.go.ke | https://bgrm.bomet.go.ke |
+| Address | [bonga.nairobi.go.ke](https://bonga.nairobi.go.ke/digit-ui/landing) | [bgrm.bomet.go.ke](https://bgrm.bomet.go.ke/digit-ui/landing) |
 | Tenant · boundary hierarchy | `nb` · `Nairobi-Hierarchy` | `bo` · `BOMET-Hierarchy` |
 | UI branch | `nairobi-prod` | `nairobi-prod-bgrm-changes` |
 | Live UI build id (13 Oct) | `111d80717226` | `f5815743da37` |
 | Complaint service (pgr-services) | built from `nairobi-prod`; image tag unverified (§11) | built from `feat/bomet-uat`; `egovio/pgr-services:bomet-uat-6eb6b85` per the rollout notes |
-| Runtime config | Ansible `host_vars/nairobi.yml` | Ansible `host_vars/bometnew.yml` |
+| Runtime config | Ansible `host_vars/nairobi.yml` on the server, as named in the served `globalConfigs.js` header (repository template: `host_vars/nairobi.yml.example`) | Ansible `host_vars/bometnew.yml` on the server, from the same header (repository template: `host_vars/bomet.yml.example`) |
 
 ### How the live UI was identified
 
@@ -90,11 +206,13 @@ A byte-for-byte comparison with a local build is not possible: the servers build
 ### Runtime configuration (`/digit-ui/globalConfigs.js`)
 
 The two files differ only in:
+
 - `stateTenantId`, `mapTenant`, `loginTenantAllowlist` and `keycloakRealm`;
 - `hierarchyType`;
 - `mapCenter`: Bonga −1.2864, 36.8172; bgrm −0.7817, 35.3428.
 
 Shared values:
+
 - `PGR_PII_MASKING=false`;
 - dashboard metrics on and the analytics kill switch off;
 - staff sign in through DIGIT;
@@ -102,10 +220,25 @@ Shared values:
 - boundary levels Subcounty → Ward;
 - default locale `en`.
 
+### Container image inventory (to record before tagging)
+
+> **To complete before tagging:** record the images running in each county. On each server, run `docker ps --format '{{.Names}}\t{{.Image}}' | sort`.
+
+Known on 13 Oct 2026:
+
+| Component | Bonga Nai | Bomet Feedback Hub |
+|---|---|---|
+| Resident & staff UI | static build of `nairobi-prod`, build id `111d80717226` | static build of `nairobi-prod-bgrm-changes`, build id `f5815743da37` |
+| pgr-services | built from `nairobi-prod` (tag to record) | `egovio/pgr-services:bomet-uat-6eb6b85` (per the rollout notes) |
+| Other services | to record | to record |
+
+After the described code, `nairobi-prod` gained `723b680d7` (14 Oct). It adds `local-setup/scripts/backup-server.sh`, which backs up a server over SSH: the application files (`/opt/digit`), a PostgreSQL dump, a MongoDB dump and checksums. Each backup folder gets short generated restore notes (`RESTORE.md`); there is no restore guide in the repository yet.
+
 ---
+
 ## 3. Bonga vs bgrm: live configuration compared
 
-Read from both counties on 13 Oct 2026 (read-only searches).
+Read from both counties on 13 Oct 2026 (read-only searches). Rows marked "read 19 Oct" were read again on 19 Oct.
 
 ### 3.1 Summary
 
@@ -119,9 +252,9 @@ Read from both counties on 13 Oct 2026 (read-only searches).
 | Escalation | 2 levels: Chief Officer → CECM | 3 levels per department: Director → Chief Officer → CECM (Water starts at its Chief Officer) |
 | Officer can hand back | Reassign within the department; send back to the GRO | — |
 | Withdraw | Before assignment, within 1 day of filing | While with the officer, within 3 days of filing |
-| Reopen | Within 3 days; returns to the GRO queue | Within 3 days; returns to a last-mile officer |
+| Reopen | Within 3 days of the last update; returns to the GRO queue | Within 3 days of the last update; returns to a last-mile officer |
 | Categories | 21 types, 39 sub-types; deadlines 4–72 hours; no department mapping | 48 types, 94 sub-types; deadlines 1–30 days; Health 46, Water & Sewage 36, Administration 12 |
-| Escalation timers per category | — | 91 category overrides (`RAINMAKER-PGR.EscalationConfig`) |
+| Escalation timers (`RAINMAKER-PGR.EscalationConfig`, read 19 Oct) | One record: up to 3 levels, default timers 2, 4 and 6 minutes, no per-category settings | Up to 3 levels, default timers 60 h / 18 h / 18 h, 91 per-category settings, 11 of them at 2 minutes |
 | Inbox visibility | by role | scoped to the officer's jurisdiction, server-side (`RAINMAKER-PGR.InboxVisibilityConfig`) |
 | Officer roles | GRO, PGR_LME, DIRECTOR, CHIEF_OFFICER, CECM, CSR … | GRO, PGR_LME, ADMIN_/HEALTH_/WATER_ DIRECTOR · CHIEF_OFFICER · CECM, OMBUDSMAN_OFFICER, CSR … |
 | Departments · designations | 16 · 125 | 3 in use (+ 6 sample rows) · 8 |
@@ -132,7 +265,7 @@ Read from both counties on 13 Oct 2026 (read-only searches).
 
 ### Landing pages
 
-The landing pages were separated at the last moment. `nairobi-prod`'s landing page has been Nairobi's since 23 Sep. When bgrm's UI moved to `nairobi-prod` on 9 Oct, its front page therefore showed Nairobi branding, and the Bonga Nai redesign (#154, #155) made it more visible. On 13 Oct bgrm's UI moved to its own branch, `nairobi-prod-bgrm-changes`. That branch is `nairobi-prod` plus one change: it brings back the Bomet landing page bgrm had before 9 Oct. The change spans 61 files: the landing page, its styles, an image loader in the build and the configurator's landing editor. Everything else is identical, and every non-landing change is merged into both branches (as #157 and #158 were). When `nairobi-prod` is merged into `master`, `master` carries the **Bonga Nai** landing page; bgrm keeps building from its branch until the landing page can be chosen per county by configuration.
+The landing pages were separated at the last moment. `nairobi-prod`'s landing page has been Nairobi's since 23 Sep. When bgrm's UI moved to `nairobi-prod` on 9 Oct, its front page therefore showed Nairobi branding, and the Bonga Nai redesign (#154, #155) made it more visible. On 13 Oct bgrm's UI moved to its own branch, `nairobi-prod-bgrm-changes`. That branch is `nairobi-prod` plus one change: it brings back the Bomet landing page bgrm had before 9 Oct. The change spans 61 files: the landing page, its styles, an image loader in the build and the configurator's landing editor. Everything else was identical on 13 Oct, and every non-landing application change is merged into both branches (as #157 and #158 were); two later tooling commits, the load-test suite (`32a56d27d`) and the backup script (`723b680d7`), are on `nairobi-prod` only (§6). When `nairobi-prod` is merged into `master`, `master` carries the **Bonga Nai** landing page; bgrm keeps building from its branch until the landing page can be chosen per county by configuration.
 
 ### 3.2 Workflow `PGR` (egov-workflow-v2 BusinessService `PGR`, SLA 432000000 ms = 5 days)
 
@@ -155,7 +288,7 @@ The landing pages were separated at the last moment. `nairobi-prod`'s landing pa
 | WITHDRAWSLA | 86400000 ms = **1 day** (from creation) | 259200000 ms = 3 days |
 | Complaint number (`common-masters.IdFormat`) | `BNG-[yyyy]-[SEQ_EG_CMSNAIROBI]` | `BFH-[yyyy]-[SEQ_EG_PGRBOMET]` |
 | Categories (`ComplaintHierarchy`, 2 levels) | 21 types, 39 sub-types, SLA 4–72 h, department `NA` on every sub-type | 48 types, 94 sub-types, SLA 24–720 h; HEALTH 46, WATER&SEWAGE 36, ADMINISTRATION 12 |
-| Per-category escalation (`EscalationConfig`) | — (not present) | maxDepth 3; default 60 h / 18 h / 18 h; 91 overrides — **11 at 2 minutes per level** (test values) |
+| Per-category escalation (`EscalationConfig`) | One record, read 19 Oct (the 13 Oct capture did not read this schema): up to 3 levels; default 2, 4 and 6 minutes; no per-category overrides; created 24 Sep, last changed 30 Sep | maxDepth 3; default 60 h / 18 h / 18 h; 91 overrides — **11 at 2 minutes** (8 on all three levels, 3 on levels 1–2; test values); created 17 Sep, last changed 28 Sep (read 19 Oct) |
 | `InboxVisibilityConfig` | — | enabled, jurisdiction-scoped, reportee depth 3, server-side |
 | `AnalyticsProvider` | — | Matomo `matomo-state`, site 1 (`/matomo/matomo.js` → 200); endpointUrl has a leading TAB |
 | Departments | 16 Nairobi departments | 9 (Administration, Health, Water & Sewage + 6 sample: CENTER, DEPT_1/3/5/36/37) |
@@ -167,7 +300,7 @@ The landing pages were separated at the last moment. `nairobi-prod`'s landing pa
 | WhatsApp provider templates | twilio × 7 | twilio × 14 |
 | StateInfo | name "Demo"; Nairobi emblem; languages en_IN, sw_KE | name "Demo"; Bomet crest; en_IN, sw_KE |
 | Theme primary | #003D1E (green) | #1B85D2 (blue) |
-| tenant.tenants contact | `0000000000`, nb@example.com | `0000000000`, bo@example.com |
+| tenant.tenants contact | `0000000000`, `nb@example.com` | `0000000000`, `bo@example.com` |
 | Boundaries | Nairobi-Hierarchy: County → 6 sub-counties (Makadara 4, Kibra 5, Kasarani 1, Embakasi North 1, Kamukunji 1, Lang'ata 5 wards) = 17 wards | BOMET-Hierarchy: 5 sub-counties (Sotik, Chepalungu, Bomet East, Bomet Central, Konoin) × 5 = 25 wards |
 
 ### 3.4 Access control and assets
@@ -197,6 +330,7 @@ Scope axes: department, jurisdiction. Default for roles not listed: department A
 | SUPERUSER | ALL / ALL | (default) |
 
 Field redaction (`onDeny: REDACT`) of `citizen.name`, `citizen.mobileNumber`, `citizen.userName`:
+
 - Bonga: shown to tenant-wide users, the complainant, and staff whose departments and jurisdictions include the complaint's (or who have none recorded).
 - bgrm: shown only to tenant-wide users and the complainant. Tenant-wide means the user's most permissive role is ALL on both axes (`PolicyInputBuilder`), which on bgrm is CSR and OMBUDSMAN_OFFICER. Last-mile officers, department tiers and GROs see the fields redacted.
 
@@ -213,9 +347,10 @@ Field redaction (`onDeny: REDACT`) of `citizen.name`, `citizen.mobileNumber`, `c
 | Citizen logout question (`CORE_LOGOUT_WEB_CONFIRMATION_MESSAGE`) | "Are you sure you want to" (incomplete; #72 open) | same |
 
 ---
+
 ## 4. Kenya-layer change inventory
 
-Everything in `kenya-layer-start..nairobi-prod`: every PR, roll-up and direct commit, with the live configuration it depends on. **County:** *Both* = shared code that affects both counties; *Bonga* or *Bomet* = only that county sees an effect, because of its workflow, data or branding; *Both (code)* = shared code whose effect differs by tenant. Roll-up #40 carried 84 commits into `master`, including the CMS V2.12 update squash `2176984d7` and `626864567`; #11–#19, #21, #24–#28 and #41–#46 are issues, not PRs.
+Everything in `kenya-layer-start..nairobi-prod`: every PR, roll-up and direct commit, with the live configuration it depends on. **County:** *Both* = shared code that affects both counties; *Bonga* or *Bomet* = only that county sees an effect, because of its workflow, data or branding; *Both (code)* = shared code whose effect differs by tenant. Roll-up #40 carried 84 Kenya-layer commits into `master` (720 in the merge, including the CMS V2.12 line), among them the CMS V2.12 update squash `2176984d7` and `626864567`; #11–#19, #21, #24–#28 and #41–#46 are issues, not PRs.
 
 ### 4.1 Bomet line, reached master via roll-up #40 (2026-09-21)
 
@@ -224,7 +359,7 @@ Everything in `kenya-layer-start..nairobi-prod`: every PR, roll-up and direct co
 | `2b62f7007`, `82b0ad29b` | 2026-08-14 | docs | — | Sets CODEOWNERS so protected branches need maintainer review. | none |
 | #1 (`d92def1d0`, base develop) | 2026-08-19 | public landing | Bomet (originally) | Adds the public landing page at `/digit-ui/landing`: config-driven sections, privacy page, Bomet copy and logo, theme bridge. On nairobi-prod it was later re-branded for Nairobi (§4.3). Bomet's version comes back only on `nairobi-prod-bgrm-changes` (`bae16acca`). | Optional MDMS `RAINMAKER-PGR.LandingSection`/`LandingPageConfig` rows and `PGR_LANDING_*` labels override the built-in copy. #154 says no such rows existed on nb/bo on 12 Oct. |
 | #3 (`35504b797`) | 2026-08-31 | deploy/ops (sync) | — | Merges the CMS V2.12 line into the sync branch (636 commits, all before `kenya-layer-start`). The conflict resolution kept the Bomet landing page. No Kenya feature of its own. | none |
-| #4 (`79bf0a3b8`) | 2026-09-02 | citizen UI + routing | Both (code) | **Citizen complaints are assigned automatically at submit** to an officer in the complaint type's department, narrowest area first: ward → sub-county → county → department only. Best effort; it never blocks a submit. Citizen reopen goes back to the previous handler. The map follows the pin and uses a vector street map, with a raster fallback where WebGL is missing (from CMS V2.12). | `RAINMAKER-PGR.ComplaintHierarchy` department on each leaf type; HRMS department and jurisdiction assignments; workflow roles at the APPLY target state; optional `RAINMAKER-PGR.MapConfig`; browsers must reach `tiles.openfreemap.org`. On **Bonga** every sub-type's department is `NA` (live, 13 Oct), so no officer matches and complaints wait in the GRO queue. |
+| #4 (`79bf0a3b8`) | 2026-09-02 | citizen UI + routing | Both (code) | **Citizen complaints are assigned automatically at submit** to an officer in the complaint type's department, narrowest area first: ward → sub-county → county → department only. Best effort; it never blocks a submit. Reopen routing and the map: note a. | `RAINMAKER-PGR.ComplaintHierarchy` department on each leaf type; HRMS department and jurisdiction assignments; more in note a. On **Bonga** every sub-type's department is `NA` (live, 13 Oct), so no officer matches and complaints wait in the GRO queue. |
 | #5 (`101262ebf`) | 2026-09-02 | citizen UI + employee UI | Both | Error, maintenance and not-found screens get their own "Go home" button label, a working illustration (the S3 image returned 403) and a layout that fits inside the app shell. From CMS V2.12. | Labels `CORE_ERROR_GO_HOME`, `MODULE_NOT_FOUND`, `CORE_UNDER_MAINTENANCE`. |
 | #6 (`f38d29e54`) | 2026-09-02 | citizen UI | Both | Fixes a crash on the citizen reopen page (a hook was not registered). | none |
 | `82ba44d57` (direct, sync branch) | 2026-09-02 | novu-bridge | Both, wherever novu-bridge runs | Adds the **Bongatech** SMS gateway alongside Ozeki, either through Novu or by direct HTTP. | `NOVU_BRIDGE_SMS_PROVIDER`/`NOVU_BRIDGE_OTP_SMS_PROVIDER`/`NOVU_BRIDGE_DIRECT_SMS_PROVIDER=bongatech`, `NOVU_BRIDGE_SMS_SENDER_ID`, `NOVU_BRIDGE_DIRECT_SMS_BASE_URL`/`_TOKEN`, `NOVU_BRIDGE_DIRECT_CHANNELS`. |
@@ -238,7 +373,7 @@ Everything in `kenya-layer-start..nairobi-prod`: every PR, roll-up and direct co
 | #29 (`3861b8498`) | 2026-09-16 | citizen UI | Both | Citizen complaint details show a named address and County / Sub-County / Ward rows, and no empty "Complaint Location" card for complaints without a pin. Its "no default map pin" part was reversed two days later by `16c6e311f`. | Boundary-name labels (module `rainmaker-boundary-<hierarchy>`); globalConfigs `HIERARCHY_TYPE`. |
 | #34 (`eff52826f`) | 2026-09-16 | citizen UI + MDMS/config | Both (code) | Matomo behaviour analytics: complaint funnel events, each wizard step counted as a page view, outcome pages, landing and tutorial pages tracked. Cherry-picked from CMS V2.12. | `common-masters.AnalyticsProvider` MATOMO row; Matomo stack (`docker-compose.matomo.yml`); nginx `/matomo/`. Live 13 Oct: bgrm has the provider row and serves `/matomo/matomo.js`; Bonga has neither. |
 | `626864567` + merge `4ad2fc176` (direct, kenya-prod) | 2026-09-16 / 2026-09-18 | citizen UI + employee UI + dashboard | Both | Front-end part of the **CMS V2.12 update of 2026-09-16** (upstream `7ee88f83`):<br>• "working context" chip in the employee top bar;<br>• inbox visibility tabs;<br>• dashboard refinements (language menu, footer, "updated … ago" stamps, batched analytics queries);<br>• jsPDF security bump.<br>`4ad2fc176` restored six Kenya PGR files that `2176984d7` had overwritten. | `RAINMAKER-PGR.InboxVisibilityConfig` (tabs stay off without it). |
-| `2176984d7` (direct, kenya-prod) | 2026-09-17 | backend pgr-services + deploy/ops + MDMS/config | Both | **CMS V2.12 backend, infrastructure and configurator sync, squashed** (905 files; the title understates it):<br>• search scoping by policy (department or jurisdiction per role, read from the access-control action record);<br>• capability checks for analytics;<br>• employee working-context API;<br>• Helm and CI validation workflows;<br>• updates to the `ansible/nairobi-mdms` packs;<br>• reopen fallback window cut from 10 days to 72 h (the enforced value is `UIConstants.REOPENSLA`). | `egov.accesscontrol.host`; `PGR_EMPLOYEE_CONTEXT_*_ROLE_CODES`; optional policy on the `/pgr-services/v2/request/_search` record in `ACCESSCONTROL-ACTIONS-TEST`; `PGR_COMPLAIN_IDLE_TIME`. |
+| `2176984d7` (direct, kenya-prod) | 2026-09-17 | backend pgr-services + deploy/ops + MDMS/config | Both | **CMS V2.12 backend, infrastructure and configurator sync, squashed** (905 files; the title understates it): policy-based search scoping, analytics capability checks, the employee working-context API and more; full list in note b. | `egov.accesscontrol.host`; `PGR_EMPLOYEE_CONTEXT_*_ROLE_CODES`; optional policy on the `/pgr-services/v2/request/_search` record in `ACCESSCONTROL-ACTIONS-TEST`; `PGR_COMPLAIN_IDLE_TIME`. |
 | `7eaefc863` | 2026-09-17 | deploy/ops | — | Configurator build fixed after the sync (a duplicate `visibleNavGroups`). | none |
 | `d72391231` (direct) | 2026-09-18 | backend pgr-services | Both | Employee department and jurisdiction scope wired into search. The department-name cache keeps serving its last good value during a brief MDMS outage, so an officer's results are not narrowed. | `jurisdictionSubtreeCacheTtlMs` (default 5 min). |
 | `5d9420775` | 2026-09-18 | localization | Both | Seeds two labels that showed as raw keys on the employee home. | Upsert `DASHBOARD_CARD_HEADER`, `ULBGRADE_STATE`. |
@@ -259,6 +394,17 @@ Everything in `kenya-layer-start..nairobi-prod`: every PR, roll-up and direct co
 | `43359302a` | 2026-09-21 | deploy/ops | — | Local stack only: globalConfigs set to tenant `bo` with `BOMET-Hierarchy`. | none (local) |
 | #39 (`2c0605e45`, base kenya-prod) | 2026-09-21 | novu-bridge | Both | All SMS goes through Novu (the SmsCountry client added by `2176984d7` is removed). A new consumer sends the user-OTP service's OTP messages through the same pipeline. | user-otp `SMS_TOPIC` → `egov.core.notification.sms.otp`; `NOVU_BRIDGE_USER_OTP_DEFAULT_TENANT_ID` **defaults to `bo`**, so Bonga needs `nb` (unverified). |
 | #40 (`84024ea21`) | 2026-09-21 | — | — | Roll-up kenya-prod → master: the rows above. | — |
+
+Note a (#4): Citizen reopen goes back to the previous handler. The map follows the pin and uses a vector street map, with a raster fallback where WebGL is missing (from CMS V2.12). Live configuration also needed: workflow roles at the APPLY target state; optional `RAINMAKER-PGR.MapConfig`; browsers must reach `tiles.openfreemap.org`.
+
+Note b (`2176984d7`), in full:
+
+- search scoping by policy (department or jurisdiction per role, read from the access-control action record);
+- capability checks for analytics;
+- employee working-context API;
+- Helm and CI validation workflows;
+- updates to the `ansible/nairobi-mdms` packs;
+- reopen fallback window cut from 10 days to 72 h (the enforced value is `UIConstants.REOPENSLA`).
 
 ### 4.2 Roll-up #48 (2026-09-23)
 
@@ -286,7 +432,7 @@ Cherry-picked from the `nairobi` branch (#47, OPEN). Reviewed in PR #49 (OPEN, m
 
 | Ref | Date | Area | County | What changes | Live config |
 |---|---|---|---|---|---|
-| #56 | 2026-09-23 | employee UI | Both (URL only) | Role-tiered employee home at `/digit-ui/employee/home-v2` (oversight, casework, intake, read-only). **Not linked from any menu**: the only reference is the route in core `App.js`, and `/employee` is unchanged. | `PGR_HOME_*` labels are unseeded (English fallbacks); `InboxVisibilityConfig`; dashboard access for the oversight charts. |
+| #56 | 2026-09-23 | employee UI | Both (URL only) | **Present but not released.** Role-tiered employee home at `/digit-ui/employee/home-v2` (oversight, casework, intake, read-only). **Not linked from any menu**: the only reference is the route in core `App.js`, and `/employee` is unchanged. | `PGR_HOME_*` labels are unseeded (English fallbacks); `InboxVisibilityConfig`; dashboard access for the oversight charts. |
 | #62 | 2026-09-24 | employee UI + citizen UI | Both | The Reassign picker lists every department's officers, grouped. Citizen Rate and Re-open buttons are readable. The reopen heading falls back to English. | 10 labels (e.g. `CS_REOPEN_DETAILS_LABEL`; #62 says they were applied on cms-pilot). pgr-services refuses an officer from another department (`INVALID_ASSIGNMENT`). Neither county's workflow lets a non-LME role reassign, so the all-departments list does not appear there. |
 | #63 | 2026-09-24 | employee UI | Bonga (roles) | home-v2 recognises the bare DIRECTOR, CHIEF_OFFICER and CECM roles, and shows a notice instead of a blank page. The button-colour commit described in its body was not merged here; it landed as #64. | HRMS roles |
 | #65 | 2026-09-24 | citizen UI | Both | A citizen reopen is assigned to an officer who can act on the reopened state. Errors show inline, and double submits are blocked. | Label `CS_REOPEN_SUBMIT_ERROR` |
@@ -303,45 +449,50 @@ Cherry-picked from the `nairobi` branch (#47, OPEN). Reviewed in PR #49 (OPEN, m
 | #90 | 2026-09-28 | MDMS/config | Both (data) | Distinct sidebar icons for Create and Search Complaint. **Changes seed files only.** | Each live tenant's `ACCESSCONTROL-ACTIONS-TEST` records need `leftIcon` set to `Search` and `Add` by an MDMS_ADMIN. **Not applied on either county** (both still `PGRIcon`, 13 Oct). |
 | #95 | 2026-09-29 | citizen UI + employee UI | Both | The optional free-text address is saved in `address.street` on both create forms. **Employee create no longer fails with `INVALID_CASE_RELATED_TO`** (port of #58). Its "any GRO can pick up the queue" part was removed by #134. | none |
 | #96 | 2026-09-29 | citizen UI + employee UI | Both | The citizen "Your details" card is hidden where its values would be thrown away (port of #53 / issue #51). A Take Action draft belongs to one complaint and one action (port of #92 / issue #75). | none |
-| #103 (`df9aa019d`) | 2026-10-05 | backend pgr-services | Both (bgrm via #133) | **Confidential complaints are masked on the server.** Name, phone, e-mail and address are hidden from everyone who is neither the complainant nor a `CONFIDENTIAL_COMPLAINT_VIEWER`. Searches by person exclude confidential complaints, and notifications and events carry no complainant identity. New **filtered timeline API** `/v2/request/_chronology` (from CMS V2.12): citizens see no officer names, contacts or internal comments, while the closing comment stays. | Deploy pgr-services first; **action 2635 plus role grants** (without them the timeline is empty, and there is no fallback on nairobi-prod); role `CONFIDENTIAL_COMPLAINT_VIEWER` (missing on bo per #133). |
-| #103 (`ee3f83a44`) | 2026-10-05 | citizen UI + employee UI | Both | **Mandatory Terms & Conditions consent** on citizen create (saved in `additionalDetail.consents`); "Keep details confidential" always offered; both timelines read the chronology API; **complaint receipt**: offline PDF with Download, Print and Share; complaint type and sub-type pickers sorted A–Z with "Others" last; **manual ESCALATE**: the assignee pick is mandatory and the list offers the tier above. | Labels `PGR_CONSENT_*`, `PGR_EXT_IS_CONFIDENTIAL_HINT`, `PGR_RECEIPT_*`. Workflow ESCALATE grants, live 13 Oct — nb: PENDINGATLME (PGR_LME, SYSTEM), ESCALATEDLEVEL1 (CHIEF_OFFICER, SYSTEM); bo: PENDINGATLME (PGR_LME, SYSTEM), ESCALATEDLEVEL1 (ADMIN_DIRECTOR, HEALTH_DIRECTOR, WATER_CHIEF_OFFICER, PGR_LME, SYSTEM), ESCALATEDLEVEL2 (ADMIN_CHIEF_OFFICER, HEALTH_CHIEF_OFFICER, WATER_CECM, PGR_LME, SYSTEM). `tenant.tenants.contactNumber` is printed on the receipt. |
-| #103 (`24a6358a1`) | 2026-10-05 | public landing | Bonga | Emergency helplines section, motion and accessibility pass (contrast, 44 px targets). **The emergency numbers were removed again by #155.** | `LandingSection` helplines row only if the landing is MDMS-driven. |
-| #103 (`c16c75208`) | 2026-10-05 | citizen UI + employee UI + deploy/ops | Both | **Lazy loading**: heavy screens, maps and PDF libraries load on demand; the startup download drops from 9.5 MB to 4.55 MB. | Deploy the whole `build/` folder, including `build/chunks/`. |
-| #103 (`64e5dee4e`) | 2026-10-05 | localization + roles/access | Both (seeds) | Seeds for the labels above, a helplines landing row, and access-control action 2635 with role grants. | These seeds reach only new tenants; live tenants need upserts and grant scripts. |
+| #103 (`df9aa019d`) | 2026-10-05 (merged; commits dated 2026-10-01) | backend pgr-services | Both (bgrm via #133) | **Confidential complaints are masked on the server.** Name, phone, e-mail and address are hidden from everyone who is neither the complainant nor a `CONFIDENTIAL_COMPLAINT_VIEWER`. Also a new **filtered timeline API**: note a. | Deploy pgr-services first; **action 2635 plus role grants** (without them the timeline is empty, and there is no fallback on nairobi-prod); role `CONFIDENTIAL_COMPLAINT_VIEWER` (missing on bo per #133). |
+| #103 (`ee3f83a44`) | 2026-10-05 (merged; commits dated 2026-10-01) | citizen UI + employee UI | Both | **Mandatory Terms & Conditions consent** on citizen create (saved in `additionalDetail.consents`); "Keep details confidential" always offered; **official PDF application** with Download, Print and Share; **manual ESCALATE**. Details in note b. | Labels `PGR_CONSENT_*`, `PGR_EXT_IS_CONFIDENTIAL_HINT`, `PGR_RECEIPT_*`; workflow ESCALATE grants (live 13 Oct, note b). `tenant.tenants.contactNumber` is printed on the PDF application. |
+| #103 (`24a6358a1`) | 2026-10-05 (merged; commits dated 2026-10-01) | public landing | Bonga | Emergency helplines section, motion and accessibility pass (contrast, 44 px targets). **The emergency numbers were removed again by #155.** | `LandingSection` helplines row only if the landing is MDMS-driven. |
+| #103 (`c16c75208`) | 2026-10-05 (merged; commits dated 2026-10-01) | citizen UI + employee UI + deploy/ops | Both | **Lazy loading**: heavy screens, maps and PDF libraries load on demand; the startup download drops from 9.5 MB to 4.55 MB. | Deploy the whole `build/` folder, including `build/chunks/`. |
+| #103 (`64e5dee4e`) | 2026-10-05 (merged; commits dated 2026-10-01) | localization + roles/access | Both (seeds) | Seeds for the labels above, a helplines landing row, and access-control action 2635 with role grants. | These seeds reach only new tenants; live tenants need upserts and grant scripts. |
 | #104 | 2026-10-05 | citizen UI | Both | The optional address field moves to step 1 of the citizen wizard. | none |
 | `da6df4be3` (direct) | 2026-10-05 | backend pgr-services | Bonga | **Complaint numbers without zero padding** (BNG-2026-125); padded numbers are still found by search. Opt-in. **Not in `feat/bomet-uat`**, so Bomet keeps padded numbers. | `egov.idgen.pgr.serviceRequestId.strip-sequence-padding=true` (default `false`; the live value is not in the repo; #128 cites BNG-2026-161). |
-| #117 | 2026-10-05 | citizen UI | Both | Share hands out the receipt PDF. The OTP **resend** wait is 3:00 (also for the employee change-password OTP). **Emoji rating** replaces stars; the stored value is still 1–5. | Labels `CS_RATING_LABEL_1..5` and receipt share labels. |
+| #117 | 2026-10-05 | citizen UI | Both | Share hands out the PDF application. The OTP **resend** wait is 3:00 (also for the employee change-password OTP). **Emoji rating** replaces stars; the stored value is still 1–5. | Labels `CS_RATING_LABEL_1..5` and receipt share labels. |
 | #119 (incl. #120) | 2026-10-05 | citizen UI + employee UI | Both | Review fixes for #117. Share opens a sheet with Open PDF, Email, WhatsApp, SMS and More apps (#120's Copy link was removed later by #129). | 11 `PGR_RECEIPT_SHARE_*` labels |
 | #118 | 2026-10-05 | public landing | Bonga | Hero photo of the County customer-service centre. #154 later replaced the hero design. | none |
-| #121 | 2026-10-05 | employee UI | Both | Receipt buttons styled on the employee "complaint submitted" page; Open PDF works reliably. | none |
+| #121 | 2026-10-05 | employee UI | Both | PDF application buttons styled on the employee "complaint submitted" page; Open PDF works reliably. | none |
 | #125 | 2026-10-07 | employee UI | Both | "Keep details confidential" on the employee create form. | pgr-services with the #103 backend (both have it); label `PGR_EXT_IS_CONFIDENTIAL_LABEL`. |
 | #128 | 2026-10-08 | backend pgr-services | Both (bgrm via #133) | **No staff exemption** from confidential masking, including the clerk who filed the complaint. Only the citizen owner and viewer-role holders see the details. | Rebuilt image; viewer role assignments. |
-| #129 | 2026-10-08 | citizen UI + employee UI | Both | Share sends the PDF itself. Copy link and the "track here" text are removed. | Labels `PGR_RECEIPT_SHARE_HINT_PDF`, `PGR_RECEIPT_SHARE_ATTACH`. |
+| #129 | 2026-10-08 | citizen UI + employee UI | Both | Share sends the PDF itself, which prints the complainant's name and phone number (note c). Copy link and the "track here" text are removed. | Labels `PGR_RECEIPT_SHARE_HINT_PDF`, `PGR_RECEIPT_SHARE_ATTACH`. |
 | #130 | 2026-10-08 | dashboard | Both | **Dashboard export menu**: Excel (summary plus a sheet per tile), CSV and PDF report, each with context, KPIs and every chart, table and map as data. | `DASHBOARD_EXPORT_*` labels (English fallbacks). |
 | #131 | 2026-10-08 | citizen UI + employee UI | Both | The citizen footer sits flush at the bottom. A bundled DIGIT logo is used when the tenant logo is missing or broken. The complaint page refreshes on return to the tab and after a failed, out-of-date action (port of #60). | none |
 | #132 | 2026-10-08 | employee UI | Both | Employees are greeted by designation ("Hello, Director"), and the department in the profile menu is translated. | `COMMON_MASTERS_DESIGNATION_<CODE>` and `COMMON_MASTERS_DEPARTMENT_<CODE>` labels (live en_IN: nb 334/137, bo 208/72); HRMS designation. |
 | #134 | 2026-10-09 | employee UI | Both | **Take Action is offered by role again**, not only to the assignee (reverts #93's gate and #95's queue exception). The LME reassign picker stays. | none |
 | #136 | 2026-10-09 | backend pgr-services | Both (bgrm via `781906447`) | The server enforces **time windows**: REOPEN within `REOPENSLA` of the last update, WITHDRAW within `WITHDRAWSLA` of filing. Configurable per tenant (`UIConstants.actionWindows`), with defaults in properties. | `UIConstants.REOPENSLA`/`WITHDRAWSLA`/`actionWindows`; `PGR_ACTION_WINDOWS_DEFAULTS`, `PGR_COMPLAIN_IDLE_TIME`, `PGR_COMPLAIN_WITHDRAW_TIME` (fallbacks 72 h); migration `V20260930000000` (both counties carry `WITHDRAWSLA` and `actionWindows`, 13 Oct). |
 | #140 | 2026-10-09 | citizen UI + employee UI | Both | Browser tab title and favicon follow the tenant instead of the build. **Its pre-boot follow-up `875cf1871` is not merged.** | `CORE_APP_TITLE` per tenant (live: nb "Bonga Nai", bo "Bomet Feedback" / sw "Maoni ya Bomet"); `StateInfo.logoUrl`. |
-| #142 | 2026-10-09 | citizen UI + employee UI | Both | Share is a modal dialog. The PDF is prepared when the dialog opens, so sharing works in Safari on Mac and in desktop Chrome. Each channel is prefilled with a complaint summary (never the complainant's name or phone). | Labels `PGR_RECEIPT_SHARE_CLOSE`/`_PREPARING`; `tenant.tenants.contactNumber` (both tenants print `0000000000`). |
+| #142 | 2026-10-09 | citizen UI + employee UI | Both | Share is a modal dialog, offered on every device in this build. The PDF is prepared when the dialog opens, so sharing runs inside the user's tap; on computers it still refused or stalled (note c). Each channel is prefilled with a complaint summary (never the complainant's name or phone; the PDF itself prints them, note c). | Labels `PGR_RECEIPT_SHARE_CLOSE`/`_PREPARING`; `tenant.tenants.contactNumber` (both tenants print `0000000000`). |
 | #145 | 2026-10-09 | citizen UI + employee UI | Both | The Reopen button and menu follow the live window (refreshed every minute) and disappear at the deadline. A reopen link opened after the window shows a notice. | `UIConstants.REOPENSLA` (+ `actionWindows`); labels `CS_CANNOT_REOPEN_COMPLAINT_PAST_DEADLINE` etc. |
-| #146 | 2026-10-09 | citizen UI + employee UI | Bomet | **Withdraw** through a confirmation popup (optional reason) for citizens, and a confirmation in employee Take Action (comment required). Offered only within `WITHDRAWSLA` and never after a reopen. Live 13 Oct: Bonga has WITHDRAW before assignment (PENDINGFORASSIGNMENT, 1-day window); Bomet at PENDINGATLME (3-day window). | Workflow WITHDRAW → CANCELLED (CITIZEN, CSR) — live on both; `WITHDRAWSLA` nb 1 day, bo 3 days; 10 labels (present on both); `CS_COMMON_PGR_STATE_CANCELLED` wording. |
+| #146 | 2026-10-09 | citizen UI + employee UI | Bomet | **Withdraw** through a confirmation popup (optional reason) for citizens, and a confirmation in employee Take Action (comment required). Offered only within `WITHDRAWSLA` and never after a reopen. Live 13 Oct: Bonga has WITHDRAW before assignment (PENDINGFORASSIGNMENT, 1-day window); Bomet at PENDINGATLME (3-day window). | Workflow WITHDRAW → CANCELLED (CITIZEN, CSR) — live on both; `WITHDRAWSLA` nb 1 day, bo 3 days; 10 labels (present on both); `CS_COMMON_PGR_STATE_CANCELLED` reads "Withdrawn" (Kiswahili "Imeondolewa") on both sites (read 19 Oct). |
 | #147 | 2026-10-12 | tests | — | End-to-end regression test: a Take Action draft stays with one complaint and one action. | Playwright environment |
 | #148 | 2026-10-12 | deploy/ops + citizen UI + employee UI | Both | **After a deploy, open tabs switch to the new build** at the next "hub" screen. Stale labels and MDMS caches are dropped. Ansible rebuilds the UI when `src/` changes. | Ship `build-info.json` with `index.html`; nginx `Cache-Control: no-cache` (Compose and Ansible have it; Helm does not). |
 | #150 | 2026-10-12 | employee UI + workflow | Bonga | **"Reassign to GRO"**: a last-mile officer sends the complaint back to the GRO queue, unassigned, with no picker and an optional comment. | Workflow REASSIGNTOGRO PENDINGATLME → PENDINGFORASSIGNMENT (PGR_LME), live on nb; 4 labels; **no SMS template**. |
 | #151 | 2026-10-12 | employee UI | Bonga | After Reassign to GRO, a 5-second "Sent back to the GRO" notice, then the inbox. | Labels `CS_REASSIGNTOGRO_DONE_*` |
 | #152 | 2026-10-12 | public landing | Bonga | County help lines and contact e-mail added. | none (set in code) |
-| #153 | 2026-10-12 | public landing | Bonga | Only the county's new lines (0725 624 489 24/7, 0730 047 047, 020 724 7047) and one e-mail. #152 flagged that the e-mail is a personal Yahoo address. | none |
+| #153 | 2026-10-12 | public landing | Bonga | Only the county's new lines (0725 624 489 24/7, 0730 047 047, 020 724 7047) and one e-mail. #152 flagged that the e-mail is a personal mailbox, not a county address. | none |
 | #154 | 2026-10-12 | public landing + MDMS/config (configurator) | Bonga | New top of the page from the county's 12 Oct design: utility strip, crest masthead, hero, photo category cards, slogan band. In-page section links fixed. **On bgrm this page showed Nairobi branding**, hence the bgrm branch. | Optional `LandingSection` `tagline` row. |
 | #155 | 2026-10-13 | public landing | Bonga | The help-line section becomes one "Call Customer Service" panel. **Police, Ambulance and Fire numbers are removed.** | none |
-| #157 (`0c7b3f640`) | 2026-10-13 | filestore/security + deploy/ops + citizen UI | Both (**off by default**) | Optional **ClamAV virus scan of uploads**: infected files are refused and quarantined, and the upload widget shows a clear message. | Ansible `enable_file_scan: true` (default `false`); clamav (about 1.5 GB RAM); MinIO quarantine; OpenBao passwords; nginx `/filestore/` route; labels `CS_FILE_*`. Enabling is tracked in issue #159 (OPEN). |
+| #157 (`0c7b3f640`) | 2026-10-13 | filestore/security + deploy/ops + citizen UI | Both (**off by default**) | Optional **ClamAV virus scan of uploads**: infected files are refused and quarantined, and the upload widget shows a clear message. | Ansible `enable_file_scan: true` (default `false`); memory: about 1.5 GB for ClamAV, plus up to 1 GB for the upload proxy under heavy load — budget about 2.5 GB; MinIO quarantine; OpenBao passwords; nginx `/filestore/` route; labels `CS_FILE_*`. Enabling is tracked in issue #159 (OPEN). |
+
+Note a (#103, `df9aa019d`): Searches by person exclude confidential complaints, and notifications and events carry no complainant identity. New **filtered timeline API** `/v2/request/_chronology` (from CMS V2.12): citizens see no officer names, contacts or internal comments, while the closing comment stays.
+
+Note b (#103, `ee3f83a44`): Both timelines read the chronology API. The official PDF application is an offline PDF with Download, Print and Share. Complaint type and sub-type pickers are sorted A–Z with "Others" last. Manual ESCALATE: the assignee pick is mandatory and the list offers the tier above. Workflow ESCALATE grants, live 13 Oct — nb: PENDINGATLME (PGR_LME, SYSTEM), ESCALATEDLEVEL1 (CHIEF_OFFICER, SYSTEM); bo: PENDINGATLME (PGR_LME, SYSTEM), ESCALATEDLEVEL1 (ADMIN_DIRECTOR, HEALTH_DIRECTOR, WATER_CHIEF_OFFICER, PGR_LME, SYSTEM), ESCALATEDLEVEL2 (ADMIN_CHIEF_OFFICER, HEALTH_CHIEF_OFFICER, WATER_CECM, PGR_LME, SYSTEM).
+
+Note c (#142): #142 was meant to make sharing work in Safari on Mac and desktop Chrome. On computers sharing still refused or stalled (Safari on Mac, issue #138, open); #162 (open, §5) would show Share in the mobile view only. The message that goes with a shared PDF (number, status, category, filing date, address, description, help line) never contains the complainant's name or phone number. The PDF application itself prints them as the person opening it may see them: in full on the resident's own copy, and masked when staff without the `CONFIDENTIAL_COMPLAINT_VIEWER` role open a confidential complaint, because the server masks them before the browser draws the PDF. Because Share hands over the PDF itself, a resident who shares it also shares their own name and number.
 
 ---
 
----
 ## 5. Changes not in this release
 
-PRs outside `nairobi-prod` that matter to the counties
+This section lists pull requests outside `nairobi-prod` that matter to the counties, then open pull requests that are not in this build.
 
 Port check: `git cherry origin/nairobi-prod <branch>` plus manual diffs. Where an equivalent was found, it is named.
 
@@ -363,7 +514,7 @@ Port check: `git cherry origin/nairobi-prod <branch>` plus manual diffs. Where a
 | #99 | PR, merged 2026-09-29; reverted by #100; kept in #101 and #122 | kenya-prod | **No**, and **not needed**: both live pgr-services images allow these channels (`allowed.source` at nairobi-prod `application.properties` line 194; bomet-uat's pgr-services code is otherwise identical). | Matters only for stacks still running the pinned `egovio/pgr-services:2.12-5137119` image. |
 | #100 | PR, merged 2026-09-30 | kenya-prod | n/a (a revert) | Affects kenya-prod only, which neither county deploys today. |
 | #102 | **Issue** (OPEN) | — | Implemented by PR #103 (merged into nairobi-prod 2026-10-05). Sub-issues #105–#110 and #112–#114 were closed on 8 Oct. | #111 (landing refresh), #115 (Swahili) and #116 (helplines) are still open. #155 removed the emergency helplines that #116 asked for. |
-| #122 | PR, OPEN | master | n/a | The Bomet "superset" is not merged. Superset-only items that are therefore live on neither county:<br>• #81 (employee auto-assign) and #50/#78/#82 (reopen picker);<br>• the #98 escalation and its follow-ups;<br>• #55, #59;<br>• `5d429bd08` (**My Complaints fails with WORKFLOW_NOT_FOUND after 10 complaints**);<br>• `35aa73c28` (title before boot);<br>• `072bb4104` ("Withdrawn" label seed);<br>• the chronology fallback (in `b15d97bf4`).<br>Only its Landing folder (at `3f4965e44`) was copied into bgrm-changes. |
+| #122 | PR, OPEN | master | n/a | The Bomet "superset" is not merged. Superset-only items that are therefore live on neither county:<br>• #81 (employee auto-assign) and #50/#78/#82 (reopen picker);<br>• the #98 escalation and its follow-ups;<br>• #55, #59;<br>• `5d429bd08` (**My Complaints fails with WORKFLOW_NOT_FOUND after 10 complaints**);<br>• `35aa73c28` (title before boot);<br>• `072bb4104` ("Withdrawn" label seed; both sites already show "Withdrawn", read 19 Oct);<br>• the chronology fallback (in `b15d97bf4`).<br>Only its Landing folder (at `3f4965e44`) was copied into bgrm-changes. |
 | #133 | PR, merged 2026-10-08 | feat/bomet-uat | It is itself a port **from** nairobi-prod: `5cd998fd0` = `df9aa019d` (backend), `5c02a2b20` = `1a848286c`. | Gives bgrm's backend (`bomet-uat-6eb6b85`) the chronology API and confidential masking. Action 2635 is granted on bo (21 roles, live). `CONFIDENTIAL_COMPLAINT_VIEWER` does not exist on bo **or nb** (live, 13 Oct), so no officer in either county can see a confidential complainant. |
 | #156 | PR, OPEN | nairobi-prod | n/a | Would revert #154 and #155 on nairobi-prod; its tree equals nairobi-prod at #153 (`d7016c952`). While it stays open, nairobi-prod (Bonga) shows the 12 Oct design. bgrm-changes already contains the same two reverts (identical trees: `f6ead681a` vs `9fdb81ad8`). |
 | #158 | PR, merged 2026-10-13 | nairobi-prod-bgrm-changes | Same commit as #157 (`0c7b3f640`). | ClamAV proxy code is on both UI branches. Off unless `enable_file_scan: true`. |
@@ -372,6 +523,8 @@ Other open PRs worth knowing about:
 
 | # | Base | Change | Consequence while open |
 |---|---|---|---|
+| #162 | nairobi-prod | Share for the PDF application only in the mobile view (768 px or narrower), without "More apps"; computers get Download and Print | Not in this build: Share is offered on every device, with "More apps" where the browser has a share sheet (#142), and sharing from computers stays unreliable (Safari on Mac, issue #138). bgrm needs the same commit on `nairobi-prod-bgrm-changes`. |
+| #161 | nairobi-prod | Staff top bar: a fallback logo when the county logo fails to load (the county's logo bundled with the app, otherwise the bundled DIGIT mark), and a long designation greeting shortened with an ellipsis | Not in this build: a county logo that fails to load shows as a broken image in the staff header, and a long designation can push the language and profile menus, with Logout, off screen (both seen on cms-pilot, 14 Oct). bgrm needs the same commit on `nairobi-prod-bgrm-changes`. |
 | #72 | nairobi-prod | Completes the citizen logout question | The citizen logout dialog reads "Are you sure you want to" (unless the seeded text is a full sentence; unverified). |
 | #89 | kenya-prod | Bomet icon seeds | A data fix is needed on bo either way (#89 confirms both records still had `PGRIcon`). |
 | #91 | kenya-prod | Hide extended-attribute detail cards (issue #73) | The "Complainant Details" card can show "NA" to directors on Bomet. |
@@ -385,17 +538,19 @@ Other open PRs worth knowing about:
 
 ---
 
----
 ## 6. `nairobi-prod` vs `nairobi-prod-bgrm-changes`
 
-- **Containment.** `git log origin/nairobi-prod-bgrm-changes..origin/nairobi-prod` lists only `8e6289e86`, the #157 **merge commit**. Its
-  single change, `0c7b3f640`, is in bgrm-changes through #158 (`78444ee4e`). So **bgrm-changes contains all of nairobi-prod's content**.
+- **Containment.** `git log origin/nairobi-prod-bgrm-changes..origin/nairobi-prod` lists three commits (read 19 Oct):
+  - `8e6289e86`, the #157 **merge commit**. Its single change, `0c7b3f640`, is in bgrm-changes through #158 (`78444ee4e`).
+  - `32a56d27d` (13 Oct): the scan proxy's load-test suite, `backend/filestore-scan-proxy/loadtest/`.
+  - `723b680d7` (14 Oct, after the described code): the server backup script, `local-setup/scripts/backup-server.sh` (§2).
+  - So **bgrm-changes contains all of nairobi-prod's application content** up to #157/#158. It lacks only the load-test suite and the backup script, and neither touches the UI code (`digit-ui-esbuild/`).
 - **Commits only on bgrm-changes:**
   - `ba374fc51`: revert #155;
   - `f6ead681a`: revert #154;
   - `bae16acca`: "bgrm gets its Bomet landing page back";
   - `78444ee4e`: #158.
-- **Tree difference (61 files), all landing-related.** The purpose is to give bgrm a Bomet front page while sharing every other change.
+- **Tree difference (61 files against `8e6289e86`), all landing-related.** The purpose is to give bgrm a Bomet front page while sharing every other change. Against today's `nairobi-prod` (`723b680d7`) the difference is 67 files: these 61, the five load-test files and the backup script.
   - `products/pgr/src/pages/citizen/Landing/**` matches `feat/kenya-superset@3f4965e44` exactly (empty diff). It brings:
     - the Bomet copy deck in `content.ts`: "Bomet Feedback Hub", "County Government of Bomet", hotline **0746 036 036**, emergency
       helplines **999 / 112** plus the county line, and the Bomet sub-counties;
@@ -409,12 +564,11 @@ Other open PRs worth knowing about:
 - **Consequences:**
   - A build from bgrm-changes shows the **Bomet** landing for whatever tenant it serves, and a build from nairobi-prod shows the
     **Nairobi** landing. Each bundle belongs to its own county.
-  - Every non-landing change must be merged into both branches, as was done for #157/#158.
+  - Every non-landing change must be merged into both branches, as was done for #157/#158. The load-test suite and the backup script are not on bgrm-changes yet; neither changes the UI build bgrm runs.
   - The emergency numbers (999/112) are still on the Bomet page but gone from the Bonga page (#155).
 
 ---
 
----
 ## 7. Included from CMS V2.12
 
 CMS Kenya includes CMS V2.12 as merged on 31 Aug and its 16 Sep update (`7ee88f83`). The table lists the CMS V2.12 features that matter
@@ -423,7 +577,7 @@ in Kenya, their state in the two counties (live 13–14 Oct) and where the code 
 | CMS V2.12 feature | In the counties | Evidence on `nairobi-prod` |
 |---|---|---|
 | 3-step resident form: category pickers, drafts that survive a refresh, consent capture | live | `pages/citizen/Create/CreatePGRFlowV2.tsx` |
-| Attachments when filing and on every action; video and audio play in the browser; accept list matches the filestore | live | `components/PgrFileUpload.js`, `utils/attachmentKind.js` |
+| Attachments when filing and on every action; video and audio play in the browser; accept list matches the filestore allow-list shipped in Compose (the live servers' list was not read; issue #25, §11) | live | `components/PgrFileUpload.js`, `utils/attachmentKind.js` |
 | Action screens built from the county's workflow; reopen and rate keep routing data; reopen needs a reason and restarts escalation | live | `pages/employee/PGRDetails.js`, `components/PGRWorkflowModal.js`, `ReopenComplaint/AddtionalDetails.js` |
 | Complaint categories as data (`ComplaintHierarchy`, N levels) | live; both counties use 2 levels | `RAINMAKER-PGR.ComplaintHierarchyDefinition` |
 | Notifications to the newest workflow step, department names, acting-officer and deep-link placeholders | live | `pgr-services` `NotificationService.java` |
@@ -449,7 +603,10 @@ in Kenya, their state in the two counties (live 13–14 Oct) and where the code 
 (Kenya keeps the CI security pipeline, `.github/workflows/security-scan.yml`), the reopen fresh-fetch fix, and the double-submit guard
 on filing (`3a299b851`).
 
+**Present but not released:** the role-tiered staff home at `/digit-ui/employee/home-v2` (Kenya work: #56, #63, #80; §4.4). It is in the code but reachable only by URL, is not linked from any menu, and is not part of this release.
+
 ---
+
 ## 8. Configuration changes against CMS V2.12
 
 Operator-level changes between the CMS V2.12 baseline and `nairobi-prod`: backend settings, migrations, MDMS, workflow, access control, labels, deployment and image tagging. Layer tags are explained in §1.
@@ -462,7 +619,7 @@ Only two services changed between base and nairobi-prod: `backend/pgr-services/s
 
 | Key (env override) | Default | What it controls | Opt-in? | Layer / commit |
 |---|---|---|---|---|
-| `egov.idgen.pgr.serviceRequestId.strip-sequence-padding` | `false` | Drops egov-idgen's six-digit zero pad from the trailing sequence of newly generated IDs (`BNG-2026-000125` to `BNG-2026-125`). Search always matches both spellings (`ServiceRequestIdFormat.searchVariants`, `PGRQueryBuilder`). Existing IDs are never rewritten. | **Yes** (off by default; "an existing deployment's numbering cannot change shape on a redeploy", `PGRConfiguration.java`) | [K] `da6df4be3` (2026-10-05). **nairobi-prod only**; absent on `feat/bomet-uat`. No deploy path sets it. The env-var spelling is unverified because the key is camelCase (`serviceRequestId`); Spring's env lookup would most likely accept `EGOV_IDGEN_PGR_SERVICEREQUESTID_STRIP_SEQUENCE_PADDING`. |
+| `egov.idgen.pgr.serviceRequestId.strip-sequence-padding` | `false` | Drops egov-idgen's six-digit zero pad from the trailing sequence of newly generated IDs (`BNG-2026-000125` to `BNG-2026-125`). Search always matches both spellings (`ServiceRequestIdFormat.searchVariants`, `PGRQueryBuilder`). Existing IDs are never rewritten. | **Yes** (off by default; "an existing deployment's numbering cannot change shape on a redeploy", `PGRConfiguration.java`) | [K] `da6df4be3` (2026-10-05). **nairobi-prod only**; absent on `feat/bomet-uat`. No deploy path sets it; env-var spelling: note a. |
 | `pgr.action.windows.defaults` (`PGR_ACTION_WINDOWS_DEFAULTS`) | JSON: `REOPEN` uses `windowKey REOPENSLA`, measured from `lastModifiedTime`, fallback `${pgr.complain.idle.time}`, message "Complaint is closed"; `WITHDRAW` uses `windowKey WITHDRAWSLA`, measured from `createdTime`, fallback `${pgr.complain.withdraw.time}` | Deployment-default time limits for workflow actions. Used for any action a tenant's MDMS `actionWindows` does not list, and during an MDMS outage. Fails closed on a bad rule (`INVALID_ACTION_WINDOW_CONFIG`, `MDMSUtils.getActionWindow`). | No (always active; values are fallbacks) | [K] `c6fee0995` (2026-10-09) |
 | `pgr.complain.withdraw.time` (`PGR_COMPLAIN_WITHDRAW_TIME`) | `259200000` (72 h) | Withdraw-window fallback measured from filing, used when MDMS has no `WITHDRAWSLA` | No | [K] `c6fee0995` |
 | `pgr.complain.idle.time` (`PGR_COMPLAIN_IDLE_TIME`) | `259200000` (was `864000000`, 10 days, at base) | Reopen-window fallback only. The enforced value is MDMS `REOPENSLA`. | No | [P] `2176984d7` |
@@ -474,6 +631,8 @@ Only two services changed between base and nairobi-prod: `backend/pgr-services/s
 | `pgr.escalation.states` | `PENDINGATLME,PENDINGFORASSIGNMENT` | States scanned by `EscalationScheduler`. Bomet's rollout notes advise adding `ESCALATEDLEVEL1,ESCALATEDLEVEL2` so levels 2–3 escalate (live value not verified). | No | [S] `718d65b16` |
 | `allowed.source` | `whatsapp,web,mobile,RB Bot,email,inperson,letter,linhaverde` | Channel-of-receipt codes accepted on `service.source` | No | [S] `b22728730` |
 | `egov.boundary.relationship.search.url` | `/boundary-service/boundary-relationships/_search` | Boundary subtree expansion | No | [S] `79dae4ef0` |
+
+Note a (`strip-sequence-padding`): the env-var spelling is unverified because the key is camelCase (`serviceRequestId`); Spring's env lookup would most likely accept `EGOV_IDGEN_PGR_SERVICEREQUESTID_STRIP_SEQUENCE_PADDING`.
 
 **Related, unchanged:** `pgr.notification.mdms.cache.ttl.ms=60000` already existed at base. It is now also the TTL of the per-tenant UIConstants cache that holds the action windows (`MDMSUtils.getUiConstants`), so MDMS edits take effect within about 60 s without a restart.
 
@@ -537,6 +696,7 @@ Bomet's rollout notes record that the move from `kenya-prod-d723912` to `bomet-u
 | `V20260930000000__uiconstants_add_action_windows.sql` | [K] `c6fee0995` | Adds `WITHDRAWSLA` and `actionWindows` to the UIConstants schema (`additionalProperties:false`; `schema/v1/_update` is HTTP 501, so this can only be done in SQL). Seeds `WITHDRAWSLA: 259200000` on active records that lack it. Deliberately does **not** seed `actionWindows`. Idempotent and guarded. |
 
 How they are applied:
+
 - In the Ansible/compose stack, `db-migrations` is now **built from source** (`./docker/db-migrations`) and runs only `MIGRATION_SERVICES=egov-mdms` with history table `egov_mdms_schema_version` (`local-setup/docker-compose.migrations.yml`, `local-setup/docker/db-migrations/migrate-all.sh:107-114`). Flyway placeholder substitution is off.
 - `local-setup/docker/db-migrations/sql/egov-mdms/README.md` still says boxes on the prebuilt `egovio/tilt-demo-db-migrations:latest` image must apply new files **by hand** with `docker exec docker-postgres psql -U egov -d egov < <file>`. That image is still referenced by `docker-compose.registry.yml:566`.
 - Both counties already carry `WITHDRAWSLA` and `actionWindows` in `UIConstants` (live, 13 Oct), so `V20260930000000` has been applied on both.
@@ -560,14 +720,17 @@ How they are applied:
 #### c.1 `RAINMAKER-PGR.UIConstants` and action windows
 
 **Schema** (`utilities/default-data-handler/src/main/resources/schema/RAINMAKER-PGR.json`):
+
 - `required: ["code","REOPENSLA"]` and `x-unique: ["code"]` [P].
 - New optional properties `WITHDRAWSLA` (ms) and `actionWindows` [K `c6fee0995`]. Each `actionWindows` item has `action`, `windowKey` or `windowMs`, `measuredFrom` (`createdTime` or `lastModifiedTime`), and optional `message` / `notOwnerMessage`.
 
 **Seed data:**
+
 - `utilities/.../mdmsData-dev/RAINMAKER-PGR/RAINMAKER-PGR.UIConstants.json` [K]: `{code: DEFAULT, REOPENSLA: 259200000, WITHDRAWSLA: 259200000, actionWindows: [REOPEN from lastModifiedTime, WITHDRAW from createdTime]}`.
 - `ansible/nairobi-mdms/mdms/RAINMAKER-PGR/UIConstants.json` (11 test or `ke` tenants) [P]: re-keyed to `code: DEFAULT` with `REOPENSLA` 432000000 → 259200000. **It has no `WITHDRAWSLA`**, so the 72 h fallback applies.
 
 **Where the values are read** (`git grep -n "WITHDRAWSLA\|REOPENSLA" origin/nairobi-prod`):
+
 - Backend: `backend/pgr-services/src/main/java/org/egov/pgr/util/MDMSUtils.java` (`getActionWindow`, `getUiConstants`). It reads the **city record first, then the state record**, then the `pgr.action.windows.defaults` rule. Values are cached per requesting tenant for `pgr.notification.mdms.cache.ttl.ms`. Enforcement is in `validator/ServiceRequestValidator.java` (`validateActionWindow`). Constants are in `PGRConstants.java:188`.
 - UI:
   - `digit-ui-esbuild/products/pgr/src/utils/actionWindow.js` holds the same default rules, city record first.
@@ -581,6 +744,7 @@ How they are applied:
 #### c.2 Access-control masters
 
 Summary only; detail is in section (e).
+
 - `ACCESSCONTROL-ACTIONS-TEST` gains 2635, 2640–2648, 2650 and 2651. Actions 2008 and 2513 gain `resource` policies, and 2553/2554 get new `leftIcon` values.
 - `ACCESSCONTROL-ROLEACTIONS` gains grants for those actions and loses all `CMS_*` officer-role grants (seed for new tenants: `utilities/.../mdmsData/ACCESSCONTROL-*`).
 - The same new actions appear in `ansible/nairobi-mdms/mdms/ACCESSCONTROL-*` for 7 reference tenants (+70 actions, +415 grants in the Kenya range).
@@ -606,12 +770,13 @@ Summary only; detail is in section (e).
 #### c.5 StateInfo, branding and theme
 
 These apply to reference tenant `ke` only; live `nb`/`bo` are unverified.
+
 - `ansible/nairobi-mdms/mdms/common-masters/StateInfo.json` [K] `32617c679`/`a12afdb44`: name "Kenya" becomes "Nairobi City County". `logoUrl`/`statelogo`/`logoUrlWhite` become `/digit-ui/nairobi-emblem.png`, `bannerUrl` becomes `/digit-ui/nairobi-login-bg.jpg`, and the `ka_IN` language entry is dropped.
 - New `common-masters/ThemeConfig.json` [K] `32617c679`: Nairobi green `#003D1E` and gold `#FBE116` palette.
 - `tenant/citymodule.json` [K] `23290a2ca`: PGR `bannerImage: /digit-ui/nairobi-home-banner.jpg`.
 - The assets live in `digit-ui-esbuild/public/`.
 - **Tenant-driven tab title and favicon** [K] `a95b7e9de` (#140):
-  - `document.title` comes from label `CORE_APP_TITLE`; live wording per tenant by upsert (bo "Bomet Feedback Hub", nb "Bonga Nai", per the commit message).
+  - `document.title` comes from label `CORE_APP_TITLE`; the wording is set per tenant by upsert. Live 13 Oct: bo "Bomet Feedback" / "Maoni ya Bomet", nb "Bonga Nai" (§3.5); the commit message gives bo as "Bomet Feedback Hub".
   - The favicon comes from `common-masters.StateInfo.logoUrl`.
 
 #### c.6 Complaint hierarchy and other masters
@@ -670,6 +835,7 @@ There is **no Kenya, Bonga or Bomet business-service file in the repo**.
 `CANCELLED` exists as a terminal state with no action leading to it. **There is no WITHDRAW action.**
 
 **Kenya code that assumes live workflow shapes not present in the repo:**
+
 - **WITHDRAW** [K]: UI `withdraw.js` and the action windows (`c6fee0995`, `962aca541`) need a WITHDRAW transition. Live 13 Oct: bo has PENDINGATLME → CANCELLED and nb has PENDINGFORASSIGNMENT → CANCELLED, both for CITIZEN and CSR.
 - **REASSIGNTOGRO** [K] `b6e1da18a`/`4c76fd923` (#150/#151): "Bonga's workflow now lets PGR_LME send a complaint at PENDINGATLME back to PENDINGFORASSIGNMENT with REASSIGNTOGRO". This is a live workflow change, not in the repo.
 - **ESCALATEDLEVEL1–3** [K] labels (`203432ac5`) and status display (`5f947bdeb`). Live 13 Oct: Bonga's PGR has PENDINGFORASSIGNMENT, PENDINGATLME, ESCALATEDLEVEL1, ESCALATEDLEVEL2, REJECTED, RESOLVED, CLOSEDAFTERREJECTION, CLOSEDAFTERRESOLUTION and CANCELLED; Bomet's adds ESCALATEDLEVEL3.
@@ -691,12 +857,14 @@ There is **no Kenya, Bonga or Bomet business-service file in the repo**.
 | 2650 / 2651 | `/mdms-v2/v2/_create\|_update/common-masters.AnalyticsProvider` | MDMS_ADMIN, SUPERUSER | [K] `cfe9947f9` |
 
 Changed actions:
+
 - **2008** `/pgr-services/v2/request/_search` [P]: new `resource.complaint.scope` (axes department and jurisdiction; GRO and PGR_LME OWN/OWN, SUPERVISOR OWN/ALL, default OWN/OWN). Also field-level REDACT rules on `citizen.mobileNumber`, `citizen.name` and `citizen.userName`.
 - **2513** [P]: masters-level conditions (MDMS_ADMIN; SUPERVISOR for `common-masters.Department`).
 - **2553/2554** [K] `638b50975` (#66): `leftIcon` `PGRIcon` becomes **`Search`** (Search Complaint) and **`Add`** (Create Complaint). The commit notes "Seed files only reach NEW tenants; the live tenant needs the MDMS update".
 - 2565/2566 [S]: citizen `sidebarURL` changed from `/digit-ui/citizen/all-services` to `/digit-ui/citizen/pgr-home`.
 
 Live evidence (13 Oct, read-only search of both counties):
+
 - Action 2635 is granted to 21 roles on `bo` and 12 roles on `nb`.
 - `CONFIDENTIAL_COMPLAINT_VIEWER` does not exist on `bo` or `nb`.
 - Actions 2650/2651 exist on `bo` only.
@@ -762,6 +930,7 @@ All mappings are identical on `feat/bomet-uat` (compared `@*Mapping` sets).
 | Dashboard export (dss seed, 41 keys in en_IN and pt_PT) | `DASHBOARD_EXPORT_*` (34), `DASHBOARD_COMMON_*` (6), `DASHBOARD_HEADER_*` (1) | [K] `706082ffc` |
 
 Keys removed from the seeds by [P] `2176984d7`:
+
 - en_IN `rainmaker-common`: `CCRS_PRIVACY_*` (8), `CORE_COMMON_BACK_TO_LOGIN`, `CORE_COMMON_PROFILE_PERSONAL_DETAILS`, `CORE_FORGOT_USERNAME_PLACEHOLDER`, `CS_CITIZEN_SIDEBAR_PGR`, `ENGLISH`, `PORTUGUESE`, `USERNAME`.
 - default `rainmaker-common`: `ACTION_TEST_NATIONAL_PGR`, `CS_CITIZEN_SIDEBAR_PGR`, `ES_PGR_HEADER_COMPLAINT`, `MODULE_PGR`.
 - This affects new tenants only; live tenants keep their stored messages.
@@ -801,6 +970,7 @@ Keys removed from the seeds by [P] `2176984d7`:
 #### g.3 Kong (`local-setup/kong/kong.yml`)
 
 All Kong changes are [P] `2176984d7`:
+
 - `ENFORCE_UNAUTH` and `ENFORCE_RBAC` set to `true`.
 - Bundled `prometheus` plugin enabled.
 - New routes `pgr-public-analytics-catalog-route` and `pgr-public-analytics-options-route` (POST, 60/min/IP, 1 MB).
@@ -835,7 +1005,9 @@ Every `getConfig` key present at nairobi-prod but not at base, per file. Exact `
 | same | `ANALYTICS_*` ×3 (host_vars `analytics_kill_switch`/`analytics_script_hosts`/`analytics_custom_enabled`) | as above | [S] `e9a0f0e43` |
 | same | `TESTING_MODE`, `TESTING_TENANT_ID` (only when `testing_ui_enabled`) | `/testing-ui` entrance | [S] `06ee871e6` |
 | `configs/assets/globalConfigsPGR.js`, `local-setup/configs/assets/globalConfigsPGR.js`, `frontend/micro-ui/web/public/globalConfigs.example.js` | none (footer-logo values only) | | [P] |
-| **NEW** `devops/deploy-as-code/charts/urban/digit-ui/files/globalConfigs.js.tpl` and `templates/globalconfigs-configmap.yaml` (Helm renders `globalConfigs.js`; no S3 upload) | 34 keys from `values.yaml` `globalConfigs:` | **Lacks `PGR_PII_MASKING`, `ANALYTICS_*` and `TESTING_*`**, so a Helm-rendered config masks PII. Several keys use names the UI does not read: `FOOTER_LOGO_URL`/`FOOTER_BW_LOGO_URL` (UI reads `DIGIT_FOOTER`/`DIGIT_FOOTER_BW`), `ASSET_S3_BUCKET` (`S3BUCKET`), `CONFIG_MODULE_NAME` (`UICONFIG_MODULENAME`), `BOUNDARYTYPE` (`BOUNDARY_TYPE`), `CENTRAL_INSTANCE_ENABLED` (`ENABLE_SINGLEINSTANCE`). `JWT_TOKEN` and `MDMS_V1/V2_CONTEXT_PATH` are also absent. This is a CMS V2.12 issue. Both live counties' `globalConfigs.js` are generated by Ansible (`host_vars/nairobi.yml`, `host_vars/bometnew.yml`, per the files' header). | [P] `2176984d7` |
+| **NEW** `devops/deploy-as-code/charts/urban/digit-ui/files/globalConfigs.js.tpl` and `templates/globalconfigs-configmap.yaml` (Helm renders `globalConfigs.js`; no S3 upload) | 34 keys from `values.yaml` `globalConfigs:` | **Lacks `PGR_PII_MASKING`, `ANALYTICS_*` and `TESTING_*`**, so a Helm-rendered config masks PII. Several keys use names the UI does not read, and some are absent (note a). This is a CMS V2.12 issue. Both live counties' `globalConfigs.js` are generated by Ansible (note a). | [P] `2176984d7` |
+
+Note a (Helm `globalConfigs.js.tpl`): keys whose names the UI does not read are `FOOTER_LOGO_URL`/`FOOTER_BW_LOGO_URL` (UI reads `DIGIT_FOOTER`/`DIGIT_FOOTER_BW`), `ASSET_S3_BUCKET` (`S3BUCKET`), `CONFIG_MODULE_NAME` (`UICONFIG_MODULENAME`), `BOUNDARYTYPE` (`BOUNDARY_TYPE`) and `CENTRAL_INSTANCE_ENABLED` (`ENABLE_SINGLEINSTANCE`). `JWT_TOKEN` and `MDMS_V1/V2_CONTEXT_PATH` are also absent. Both live counties' `globalConfigs.js` are generated by Ansible (`host_vars/nairobi.yml`, `host_vars/bometnew.yml`, per the files' header).
 
 Runtime keys **read by the UI** that are new against base: `PGR_PII_MASKING` [K] (the only new one in the Kenya range), plus `ANALYTICS_*` and `TESTING_*` [S]. Extracted from all `getConfig`/`cfg`/`gc` call sites.
 
@@ -854,6 +1026,7 @@ The OTP resend cooldown knob `OTP_RESEND_COOLDOWN_SECS` was added in `dfbb2ba26`
 #### g.6 Helm (`devops/deploy-as-code/charts/environments/env.yaml` and charts)
 
 All Helm changes are [P] `2176984d7`; there is no Kenya-specific Helm change:
+
 - `monitoring:` block (all components off by default).
 - `dev-enabled` changed to `"false"`; `citizen-otp-fixed`/`-enabled` commented out (off); `hrms-dev-mode` changed to `"false"`.
 - `digit-ui.globalConfigs` rendered by the chart (replaces the S3 `custom-js-injection`).
@@ -879,6 +1052,7 @@ None removed: 51 checks at base, 59 at nairobi-prod.
 #### g.8 Tilt
 
 All [P]:
+
 - pgr-services dev image `multiarch-d448cb7` → `2.12-5137119` (`local-setup/Tiltfile`, `Tiltfile.k8s`).
 - Jupyter resources removed.
 - An optional `MONITORING=1` k8s monitoring stack.
@@ -886,18 +1060,21 @@ All [P]:
 #### g.9 Ansible (`local-setup/ansible/`)
 
 New inventory keys:
+
 - [K]:
   - `pgr_pii_masking` (default false; `05d714058`).
   - `enable_file_scan` (default false), `filestore_scan_proxy_image`, and `upstream_scan_proxy_port: 18183` (`0c7b3f640`).
-  - New example `host_vars/nairobi.yml.example` (`32617c679`): `ke`/`ke.nairobi`, `hierarchy_type: NAIROBI-Hierarchy`, `+254` and `^[17][0-9]{8}$`, postal `^[0-9]{5}$`, `pgr_notification_config_driven: true`. It contains local test secrets; the values are not repeated here.
+  - New example `host_vars/nairobi.yml.example` (`32617c679`): `ke`/`ke.nairobi`, `hierarchy_type: NAIROBI-Hierarchy`, `+254` and `^[17][0-9]{8}$`, postal `^[0-9]{5}$`, `pgr_notification_config_driven: true`. It contains local test secrets; the values are not repeated here. Its `map_center` (line 56) is Bomet's centre (-0.7817, 35.3428), not Bonga Nai's live centre (-1.2864, 36.8172, §2): set it when onboarding from this template.
 - [P]: `enable_matomo`, `matomo_auto_install`, `matomo_admin_user`, `upstream_matomo_port: 18081`, `observability_level`, `gatus_slack_webhook_url`, `dashboard_allowed_roles`, `accesscontrol_image`, `digit_ui_image`, `configurator_image`, `egov_user_image`, `mcp_image`, `otp_publisher_image`, `novu_bridge_sms_provider`, `novu_bridge_sms_sender_id`, `novu_bridge_smscountry_*`, `theme_primary_color*` and others.
 - [S]: `analytics_kill_switch`, `analytics_script_hosts`, `analytics_custom_enabled`, `testing_ui_enabled`.
 
 `templates/digit.env.j2` new variables:
+
 - [K]: `FILESTORE_SCAN_PROXY_IMAGE`, `GATUS_PROFILE_FILE_SCAN`.
 - [P]: `ACCESSCONTROL_IMAGE`, `BOOTSTRAP_USER`/`PASSWORD`, `GATUS_{OBSERVABILITY,PUBLIC_URL,SLACK_WEBHOOK_URL,TLS}`, `GF_ANONYMOUS_ENABLED`, `MATOMO_{PORT,ARCHIVE_INTERVAL}`, `NOVU_BRIDGE_{SMS_PROVIDER,SMS_SENDER_ID,SMSCOUNTRY_*,INTEGRATION_ID_WHATSAPP}`, `OTEL_{TRACES,METRICS}_EXPORTER`.
 
 `playbook-deploy.yml` [K]:
+
 - `0c7b3f640`: file-scan tasks. Builds `filestore-scan-proxy:local` on the box, generates the two MinIO passwords into OpenBao (`minio_scanproxy_password`, `minio_quarantine_reader_password`), starts the profile, and restarts clamav on a `clamd.conf` change.
 - `18ac7a543` (#148): the static UI is rebuilt when `src/`, `esbuild.build.js` or `tailwind.config.ts` change.
 - `local-setup/scripts/enable-uat-extras.sh` [K] `3ae0b4e07` wraps host_vars, deploy, Matomo, static assets and the frontend re-push for Bomet UAT. Its defaults are `TENANT=bomet` and port 18083.
@@ -927,13 +1104,15 @@ New inventory keys:
 | Source Code direct-SMS gateway (`84c45ada2`) | novu-bridge `NovuBridgeConfiguration`, `DirectDeliveryService`, property `novu.bridge.direct.sms.service.id` | bomet-uat's novu-bridge supports direct SMS through `ozeki` or `bongatech` only. Which novu-bridge image runs on bgrm is unverified. |
 | `backend/filestore-scan-proxy/` (entire service, `0c7b3f640`) | — | A separate image; bomet-uat cannot build it. `nairobi-prod-bgrm-changes` does carry it (merge-base `0c7b3f640`; PR #158). |
 
-Nothing is present on bomet-uat but absent on nairobi-prod under `backend/` (`git diff --stat` shows 9 insertions and 1,864 deletions going np → bu, all removals).
+Nothing is present on bomet-uat but absent on nairobi-prod under `backend/` (`git diff --stat` from `32a56d27d` to `feat/bomet-uat` shows 27 files, 9 insertions and 2,103 deletions, all removals).
 
 Deploy-config differences, np → bomet-uat:
+
 - bomet-uat adds `ALLOWED_SOURCE` env to every compose, k8s and Helm pgr-services definition.
 - bomet-uat lacks ClamAV, `nairobi.yml.example`, `ThemeConfig.json`, the #102 chronology and label seeds, and the #148 playbook fix.
 
 **Known gap on both release backends (verified):** `5d429bd08` "fix(pgr-services): bound and batch the workflow search that enriches a page of complaints" (2026-10-07) is on `origin/feat/kenya-superset` only.
+
 - nairobi-prod's `backend/pgr-services/src/main/java/org/egov/pgr/service/WorkflowService.java` is byte-identical to the pre-fix version, and `feat/bomet-uat` does not contain the commit either.
 - Per its commit message, any deployment whose egov-workflow-v2 runs the stock `egov.wf.default.limit` (10) shows a citizen "Couldn't load your complaints" (`WORKFLOW_NOT_FOUND`) from their eleventh complaint on. Raising the workflow service's default page limit is the config-side mitigation; the live values are unverified.
 
@@ -943,12 +1122,13 @@ Deploy-config differences, np → bomet-uat:
 
 | Workflow | Builds | Trigger | Tag rule |
 |---|---|---|---|
-| `.github/workflows/build.yml` | Maven services listed in `build/build-config.yml`: `pgr-services` (+ `pgr-services-db`), `novu-bridge` (+ `-db`), `digit-config-service` (+ `-db`), `digit-user-preferences-service` (+ `-db`), `default-data-handler`, `xstate-chatbot` (+ `-db`). Uses `build/maven/Dockerfile` with `WORK_DIR`. | `workflow_dispatch` (input `pipeline_name`) | `<last path segment of the branch>-<git short sha>`: `BRANCH="${GITHUB_REF##*/}"`. An existing matching tag is reused. Pushes `egovio/<image>:<tag>-amd64` and `-arm64`, then a multi-arch manifest `egovio/<image>:<tag>`. |
+| `.github/workflows/build.yml` | Maven services listed in `build/build-config.yml` (the six its `pipeline_name` input offers): `pgr-services` (+ `pgr-services-db`), `novu-bridge` (+ `-db`), `digit-config-service` (+ `-db`), `digit-user-preferences-service` (+ `-db`), `default-data-handler`, `xstate-chatbot` (+ `-db`). Uses `build/maven/Dockerfile` with `WORK_DIR`. | `workflow_dispatch` (input `pipeline_name`) | `<last path segment of the branch>-<git short sha>`: `BRANCH="${GITHUB_REF##*/}"`. An existing matching tag is reused. Pushes `egovio/<image>:<tag>-amd64` and `-arm64`, then a multi-arch manifest `egovio/<image>:<tag>`. |
 | `.github/workflows/spa-build.yml` | `configurator`, `digit-ui-esbuild`, `digit-ui-v2`, `digit-mcp`, `otp-publisher`, **`filestore-scan-proxy`** (added [K] `0c7b3f640`; also in `build/build-config.yml`) | `workflow_dispatch` | `${GITHUB_REF_NAME//\//-}-<short sha>`: slashes become dashes, so `feat/x` becomes `feat-x-…`. Multi-arch manifest. |
-| `.github/workflows/release-build.yml` → `build-images.yml` | **All** images in `build/build-config.yml` at the release tag's commit | GitHub **release published**; runs from the default branch `master` (present on `origin/master` `43a974608`) | `egovio/<image>:<release-tag>` (immutable). `build-images.yml` defaults to `develop-<sha8>` when no version tag is given. |
+| `.github/workflows/release-build.yml` → `build-images.yml` | **All** images in `build/build-config.yml` at the release tag's commit, including `novu-bridge-endpoint` and the legacy `digit-ui` (`frontend/micro-ui`), which `build.yml` does not offer | GitHub **release published**; runs from the default branch `master` (present on `origin/master` `43a974608`) | `egovio/<image>:<release-tag>` (immutable). `build-images.yml` defaults to `develop-<sha8>` when no version tag is given. |
 | `nightly-build-develop.yml` | as above | schedule | `develop-<sha8>` |
 
 **Known and derived tags:**
+
 - Recorded in Bomet's rollout notes:
   - **`egovio/pgr-services:bomet-uat-6eb6b85`**, built from `feat/bomet-uat` at `6eb6b853c` (CI run 37767313762) and pinned on bgrm on 2026-10-09.
   - Alternative: `egovio/pgr-services:kenya-superset-031e77b`.
@@ -963,7 +1143,6 @@ Deploy-config differences, np → bomet-uat:
 
 ---
 
----
 ## 9. Testing status
 
 ### Automated suites (run 13 Oct 2026 on a clean checkout of `nairobi-prod` @ `8e6289e86`, Node 20.20.2)
@@ -982,6 +1161,7 @@ Deploy-config differences, np → bomet-uat:
 | Java unit tests | `mvn test` per service | **not run** (no JDK on the release machine; they run in the image build) |
 
 **The configurator failure** is `src/admin/validation.postalCode.test.ts`, "full-dump.sql seeds the same FormValidations rows as the DDH seed (no drift)".
+
 - **Cause:** the local database dump and the default seed carry different postal-code patterns (`^[1-9][0-9]{5}$` vs `^[0-9]{5}$`).
 - **Scope:** fresh local stacks only. Neither county has a `common-masters.FormValidations` record.
 
@@ -989,84 +1169,73 @@ Deploy-config differences, np → bomet-uat:
 
 | Workflow | Recent result |
 |---|---|
-| Flyway history-table match · Gatus coverage · DB seed sync · analytics seed parity · deploy-as-code validation | pass at each update of PR #49 (`master` ← `nairobi-prod`) |
+| Flyway history-table match · Gatus coverage · DB seed sync · analytics seed parity · deploy-as-code validation | pass at each update of PR #49 (`master` ← `nairobi-prod`); on 19 Oct (head `723b680d7`) 9 checks pass and 3 fail (below) |
 | Flyway · Gatus on #157 | pass |
 | Gateway whitelist parity | runs only when `kong.yml` or `env.yaml` change; last run 21 Sep on a kenya-prod PR, never on `nairobi-prod`; passes locally (above) |
 | #152–#155 | no checks triggered |
-| Local Setup CI | **fails**; no completed success in 66 runs since 4 Sep |
-| Tilt CI | **fails** on every run since 15 Sep; last passed 4 Sep |
+| Local Setup CI | **fails**; no completed success in 66 runs since 4 Sep (recorded 13 Oct); on PR #49 the jobs "test" and "Config combination + infra contracts" fail |
+| Tilt CI | **fails** on every run since 15 Sep; last passed 4 Sep; on PR #49 the job "tilt-test" fails |
 
-Both failing workflows stop at "Start services": the CI log reads "pull access denied for minio/minio". The minio image reference is identical at the CMS V2.12 baseline, `kenya-layer-start` and `nairobi-prod`, so the failure is external and not caused by this release.
+The three failing jobs on PR #49 (logs read 19 Oct):
+
+- Local Setup CI, job "test": the `minio/mc` image can no longer be pulled ("pull access denied").
+- Tilt CI, job "tilt-test": the `minio/minio` image can no longer be pulled.
+- Local Setup CI, job "Config combination + infra contracts": 1 of 13 contract tests fails (`static/infra-contracts.test.ts:62`), because a service list now includes `db-migrations`, which the test does not expect.
+
+The minio image references are identical at the CMS V2.12 baseline, `kenya-layer-start` and `32a56d27d`, so the two pull failures are external and not caused by this release. The contract-test failure is on the repository side and needs a fix in the repository.
 
 ### Manual / UAT
 
 The county flows were exercised on the live sites and on a local Bomet stack as each change was made:
+
 - filing and auto-assignment;
 - escalation;
 - resolve, reopen and rate;
 - withdraw;
-- receipts and dashboard export.
+- the PDF application and dashboard export.
 
-The checks mostly used real officer accounts rather than an administrator. A formal UAT sign-off is not kept in the repository.
+The checks mostly used real officer accounts rather than an administrator. A formal UAT sign-off is not kept in the repository. The end-to-end runs on cms-pilot (the test twin of Bonga Nai) that prepared the training videos and the support package are recorded, with their findings and follow-ups, in the release notes' [Support preparation: findings and follow-ups](RELEASE-NOTES-CMS-KENYA-V2.12.md#support-preparation-findings-and-follow-ups).
+
+### Scan proxy load test (13 Oct 2026)
+
+The virus-scanning proxy was load-tested on 13 Oct with 2,250 uploads in 14 runs on a local CMS stack (8 CPUs simulated by pinning containers on a laptop; 15 GiB of memory under heavy swap). Every infected test file (90) was blocked and quarantined, and no clean file was wrongly blocked. Scanning caused no noticeable slowdown up to 50 parallel uploads and added about 0.7 s at the median at 100. The weak point was `egov-filestore`, which ran out of Java heap under 100 parallel 5 MB uploads (41 failures without scanning, 5 with). Full results and sizing advice: `backend/filestore-scan-proxy/loadtest/report-8cpu-16gb.md` on `nairobi-prod` (§12) and the release notes' [File scan: virus scanning of uploads](RELEASE-NOTES-CMS-KENYA-V2.12.md#file-scan-virus-scanning-of-uploads).
 
 ---
+
 ## 10. Known limitations and open issues
 
 ### 10.1 Known limitations (as in the release notes)
 
-**Not yet in this release**
-1. **Bomet: complaints filed by staff are not auto-assigned.** They reach the officer stage without an assignee, so they appear in no one's "assigned to me" list. A last-mile officer of that department whose area covers the complaint can still act on them. The fix (#81) is on `kenya-prod` and has not been brought to `nairobi-prod`.
-2. **Bomet: a staff reopen without choosing an officer leaves the complaint unassigned** (#50, with #78 and #82, not brought over).
-3. **"My Complaints" fails for a resident with more than 10 complaints** (`WORKFLOW_NOT_FOUND`) unless the workflow service's default page limit has been raised (not verified in either county); the fix (`5d429bd08`) is on neither county's code.
-4. **Request validation is not enforced in pgr-services.** It still pins Hibernate Validator 6.0.16 (javax) under Spring Boot 3.2.2, the setup CMS V2.12 found silently disables `@Valid`, `@NotNull`, `@Size` and `@Pattern`. CMS V2.12's fix (`b0fad2383`) was not taken by the Kenya sync; see "Security fixes". (Diagnosis taken from the CMS V2.12 commit; not probed at runtime here.)
-5. Not brought over from `kenya-prod`: readable messages when location access is refused (#55; the `CS_GEOLOCATION_*` labels are also unseeded) and the anonymous `/citizen` → login redirect (#59).
+The 25 known limitations are kept in one place, the release notes' [Known Limitations](RELEASE-NOTES-CMS-KENYA-V2.12.md#known-limitations), and are not copied here. Their numbering, 1 to 25, is the one the support package (pull request #163) cites as "limitation 9" and so on. They come in four groups:
 
-**Configuration to complete in the counties**
-6. **No officer can see a confidential complainant** — the `CONFIDENTIAL_COMPLAINT_VIEWER` role does not exist in either county.
-7. **Bomet: last-mile officers, department tiers and GROs see complainant names and phone numbers redacted.** Bomet's search policy on action 2008 shows them only to the complainant and to staff whose roles reach every department and area (CSR, OMBUDSMAN_OFFICER). If officers must call complainants back, add the department-and-area clause Bonga uses. This comes from the policy code; not checked on screen.
-8. **Bomet: 11 categories still have 2-minute test escalation timers** in `RAINMAKER-PGR.EscalationConfig`: 8 on all three levels and 3 Water categories on levels 1–2. Examples are maternal emergencies, ambulance delays, corruption and water pipes. These complaints escalate at the next scheduler run (every 5 minutes by default). Escalation beyond level 1 runs automatically only if `PGR_ESCALATION_STATES` includes the escalated states (not verified).
-9. **The PDF application prints `0000000000`** as the county's phone; the county e-mail is a placeholder and the `StateInfo` name reads "Demo" (both counties).
-10. **No SMS or e-mail** is sent for WITHDRAW (both counties), REASSIGNTOGRO (Bonga) or ESCALATE (Bomet): no notification templates exist.
-11. The distinct menu icons for Create and Search Complaint (#90) need an MDMS data update in both counties.
-12. Bomet: six sample departments, sample designations and 18 Hindi notification templates remain; the `StateInfo` banner points to a missing image; the analytics endpoint value starts with a tab character.
-13. Bonga: novu-bridge's OTP consumer defaults to tenant `bo`; Bonga must set `NOVU_BRIDGE_USER_OTP_DEFAULT_TENANT_ID=nb` (not verified from here).
-14. The deploy templates are behind novu-bridge: they still pass the removed `NOVU_BRIDGE_SMSCOUNTRY_*` variables and do not pass the direct-SMS or OTP variables, so those must be set by hand on each server.
-15. The configurator edits only `REOPENSLA`; `WITHDRAWSLA` and `actionWindows` are changed through the MDMS API.
-
-**Behaviour to be aware of**
-16. The map pin starts at the county centre. If the resident does not move it, the complaint is recorded at the centre.
-17. Resolved and rejected complaints show in the default inbox — requested by Bomet; Nairobi's issue #144 asks for the opposite.
-18. The citizen logout question reads "Are you sure you want to" (fix #72 not merged); the browser tab shows "DIGIT" until the county's labels load.
-19. Video uploads over about 3.9 MB fail on Bonga (likely a web-server limit, issue #137). Re-sending an OTP does not invalidate the earlier one (#135, closed without a fix).
-20. Manual escalation does not record the escalation-level bookkeeping that automatic escalation uses; this may explain the wrong level reported in issue #141.
-21. The workflow definitions for `nb` and `bo` are not versioned in the repository.
-
-**Inherited from CMS V2.12**
-22. Several deploy steps still use the default bootstrap password, so changing the bootstrap secrets breaks a full deploy.
-23. The staff filing form offers a "Green Line" channel that Kenya does not use, and Kenya's call-centre complaints have no channel of their own.
-24. The 16 Sep CMS V2.12 update removed the role-action grants of the `CMS_*` officer roles from the seed, and the configurator's role-action create/edit screens (the buttons remain). Kenya does not use those roles.
-25. The configurator's telemetry is on by default (`kill: false`). Operator scripts keep defaults from another deployment (`enable-escalation.sh` tenant and state, `deploy-pilot-fe.sh` branch); set them before use.
+- [Not yet in this release](RELEASE-NOTES-CMS-KENYA-V2.12.md#not-yet-in-this-release): limitations 1 to 5;
+- [Configuration to complete in the counties](RELEASE-NOTES-CMS-KENYA-V2.12.md#configuration-to-complete-in-the-counties): limitations 6 to 15;
+- [Behaviour to be aware of](RELEASE-NOTES-CMS-KENYA-V2.12.md#behaviour-to-be-aware-of): limitations 16 to 21;
+- [Inherited from CMS V2.12](RELEASE-NOTES-CMS-KENYA-V2.12.md#inherited-from-cms-v212): limitations 22 to 25.
 
 ### 10.2 Open issues that bear on shipped changes
 
-Checked on GitHub on 19 Oct 2026: 63 issues, 36 open. Only four open issues carry a priority label, and nine of the open issues were delivered by this release and only need closing.
+Checked on GitHub on 19 Oct 2026: 63 issues, 36 open. Only four open issues carry a priority label: three are still open work (P1 #77, P2 #54 and #52), and one (P1 #102) was delivered by this release. Seven open issues were delivered by this release and only need closing, one (#138) was partly delivered, 13 have a lower priority and 12 remain: 3 + 7 + 1 + 13 + 12 = 36.
 
-**High priority (P1 / P2) still open: 2**
+**High priority (P1 / P2) still open: 3.**
 
 | Issue | Priority | What remains |
 |---|---|---|
+| #77 | P1 | Bomet: a staff reopen without choosing an officer is not routed to an officer (limitation 2). The fix (#78, with #50 and #82) is on `kenya-prod` and `feat/bomet-uat`, not on the UI branches the counties run (§5). |
 | #54 | P2 | A resident who refuses location access can see the raw key `CS_GEOLOCATION_ERROR`. The fix (#55) is not on nairobi-prod; seeding the five `CS_GEOLOCATION_*` labels (L2) removes it on both counties. |
 | #52 | P2 | Bomet: sidebar visibility is read from the page address during rendering and can be stale after in-app navigation. |
 
-**Delivered by this release, to close on GitHub: 9** — #77 (reopen no longer fails; it returns to an officer who can act, #65 and #85), #143 (by #145), #138 (by #142), #127 (by #150 and #151), #124 (by #132), #116 (by #103; Bonga's landing page now has a single customer-service panel, #155), #111 (by #154), #75 (by #96, regression test #147), #102 (by #103).
+**Delivered by this release, to close on GitHub: 7** — #143 (by #145), #127 (by #150 and #151), #124 (by #132), #116 (by #103; Bonga's landing page now has a single customer-service panel, #155), #111 (by #154), #75 (by #96, regression test #147), #102 (by #103).
+
+**Partly delivered: 1** — #138 (sharing the PDF application): fixed on phones by #142, which is in this build; on computers (Safari on Mac) sharing still refused or stalled. Pull request #162 (open, §5) would show Share in the mobile view only.
 
 **Lower priority (no priority label, treated as P3) still open: 13** — #144 inbox default (needs a decision; conflicts with `31edfa212`), #141 escalation level shown in the timeline, #139 Share panel cosmetics, #137 video upload limit on Bonga, #149 dropdown auto-scroll, #115 Kiswahili completeness, #45 Bomet 7-digit numbers, #66 sidebar icons, #67 5 MB photo cap, #68 truthfulness declaration, #73 complainant details layout, #74 Bomet call-centre complaints not escalated automatically, #159 enabling virus scanning.
 
-The remaining 12 open issues are requests that do not bear on this release's changes.
+**Remaining open issues: 12.** Four of them touch areas this release changed: #61 (reopen not working on Nairobi; probably addressed by #65, #85 and #145, and needs a retest before it is closed) and #25 (Word files refused on Bomet; the Compose setting shipped in the repository accepts .docx, but the live servers' setting was not read, §11); #16 (Bomet: restrictions by jurisdiction and department) and #18 (Bomet: escalation changes), which relate to the search scoping by department and area and to the manual and department-tier escalation in this release — whether they are complete needs Bomet's confirmation. The other 8 are requests that do not bear on this release's changes.
 
 ## 11. Not verified
 
-1. **Container images on both servers.** Bonga's pgr-services and novu-bridge images, and bgrm's novu-bridge image, were not read from the boxes.
+1. **Container images on both servers.** Bonga's pgr-services and novu-bridge images, and bgrm's novu-bridge image, were not read from the boxes. The table to complete before tagging is at the end of §2.
 2. **novu-bridge settings in each county:**
    - the SMS gateway (Bongatech, Source Code or Novu's primary);
    - `NOVU_BRIDGE_USER_OTP_DEFAULT_TENANT_ID` (Bonga needs `nb`);
@@ -1079,20 +1248,22 @@ The remaining 12 open issues are requests that do not bear on this release's cha
 7. **Filing twice on a double click.** Whether this can happen without the CMS V2.12 double-submit guard (`3a299b851`) was not tested.
 8. **The configurator's role-action Create/Edit buttons** after the CMS V2.12 update removed their routes (not browser-checked).
 9. **Bomet's redaction rule on screen.** The policy code (`PolicyInputBuilder`: tenant-wide means no department and no area restriction) says last-mile officers, department tiers and GROs on Bomet see complainant names and phone numbers redacted (§3.4.1). Not checked on an officer's screen.
+10. **Accepted upload formats on the live file servers.** The UI accepts photos, PDF, Word, Excel and five video formats (`PgrFileUpload.js`), and the filestore allow-list shipped in Compose (`ALLOWED_FORMATS_MAP`) accepts them too; the servers' own setting was not read. Issue #25 (open) reports Word files refused on Bomet.
+11. **Live 13 Oct statements not re-read on 19 Oct.** The 13 Oct capture is not in the repository. On 19 Oct only the escalation configuration (§3), the status labels "Withdrawn" and "Escalated (Level n)", and the confidentiality label were read again on both sites.
+12. **Test-suite figures** (192/192, 316/316, 228/229, 17/17 aliases, 298 Playwright tests listed) were recorded on 13 Oct at `8e6289e86` and not re-run (§9).
+13. **The start-up download figure** (9.5 MB to 4.55 MB) comes from PR #103 and was not re-measured.
+14. **The manual and UAT statement** in §9 has no artefact in the repository.
+15. **Who owns the contact mailbox in Bonga Nai's footer.** #152 flagged it as a personal address; only the County can confirm who owns it. The address is deliberately not reproduced in these documents.
+16. **Whether a resident sharing the PDF should share their own name and number** is a product question (raised 19 Oct). The PDF application prints the complainant's name and phone number, and Share hands over the PDF itself (§4.4, note c).
 
 ---
+
 ## 12. Documentation
 
-- [Release notes (GitHub release body)](RELEASE-NOTES-CMS-KENYA-V2.12.md)
-- [County release note (plain language)](COUNTY-RELEASE-NOTE-CMS-KENYA-V2.12.md)
-- [Bomet onboarding runbook](../../local-setup/ansible/runbooks/03-bomet-onboarding.md)
-- [County host_vars templates](../../local-setup/ansible/inventory/host_vars/)
-- [Reopen window](../reopen-window.md)
-- [Migration runner guide](../migration/README.md)
-- [Escalation runbook](../pgr-escalation/RUNBOOK.md)
-- [Analytics setup](../analytics-guide/)
-- [ClamAV scan proxy](../../backend/filestore-scan-proxy/README.md)
-- [Scan proxy load-test report](../../backend/filestore-scan-proxy/loadtest/report-8cpu-16gb.md)
+The full list of documents for this release (the release documents, the training videos, the support package, the operations handbook, and the deployment and configuration guides) is in the release notes: [Documentation](RELEASE-NOTES-CMS-KENYA-V2.12.md#documentation). It is not repeated here. The evidence on this page also relies on two files of the scan proxy:
+
+- [ClamAV scan proxy README](../../backend/filestore-scan-proxy/README.md): enabling virus scanning and reading the quarantine; the source of the 1.5 GB memory figure for ClamAV.
+- [Scan proxy load-test report](../../backend/filestore-scan-proxy/loadtest/report-8cpu-16gb.md) (on `nairobi-prod`; the link works once this page reaches `nairobi-prod` through pull request #160): the 13 Oct load test of 2,250 uploads, with its sizing advice.
 
 ---
 
@@ -1102,10 +1273,14 @@ The evidence behind the "In detail" section of the release notes.
 
 | Topic | Kenya changes | From CMS V2.12 | How it was verified |
 |---|---|---|---|
-| Security fixes | #103 (`df9aa019d`), #128 (`1a848286c`), #129, #142, #136 (`c6fee0995`), #157 (`0c7b3f640`); landing-link sanitising `safeHref` (PR #1, `b590fd6a0`) | CMS V2.12 update `2176984d7`: Kong `ENFORCE_UNAUTH` / `ENFORCE_RBAC` set to `true`, policy scoping and field redaction, fail-closed `AccessControlUnavailableException`. `626864567`: jsPDF 2.5.1 → 4.2.1. Earlier CMS V2.12: ward-tooltip escaping `8c1120f9`, scope-bypass hardening `9e650397`, analytics host allow-list `e9a0f0e4` | `kong.yml` and `digit-ui-esbuild/package.json` at product-base vs `nairobi-prod`; class present only on `nairobi-prod` |
+| Security fixes | #103 (`df9aa019d`), #128 (`1a848286c`), #129 and #142 (the share message carries no name or phone; the PDF itself prints them, §4.4 note c), #136 (`c6fee0995`), #157 (`0c7b3f640`); landing-link sanitising `safeHref` (PR #1, `b590fd6a0`) | CMS V2.12 update `2176984d7`: Kong `ENFORCE_UNAUTH` / `ENFORCE_RBAC` set to `true`, policy scoping and field redaction, fail-closed `AccessControlUnavailableException`. `626864567`: jsPDF 2.5.1 → 4.2.1. Earlier CMS V2.12: ward-tooltip escaping `8c1120f9`, scope-bypass hardening `9e650397`, analytics host allow-list `e9a0f0e4` | `kong.yml` and `digit-ui-esbuild/package.json` at product-base vs `nairobi-prod`; class present only on `nairobi-prod` |
 | CMS V2.12 security fixes **not** taken | — | `b0fad2383` (bean validation: Hibernate Validator 8 / Jakarta), `4b373f5c9` (complainant validation), `9df954273` (`@SafeHtml` across the request graph), `687c6e8c6` (postgresql 42.7.11, jsoup removed), `b43f0d3d2` (code-base security scan), `939711f2f` (micro-UI Dependabot) | `nairobi-prod` pgr-services `pom.xml`: hibernate-validator 6.0.16.Final, postgresql 42.7.1, jsoup 1.10.2. 33 main-source files still import `javax.validation`. Only the legacy `security-scan.yml` workflow exists |
 | File scan | #157 / #158 (`0c7b3f640`); load test `32a56d27d` | — | `backend/filestore-scan-proxy/src/app.js` (responses, quarantine, fail-closed), `loadtest/report-8cpu-16gb.md` |
 | Browser storage quota | #148 (`eb71852f7`: IndexedDB entries tagged with the build; caches dropped on a new build) | CMS V2.12 `8fd9f8088` (MDMS cache moved to IndexedDB; in the baseline); the `Digit.Storage` write guard | `idbCache.js`, `Storage.js` and `MDMS.js` on `nairobi-prod` |
-| Session and browser handling | #148, #131 (`ae5fc2c53`), #96 / #147, #142 (`792faf7e8`), #162 (Share in the mobile view only, no "More apps"), #161 (top-bar logo fallback and long designation), `f0f518102`, #103 (`c16c75208`), #140 (`a95b7e9de`), forgot password (`fa8b6588a`, `857f76e29`, `98c335803`) | CMS V2.12: session collision (`30bb121e9` … `117a1ed1f`); request-failure classification (`adef886be`) | Commit messages and the test notes in each PR |
+| Session and browser handling | #148, #131 (`ae5fc2c53`), #96 / #147, #142 (`792faf7e8`), `f0f518102`, #103 (`c16c75208`), #140 (`a95b7e9de`), forgot password (`fa8b6588a`, `857f76e29`, `98c335803`). Not in this build: #162 (Share in the mobile view only, no "More apps") and #161 (top-bar logo fallback and long designation), both open pull requests (§5) | CMS V2.12: session collision (`30bb121e9` … `117a1ed1f`); request-failure classification (`adef886be`) | Commit messages and the test notes in each PR |
 | Screenshots and videos | Virus scan of every attachment when enabled (#157) | CMS V2.12: `e81431c28` (video and audio play), `33a5477dd` (full-screen controls, timeline thumbnail), `c175d74e4` and `230cf3746` (uniform size, CSS fix), `721e44c84` (accept list matches the filestore allow-list), `430690a9f` (staff-form attachments), `065908088` / `291f01f7c` (reopen uploads) | `PgrFileUpload.js` (`DEFAULT_ACCEPT`, 5 MB, 5 files) and `attachmentKind.js` on `nairobi-prod` |
 | UI enhancements from CMS V2.12 | — | `626864567` (front-end subset of upstream `7ee88f83`): dashboard header, filters, footer, KPI tiles, `CardUpdatedStamp`, `analyticsBatch`, `LanguageMenu`; TopBar working-context chip; `applyTheme` header tone; `ImageComponent` fallback; inbox visibility tabs; reopen window in the timeline | File list and message of `626864567` |
+
+---
+
+**CMS Kenya V2.12:** **Release preview and evidence** (this page) · [Release notes](RELEASE-NOTES-CMS-KENYA-V2.12.md) · [County release note](COUNTY-RELEASE-NOTE-CMS-KENYA-V2.12.md)
