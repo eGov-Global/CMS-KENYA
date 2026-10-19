@@ -1,8 +1,24 @@
 import { Fonts } from "./fonts";
 
-const pdfMake = require("pdfmake/build/pdfmake.js");
-// const pdfFonts = require("pdfmake/build/vfs_fonts.js");
-// pdfMake.vfs = pdfFonts.pdfMake.vfs;
+// pdfmake (~1.5 MB minified) is loaded on the first PDF, not at startup; the
+// vfs / font registration happens once the module arrives.
+let pdfMakePromise = null;
+const getPdfMake = () => {
+  if (!pdfMakePromise) {
+    pdfMakePromise = import("pdfmake/build/pdfmake.js")
+      .then((m) => {
+        const pdfMake = m.default || m;
+        pdfMake.vfs = Fonts;
+        pdfMake.fonts = pdfFonts;
+        return pdfMake;
+      })
+      .catch((err) => {
+        pdfMakePromise = null; // a dropped connection must not poison every later export
+        throw err;
+      });
+  }
+  return pdfMakePromise;
+};
 
 let pdfFonts = {
   //   Roboto: {
@@ -30,9 +46,6 @@ let pdfFonts = {
     bold: "Hind-Bold.ttf",
   },
 };
-pdfMake.vfs = Fonts;
-
-pdfMake.fonts = pdfFonts;
 
 const downloadPDFFileUsingBase64 = (receiptPDF, filename) => {
   if (
@@ -156,6 +169,7 @@ const jsPdfGenerator = async ({ breakPageLimit = null, tenantId, logo, name, ema
       font: "Hind",
     },
   };
+  const pdfMake = await getPdfMake();
   pdfMake.vfs = Fonts;
   let locale = Digit.SessionStorage.get("locale") || Digit.Utils.getDefaultLanguage();
   let Hind = pdfFonts[locale] || pdfFonts["Hind"];
@@ -235,6 +249,7 @@ const jsPdfGeneratorv1 = async ({ breakPageLimit = null, tenantId, logo, name, e
     },
   };
   
+  const pdfMake = await getPdfMake();
   pdfMake.vfs = Fonts;
   let locale = Digit.SessionStorage.get("locale") || Digit.Utils.getDefaultLanguage();
   let Hind = pdfFonts[locale] || pdfFonts["Hind"];

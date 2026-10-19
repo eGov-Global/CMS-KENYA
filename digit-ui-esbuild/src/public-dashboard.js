@@ -30,6 +30,7 @@ import React from "react";
 import ReactDOM from "react-dom";
 import AdminDashboard from "../products/dashboard/src/AdminDashboard";
 import { configurePublicDashboardRuntime } from "../products/dashboard/src/services/dashboardRuntime";
+import { readBuildId, startBuildWatcher } from "./buildRefresh";
 import { applyTheme } from "./theme/applyTheme";
 import defaultTheme from "./theme/default.json";
 
@@ -44,3 +45,8 @@ ReactDOM.render(
   </React.StrictMode>,
   document.getElementById("root")
 );
+
+// No flows to interrupt and the filters live in localStorage, so a new build
+// loads as soon as it is found — a dashboard left on a wall screen otherwise
+// never would.
+startBuildWatcher({ buildId: readBuildId(document), reloadWhenFound: true });

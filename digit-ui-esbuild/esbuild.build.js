@@ -1,9 +1,13 @@
 const esbuild = require("esbuild");
 const path = require("path");
 const fs = require("fs");
+const crypto = require("crypto");
 const { spawnSync } = require("child_process");
 
 const PUBLIC_PATH = "/digit-ui/";
+// Written next to the HTML shells; src/buildRefresh.js compares its buildId
+// with the <meta name="digit-build-id"> of the page it is running in.
+const BUILD_INFO_FILE = "build-info.json";
 
 // Build entries, each with its own HTML shell. Both land in the same build/
 // docroot so hashed assets resolve against the one PUBLIC_PATH.
@@ -91,8 +95,12 @@ async function build() {
     bundle: true,
     outdir: path.resolve(__dirname, "build"),
     publicPath: PUBLIC_PATH,
-    splitting: false,
-    format: "iife",
+    // ES modules + splitting so dynamic import() (see products/pgr/src/utils/
+    // lazyLoad.js) yields real on-demand chunks instead of being inlined into
+    // one 9 MB file. Shared code between chunks is hoisted automatically.
+    splitting: true,
+    format: "esm",
+    chunkNames: "chunks/[name]-[hash]",
     target: ["es2018"],
     minify: true,
     sourcemap: false,
@@ -185,11 +193,17 @@ async function build() {
     logLevel: "info",
   });
 
-  // Generate one HTML shell per entry, each linking only its OWN bundles.
-  for (const spec of ENTRIES) generateHTML(result, spec);
+  // ESBUILD_METAFILE=1 writes the bundle analysis (what ended up in which chunk)
+  // next to the build dir, never inside it — build/ is shipped as-is.
+  if (process.env.ESBUILD_METAFILE) {
+    const metaPath = path.resolve(__dirname, "build-meta.json");
+    fs.writeFileSync(metaPath, JSON.stringify(result.metafile));
+    console.log(`Bundle metafile: ${metaPath}`);
+  }
 
-  // Copy public assets to build (recursively — excludes the source index.html,
-  // which is regenerated above, and walks subdirs like public/vendor/).
+  // Copy public assets to build (recursively — excludes the source HTML
+  // templates, which are generated below, and walks subdirs like public/vendor/).
+  const copiedPublicFiles = [];
   function copyRecursive(src, dest) {
     fs.mkdirSync(dest, { recursive: true });
     for (const entry of fs.readdirSync(src, { withFileTypes: true })) {
@@ -201,7 +215,10 @@ async function build() {
       const s = path.join(src, entry.name);
       const d = path.join(dest, entry.name);
       if (entry.isDirectory()) copyRecursive(s, d);
-      else if (entry.isFile()) fs.copyFileSync(s, d);
+      else if (entry.isFile()) {
+        fs.copyFileSync(s, d);
+        copiedPublicFiles.push(s);
+      }
     }
   }
 
@@ -209,14 +226,45 @@ async function build() {
   const buildDir = path.resolve(__dirname, "build");
   const generatedHtml = new Set(ENTRIES.map((e) => e.template));
   for (const entry of fs.readdirSync(publicDir, { withFileTypes: true })) {
-    if (generatedHtml.has(entry.name)) continue; // already generated above
+    if (generatedHtml.has(entry.name)) continue; // generated below
     const src = path.join(publicDir, entry.name);
     const dest = path.join(buildDir, entry.name);
     if (entry.isDirectory()) copyRecursive(src, dest);
-    else if (entry.isFile()) fs.copyFileSync(src, dest);
+    else if (entry.isFile()) {
+      fs.copyFileSync(src, dest);
+      copiedPublicFiles.push(src);
+    }
   }
 
-  console.log("\nBuild complete! Output in build/");
+  // Everything the build ships is in place: fingerprint it, then stamp the id
+  // into each HTML shell (one per entry, each linking only its OWN bundles)
+  // and into build-info.json.
+  const buildId = computeBuildId(result, copiedPublicFiles);
+  for (const spec of ENTRIES) generateHTML(result, spec, buildId);
+  fs.writeFileSync(path.join(buildDir, BUILD_INFO_FILE), JSON.stringify({ buildId }) + "\n");
+
+  console.log(`\nBuild complete! Output in build/ (build id ${buildId})`);
+}
+
+/**
+ * Content fingerprint of what this build ships: every esbuild output, every
+ * public/ file copied beside them, and the HTML templates. Rebuilding unchanged
+ * source keeps the id, so re-running a deploy doesn't make every open tab
+ * reload. globalConfigs.js is left out — deploys keep each server's own copy.
+ */
+function computeBuildId(result, publicFiles) {
+  const files = [
+    // metafile paths are relative to esbuild's working directory (the cwd)
+    ...Object.keys(result.metafile.outputs).map((f) => path.resolve(f)),
+    ...publicFiles.filter((f) => path.basename(f) !== "globalConfigs.js"),
+    ...ENTRIES.map((e) => path.resolve(__dirname, "public", e.template)),
+  ];
+  const hash = crypto.createHash("sha256");
+  for (const rel of files.map((f) => path.relative(__dirname, f)).sort()) {
+    hash.update(`${rel}\0`);
+    hash.update(fs.readFileSync(path.resolve(__dirname, rel)));
+  }
+  return hash.digest("hex").slice(0, 12);
 }
 
 /**
@@ -228,7 +276,7 @@ async function build() {
  * and the CSS bundle is matched to the JS output by shared basename stem
  * (esbuild emits <stem>.js / <stem>.css per entry).
  */
-function generateHTML(result, { entry, template, output }) {
+function generateHTML(result, { entry, template, output }, buildId) {
   const html = fs.readFileSync(path.resolve(__dirname, "public", template), "utf-8");
 
   const outputs = result.metafile.outputs;
@@ -247,13 +295,22 @@ function generateHTML(result, { entry, template, output }) {
     (f) => f.endsWith(".css") && path.basename(f, ".css") === stem
   );
 
-  const scriptTag = `  <script src="${PUBLIC_PATH}${path.basename(jsOut)}"></script>`;
+  // The entry bundles and the vendor stylesheets keep the same names from build
+  // to build (chunks are content-hashed already); the query gives each build's
+  // copies their own URLs, so a copy cached for the previous build isn't reused.
+  const version = `?v=${buildId}`;
+
+  // type="module": required by the ESM build; also defers execution until the
+  // document is parsed, which is what the old end-of-body script achieved.
+  const scriptTag = `  <script type="module" src="${PUBLIC_PATH}${path.basename(jsOut)}${version}"></script>`;
   const linkTag = cssOut
-    ? `  <link rel="stylesheet" href="${PUBLIC_PATH}${path.basename(cssOut)}">`
+    ? `  <link rel="stylesheet" href="${PUBLIC_PATH}${path.basename(cssOut)}${version}">`
     : "";
+  const buildMeta = `  <meta name="digit-build-id" content="${buildId}">`;
 
   const injected = html
-    .replace("</head>", `${linkTag}\n</head>`)
+    .replace(new RegExp(`(href="${PUBLIC_PATH}vendor/[^"?]+\\.css)"`, "g"), `$1${version}"`)
+    .replace("</head>", `${buildMeta}\n${linkTag}\n</head>`)
     .replace("</body>", `${scriptTag}\n</body>`);
 
   fs.mkdirSync(path.resolve(__dirname, "build"), { recursive: true });

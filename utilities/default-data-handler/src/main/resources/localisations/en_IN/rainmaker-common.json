@@ -9964,5 +9964,11 @@
         "message": "Continue working",
         "module": "rainmaker-common",
         "locale": "en_IN"
+    },
+    {
+        "code": "CORE_APP_TITLE",
+        "message": "Citizen Complaint Resolution System",
+        "module": "rainmaker-common",
+        "locale": "en_IN"
     }
 ]

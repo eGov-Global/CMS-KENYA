@@ -15,6 +15,9 @@ const DashboardLayout = ({
   onDragWidgetStart,
   onDragWidgetEnd,
   onExport,
+  exportBusy,
+  exportDisabled,
+  exportStatus,
   filters,
   onFilterChange,
   onClearFilters,
@@ -68,6 +71,9 @@ const DashboardLayout = ({
           onDragWidgetStart={onDragWidgetStart}
           onDragWidgetEnd={onDragWidgetEnd}
           onExport={onExport}
+          exportBusy={exportBusy}
+          exportDisabled={exportDisabled}
+          exportStatus={exportStatus}
           filters={filters}
           filterOptions={filterOptions}
           kpiCardData={kpiCardData}

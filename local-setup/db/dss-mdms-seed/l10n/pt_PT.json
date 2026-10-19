@@ -300,6 +300,176 @@
     "module": "rainmaker-dashboard"
   },
   {
+    "code": "DASHBOARD_EXPORT_MENU_TITLE",
+    "message": "Exportar o painel como",
+    "module": "rainmaker-dashboard"
+  },
+  {
+    "code": "DASHBOARD_EXPORT_MENU_EXCEL",
+    "message": "Livro Excel (.xlsx)",
+    "module": "rainmaker-dashboard"
+  },
+  {
+    "code": "DASHBOARD_EXPORT_MENU_CSV",
+    "message": "CSV (.csv)",
+    "module": "rainmaker-dashboard"
+  },
+  {
+    "code": "DASHBOARD_EXPORT_MENU_PDF",
+    "message": "Relatório PDF",
+    "module": "rainmaker-dashboard"
+  },
+  {
+    "code": "DASHBOARD_EXPORT_BUSY",
+    "message": "A exportar…",
+    "module": "rainmaker-dashboard"
+  },
+  {
+    "code": "DASHBOARD_EXPORT_FAILED",
+    "message": "A exportação falhou — tente novamente.",
+    "module": "rainmaker-dashboard"
+  },
+  {
+    "code": "DASHBOARD_EXPORT_XLSX_UNAVAILABLE",
+    "message": "A exportação para Excel não está disponível neste dispositivo — use CSV.",
+    "module": "rainmaker-dashboard"
+  },
+  {
+    "code": "DASHBOARD_EXPORT_DONE",
+    "message": "Exportação pronta: {file}",
+    "module": "rainmaker-dashboard"
+  },
+  {
+    "code": "DASHBOARD_EXPORT_SECTION_CONTEXT",
+    "message": "Sobre esta exportação",
+    "module": "rainmaker-dashboard"
+  },
+  {
+    "code": "DASHBOARD_EXPORT_SHEET_SUMMARY",
+    "message": "Resumo",
+    "module": "rainmaker-dashboard"
+  },
+  {
+    "code": "DASHBOARD_EXPORT_SHEET_INDEX",
+    "message": "Folhas",
+    "module": "rainmaker-dashboard"
+  },
+  {
+    "code": "DASHBOARD_EXPORT_COL_SHEET",
+    "message": "Folha",
+    "module": "rainmaker-dashboard"
+  },
+  {
+    "code": "DASHBOARD_EXPORT_COL_PRIOR",
+    "message": "Período anterior",
+    "module": "rainmaker-dashboard"
+  },
+  {
+    "code": "DASHBOARD_EXPORT_COL_CHANGE",
+    "message": "Variação",
+    "module": "rainmaker-dashboard"
+  },
+  {
+    "code": "DASHBOARD_EXPORT_CTX_DASHBOARD",
+    "message": "Painel",
+    "module": "rainmaker-dashboard"
+  },
+  {
+    "code": "DASHBOARD_EXPORT_CTX_TENANT",
+    "message": "Organização",
+    "module": "rainmaker-dashboard"
+  },
+  {
+    "code": "DASHBOARD_EXPORT_CTX_PERIOD",
+    "message": "Período",
+    "module": "rainmaker-dashboard"
+  },
+  {
+    "code": "DASHBOARD_EXPORT_CTX_GEOGRAPHY",
+    "message": "Área",
+    "module": "rainmaker-dashboard"
+  },
+  {
+    "code": "DASHBOARD_EXPORT_CTX_TYPE",
+    "message": "Tipo de reclamação",
+    "module": "rainmaker-dashboard"
+  },
+  {
+    "code": "DASHBOARD_EXPORT_CTX_GENERATED",
+    "message": "Exportado em",
+    "module": "rainmaker-dashboard"
+  },
+  {
+    "code": "DASHBOARD_EXPORT_CTX_ASOF",
+    "message": "Dados até",
+    "module": "rainmaker-dashboard"
+  },
+  {
+    "code": "DASHBOARD_EXPORT_CTX_GROUPBY",
+    "message": "Agrupado por",
+    "module": "rainmaker-dashboard"
+  },
+  {
+    "code": "DASHBOARD_EXPORT_PDF_PAGE",
+    "message": "Página {n} de {total}",
+    "module": "rainmaker-dashboard"
+  },
+  {
+    "code": "DASHBOARD_EXPORT_ROWS_TRUNCATED",
+    "message": "A mostrar as primeiras {n} de {total} linhas",
+    "module": "rainmaker-dashboard"
+  },
+  {
+    "code": "DASHBOARD_EXPORT_NO_DATA",
+    "message": "Sem dados para os filtros atuais",
+    "module": "rainmaker-dashboard"
+  },
+  {
+    "code": "DASHBOARD_EXPORT_COL_COMPLAINT_TYPE",
+    "message": "Tipo de reclamação",
+    "module": "rainmaker-dashboard"
+  },
+  {
+    "code": "DASHBOARD_EXPORT_COL_AREA",
+    "message": "Área",
+    "module": "rainmaker-dashboard"
+  },
+  {
+    "code": "DASHBOARD_EXPORT_COL_DEPARTMENT",
+    "message": "Departamento",
+    "module": "rainmaker-dashboard"
+  },
+  {
+    "code": "DASHBOARD_EXPORT_COL_WORKFLOW_STAGE",
+    "message": "Etapa do fluxo",
+    "module": "rainmaker-dashboard"
+  },
+  {
+    "code": "DASHBOARD_EXPORT_COL_CHANNEL",
+    "message": "Canal",
+    "module": "rainmaker-dashboard"
+  },
+  {
+    "code": "DASHBOARD_EXPORT_COL_SLA_STATUS",
+    "message": "Estado do SLA",
+    "module": "rainmaker-dashboard"
+  },
+  {
+    "code": "DASHBOARD_EXPORT_COL_AGE",
+    "message": "Antiguidade",
+    "module": "rainmaker-dashboard"
+  },
+  {
+    "code": "DASHBOARD_EXPORT_COL_COUNT",
+    "message": "Contagem",
+    "module": "rainmaker-dashboard"
+  },
+  {
+    "code": "DASHBOARD_EXPORT_COL_DATE",
+    "message": "Data",
+    "module": "rainmaker-dashboard"
+  },
+  {
     "code": "DASHBOARD_FILTERS_ALL_TYPES",
     "message": "Todos os tipos",
     "module": "rainmaker-dashboard"
@@ -1612,6 +1782,36 @@
   {
     "code": "CMS-DASHBOARD.DASHBOARD_KPI_RS_BREACH_TOTAL",
     "message": "SLA violado (abertas)",
+    "module": "rainmaker-dashboard"
+  },
+  {
+    "code": "DASHBOARD_COMMON_UPDATED_JUST_NOW",
+    "message": "agora mesmo",
+    "module": "rainmaker-dashboard"
+  },
+  {
+    "code": "DASHBOARD_COMMON_UPDATED_MIN_AGO",
+    "message": "há {{n}} min",
+    "module": "rainmaker-dashboard"
+  },
+  {
+    "code": "DASHBOARD_COMMON_UPDATED_HR_AGO",
+    "message": "há {{n}} h",
+    "module": "rainmaker-dashboard"
+  },
+  {
+    "code": "DASHBOARD_COMMON_UPDATED_HRS_AGO",
+    "message": "há {{n}} h",
+    "module": "rainmaker-dashboard"
+  },
+  {
+    "code": "DASHBOARD_COMMON_UPDATED_DAY_AGO",
+    "message": "há {{n}} dia",
+    "module": "rainmaker-dashboard"
+  },
+  {
+    "code": "DASHBOARD_COMMON_UPDATED_DAYS_AGO",
+    "message": "há {{n}} dias",
     "module": "rainmaker-dashboard"
   }
 ]

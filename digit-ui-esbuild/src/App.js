@@ -5,15 +5,15 @@ import { initUtilitiesComponents } from "@egovernments/digit-ui-module-utilities
 import { initPGRComponents, PGRReducers, } from "@egovernments/digit-ui-module-pgr";
 import { Loader } from "@egovernments/digit-ui-components";
 import { initDashboardComponents } from "../products/dashboard/Module";
+import { lazyWithRetry } from "../products/pgr/src/utils/lazyLoad";
 
 window.contextPath = window?.globalConfigs?.getConfig("CONTEXT_PATH");
 window.globalPath = window.contextPath;
 
-// Lazy load DigitUI
-const DigitUI = React.lazy(() =>
-  import("@egovernments/digit-ui-module-core").then((mod) => ({
-    default: mod.DigitUI,
-  }))
+// Lazy load DigitUI (with the one-shot reload for a chunk renamed by a redeploy)
+const DigitUI = lazyWithRetry(
+  () => import("@egovernments/digit-ui-module-core").then((mod) => ({ default: mod.DigitUI })),
+  "core"
 );
 
 // HRMS + Workbench intentionally omitted — employees/admins manage HRMS

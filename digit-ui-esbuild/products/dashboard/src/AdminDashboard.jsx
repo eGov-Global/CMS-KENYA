@@ -5,6 +5,7 @@ import "react-resizable/css/styles.css";
 import "./styles/dashboard.css";
 
 import DashboardLayout from "./components/DashboardLayout";
+import { buildDashboardTitle, buildSubtitleParts } from "./components/DashboardHeader";
 import KpiTile from "./components/KpiTile";
 import CardUpdatedStamp from "./components/CardUpdatedStamp";
 import ResizeGrip from "./components/ResizeGrip";
@@ -28,7 +29,11 @@ import { resolveNumberFormatMask, setNumberFormatMask } from "./utils/numberForm
 import { resolveConfiguredTimeZone } from "./utils/dashboardTimeZone";
 
 import useDashboardT from "./i18n/useDashboardT";
-import { resolveTitle, resolveSubtitle } from "./i18n/textResolver";
+import { resolveTitle, resolveSubtitle, seriesEntryLabel } from "./i18n/textResolver";
+import { dimensionLabel } from "./i18n/dimensionLabel";
+import { dimensionKindForName } from "./config/kpiDisplay";
+import { getProductLabel } from "./config/dashboardConfig";
+import { buildExportModel, exportFileName, toCsvText, toWorkbook, toPdf, downloadText, humanizeName, toIsoDate } from "./utils/dashboardExport";
 import { useDashboardFilters } from "./hooks/useDashboardFilters";
 import { useFilterOptions } from "./hooks/useFilterOptions";
 import { useCatalog } from "./hooks/useCatalog";
@@ -427,7 +432,7 @@ const AdminDashboardInner = ({ onSignOut, embedded = false, publicMode = false, 
     return null;
   });
   useEffect(() => () => dashboardMetrics.flush("unmount"), []);
-  const { t, language, i18nTick } = useDashboardT();
+  const { t, exists, language, i18nTick } = useDashboardT();
   // Public persists too (#1797) — under public-only storage keys, see
   // config/dashboardConfig.js — and draws its option lists from the anonymous
   // /public/_options endpoint instead of the inline distinct batch.
@@ -866,42 +871,132 @@ const AdminDashboardInner = ({ onSignOut, embedded = false, publicMode = false, 
     return { options, value, info };
   };
 
-  // CSV export of the laid-out tiles (title + scalar value, or row count for
-  // charts/tables). Reads straight from the catalog result map — no dependence on
-  // the old kpiCardData/chartData shapes.
-  const handleExport = useCallback(() => {
-    const csvEscape = (v) => {
-      const s = String(v ?? "");
-      return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+  // Export: Excel workbook, CSV or PDF report of exactly what is on the dashboard —
+  // the laid-out tiles with their full data under the active filters and group-by
+  // levels, plus a context block (see utils/dashboardExport). Label resolution
+  // reuses the tile renderers' seams (resolveTitle, viz.columns labelKeys,
+  // dimensionLabel) so the file reads like the screen.
+  const [exportBusy, setExportBusy] = useState(false);
+  const [exportStatus, setExportStatus] = useState(null);
+  useEffect(() => {
+    if (!exportStatus) return undefined;
+    const timer = setTimeout(() => setExportStatus(null), exportStatus.tone === "error" ? 8000 : 5000);
+    return () => clearTimeout(timer);
+  }, [exportStatus]);
+
+  const exportResolvers = useMemo(
+    () => ({
+      isCard: (kind) => isCardKind(kind),
+      title: (def) => resolveTitle(def),
+      subtitle: (def) => resolveSubtitle(def?.viz),
+      column: (def, col) => {
+        const declared = (def?.viz?.columns || []).find((c) => (c.name || c.key) === col.name);
+        const own = declared ? seriesEntryLabel({ labelKey: declared.labelKey }, declared.label || declared.title || null) : null;
+        if (own) return own;
+        // Undeclared columns (most charts): name the column after what it holds, as the screen does.
+        const name = String(col.name || "");
+        switch (dimensionKindForName(name)) {
+          case "complaintType": return t("DASHBOARD_EXPORT_COL_COMPLAINT_TYPE", "Complaint type");
+          case "boundary": return t("DASHBOARD_EXPORT_COL_AREA", "Area");
+          case "department": return t("DASHBOARD_EXPORT_COL_DEPARTMENT", "Department");
+          case "workflowStatus": return t("DASHBOARD_EXPORT_COL_WORKFLOW_STAGE", "Workflow stage");
+          case "channel": return t("DASHBOARD_EXPORT_COL_CHANNEL", "Channel");
+          case "slaState": return t("DASHBOARD_EXPORT_COL_SLA_STATUS", "SLA status");
+          case "ageBucket": return t("DASHBOARD_EXPORT_COL_AGE", "Age");
+          default:
+            if (/^(total|count|n|complaints)$/i.test(name)) return t("DASHBOARD_EXPORT_COL_COUNT", "Count");
+            if (/_date$/.test(name)) return t("DASHBOARD_EXPORT_COL_DATE", "Date");
+            return null;
+        }
+      },
+      cell: (value, col) => {
+        if (value == null || value === "") return "";
+        if (/_date$|_at$/.test(String(col.name)) && (typeof value === "number" || /^\d{12,}$|^\d{4}-\d{2}-\d{2}/.test(String(value)))) return toIsoDate(value);
+        if (col.role === "dimension" || typeof value === "string") {
+          const kind = dimensionKindForName(col.name);
+          if (kind) return dimensionLabel(String(value), kind, humanizeName(value));
+        }
+        if (typeof value === "string" && value.trim() !== "" && Number.isFinite(Number(value))) return Number(value);
+        return value;
+      },
+      groupBy: (id) => groupByStateFor(id).info?.label || null,
+    }),
+    // groupByStateFor closes over hierarchy + overrides; language/i18nTick re-key the label seams.
+    [hierarchy, hierOverrides, language, i18nTick, t] // eslint-disable-line react-hooks/exhaustive-deps
+  );
+
+  const exportContext = useCallback(() => {
+    const { geo, period } = buildSubtitleParts(filters, filterOptions, t, language);
+    const typeCode = filters?.complaintType;
+    const complaintType =
+      typeCode && typeCode !== "all"
+        ? dimensionLabel(String(typeCode), "complaintType", humanizeName(typeCode))
+        : t("DASHBOARD_FILTERS_ALL_TYPES", "All types");
+    // The tenant's display name: its seeded i18n name first (the host translations the
+    // top bar uses), then the session's tenant record, then the bare code.
+    let tenant = tenantId;
+    try {
+      const initData = window.Digit?.SessionStorage?.get?.("initData");
+      const match = (initData?.tenants || []).find((x) => x?.code === tenantId);
+      const isCode = (n) => !n || String(n).trim().toLowerCase() === String(tenantId).toLowerCase();
+      const seeded = match?.i18nKey && exists(match.i18nKey) ? t(match.i18nKey, "") : "";
+      tenant = (!isCode(seeded) && seeded) || (!isCode(match?.name) && match?.name) || (!isCode(match?.city?.name) && match?.city?.name) || tenantId;
+    } catch {
+      /* standalone shell: no DIGIT session */
+    }
+    return {
+      title: buildDashboardTitle(t, exists, getProductLabel()),
+      tenant,
+      period,
+      geography: geo,
+      complaintType,
+      asOf: batch.asOf ?? null,
     };
-    const rows = layout.map((item) => {
-      const def = kpis[item.i];
-      const assembled = assembleResult(item.i, def, batch.results);
-      const value =
-        assembled?.value != null
-          ? assembled.value
-          : assembled?.rows
-          ? `${assembled.rows.length} ${t("DASHBOARD_EXPORT_ROWS", "rows")}`
-          : "";
-      return [resolveTitle(def) || item.i, item.i, value];
-    });
-    // Column headers go through t() like the tile titles (resolveTitle above);
-    // the filename stays ASCII-English on purpose — a stable machine-facing
-    // identifier, not display copy.
-    const header = [
-      t("DASHBOARD_EXPORT_COL_TITLE", "Title"),
-      t("DASHBOARD_EXPORT_COL_KPI", "KPI"),
-      t("DASHBOARD_EXPORT_COL_VALUE", "Value"),
-    ];
-    const csv = [header, ...rows].map((r) => r.map(csvEscape).join(",")).join("\n");
-    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "dashboard-export.csv";
-    a.click();
-    URL.revokeObjectURL(url);
-  }, [layout, kpis, batch.results, t]);
+  }, [filters, filterOptions, t, exists, language, tenantId, batch.asOf]);
+
+  const handleExport = useCallback(
+    async (format) => {
+      if (exportBusy) return;
+      setExportBusy(true);
+      setExportStatus(null);
+      try {
+        const model = buildExportModel({
+          tileIds: layout.map((item) => item.i),
+          kpis,
+          assemble: (id, def) => assembleResult(id, def, batch.results),
+          context: exportContext(),
+          resolvers: exportResolvers,
+        });
+        const filename = exportFileName(model, format);
+        if (format === "csv") {
+          downloadText(toCsvText(model, t), filename, "text/csv;charset=utf-8");
+        } else if (format === "xlsx") {
+          // The SheetJS build the host page loads (index.html); absent in a bare shell.
+          const XLSX = typeof window !== "undefined" ? window.XLSX : null;
+          if (!XLSX?.utils?.book_new) throw new Error("xlsx-unavailable");
+          XLSX.writeFile(toWorkbook(model, XLSX, t), filename);
+        } else if (format === "pdf") {
+          const { jsPDF } = await import("jspdf");
+          toPdf(model, jsPDF, t).save(filename);
+        } else {
+          throw new Error(`unknown export format: ${format}`);
+        }
+        dashboardMetrics.markInteraction(`export:${format}`);
+        setExportStatus({ tone: "info", text: t("DASHBOARD_EXPORT_DONE", "Export ready: {file}").replace("{file}", filename) });
+      } catch (e) {
+        setExportStatus({
+          tone: "error",
+          text:
+            e?.message === "xlsx-unavailable"
+              ? t("DASHBOARD_EXPORT_XLSX_UNAVAILABLE", "Excel export is not available on this device — use CSV.")
+              : t("DASHBOARD_EXPORT_FAILED", "Export failed — try again."),
+        });
+      } finally {
+        setExportBusy(false);
+      }
+    },
+    [exportBusy, layout, kpis, batch.results, exportContext, exportResolvers, t]
+  );
 
   const showPublicDisabled = publicMode && !catalogLoading && pack?.enabled === false;
   const showEmpty = !showPublicDisabled && !catalogLoading && pack && layout.length === 0;
@@ -933,6 +1028,9 @@ const AdminDashboardInner = ({ onSignOut, embedded = false, publicMode = false, 
       onDragWidgetStart={handleDragWidgetStart}
       onDragWidgetEnd={handleDragWidgetEnd}
       onExport={handleExport}
+      exportBusy={exportBusy}
+      exportDisabled={layout.length === 0}
+      exportStatus={exportStatus}
       filters={filters}
       onFilterChange={handleFilterChange}
       onClearFilters={handleClearFilters}

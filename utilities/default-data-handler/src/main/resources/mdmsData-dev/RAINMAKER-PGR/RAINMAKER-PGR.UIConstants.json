@@ -1,6 +1,19 @@
 [
     {
-      "code": "DEFAULT",
-      "REOPENSLA": 259200000
+        "code": "DEFAULT",
+        "REOPENSLA": 259200000,
+        "WITHDRAWSLA": 259200000,
+        "actionWindows": [
+            {
+                "action": "REOPEN",
+                "windowKey": "REOPENSLA",
+                "measuredFrom": "lastModifiedTime"
+            },
+            {
+                "action": "WITHDRAW",
+                "windowKey": "WITHDRAWSLA",
+                "measuredFrom": "createdTime"
+            }
+        ]
     }
 ]

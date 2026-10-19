@@ -3,6 +3,7 @@ import { Field as V2Field, Select as V2Select } from "@egovernments/digit-ui-com
 import React, { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { complaintLabel } from "../utils/complaintLabel";
+import { compareLabels } from "../utils/sortByLabel";
 
 /**
  * Employee-side complaint-type picker driven by the configurable complaint
@@ -125,14 +126,16 @@ const ComplaintHierarchyComponent = ({ onSelect, formData }) => {
       // adjacency list); no separate sector/menuPath master anymore.
       return (serviceDefs || [])
         .filter((s) => (parentCode ? s.parentCode === parentCode : true))
-        .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
-        .map((s) => ({ value: s.serviceCode, label: complaintLabel(t, s.serviceCode, s.name) }));
+        // A–Z by the displayed label (UAT ask); "Others" last. The configurator's
+        // `order` is not applied on this fork.
+        .map((s) => ({ value: s.serviceCode, label: complaintLabel(t, s.serviceCode, s.name) }))
+        .sort((a, b) => compareLabels(a.label, b.label));
     }
     return (nodes || [])
       .filter((n) => n.levelCode === lvl.levelCode && n.active !== false)
       .filter((n) => (i === 0 ? !n.parentCode : n.parentCode === parentCode))
-      .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
-      .map((n) => ({ value: n.code, label: complaintLabel(t, n.code, n.name) }));
+      .map((n) => ({ value: n.code, label: complaintLabel(t, n.code, n.name) }))
+      .sort((a, b) => compareLabels(a.label, b.label));
   };
 
   const optionsForLevel = (i) => optionsForLevelWith(sel, i);

@@ -5,6 +5,7 @@ import { dimensionLabel } from "../i18n/dimensionLabel";
 import useDashboardT from "../i18n/useDashboardT";
 import AddKpiDropdown from "./AddKpiDropdown";
 import LanguageMenu from "./LanguageMenu";
+import ExportMenu from "./ExportMenu";
 
 /**
  * Derive the row-scope indicator from the analytics `scope` object the backend
@@ -59,7 +60,8 @@ function formatDisplayDate(iso, language) {
   }
 }
 
-function buildSubtitle(filters, filterOptions, t, language) {
+/** The "<area> · <period>" context pieces — shared with the export's context block. */
+export function buildSubtitleParts(filters, filterOptions, t, language) {
   const geoOptions = filterOptions?.geography ?? GEOGRAPHY_OPTIONS;
   const geoId = filters?.geography;
   // The geography chip is a raw boundary code — route it through the
@@ -75,16 +77,22 @@ function buildSubtitle(filters, filterOptions, t, language) {
     period = `${formatDisplayDate(filters.dateFrom, language)} – ${formatDisplayDate(filters.dateTo, language)}`;
   }
 
+  return { geo, period };
+}
+
+function buildSubtitle(filters, filterOptions, t, language) {
+  const { geo, period } = buildSubtitleParts(filters, filterOptions, t, language);
   return `${geo} · ${period}`;
 }
 
-const ExportIcon = () => (
-  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
-    <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
-    <polyline points="7 10 12 15 17 10" />
-    <line x1="12" y1="15" x2="12" y2="3" />
-  </svg>
-);
+/** The dashboard title as the header shows it — reused as the export's document title. */
+export function buildDashboardTitle(t, exists, productLabel) {
+  return exists("DASHBOARD_HEADER_TITLE")
+    ? t("DASHBOARD_HEADER_TITLE", "Complaint Resolution Operations")
+    : productLabel.toLowerCase().includes("pgr")
+    ? t("DASHBOARD_HEADER_PGR_OPERATIONS", "PGR Operations")
+    : `${productLabel} ${t("DASHBOARD_HEADER_OPERATIONS", "Operations")}`;
+}
 
 const DashboardHeader = ({
   visibleLayoutIds,
@@ -94,6 +102,9 @@ const DashboardHeader = ({
   onDragWidgetStart,
   onDragWidgetEnd,
   onExport,
+  exportBusy = false,
+  exportDisabled = false,
+  exportStatus = null,
   filters,
   filterOptions,
   kpiCardData,
@@ -129,11 +140,7 @@ const DashboardHeader = ({
   // so tenants that brand via DASHBOARD_PRODUCT_LABEL and don't seed
   // DASHBOARD_HEADER_TITLE keep their branded English title; branded tenants
   // that localize should carry the brand inside the seeded message itself.
-  const title = exists("DASHBOARD_HEADER_TITLE")
-    ? t("DASHBOARD_HEADER_TITLE", "Complaint Resolution Operations")
-    : productLabel.toLowerCase().includes("pgr")
-    ? t("DASHBOARD_HEADER_PGR_OPERATIONS", "PGR Operations")
-    : `${productLabel} ${t("DASHBOARD_HEADER_OPERATIONS", "Operations")}`;
+  const title = buildDashboardTitle(t, exists, productLabel);
 
   return (
     <header className="dashboard-header tw-flex-shrink-0 tw-bg-background">
@@ -254,15 +261,7 @@ const DashboardHeader = ({
             {t("DASHBOARD_HEADER_RESET", "Reset")}
           </button>}
 
-          <button
-            type="button"
-            onClick={onExport}
-            className="dashboard-header-btn dashboard-header-export"
-            title={t("DASHBOARD_HEADER_EXPORT_DASHBOARD", "Export dashboard")}
-          >
-            <ExportIcon />
-            <span>{t("DASHBOARD_HEADER_EXPORT", "Export")}</span>
-          </button>
+          <ExportMenu onExport={onExport} busy={exportBusy} disabled={exportDisabled} status={exportStatus} />
         </div>
       </div>
     </header>

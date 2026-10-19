@@ -16,6 +16,7 @@ import PrivacyComponent from "./components/PrivacyComponent";
 import LoginSignupSelector from "./components/LoginSignupSelector";
 import ForgotOrganizationTooltip from "./components/ForgotOrganizationTooltip";
 import OtpComponent from "./pages/employee/Otp/OtpCustomComponent";
+import DocumentBranding from "./components/DocumentBranding";
 
 const DigitUIWrapper = ({ stateCode, enabledModules, moduleReducers, defaultLanding,allowedUserTypes }) => {
   const { isLoading, data: initData={} } = Digit.Hooks.useInitStore(stateCode, enabledModules);
@@ -30,6 +31,7 @@ const DigitUIWrapper = ({ stateCode, enabledModules, moduleReducers, defaultLand
   return (
     <Provider store={data}>
       <Router>
+        <DocumentBranding stateInfo={initData?.stateInfo} />
         <BodyContainer>
           {Digit.Utils.getMultiRootTenant() ? (
             <DigitAppWrapper

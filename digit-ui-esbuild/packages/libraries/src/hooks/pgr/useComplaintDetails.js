@@ -193,9 +193,14 @@ const fetchComplaintDetails = async (tenantId, id) => {
   }
 };
 
-const useComplaintDetails = ({ tenantId, id }) => {
+// `enabled` is opt-in and defaults to true, so every existing caller keeps its
+// behaviour; a caller that already holds the record (ReceiptActions on the
+// details pages) passes false and no search is fired.
+const useComplaintDetails = ({ tenantId, id, enabled = true }) => {
   const queryClient = useQueryClient();
-  const { isLoading, error, data } = useQuery(["complaintDetails", tenantId, id], () => fetchComplaintDetails(tenantId, id));
+  const { isLoading, error, data } = useQuery(["complaintDetails", tenantId, id], () => fetchComplaintDetails(tenantId, id), {
+    enabled,
+  });
   return { isLoading, error, complaintDetails: data, revalidate: () => queryClient.invalidateQueries(["complaintDetails", tenantId, id]) };
 };
 

@@ -4198,3 +4198,37 @@
     padding-right: 1.5rem;
   }
 }
+
+/* Header Export menu (#export): the chip reuses .dashboard-header-btn; the
+   popover trigger's own value/caret spans sit inside it. The status line is
+   the transient "ready / failed" note next to the chip. */
+.dashboard-header-controls .dashboard-export-control{
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+}
+.dashboard-header-controls .dashboard-export-chip{
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+}
+.dashboard-header-controls .dashboard-header-export .dashboard-popover-trigger-value{
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+  overflow: visible;
+}
+.dashboard-header-controls .dashboard-header-export[disabled]{
+  opacity: 0.6;
+  cursor: progress;
+}
+.dashboard-export-status{
+  font-size: 11px;
+  line-height: 1.2;
+  color: var(--muted-foreground);
+  white-space: nowrap;
+}
+.dashboard-export-status--error{
+  color: var(--destructive, #b42318);
+}

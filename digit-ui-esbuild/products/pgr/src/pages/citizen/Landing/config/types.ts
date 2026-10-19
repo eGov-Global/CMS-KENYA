@@ -17,6 +17,7 @@ export type LandingSectionType =
   | "types"
   | "steps"
   | "channels"
+  | "helplines"
   | "privacy"
   | "news"
   | "institutions"

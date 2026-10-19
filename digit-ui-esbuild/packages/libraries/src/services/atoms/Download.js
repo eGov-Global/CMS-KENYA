@@ -1,9 +1,13 @@
 import ReactDOM from "react-dom";
-import html2canvas from "html2canvas";
 import XLSX from "xlsx";
-import domtoimage from "dom-to-image";
-import jsPDF from "jspdf";
-import pdfMake from 'pdfmake/build/pdfmake';
+
+// The raster/PDF libraries (html2canvas, dom-to-image, jsPDF, pdfmake) are a
+// large part of the bundle and only serve dashboard exports — load them on
+// first use. Same call shapes as the direct imports they replace.
+const html2canvas = (...args) => import("html2canvas").then((m) => (m.default || m)(...args));
+const domtoimage = { toJpeg: (...args) => import("dom-to-image").then((m) => (m.default || m).toJpeg(...args)) };
+const loadJsPDF = () => import("jspdf").then((m) => m.default || m.jsPDF);
+const loadPdfMake = () => import("pdfmake/build/pdfmake").then((m) => m.default || m);
 
 const changeClasses=(class1,class2)=>{
   var elements = document.getElementsByClassName(class1)
@@ -180,8 +184,9 @@ const Download = {
         filter: (node) => !node?.className?.includes?.("divToBeHidden"),
         style: { margin: "25px" },
       })
-      .then((dataUrl) => {
+      .then(async (dataUrl) => {
         // create PDF
+        const jsPDF = await loadJsPDF();
         const pdf = new jsPDF("l", "pt", [element.offsetWidth, element.offsetHeight]);
         pdf.setFontSize?.(16);
         pdf.text?.(40, 30, "Certificate");
@@ -217,6 +222,7 @@ const Download = {
               width: 500,
           }]
       };
+      const pdfMake = await loadPdfMake();
       const pdf = pdfMake.createPdf(docDefinition);
       if(share) {
         await pdf.getBlob((blob) => {

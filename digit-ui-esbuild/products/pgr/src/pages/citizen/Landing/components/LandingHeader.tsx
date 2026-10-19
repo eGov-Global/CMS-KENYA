@@ -1,37 +1,35 @@
-// Masthead + primary navigation — a single white bar.
+// Masthead + primary navigation — one sticky white bar (county design,
+// 2026-10-12).
 //
-// Desktop: emblem + portal identity on the left, the primary nav on the right,
-// both inside one sticky bar. Nav state is carried by a bottom bar alone — no
-// background fill — with the label recoloured to match it: ink by default,
-// `--pgrl-primary` on hover and on the current page. The bar lives in ::after
-// so switching it on never shifts the row.
-// Contrast note: primary on white is 3.14:1 — fine for the bar (3:1 non-text
-// minimum) but under the 4.5:1 AA threshold for the label text it now shares.
-// Darkening `primary` to ~#187DB2 clears both.
-// Mobile: the nav wraps to its own full-width row, collapsed behind an
+// Desktop (xl+, where five links and the search icon fit): crest + county name
+// and motto on the left, the nav on the right, then a divider and a search
+// icon that opens complaint tracking. The current page carries a gold bar
+// under its label; the bar lives in ::after so switching it on never shifts
+// the row.
+// Below xl: the nav wraps to its own full-width row, collapsed behind an
 // accessible disclosure menu (aria-expanded / aria-controls, Escape closes and
 // restores focus to the trigger).
 //
 // The <header> itself is the sticky box (not an inner <nav>): sticky
 // positioning is constrained to the parent, so a sticky child of a static
 // header would have zero travel and never stick. The element also carries
-// font-condensed explicitly — the vendored legacy CSS has a bare
-// `header { font-family: ... }` element rule that direct-targets the element,
-// so the masthead states its family rather than relying on inheritance.
+// its font stack (pgrl-top-font) explicitly — the vendored legacy CSS has a
+// bare `header { font-family: ... }` element rule that direct-targets the
+// element, so the masthead states its family rather than relying on inheritance.
 //
 // In-shell mounting: if the page renders under an app chrome with its own
 // fixed topbar, set `--pgrl-nav-offset` (e.g. "82px") so the bar pins below it
 // instead of underneath it.
 
 import * as React from "react";
-import { Menu, X, Landmark } from "lucide-react";
+import { Menu, X, Landmark, Search } from "lucide-react";
 import { cn } from "@egovernments/digit-ui-components-v2";
 import { __RouterContext } from "react-router";
 import { LandingLink } from "./LandingLink";
 import { NAV_ITEMS } from "../content";
 import { useLandingCopy } from "../useLandingCopy";
 import { LandingRoutes } from "../routes";
-import { CONTAINER, FOCUS_RING } from "../tokens";
+import { FOCUS_RING, TOP_GUTTER } from "../tokens";
 
 export interface LandingHeaderProps {
   routes: LandingRoutes;
@@ -76,47 +74,43 @@ export function LandingHeader({ routes, emblemUrl, navItems, code }: LandingHead
     <header
       data-pgrl-code={code}
       className={cn(
-        "sticky top-[var(--pgrl-nav-offset,0px)] z-40 font-condensed shadow-sm",
-        "bg-[hsl(var(--pgrl-surface))] text-[hsl(var(--pgrl-ink))]",
-        // Hairline: the page background (#FAFAFA) is nearly white, so the
-        // shadow alone doesn't reliably separate the bar from the content.
-        "border-0 border-b border-solid border-[hsl(var(--pgrl-line))]"
+        "pgrl-top-font sticky top-[var(--pgrl-nav-offset,0px)] z-40",
+        "bg-white text-[hsl(var(--pgrl-top-navy))]",
+        // Hairline: separates the white bar from the white-ish content below
+        // once the page scrolls under it.
+        "border-0 border-b border-solid border-[hsl(var(--pgrl-line)/0.7)]"
       )}
     >
       {/* flex-wrap: on mobile the nav drops to its own full-width row below
-          the brand; on md it sits inline, right-aligned. */}
-      <div className={cn(CONTAINER, "flex min-h-[64px] flex-wrap items-center justify-between gap-x-4")}>
+          the brand; on xl it sits inline, right-aligned. */}
+      <div className={cn(TOP_GUTTER, "flex min-h-[68px] flex-wrap items-center justify-between gap-x-6 lg:min-h-[74px]")}>
+        {/* Phones: capped to leave room for the menu button, so a longer
+            name (a translation, enlarged system text) wraps inside the brand
+            instead of dropping the button to a row of its own. */}
         <LandingLink
           to={routes.HOME}
           className={cn(
-            "flex items-center gap-3 py-2 no-underline",
-            // Same ink-soft as the nav labels — size and weight carry the
-            // hierarchy in the brand block, not color.
-            "!text-[hsl(var(--pgrl-ink-soft))]",
+            "flex max-w-[calc(100%-3.75rem)] items-center gap-2.5 py-1.5 no-underline sm:gap-3.5 xl:max-w-none",
+            "!text-[hsl(var(--pgrl-top-green))]",
             FOCUS_RING,
             "rounded-[var(--pgrl-radius)]"
           )}
         >
           {emblemUrl ? (
-            // object-contain keeps the crest's ribbon text uncropped.
-            <span className="flex h-14 w-14 shrink-0 items-center justify-center bg-white">
-              <img src={emblemUrl} alt="" className="h-full w-full object-contain" />
-            </span>
+            <img src={emblemUrl} alt="" className="h-[54px] w-[54px] shrink-0 object-contain lg:h-[66px] lg:w-[66px]" />
           ) : (
             <span
               aria-hidden
-              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[hsl(var(--pgrl-primary)/0.1)]"
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[hsl(var(--pgrl-top-green)/0.1)]"
             >
-              <Landmark className="h-5 w-5 text-[hsl(var(--pgrl-primary))]" />
+              <Landmark className="h-5 w-5 text-[hsl(var(--pgrl-top-green))]" />
             </span>
           )}
           <span className="flex flex-col">
-            <span className="text-[11px] font-semibold uppercase leading-tight tracking-wide text-[hsl(var(--pgrl-ink-soft))]">
-              {c("GOV_NAME")}
+            <span className="text-[13px] font-extrabold uppercase leading-tight text-[hsl(var(--pgrl-top-green))] sm:text-base">
+              {c("COUNTY_NAME")}
             </span>
-            <span className="text-base font-bold leading-tight sm:text-lg">{c("PORTAL_NAME")}</span>
-            {/* lg+ only: the bar stays two lines tall on phones and tablets. */}
-            <span className="hidden text-[11px] leading-tight text-[hsl(var(--pgrl-ink-soft))] lg:block">
+            <span className="mt-0.5 text-[11px] leading-tight text-[hsl(var(--pgrl-top-navy)/0.85)] sm:mt-1 sm:text-xs lg:text-[13px]">
               {c("MOTTO_VALUES")}
             </span>
           </span>
@@ -130,13 +124,12 @@ export function LandingHeader({ routes, emblemUrl, navItems, code }: LandingHead
           aria-controls={MENU_ID}
           onClick={() => setOpen((v) => !v)}
           className={cn(
-            "m-0 flex h-11 w-11 cursor-pointer items-center justify-center rounded-[var(--pgrl-radius)]",
-            "border border-solid border-[hsl(var(--pgrl-line))] bg-transparent",
-            "text-[hsl(var(--pgrl-ink-soft))] md:hidden",
+            "m-0 flex h-11 w-11 cursor-pointer items-center justify-center rounded-[var(--pgrl-radius)] border-0 bg-transparent",
+            "text-[hsl(var(--pgrl-top-green))] xl:hidden",
             FOCUS_RING
           )}
         >
-          {open ? <X aria-hidden className="h-5 w-5" /> : <Menu aria-hidden className="h-5 w-5" />}
+          {open ? <X aria-hidden className="h-7 w-7" /> : <Menu aria-hidden className="h-7 w-7" />}
           <span className="sr-only">{open ? c("NAV_MENU_CLOSE") : c("NAV_MENU_OPEN")}</span>
         </button>
 
@@ -144,41 +137,56 @@ export function LandingHeader({ routes, emblemUrl, navItems, code }: LandingHead
           id={MENU_ID}
           aria-label={c("ARIA_MAIN_NAV")}
           className={cn(
-            "w-full basis-full md:block md:w-auto md:basis-auto md:self-stretch",
+            "w-full basis-full xl:flex xl:w-auto xl:basis-auto xl:items-center xl:self-stretch",
             open ? "block" : "hidden"
           )}
         >
-          <ul className="m-0 flex list-none flex-col gap-0 p-0 md:h-full md:flex-row md:items-stretch">
+          <ul className="m-0 flex list-none flex-col gap-0 p-0 pb-2 xl:h-full xl:flex-row xl:items-center xl:gap-[clamp(14px,2.4vw,36px)] xl:pb-0">
             {items.map((item) => {
               const to = item.href ?? routes[item.route];
               const active = isActive(to);
+              const label = c(item.labelKey, item.labelKeyDefault);
               return (
-                <li key={item.code ?? item.labelKey} className="m-0 p-0 md:h-full">
+                <li key={item.code ?? item.labelKey} className="m-0 p-0 xl:h-full">
                   <LandingLink
                     to={to}
                     aria-current={active ? "page" : undefined}
                     onClick={() => setOpen(false)}
                     className={cn(
-                      "relative flex min-h-[48px] items-center px-4 text-sm font-semibold uppercase tracking-wide no-underline md:h-full",
+                      "relative flex min-h-[48px] items-center px-1 text-[15px] font-bold no-underline xl:h-full xl:px-0 xl:text-sm",
                       "motion-safe:transition-colors",
-                      // The state bar. Always present, transparent when idle,
+                      // The gold state bar under the label. Always present,
+                      // collapsed when idle and grown on hover (transform only),
                       // so turning it on never reflows the row.
-                      "after:absolute after:inset-x-4 after:bottom-0 after:h-[3px] after:rounded-t-full after:content-['']",
+                      "after:absolute after:bottom-2 after:left-0 after:h-[3px] after:w-full after:rounded-full after:content-[''] xl:after:bottom-4",
+                      "after:bg-[hsl(var(--pgrl-top-gold))] motion-safe:after:transition-transform motion-safe:after:duration-200",
                       FOCUS_RING,
                       // ! beats legacy overrides.css a:not(...):not(...) color rule
-                      active
-                        ? "!text-[hsl(var(--pgrl-primary))] after:bg-[hsl(var(--pgrl-primary))]"
-                        : // ink-soft, not ink: near-black idle labels read as
-                          // heavy next to the blue they turn on hover.
-                          "!text-[hsl(var(--pgrl-ink-soft))] after:bg-transparent " +
-                            "hover:!text-[hsl(var(--pgrl-primary-hover))] hover:after:bg-[hsl(var(--pgrl-primary-hover))]"
+                      "!text-[hsl(var(--pgrl-top-navy))] hover:!text-[hsl(var(--pgrl-top-green))]",
+                      active ? "after:scale-x-100" : "after:scale-x-0 hover:after:scale-x-100"
                     )}
                   >
-                    {c(item.labelKey, item.labelKeyDefault)}
+                    {label}
                   </LandingLink>
                 </li>
               );
             })}
+            {/* Search opens complaint tracking — the only thing a visitor can
+                look up here. */}
+            <li className="m-0 hidden p-0 xl:flex xl:h-full xl:items-center">
+              <span aria-hidden className="mr-[clamp(10px,1.4vw,22px)] h-8 w-px bg-[hsl(var(--pgrl-line))]" />
+              <LandingLink
+                to={routes.TRACK_COMPLAINT}
+                aria-label={c("NAV_TRACK")}
+                className={cn(
+                  "flex h-11 w-11 items-center justify-center rounded-full no-underline",
+                  "!text-[hsl(var(--pgrl-top-navy))] hover:!text-[hsl(var(--pgrl-top-green))]",
+                  FOCUS_RING
+                )}
+              >
+                <Search aria-hidden className="h-[22px] w-[22px]" />
+              </LandingLink>
+            </li>
           </ul>
         </nav>
       </div>

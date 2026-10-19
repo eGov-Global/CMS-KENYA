@@ -156,6 +156,11 @@ public class RequestSearchCriteria {
     @JsonIgnore
     private boolean skipEmployeeJurisdictionScope;
 
+    // Server-resolved only (PGRService#applyConfidentialIdentityGuard): an identity-filtered search
+    // from an uncleared caller leaves confidential complaints out of results and counts.
+    @JsonIgnore
+    private boolean excludeConfidential;
+
     public boolean isEmpty(){
         return (this.tenantId==null && this.serviceCode==null && this.mobileNumber==null && this.serviceRequestId==null
         && this.applicationStatus==null && this.ids==null && this.userIds==null && this.locality==null

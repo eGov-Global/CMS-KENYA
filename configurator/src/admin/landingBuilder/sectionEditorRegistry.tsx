@@ -148,8 +148,10 @@ export const SECTION_EDITOR_REGISTRY: Record<string, SectionEditorEntry> = {
       { path: 'showUtilityBar', label: 'Show top bar', tab: 'content', widget: 'pagetoggle',
         group: 'Top Bar Settings' },
       { path: 'topbar.left', label: 'Top bar text (Left)', tab: 'content', widget: 'loctext',
-        fixedKey: 'PGR_LANDING_GOV_NAME', group: 'Top Bar Settings' },
-      { path: 'topbar.center', label: 'Top bar text (Center)', tab: 'content', widget: 'loctext',
+        fixedKey: 'PGR_LANDING_COUNTY_NAME', group: 'Top Bar Settings' },
+      // The strip shows the help-line number itself; this name is what screen
+      // readers announce with it.
+      { path: 'topbar.center', label: 'Help line name (read out with the number)', tab: 'content', widget: 'loctext',
         fixedKey: 'PGR_LANDING_UTILITY_GREEN_LINE', group: 'Top Bar Settings' },
       { path: 'topbar.right', label: 'Login link text (Right)', tab: 'content', widget: 'loctext',
         fixedKey: 'PGR_LANDING_LOGIN', group: 'Top Bar Settings' },
@@ -274,6 +276,6 @@ export function sectionHealth(
       if (!key || resolve(key) === undefined) warnings.push(`Missing ${f.label.toLowerCase()}`);
     }
   });
-  if (d.type === 'hero' && !d.media?.imageId) warnings.push('No background image (uses gradient)');
+  if (d.type === 'hero' && !d.media?.imageId) warnings.push('No hero image (uses the built-in artwork)');
   return { ok: warnings.length === 0, warnings };
 }

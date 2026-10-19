@@ -274,6 +274,7 @@ const V2_BRIDGE_STYLE_ID = "mdms-theme-v2-bridge";
 // present in `vars` wins, so a v1/v2/v3 record all resolve through the same map
 // (`vars` already encodes record precedence). Deliberately NOT mapped:
 //   --pgrl-on-accent  contrast-critical pairing with the accent surface
+//   --pgrl-on-primary contrast-critical pairing with the dark brand surfaces
 //   --pgrl-type-*     a 4-way categorical scale, not a brand role
 //   --pgrl-radius     a CSS length, not a color
 const PGRL_BRIDGE = [
@@ -286,7 +287,16 @@ const PGRL_BRIDGE = [
   // *tint* role first — `primary-2` itself is the button fill that pairs with
   // white text, and using it here would leave the CTA label at ~4.3:1.
   ["--pgrl-accent-brand", ["--color-primary-2-bg", "--color-primary-2", "--color-primary-main"]],
-  ["--pgrl-on-primary-brand", ["--color-button-primary-text"]],
+  // NOT mapped from the record. `--pgrl-on-primary` is the text colour on the
+  // page's DARK brand surfaces (hero scrim, closing band, footer). The obvious
+  // source, `--color-button-primary-text`, is the label on the PRIMARY BUTTON,
+  // and the two only coincide when that button is dark. A tenant with a light
+  // button fill (cms-pilot's gold `#FEC931`) correctly sets that role to
+  // near-black `#0B0C0C` — bridging it painted the hero headline, the closing
+  // band and the footer black on dark green. The shipped default (white) is
+  // the only value guaranteed to read on those surfaces, so the token stays
+  // unbridged; a tenant needing another value sets `--pgrl-on-primary-brand`
+  // at :root directly.
   ["--pgrl-ink-brand", ["--color-text-primary"]],
   ["--pgrl-ink-soft-brand", ["--color-text-secondary"]],
   ["--pgrl-surface-brand", ["--color-page-bg"]],

@@ -8,7 +8,7 @@ import PendingForReassignment from "./timelineInstances/PendingForReassignment";
 import Reopen from "./timelineInstances/reopen";
 import Resolved from "./timelineInstances/resolved";
 import Rejected from "./timelineInstances/rejected";
-import StarRated from "./timelineInstances/StarRated";
+import { EmojiRatingBadge } from "./EmojiRating";
 
 const TLCaption = ({ data, comments }) => {
   const { t } = useTranslation()
@@ -158,9 +158,9 @@ const TimeLine = ({ isLoading, data, serviceRequestId, complaintWorkflow, rating
           />
         );
       case "CLOSEDAFTERRESOLUTION":
-        return <CheckPoint isCompleted={isCurrent} key={index} label={t(`CS_COMMON_${status}`)} customChild={<div>{getCommentsInCustomChildComponent({ comment, thumbnailsToShow, auditDetails, assigner })}{rating ? <StarRated text={t("CS_ADDCOMPLAINT_YOU_RATED")} rating={rating} /> : null}</div>} />;
+        return <CheckPoint isCompleted={isCurrent} key={index} label={t(`CS_COMMON_${status}`)} customChild={<div>{getCommentsInCustomChildComponent({ comment, thumbnailsToShow, auditDetails, assigner })}{rating ? <EmojiRatingBadge text={t("CS_ADDCOMPLAINT_YOU_RATED")} rating={rating} /> : null}</div>} />;
       case "CLOSEDAFTERREJECTION":
-        return <CheckPoint isCompleted={isCurrent} key={index} label={t(`CS_COMMON_${status}`)} customChild={<div>{getCommentsInCustomChildComponent({ comment, thumbnailsToShow, auditDetails, assigner })}{rating ? <StarRated text={t("CS_ADDCOMPLAINT_YOU_RATED")} rating={rating} /> : null}</div>} />;
+        return <CheckPoint isCompleted={isCurrent} key={index} label={t(`CS_COMMON_${status}`)} customChild={<div>{getCommentsInCustomChildComponent({ comment, thumbnailsToShow, auditDetails, assigner })}{rating ? <EmojiRatingBadge text={t("CS_ADDCOMPLAINT_YOU_RATED")} rating={rating} /> : null}</div>} />;
 
       // case "RESOLVE":
       // return (

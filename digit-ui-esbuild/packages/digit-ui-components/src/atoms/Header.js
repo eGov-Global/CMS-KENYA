@@ -15,10 +15,22 @@ const Header = ({
   onHamburgerClick,
   props,
   logo,
+  logoFallback,
   ulb,
   actionFields,
 }) => {
   const [isMobileView, setIsMobileView] = useState(window.innerWidth <= 768);
+  // A tenant logo that is configured but fails to load (moved bucket, blocked
+  // host, offline device) left a broken-image icon in the top bar. Swap once
+  // to the fallback mark instead; a fallback that fails too stays as it is,
+  // so this can never loop.
+  const [logoSrc, setLogoSrc] = useState(logo);
+  useEffect(() => {
+    setLogoSrc(logo);
+  }, [logo]);
+  const onLogoError = () => {
+    if (logoFallback && logoSrc !== logoFallback) setLogoSrc(logoFallback);
+  };
   const onResize = () => {
     if (window.innerWidth <= 768) {
       if (!isMobileView) {
@@ -94,7 +106,8 @@ const Header = ({
               <img
                 className="digit-header-logo-img"
                 alt="Logo"
-                src={logo}
+                src={logoSrc}
+                onError={onLogoError}
                 onClick={() => onLogoClick()}
                 width={props?.logoWidth || "32px"}
                 height={props?.logoHeight || "32px"}
@@ -152,6 +165,7 @@ Header.propTypes = {
   onLogoClick: PropTypes.func,
   onHamburgerClick: PropTypes.func,
   props: PropTypes.object,
+  logoFallback: PropTypes.string,
   logo: PropTypes.string,
 };
 Header.defaultProps = {
