@@ -1049,34 +1049,22 @@ The checks mostly used real officer accounts rather than an administrator. A for
 
 ### 10.2 Open issues that bear on shipped changes
 
-| Issue | State | Relation to shipped changes |
+Checked on GitHub on 19 Oct 2026: 63 issues, 36 open. Only four open issues carry a priority label, and eight of the open issues were delivered by this release and only need closing.
+
+**High priority (P1 / P2) still open: 3**
+
+| Issue | Priority | What remains |
 |---|---|---|
-| #144 | OPEN | Resolved and rejected shown in the inbox by default; conflicts with `31edfa212`. |
-| #143 | OPEN | Reopen past SLA; #145 addresses it. |
-| #141 | OPEN | Auto-escalation level number wrong after a manual escalation (CMS V2.12 issue CCRS#2142). The nairobi-prod manual escalate does not write the level keys that #98 wrote. |
-| #138 | OPEN | Share receipt; #142 says "Fixes #138". |
-| #139 | OPEN | Share panel cosmetics. |
-| #137 | OPEN | Video upload 413 at 3.9 MB on Bonga (nginx limit). |
-| #149 | OPEN | Dropdown auto-scroll. |
-| #127 | OPEN | "Send back to GRO"; implemented by #150/#151. |
-| #124 | OPEN | Designation greeting; implemented by #132. |
-| #116 | OPEN | Emergency helplines; added by #103, removed on Bonga by #155. |
-| #115 | OPEN | Swahili support |
-| #111 | OPEN | Landing refresh; #154 |
-| #54 | OPEN | Geolocation raw keys; #55 is not ported. |
-| #45 | OPEN | Bomet 7-digit case numbers |
-| #66 | OPEN | Sidebar icons; data fix |
-| #67 | OPEN | 5 MB photo cap |
-| #68 | OPEN | Declaration of truthfulness. Only the T&C consent shows on Kenya tenants; the truthfulness and data-processing consents appear only with a category dispatcher (`CreatePGRFlowV2.tsx` lines 228–241). |
-| #73 | OPEN | #91 still open |
-| #74 | OPEN | Call-centre complaints are not auto-escalated. Possibly related to unassigned staff-filed complaints on Bomet (#81 absent); unverified. |
-| #75 | OPEN | Fixed via #96. |
-| #77 | OPEN | #78 is kenya-prod only. |
-| #159 | OPEN | ClamAV enablement |
+| #77 | P1 | Bomet: a reopen without a chosen assignee fails with `INVALID_ASSIGNMENT`. The fix (#78) is on `kenya-prod` only; on nairobi-prod a reopen without an assignee succeeds but leaves the complaint unassigned (see #50 in §5). |
+| #54 | P2 | A resident who refuses location access can see the raw key `CS_GEOLOCATION_ERROR`. The fix (#55) is not on nairobi-prod; seeding the five `CS_GEOLOCATION_*` labels (L2) removes it on both counties. |
+| #52 | P2 | Bomet: sidebar visibility is read from the page address during rendering and can be stale after in-app navigation. |
 
----
+**Delivered by this release, to close on GitHub: 8** — #143 (by #145), #138 (by #142), #127 (by #150 and #151), #124 (by #132), #116 (by #103; Bonga's landing page now has a single customer-service panel, #155), #111 (by #154), #75 (by #96, regression test #147), #102 (by #103).
 
----
+**Lower priority (no priority label, treated as P3) still open: 13** — #144 inbox default (needs a decision; conflicts with `31edfa212`), #141 escalation level shown in the timeline, #139 Share panel cosmetics, #137 video upload limit on Bonga, #149 dropdown auto-scroll, #115 Kiswahili completeness, #45 Bomet 7-digit numbers, #66 sidebar icons, #67 5 MB photo cap, #68 truthfulness declaration, #73 complainant details layout, #74 Bomet call-centre complaints not escalated automatically, #159 enabling virus scanning.
+
+The remaining 12 open issues are requests that do not bear on this release's changes.
+
 ## 11. Not verified
 
 1. **Container images on both servers.** Bonga's pgr-services and novu-bridge images, and bgrm's novu-bridge image, were not read from the boxes.
