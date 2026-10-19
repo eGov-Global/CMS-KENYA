@@ -27,8 +27,7 @@ It adds confidential complaints, an official PDF application, server-enforced ti
 **CMS Kenya V2.12:** [Release preview and evidence](https://github.com/eGov-Global/CMS-KENYA/blob/master/docs/kenya/RELEASE-PREVIEW-CMS-KENYA-V2.12.md) · **Release notes** (this page) · [County release note](https://github.com/eGov-Global/CMS-KENYA/blob/master/docs/kenya/COUNTY-RELEASE-NOTE-CMS-KENYA-V2.12.md)
 
 Repository: `eGov-Global/CMS-KENYA`\
-Built on: **CMS V2.12**, the DIGIT Complaint Management System (`egovernments/Citizen-Complaint-Resolution-System`; baseline `815b23747`, updated on 16 Sep 2026 to `7ee88f83`)\
-Code described: `nairobi-prod` @ `32a56d27d` (13 Oct 2026) and the configuration live in both counties on that date; the escalation timers were re-read on 19 Oct 2026.
+Built on: **CMS V2.12**, the DIGIT Complaint Management System (`egovernments/Citizen-Complaint-Resolution-System`)
 
 ## Documentation
 
