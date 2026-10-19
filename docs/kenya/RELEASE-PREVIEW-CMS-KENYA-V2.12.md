@@ -1049,17 +1049,16 @@ The checks mostly used real officer accounts rather than an administrator. A for
 
 ### 10.2 Open issues that bear on shipped changes
 
-Checked on GitHub on 19 Oct 2026: 63 issues, 36 open. Only four open issues carry a priority label, and eight of the open issues were delivered by this release and only need closing.
+Checked on GitHub on 19 Oct 2026: 63 issues, 36 open. Only four open issues carry a priority label, and nine of the open issues were delivered by this release and only need closing.
 
-**High priority (P1 / P2) still open: 3**
+**High priority (P1 / P2) still open: 2**
 
 | Issue | Priority | What remains |
 |---|---|---|
-| #77 | P1 | Bomet: a reopen without a chosen assignee fails with `INVALID_ASSIGNMENT`. The fix (#78) is on `kenya-prod` only; on nairobi-prod a reopen without an assignee succeeds but leaves the complaint unassigned (see #50 in §5). |
 | #54 | P2 | A resident who refuses location access can see the raw key `CS_GEOLOCATION_ERROR`. The fix (#55) is not on nairobi-prod; seeding the five `CS_GEOLOCATION_*` labels (L2) removes it on both counties. |
 | #52 | P2 | Bomet: sidebar visibility is read from the page address during rendering and can be stale after in-app navigation. |
 
-**Delivered by this release, to close on GitHub: 8** — #143 (by #145), #138 (by #142), #127 (by #150 and #151), #124 (by #132), #116 (by #103; Bonga's landing page now has a single customer-service panel, #155), #111 (by #154), #75 (by #96, regression test #147), #102 (by #103).
+**Delivered by this release, to close on GitHub: 9** — #77 (reopen no longer fails; it returns to an officer who can act, #65 and #85), #143 (by #145), #138 (by #142), #127 (by #150 and #151), #124 (by #132), #116 (by #103; Bonga's landing page now has a single customer-service panel, #155), #111 (by #154), #75 (by #96, regression test #147), #102 (by #103).
 
 **Lower priority (no priority label, treated as P3) still open: 13** — #144 inbox default (needs a decision; conflicts with `31edfa212`), #141 escalation level shown in the timeline, #139 Share panel cosmetics, #137 video upload limit on Bonga, #149 dropdown auto-scroll, #115 Kiswahili completeness, #45 Bomet 7-digit numbers, #66 sidebar icons, #67 5 MB photo cap, #68 truthfulness declaration, #73 complainant details layout, #74 Bomet call-centre complaints not escalated automatically, #159 enabling virus scanning.
 
