@@ -228,7 +228,7 @@ The training videos were recorded on a test copy of Bonga Nai with fictional tes
 
 The four privacy and security parts cover confidential complaints, safe sign-in, safe uploads and the rules the system enforces. Parts run 32 s to 2 min 54 s; 33 min 47 s in total (workflow 27 min 14 s; privacy and security 6 min 33 s).
 
-**Where to watch:** [CMS Kenya V2.12 – videos and support documents (Google Drive folder)](https://drive.google.com/drive/folders/1QiImno9XX1cxhgQtSXCFc0TS7GU6FUDG?usp=sharing). Open the `1-videos` folder to play a part in the browser. The folder holds 11 of the 22 parts today; the other 11 and a PDF copy of the support package are being added. The parts there today are 00, 01, 02, 03, 04, 04b, 05, 06, 07, 08 and 09.
+**Where to watch:** [CMS Kenya V2.12 – videos and support documents (Google Drive folder)](https://drive.google.com/drive/folders/1QiImno9XX1cxhgQtSXCFc0TS7GU6FUDG?usp=sharing). Open the `1-videos` folder to play a part in the browser. The folder holds all 22 parts, and a PDF copy of the support package.
 
 What each part shows is listed in the release notes, under [Training videos and support package](RELEASE-NOTES-CMS-KENYA-V2.12.md#training-videos-and-support-package).
 
