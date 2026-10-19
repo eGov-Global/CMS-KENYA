@@ -576,7 +576,7 @@ Preparing the training videos and the support package meant running every workfl
 ### Follow-ups
 
 1. **Before the training videos are shared outside eGov:** harden the cms-pilot test environment (account credentials and one-time-code settings), or deactivate the test accounts once the videos are final. The videos show the test environment's sign-in screens.
-2. **Counties:** confirm the intended escalation times for Nairobi (finding 1), alongside the Bomet request under *What we need from the Counties*.
+2. **Counties:** confirm the intended escalation times for Nairobi (finding 1) and Bomet (11 categories still on 2-minute test values).
 3. **Engineering:** findings 2 and 3.
 4. **Public sharing of the walkthrough page:** the eGov workspace does not allow public links for it; the shared Drive folder is the public route for the videos.
 

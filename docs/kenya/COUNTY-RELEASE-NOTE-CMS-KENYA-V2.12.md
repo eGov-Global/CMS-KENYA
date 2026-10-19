@@ -196,14 +196,3 @@ Browsers give each website only a small amount of storage. The system used to ke
 A short video course shows the whole complaint journey on screen, with a voice explaining each step: a resident filing a complaint, the front desk filing one for a caller, the officer who checks and assigns complaints, the officer who resolves them, escalation to the Chief Officer, and the resident rating, reopening or withdrawing, and the front desk withdrawing a complaint for a caller. There are 22 parts of one to three minutes each, about 33 minutes in total, with subtitles, including four short parts on how the system protects residents' privacy and the county's data: confidential complaints, safe sign-in, safe uploads and the rules the system enforces. They use test accounts, not real residents' data.
 
 Watch them here: [CMS Kenya V2.12 – videos and support documents](https://drive.google.com/drive/folders/1QiImno9XX1cxhgQtSXCFc0TS7GU6FUDG?usp=sharing) (folder `1-videos`). They suit training new officers and front-desk staff, and briefing county leadership.
-
----
-
-## What we need from the Counties
-
-1. **Helpline number on the PDF application (both counties):** it prints a placeholder number (0000000000). Please share the official public helpline number, and the official contact e-mail.
-2. **Viewing confidential complaints (both counties):** please name the staff who may see the identity of confidential complainants. Until then, no staff member can see it.
-3. **Bomet, complainants' contact details:** under the current settings, complainants' names and phone numbers are visible only to front-desk staff and the Ombudsman. Please confirm which officers need them, for example to call a complainant back.
-4. **Bomet, escalation times:** 11 complaint categories still have test values for their escalation times (2 minutes). Please confirm the intended times.
-5. **Time limits:** please confirm the reopen period (3 days in both counties) and the withdraw period (Nairobi 1 day; Bomet 3 days).
-6. **Nairobi:** please confirm the contact e-mail shown at the foot of the Bonga Nai website.
