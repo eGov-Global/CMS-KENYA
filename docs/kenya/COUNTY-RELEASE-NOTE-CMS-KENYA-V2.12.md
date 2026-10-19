@@ -239,7 +239,7 @@ What each part shows is listed in the release notes, under [Training videos and 
 - [Release notes](RELEASE-NOTES-CMS-KENYA-V2.12.md): the complete technical account of the release, for release managers, reviewers and the teams who run the sites.
 - [Release preview and evidence](RELEASE-PREVIEW-CMS-KENYA-V2.12.md): the release by theme, with the evidence behind each change.
 - [Operations handbook](../2.12/operations/README.md): for the IT staff who run the system, covering what to check first when something goes wrong and how to report a problem.
-- [Support package](https://github.com/eGov-Global/CMS-KENYA/pull/163) (under review): guides for the eGov support desk and the teams who run the sites, covering who handles which problem, troubleshooting and step-by-step procedures.
+- [Support package](https://github.com/eGov-Global/CMS-KENYA/blob/nairobi-prod/docs/kenya/support/README.md): guides for the eGov support desk and the teams who run the sites, covering who handles which problem, troubleshooting and step-by-step procedures.
 - The two county websites: [Bonga Nai](https://bonga.nairobi.go.ke/digit-ui/landing) and [Bomet Feedback Hub](https://bgrm.bomet.go.ke/digit-ui/landing).
 
 ---
