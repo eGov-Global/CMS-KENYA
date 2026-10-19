@@ -31,7 +31,7 @@ Built on: **CMS V2.12**, the DIGIT Complaint Management System (`egovernments/Ci
 
 ## Documentation
 
-Links to this release's documents, the support package and the scan-proxy README point at `master` and resolve once those files reach it: these documents through PR #160 and the support package through PR #163 (both into `nairobi-prod`), then PR #49 (`nairobi-prod` into `master`).
+Links to this release's documents and the scan-proxy README point at `master`. The support package is kept on the `nairobi-prod` branch (merged in pull request #163), so its links open it there, screenshots included.
 
 ### This release
 
@@ -46,20 +46,20 @@ Links to this release's documents, the support package and the scan-proxy README
 
 ### Support package (`docs/kenya/support/`)
 
-For the eGov support desk (L1), platform operators and county IT (L2) and engineering (L3). Under review in pull request #163.
+For the eGov support desk (L1), platform operators and county IT (L2) and engineering (L3). Kept on the `nairobi-prod` branch (merged in pull request #163).
 
 | Document | What it answers |
 |---|---|
-| [Package overview](https://github.com/eGov-Global/CMS-KENYA/blob/master/docs/kenya/support/README.md) | Who it is for, how to read the VERIFIED / RECOMMENDATION tags, rules for handling data |
-| [1. Support matrix](https://github.com/eGov-Global/CMS-KENYA/blob/master/docs/kenya/support/01-support-matrix.md) | Which level owns each issue type, what L1 checks first, when to escalate; who can act at each status; time windows |
-| [2. Video catalogue](https://github.com/eGov-Global/CMS-KENYA/blob/master/docs/kenya/support/02-video-catalogue.md) | Which training video to watch, by level |
-| [3. Storyboards and narration](https://github.com/eGov-Global/CMS-KENYA/blob/master/docs/kenya/support/03-storyboards-narration.md) | Scene-by-scene storyboards and English narration scripts |
-| [4. Troubleshooting guide](https://github.com/eGov-Global/CMS-KENYA/blob/master/docs/kenya/support/04-troubleshooting.md) | Symptoms with screenshots, and what each on-screen message means |
-| [5. Procedures](https://github.com/eGov-Global/CMS-KENYA/blob/master/docs/kenya/support/05-procedures.md) | Step-by-step L1, L2 and L3 procedures with verification and escalation |
-| [6. Knowledge-transfer guide](https://github.com/eGov-Global/CMS-KENYA/blob/master/docs/kenya/support/06-knowledge-transfer.md) | A five-session plan to bring a new support engineer up to speed |
-| [7. Traceability matrix](https://github.com/eGov-Global/CMS-KENYA/blob/master/docs/kenya/support/07-traceability-matrix.md) | Each release change → test evidence → video → procedure |
-| [Screen gallery](https://github.com/eGov-Global/CMS-KENYA/blob/master/docs/kenya/support/screenshots/README.md) | Every captured screen, by journey |
-| [One-page version](https://github.com/eGov-Global/CMS-KENYA/blob/master/docs/kenya/support/support-package.html) | All seven parts on one page with the screenshots (download and open in a browser; a PDF copy is being added to the Drive folder) |
+| [Package overview](https://github.com/eGov-Global/CMS-KENYA/blob/nairobi-prod/docs/kenya/support/README.md) | Who it is for, how to read the VERIFIED / RECOMMENDATION tags, rules for handling data |
+| [1. Support matrix](https://github.com/eGov-Global/CMS-KENYA/blob/nairobi-prod/docs/kenya/support/01-support-matrix.md) | Which level owns each issue type, what L1 checks first, when to escalate; who can act at each status; time windows |
+| [2. Video catalogue](https://github.com/eGov-Global/CMS-KENYA/blob/nairobi-prod/docs/kenya/support/02-video-catalogue.md) | Which training video to watch, by level |
+| [3. Storyboards and narration](https://github.com/eGov-Global/CMS-KENYA/blob/nairobi-prod/docs/kenya/support/03-storyboards-narration.md) | Scene-by-scene storyboards and English narration scripts |
+| [4. Troubleshooting guide](https://github.com/eGov-Global/CMS-KENYA/blob/nairobi-prod/docs/kenya/support/04-troubleshooting.md) | Symptoms with screenshots, and what each on-screen message means |
+| [5. Procedures](https://github.com/eGov-Global/CMS-KENYA/blob/nairobi-prod/docs/kenya/support/05-procedures.md) | Step-by-step L1, L2 and L3 procedures with verification and escalation |
+| [6. Knowledge-transfer guide](https://github.com/eGov-Global/CMS-KENYA/blob/nairobi-prod/docs/kenya/support/06-knowledge-transfer.md) | A five-session plan to bring a new support engineer up to speed |
+| [7. Traceability matrix](https://github.com/eGov-Global/CMS-KENYA/blob/nairobi-prod/docs/kenya/support/07-traceability-matrix.md) | Each release change → test evidence → video → procedure |
+| [Screen gallery](https://github.com/eGov-Global/CMS-KENYA/blob/nairobi-prod/docs/kenya/support/screenshots/README.md) | Every captured screen, by journey |
+| [One-page version](https://github.com/eGov-Global/CMS-KENYA/blob/nairobi-prod/docs/kenya/support/support-package.html) | All seven parts on one page with the screenshots (download and open in a browser; a PDF copy is being added to the Drive folder) |
 
 ### Operations handbook (CMS V2.12, applies to both counties)
 
