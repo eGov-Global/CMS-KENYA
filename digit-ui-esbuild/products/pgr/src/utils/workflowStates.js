@@ -17,4 +17,22 @@
 // something subtly different.
 export const isActionable = (s) => Array.isArray(s?.actions) && s.actions.length > 0;
 
+// RESOLVED and REJECTED stay actionable (REOPEN, RATE), so the default inbox
+// lists them — Bomet's call centre needs them there to reopen (#46). Nairobi
+// wants them only when the Status filter asks for them (#144), so a deployment
+// can drop them from the DEFAULT list by setting the runtime switch
+// PGR_INBOX_INCLUDE_RESOLVED_REJECTED to false. Absent keeps today's behaviour.
+// Either way they stay reachable through the Status filter and by number.
+export const RESOLVED_REJECTED = ["RESOLVED", "REJECTED"];
+
+export const includeResolvedRejectedByDefault = (
+  getConfig = typeof window !== "undefined" ? window.globalConfigs?.getConfig : undefined
+) => {
+  const v = getConfig?.("PGR_INBOX_INCLUDE_RESOLVED_REJECTED");
+  return !(v === false || v === "false");
+};
+
+export const defaultInboxStatuses = (codes, includeResolvedRejected) =>
+  includeResolvedRejected ? codes : codes.filter((c) => !RESOLVED_REJECTED.includes(c));
+
 export default isActionable;

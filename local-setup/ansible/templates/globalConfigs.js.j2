@@ -59,6 +59,12 @@ var globalConfigs = (function () {
   // itself defaults ON when the key is absent (Moz-safe on code sync). Set
   // `pgr_pii_masking: true` in host_vars to restore Moz-style masking.
   var pgrPiiMasking = {{ pgr_pii_masking | default(false) | to_json }};
+  // Whether the employee inbox's DEFAULT list includes Resolved and Rejected
+  // complaints (they stay reachable through the Status filter either way).
+  // Bomet's call centre needs them listed to reopen them (#46); Nairobi wants
+  // them only on request (#144). Set `pgr_inbox_include_resolved_rejected: false`
+  // in host_vars to hide them by default.
+  var pgrInboxIncludeResolvedRejected = {{ pgr_inbox_include_resolved_rejected | default(true) | to_json }};
   var mapCenter = {{ map_center | to_json }};
   // Tenant whose boundary tree the SPA's map/boundary code resolves
   // against (Turbopass/OSM boundary resolution). Mirrors the build-time
@@ -184,6 +190,8 @@ var globalConfigs = (function () {
       return complaintHierarchyType;
     } else if (key === "PGR_PII_MASKING") {
       return pgrPiiMasking;
+    } else if (key === "PGR_INBOX_INCLUDE_RESOLVED_REJECTED") {
+      return pgrInboxIncludeResolvedRejected;
     } else if (key === "CORE_MOBILE_CONFIGS") {
       return coreMobileConfigs;
     } else if (key === "CORE_POSTAL_CONFIGS") {

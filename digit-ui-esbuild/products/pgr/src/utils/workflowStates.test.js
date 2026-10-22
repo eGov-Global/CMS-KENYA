@@ -33,7 +33,7 @@ function bundle(entry) {
   return require(out);
 }
 
-const { isActionable } = bundle("workflowStates.js");
+const { isActionable, defaultInboxStatuses, includeResolvedRejectedByDefault } = bundle("workflowStates.js");
 
 // Verbatim shapes from the live Bomet workflow.
 const PENDINGATLME = { state: "PENDINGATLME", isTerminateState: false, actions: [{ action: "RESOLVE" }, { action: "ESCALATE" }, { action: "REJECT" }] };
@@ -77,4 +77,20 @@ test("malformed states are rejected without throwing", () => {
   assert.equal(isActionable({}), false);
   assert.equal(isActionable({ state: "X", actions: null }), false);
   assert.equal(isActionable({ state: "X", actions: "REOPEN" }), false);
+});
+
+// #144: a deployment can drop RESOLVED/REJECTED from the inbox's DEFAULT list.
+const OPEN = ["PENDINGFORASSIGNMENT", "PENDINGATLME", "ESCALATEDLEVEL1", "RESOLVED", "REJECTED"];
+
+test("switch absent or true keeps Resolved/Rejected in the default list (#46)", () => {
+  assert.equal(includeResolvedRejectedByDefault(() => undefined), true);
+  assert.equal(includeResolvedRejectedByDefault(() => true), true);
+  assert.equal(includeResolvedRejectedByDefault(undefined), true);
+  assert.deepEqual(defaultInboxStatuses(OPEN, true), OPEN);
+});
+
+test("switch false (or \"false\") hides Resolved/Rejected by default (#144)", () => {
+  assert.equal(includeResolvedRejectedByDefault(() => false), false);
+  assert.equal(includeResolvedRejectedByDefault(() => "false"), false);
+  assert.deepEqual(defaultInboxStatuses(OPEN, false), ["PENDINGFORASSIGNMENT", "PENDINGATLME", "ESCALATEDLEVEL1"]);
 });
