@@ -2,6 +2,7 @@ import _ from "lodash";
 import Urls from "../utils/urls";
 import { complaintLabel } from "../utils/complaintLabel";
 import { statusLabel } from "../utils/statusLabel";
+import { defaultInboxStatuses, includeResolvedRejectedByDefault } from "../utils/workflowStates";
 import { useLocation, useHistory, Link, useParams } from "react-router-dom";
 import React, { useState, Fragment } from "react";
 import { DeleteIconv2, DownloadIcon, FileIcon, Button, Card, CardSubHeader, EditIcon, ArrowForward, Modal, CloseSvg, Close, } from "@egovernments/digit-ui-react-components";
@@ -1734,7 +1735,10 @@ export const UICustomizations = {
       if (statuses.length > 0) {
         params.applicationStatus = statuses;
       } else if (!isComplaintLookup) {
-        params.applicationStatus = allStates.length > 0 ? allStates : OPEN_STATES;
+        params.applicationStatus = defaultInboxStatuses(
+          allStates.length > 0 ? allStates : OPEN_STATES,
+          includeResolvedRejectedByDefault()
+        );
       }
 
       // My = complaints whose workflow assignee is me. The tabs replaced the

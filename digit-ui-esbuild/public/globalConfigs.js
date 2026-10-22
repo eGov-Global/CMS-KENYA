@@ -67,10 +67,13 @@ var globalConfigs = (function () {
   // needs no config — which means Kenya must say `false` EXPLICITLY. Leaving
   // this out is what masked every environment built from this repo.
   var pgrPiiMasking = false;
+  // Employee inbox default list includes Resolved/Rejected (#46); false hides them until filtered (#144).
+  var pgrInboxIncludeResolvedRejected = true;
 
   var getConfig = function (key) {
     if (key === "STATE_LEVEL_TENANT_ID") return stateTenantId;
     else if (key === "PGR_PII_MASKING") return pgrPiiMasking;
+    else if (key === "PGR_INBOX_INCLUDE_RESOLVED_REJECTED") return pgrInboxIncludeResolvedRejected;
     else if (key === "GMAPS_API_KEY") return gmaps_api_key;
     else if (key === "FIN_ENV") return finEnv;
     else if (key === "ENABLE_SINGLEINSTANCE") return centralInstanceEnabled;

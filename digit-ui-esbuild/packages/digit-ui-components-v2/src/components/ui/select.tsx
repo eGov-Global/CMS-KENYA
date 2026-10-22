@@ -61,6 +61,10 @@ export function Select<TValue extends string = string>({
   const listRef = React.useRef<HTMLUListElement | null>(null);
   const triggerRef = React.useRef<HTMLButtonElement | null>(null);
   const searchRef = React.useRef<HTMLInputElement | null>(null);
+  // Set when the pointer, not the keyboard, moved the highlight. Scrolling the
+  // hovered option into view moves a new option under a still pointer, which
+  // hovers it and scrolls again — the list runs to the bottom on its own (#149).
+  const activeFromPointerRef = React.useRef(false);
 
   const enableSearch =
     searchable === true || (searchable !== false && options.length > SEARCH_THRESHOLD);
@@ -100,6 +104,7 @@ export function Select<TValue extends string = string>({
   // Reset state when opening; clear the query when closing so the next open
   // starts from the full list.
   React.useEffect(() => {
+    activeFromPointerRef.current = false;
     if (open) {
       setActiveIndex(visibleSelectedIndex >= 0 ? visibleSelectedIndex : 0);
       if (enableSearch) {
@@ -123,6 +128,10 @@ export function Select<TValue extends string = string>({
   // Scroll active option into view.
   React.useEffect(() => {
     if (!open || activeIndex < 0 || !listRef.current) return;
+    if (activeFromPointerRef.current) {
+      activeFromPointerRef.current = false;
+      return;
+    }
     const list = listRef.current;
     const item = list.children[activeIndex] as HTMLElement | undefined;
     if (item) {
@@ -354,7 +363,11 @@ export function Select<TValue extends string = string>({
                   role="option"
                   aria-selected={isSelected}
                   aria-disabled={opt.disabled || undefined}
-                  onMouseEnter={() => !opt.disabled && setActiveIndex(i)}
+                  onMouseEnter={() => {
+                    if (opt.disabled || i === activeIndex) return;
+                    activeFromPointerRef.current = true;
+                    setActiveIndex(i);
+                  }}
                   onMouseDown={(e) => {
                     // Prevent the trigger blur/scroll dance — commit selection
                     // before the click fires.

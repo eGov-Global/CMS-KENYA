@@ -46,6 +46,8 @@ tenant_id: ke
 ui_state_tenant_id: ke.nairobi
 nginx_preserve_vhost: false        # kit: true — local box has no hand-managed vhost to preserve
 login_tenant_allowlist: []
+# Employee inbox: Resolved/Rejected only when the Status filter asks for them (#144).
+pgr_inbox_include_resolved_rejected: false
 
 # Hide these modules in the employee UI. IM (inbox-v2) needs the search
 # stack, which is off on this box (enable_search_stack: false below).
