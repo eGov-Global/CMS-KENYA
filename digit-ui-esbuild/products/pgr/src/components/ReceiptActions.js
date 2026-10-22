@@ -32,25 +32,28 @@ import useComplaintReceiptModel from "../hooks/pgr/useComplaintReceiptModel";
 const loadReceipt = () => import("../utils/complaintReceipt");
 
 export const RECEIPT_ACTION_FALLBACKS = {
-  print: "Print Receipt",
+  print: "Print Application",
   share: "Share",
-  shareVia: "Share receipt via",
+  shareVia: "Share application via",
   close: "Close",
   preparing: "Preparing the PDF…",
   openPdf: "Open PDF",
   email: "Email",
   whatsapp: "WhatsApp",
   sms: "SMS",
-  hintPdf: "Every option sends the receipt PDF. On a computer the PDF is downloaded first — attach it in the app that opens.",
-  downloadedOnly: "Receipt PDF saved to your downloads.",
-  attach: "Receipt PDF saved to your downloads — attach it in the app that opened.",
-  popupBlocked: "The browser blocked the PDF tab — the receipt was downloaded instead.",
+  hintPdf: "Every option sends the application PDF. On a computer the PDF is downloaded first — attach it in the app that opens.",
+  downloadedOnly: "Application PDF saved to your downloads.",
+  attach: "Application PDF saved to your downloads — attach it in the app that opened.",
+  popupBlocked: "The browser blocked the PDF tab — the application was downloaded instead.",
 };
 
 const ALL_ACTIONS = ["download", "print", "share"];
 // The v2 utilities only apply under `.v2-scope` (tailwind.config.ts `important`). Legacy
 // employee screens (e.g. the complaint-success panel) have no such ancestor, so carry it here.
 const scoped = (className) => ["v2-scope", className].filter(Boolean).join(" ");
+// .v2-scope paints the theme's page background (white on some tenants); the
+// buttons sit on the legacy grey page, so the strip between them must show it (#139).
+const TRANSPARENT = { backgroundColor: "transparent" };
 const logoCache = new Map();
 
 // Follows the viewport live, so rotating a tablet or resizing the window shows or
@@ -150,7 +153,7 @@ const ReceiptActions = ({
   if (!complaintDetails?.service) {
     const label = t("PGR_RECEIPT_DOWNLOAD");
     return (
-      <div className={scoped(className)}>
+      <div className={scoped(className)} style={TRANSPARENT}>
         <Button variant={variant} type="button" disabled leading={<Download className="h-4 w-4" />}>
           {label === "PGR_RECEIPT_DOWNLOAD" ? RECEIPT_FALLBACKS.downloadLabel : label}
         </Button>
@@ -443,7 +446,7 @@ const ReceiptActionsReady = ({ complaintDetails, actions, variant, className }) 
     : null;
 
   return (
-    <div ref={rootRef} className={scoped(className)} style={{ display: "flex", flexDirection: "column", gap: "6px", alignItems: "flex-start" }}>
+    <div ref={rootRef} className={scoped(className)} style={{ display: "flex", flexDirection: "column", gap: "6px", alignItems: "flex-start", ...TRANSPARENT }}>
       <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }} onPointerEnter={prefetch} onFocusCapture={prefetch} onTouchStart={prefetch}>
         {receiptActionsFor(actions, { mobileView }).filter((a) => buttons[a]).map((a) => {
           const { icon: Icon, label, onClick } = buttons[a];

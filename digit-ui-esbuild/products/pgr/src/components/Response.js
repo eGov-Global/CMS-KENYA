@@ -12,7 +12,7 @@ const Response = () => {
   const queryStrings = Digit.Hooks.useQueryParams();
   const { state } = useLocation();
   const back = state?.back ? state?.back : "BACK";
-  const receiptTitle = t("PGR_RECEIPT_TITLE") === "PGR_RECEIPT_TITLE" ? "Complaint Receipt" : t("PGR_RECEIPT_TITLE");
+  const receiptTitle = t("PGR_RECEIPT_TITLE") === "PGR_RECEIPT_TITLE" ? "Complaint Application" : t("PGR_RECEIPT_TITLE");
 
   return (
     <>
