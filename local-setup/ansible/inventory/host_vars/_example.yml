@@ -159,6 +159,12 @@ hierarchy_type: "ADMIN"
 # policy still arrive masked regardless of this flag.
 pgr_pii_masking: false
 
+# Employee inbox default list: include Resolved and Rejected complaints
+# (templates/globalConfigs.js.j2 → PGR_INBOX_INCLUDE_RESOLVED_REJECTED).
+# true (default) keeps them listed so a call centre can reopen them (Bomet, #46);
+# false hides them until the Status filter asks for them (Nairobi, #144).
+pgr_inbox_include_resolved_rejected: true
+
 # Mobile-number validation rules used by the citizen-side UI on signup.
 # Kenya: +254 prefix, 9-10 digits starting with 7 (Safaricom) or 1 (Airtel/Telkom).
 # Length + allowed leading digits are derived from mobileNumberRegex (see
