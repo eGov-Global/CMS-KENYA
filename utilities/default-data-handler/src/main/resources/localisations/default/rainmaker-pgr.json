@@ -1506,6 +1506,18 @@
         "locale": "default"
     },
     {
+        "code": "CS_COMPLAINT_DETAILS_RESPONSIBLE_DEPARTMENT",
+        "message": "Responsible Department",
+        "module": "rainmaker-pgr",
+        "locale": "default"
+    },
+    {
+        "code": "CS_COMPLAINT_DETAILS_EXPECTED_RESOLUTION_DATE",
+        "message": "Expected Resolution Date",
+        "module": "rainmaker-pgr",
+        "locale": "default"
+    },
+    {
         "code": "CS_COMPLAINT_DETAILS_AREA",
         "message": "Locality",
         "module": "rainmaker-pgr",

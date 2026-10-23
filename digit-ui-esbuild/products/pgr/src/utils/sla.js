@@ -23,3 +23,7 @@ export const slaBudgetMs = (slaHours) => (slaHours != null ? Number(slaHours) * 
  */
 export const slaDaysRemaining = (createdTime, slaHours, now = Date.now()) =>
   createdTime == null ? null : Math.round((slaBudgetMs(slaHours) - (now - createdTime)) / DAY_MS);
+
+/** When the complaint is due: creation time plus its type's SLA budget, or null when the creation time is unknown. */
+export const expectedResolutionTime = (createdTime, slaHours) =>
+  createdTime == null ? null : Number(createdTime) + slaBudgetMs(slaHours);
