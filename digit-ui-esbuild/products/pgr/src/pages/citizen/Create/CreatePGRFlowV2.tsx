@@ -225,9 +225,16 @@ function fieldsFromSchema(schema: any): TemplateField[] {
     .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
 }
 
-// Complaint-level declarations confirmed before submit (BRD).
+// Declaration of Truthfulness (BRD Appendix B §I), required on EVERY complaint
+// like the Terms & Conditions below — not only the dispatcher flow (#68).
+const TRUTHFULNESS_CONSENT = {
+  code: "TRUTHFULNESS",
+  labelKey: "PGR_CONSENT_TRUTHFULNESS_LABEL",
+  label: "I declare that the information provided is true and accurate.",
+} as const;
+
+// Complaint-level declarations confirmed before submit in the dispatcher flow (BRD).
 const REQUIRED_CONSENTS: ReadonlyArray<{ code: string; labelKey: string; label: string }> = [
-  { code: "TRUTHFULNESS", labelKey: "PGR_CONSENT_TRUTHFULNESS_LABEL", label: "I declare that the information provided is true and accurate." },
   { code: "DATA_PROCESSING", labelKey: "PGR_CONSENT_DATA_PROCESSING_LABEL", label: "I consent to my data being processed to handle this complaint." },
 ];
 
@@ -1176,16 +1183,17 @@ function Step3Description({ data, patch, templateFields, t }: StepBodyProps) {
                 create; hidden only on the details/view screens — CCSD-1988).
                 CCSD-2072: group the mandatory consents under an OBRIGATÓRIO
                 header and the confidential opt-in under OPCIONAL.
-                The Terms & Conditions consent is mandatory for every tenant and
-                the confidential opt-in is always offered; the dispatcher-flow
-                declarations show only when a category template is in play. */}
+                The truthfulness declaration and Terms & Conditions are mandatory
+                for every tenant and the confidential opt-in is always offered;
+                the dispatcher-flow declarations show only when a category
+                template is in play. */}
             <div className="text-xs font-semibold uppercase tracking-wide" style={{ color: PRIMARY }}>
               {tr(t, "PGR_CONSENT_SECTION_MANDATORY", "Mandatory")}
               <span className="ml-0.5" style={{ color: "var(--color-error, #d4351c)" }} aria-hidden>
                 *
               </span>
             </div>
-            {[...(extended ? REQUIRED_CONSENTS : []), TERMS_CONSENT].map((c) => (
+            {[TRUTHFULNESS_CONSENT, ...(extended ? REQUIRED_CONSENTS : []), TERMS_CONSENT].map((c) => (
               <label key={c.code} className="flex items-start gap-2 text-sm">
                 <input
                   type="checkbox"
@@ -1971,13 +1979,13 @@ const CreatePGRFlowV2: React.FC = () => {
         for (const f of templateFields) {
           if (f.mandatory && !String((formData.dynamicFields || {})[f.fieldKey] ?? "").trim()) return "DynamicFieldRequired";
         }
-        // Both consents are required once an authority/template is in play
+        // The dispatcher-flow consents are required once an authority/template is in play
         // (checkboxes restored at create — CCSD-1979 revisited).
         if (formData.caseRelatedTo && REQUIRED_CONSENTS.some((c) => !(formData.consents || []).includes(c.code))) {
           return "ConsentRequired";
         }
-        // Terms & Conditions must be accepted on every complaint.
-        if (!(formData.consents || []).includes(TERMS_CONSENT.code)) return "ConsentRequired";
+        // The truthfulness declaration and Terms & Conditions are required on every complaint.
+        if ([TRUTHFULNESS_CONSENT, TERMS_CONSENT].some((c) => !(formData.consents || []).includes(c.code))) return "ConsentRequired";
         return null;
       }
       default:
