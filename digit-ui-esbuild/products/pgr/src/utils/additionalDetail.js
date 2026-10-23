@@ -53,3 +53,14 @@ export const mergeAdditionalDetail = (existingRaw, patch, { resetEscalation = fa
   if (resetEscalation) ESCALATION_KEYS.forEach((k) => delete existing[k]);
   return { ...existing, ...patch };
 };
+
+/**
+ * Department responsible for a complaint, in the employee details page's
+ * precedence: the complaint type's mapped department (MDMS, enforced by the
+ * backend), else the department stamped on additionalDetail at routing.
+ * "NA" (deliberately unmapped) counts as absent. Null when neither is known.
+ */
+export const responsibleDepartmentCode = (typeDepartment, rawAdditionalDetail) => {
+  const known = (d) => (typeof d === "string" && d.trim() && d.trim().toUpperCase() !== "NA" ? d.trim() : null);
+  return known(typeDepartment) || known(readAdditionalDetailObject(rawAdditionalDetail).department);
+};

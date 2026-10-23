@@ -33,6 +33,9 @@ import { buildWithdrawRequest, wasReopened } from "../../utils/withdraw";
 import { trackApiError } from "../../utils/analytics";
 import WithdrawComplaintPopup from "./WithdrawComplaintPopup";
 import useExtendedAttributesEnabled from "../../hooks/pgr/useExtendedAttributesEnabled";
+import { responsibleDepartmentCode } from "../../utils/additionalDetail";
+import { departmentLabel } from "../../utils/employeeLabels";
+import { expectedResolutionTime } from "../../utils/sla";
 
 // Terminal (non-active) states across standard PGR *and* the mz.igsae CMS workflow.
 // CANCELLED / CLOSEDAFTER* are CMS terminals; without them CANCELLED wrongly showed
@@ -448,6 +451,15 @@ const ComplaintDetailsPage = () => {
 
   const status = complaintDetails?.service?.applicationStatus;
 
+  // #70: the same department and SLA the employee side works to — the complaint
+  // type's leaf row carries both; the due date is only meaningful while open.
+  const typeLeaf = (hier?.allRows || []).find((n) => n?.code === complaintDetails?.service?.serviceCode);
+  const departmentCode = responsibleDepartmentCode(typeLeaf?.department, complaintDetails?.service?.additionalDetail);
+  const expectedBy =
+    status && !CLOSED_STATUSES.includes(status)
+      ? expectedResolutionTime(complaintDetails?.service?.auditDetails?.createdTime, typeLeaf?.slaHours)
+      : null;
+
   return (
     <div
       className="v2-scope"
@@ -570,11 +582,21 @@ const ComplaintDetailsPage = () => {
                 {Object.keys(complaintDetails.details)
                   .filter((flag) => !(classification && isFlatTypeRow(flag)))
                   .map((flag) => (
-                    <DetailRow
-                      key={flag}
-                      label={t(flag)}
-                      value={renderRowValue(complaintDetails.details[flag], t)}
-                    />
+                    <React.Fragment key={flag}>
+                      <DetailRow label={t(flag)} value={renderRowValue(complaintDetails.details[flag], t)} />
+                      {flag === "CS_COMPLAINT_DETAILS_APPLICATION_STATUS" && departmentCode ? (
+                        <DetailRow
+                          label={tr("CS_COMPLAINT_DETAILS_RESPONSIBLE_DEPARTMENT", "Responsible Department")}
+                          value={departmentLabel(t, departmentCode)}
+                        />
+                      ) : null}
+                      {flag === "CS_COMPLAINT_DETAILS_APPLICATION_STATUS" && expectedBy ? (
+                        <DetailRow
+                          label={tr("CS_COMPLAINT_DETAILS_EXPECTED_RESOLUTION_DATE", "Expected Resolution Date")}
+                          value={Digit.DateUtils.ConvertTimestampToDate(expectedBy)}
+                        />
+                      ) : null}
+                    </React.Fragment>
                   ))}
                 {/* One labelled row per administrative level (County / Sub-
                     County / Ward), root → leaf — employee-page parity
