@@ -25,8 +25,6 @@ export const DEFAULT_LANDING_SECTIONS: LandingSectionConfig[] = [
   row("navigation", "navigation", 10),
   row("hero", "hero", 30),
   row("types", "types", 40),
-  // "Let's Make NAIROBI Work" band closing the top of the page.
-  row("tagline", "tagline", 45),
   row("steps", "steps", 50),
   row("channels", "channels", 60),
   // Emergency helpline numbers (Nairobi UAT) — right after the ways to reach us.

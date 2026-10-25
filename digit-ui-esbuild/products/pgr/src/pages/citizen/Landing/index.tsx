@@ -23,7 +23,6 @@ import { LandingRoutes } from "./routes";
 import { LandingTokens } from "./tokens";
 import { NewsItem } from "./content";
 import { LanguageOption } from "./components/UtilityBar";
-import type { LandingArtwork } from "./config/sectionRegistry";
 import { useLandingCopy } from "./useLandingCopy";
 import { useLandingConfig } from "./config/useLandingConfig";
 import { useLandingMessages } from "./config/useLandingMessages";
@@ -51,10 +50,6 @@ export interface PGRLandingPageProps {
   emblemUrl?: string;
   /** Wide logo lockup shown beside the identity text in the footer. */
   footerLogoUrl?: string;
-  /** Top-of-page artwork: hero edge pattern, category photos, slogan band. */
-  artwork?: LandingArtwork;
-  /** Phone photo card of the areas section (defaults to the hero photo). */
-  areasPhotoUrl?: string;
   /** Language switcher options. */
   languages?: LanguageOption[];
   /** Custom language-change handler (defaults to i18n.changeLanguage). */
@@ -153,5 +148,4 @@ export { DEFAULT_NEWS, LANDING_COPY } from "./content";
 export type { NewsItem, LandingCopyKey } from "./content";
 export { DEFAULT_LANGUAGES } from "./components/UtilityBar";
 export type { LanguageOption } from "./components/UtilityBar";
-export type { LandingArtwork } from "./config/sectionRegistry";
 export { useLandingCopy, LANDING_KEY_PREFIX } from "./useLandingCopy";

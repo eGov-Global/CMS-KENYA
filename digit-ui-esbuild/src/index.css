@@ -135,11 +135,6 @@
 .pgrl-font {
   font-family: "Roboto Condensed", "pgrl-condensed-fallback", "pgrl-condensed-fallback-arial", Roboto, system-ui, -apple-system, sans-serif;
 }
-/* The top of the page (strip, masthead, hero, service categories, slogan band)
-   is set in Inter, per the county's Bonga Nai design; the app already loads it. */
-.pgrl-top-font {
-  font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-}
 
 /* ── PGR public landing page: motion ─────────────────────────────────────── */
 /* Sections carry `pgrl-reveal`; useReveal() marks each `pgrl-reveal-item`

@@ -193,7 +193,6 @@ export function LandingFooter({ routes, logoUrl, emblemUrl, section }: LandingFo
                     )}
                     <a href={`tel:${line.tel}`} className={cn(FOOT_LINK, "whitespace-nowrap")}>
                       {line.display}
-                      {line.note && ` (${line.note})`}
                     </a>
                   </React.Fragment>
                 ))}

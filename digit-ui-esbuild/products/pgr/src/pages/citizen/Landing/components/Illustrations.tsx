@@ -13,6 +13,25 @@ const TG = "hsl(var(--pgrl-tint-gold))";
 const LEAF = "hsl(var(--pgrl-type-petition))";
 const W = "hsl(var(--pgrl-on-primary))";
 
+/** Curved bottom edge of the hero: page-coloured sweep with a gold line that
+ *  draws itself in on load (CSS `pgrl-draw`, off under reduced motion). */
+export function HeroWave({ className }: { className?: string }) {
+  return (
+    <svg aria-hidden viewBox="0 0 1440 96" preserveAspectRatio="none" className={cn("block", className)}>
+      <path d="M0 96 V60 C300 104 820 -14 1440 44 V96 Z" fill="hsl(var(--pgrl-page))" />
+      <path
+        d="M0 56 C300 100 820 -18 1440 40"
+        fill="none"
+        stroke={A}
+        strokeWidth="3"
+        strokeLinecap="round"
+        pathLength="1000"
+        className="pgrl-draw"
+      />
+    </svg>
+  );
+}
+
 export interface SkylineProps {
   className?: string;
   /** "blob" = full-colour towers on a soft green shape (section decor);
@@ -124,29 +143,6 @@ export function PhotoOrb({ src, tagline, tone = "green", className }: PhotoOrbPr
         </div>
       )}
     </div>
-  );
-}
-
-/** Road in perspective, in lucide's stroke style (lucide has no road glyph):
- *  the Mobility & Works category icon. */
-export function RoadIcon({ className }: { className?: string }) {
-  return (
-    <svg aria-hidden viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-      <path d="M9 3 4 21" />
-      <path d="m15 3 5 18" />
-      <path d="M12 4v2.5M12 10v3M12 16.5V20" />
-    </svg>
-  );
-}
-
-/** The three gold rays over the "i" of "Nai" in the hero wordmark. */
-export function NaiSparkle({ className }: { className?: string }) {
-  return (
-    <svg aria-hidden viewBox="0 0 48 40" fill="none" stroke="hsl(var(--pgrl-top-gold))" strokeWidth="6" strokeLinecap="round" className={className}>
-      <path d="M8 22 17 27" />
-      <path d="M24 4 25 16" />
-      <path d="M42 9 33 19" />
-    </svg>
   );
 }
 
