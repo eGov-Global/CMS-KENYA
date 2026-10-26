@@ -639,22 +639,15 @@ server {
     # built CSS. Driven by host_vars `theme_primary_color` (dark) +
     # `theme_primary_color_2` (light); omit either to keep DIGIT defaults.
     #
-    # Link previews (WhatsApp, Slack, e-mail) read only this static HTML and
-    # never run the SPA, so the runtime title/favicon (CORE_APP_TITLE,
-    # StateInfo.logoUrl) never reach them — they showed "DIGIT". Optional
-    # host_vars `site_title`, `site_description` and `site_share_image` (a path
-    # on this site or a full URL, 1200x630) give them the deployment's own name
-    # and picture; omit `site_title` to keep the neutral index.html head.
-    # `$` is dropped: nginx would read it as a variable in sub_filter text.
-{% set share_image = site_share_image | default('') %}
-{% if share_image and not share_image.startswith('http') %}
-{% set share_image = 'https://' ~ domain ~ share_image %}
-{% endif %}
-{% set link_preview %}{% if site_title | default('') %}<meta property="og:type" content="website"><meta property="og:site_name" content="{{ site_title | replace('$', '') | e }}"><meta property="og:title" content="{{ site_title | replace('$', '') | e }}">{% if site_description | default('') %}<meta name="description" content="{{ site_description | replace('$', '') | e }}"><meta property="og:description" content="{{ site_description | replace('$', '') | e }}">{% endif %}{% if share_image %}<meta property="og:image" content="{{ share_image | replace('$', '') | e }}"><meta name="twitter:card" content="summary_large_image">{% endif %}{% endif %}{% endset %}
+    # Link previews: optional host_vars `site_title`, `site_description` and
+    # `site_share_image` set the page title and Open Graph tags that WhatsApp,
+    # Slack and e-mail show for a shared link (see link-preview-head.j2, also
+    # used by the container-mode digit-ui.conf). Without them: unchanged.
+{% set link_preview %}{% include 'link-preview-head.j2' %}{% endset %}
 {% if site_title | default('') %}
     sub_filter '<title>DIGIT</title>' '<title>{{ site_title | replace('$', '') | e }}</title>';
 {% endif %}
-    sub_filter '</head>' '{% if theme_primary_color is defined %}<style>:root{--color-primary-1:{{ theme_primary_color }};{% if theme_primary_color_2 is defined %}--color-primary-2:{{ theme_primary_color_2 }};--color-button-primary-bg-default:{{ theme_primary_color_2 }};--color-button-primary-border:{{ theme_primary_color_2 }};--color-button-secondary-text:{{ theme_primary_color_2 }};--color-button-secondary-border:{{ theme_primary_color_2 }};--color-input-border-focus:{{ theme_primary_color_2 }};--color-link-default:{{ theme_primary_color_2 }};{% endif %}--color-button-primary-bg-hover:{{ theme_primary_color }};--color-link-hover:{{ theme_primary_color }};{% if theme_sidebar_selected_bg is defined %}--color-sidebar-selected-bg:{{ theme_sidebar_selected_bg }};{% endif %}}</style>{% endif %}{{ link_preview }}<script src="/digit-ui/globalConfigs.js"></script></head>';
+    sub_filter '</head>' '{% if theme_primary_color is defined %}<style>:root{--color-primary-1:{{ theme_primary_color }};{% if theme_primary_color_2 is defined %}--color-primary-2:{{ theme_primary_color_2 }};--color-button-primary-bg-default:{{ theme_primary_color_2 }};--color-button-primary-border:{{ theme_primary_color_2 }};--color-button-secondary-text:{{ theme_primary_color_2 }};--color-button-secondary-border:{{ theme_primary_color_2 }};--color-input-border-focus:{{ theme_primary_color_2 }};--color-link-default:{{ theme_primary_color_2 }};{% endif %}--color-button-primary-bg-hover:{{ theme_primary_color }};--color-link-hover:{{ theme_primary_color }};{% if theme_sidebar_selected_bg is defined %}--color-sidebar-selected-bg:{{ theme_sidebar_selected_bg }};{% endif %}}</style>{% endif %}{{ link_preview | trim }}<script src="/digit-ui/globalConfigs.js"></script></head>';
   }
   # Per-tenant boot config — overrides whatever was baked into the bundle.
   location = /digit-ui/globalConfigs.js {

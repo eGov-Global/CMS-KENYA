@@ -1,0 +1,20 @@
+{#- Open Graph / description tags for shared links to the UI. WhatsApp, Slack
+    and e-mail read only the static page head and never run the SPA, so the
+    runtime title/favicon (CORE_APP_TITLE, StateInfo.logoUrl) never reach them.
+    One line, spliced into the `sub_filter '</head>'` text of BOTH digit-ui
+    modes: the host site config (static) and the container's digit-ui.conf
+    (container). Empty unless host_vars `site_title` is set. Values are
+    HTML-escaped and lose `$`, which nginx would expand as a variable. -#}
+{%- set share_image = site_share_image | default('') -%}
+{%- if share_image and not share_image.startswith('http') -%}
+{%- set share_image = 'https://' ~ domain ~ share_image -%}
+{%- endif -%}
+{%- if site_title | default('') -%}
+<meta property="og:type" content="website"><meta property="og:site_name" content="{{ site_title | replace('$', '') | e }}"><meta property="og:title" content="{{ site_title | replace('$', '') | e }}">
+{%- if site_description | default('') -%}
+<meta name="description" content="{{ site_description | replace('$', '') | e }}"><meta property="og:description" content="{{ site_description | replace('$', '') | e }}">
+{%- endif -%}
+{%- if share_image -%}
+<meta property="og:image" content="{{ share_image | replace('$', '') | e }}"><meta name="twitter:card" content="summary_large_image">
+{%- endif -%}
+{%- endif -%}

@@ -1484,7 +1484,10 @@
               index index.html index.htm;
               try_files $uri $uri/ /digit-ui/index.html;
 
-              sub_filter '</head>' '<script src="/digit-ui/globalConfigs.js"></script></head>';
+              # Link previews (host_vars site_title / site_description /
+              # site_share_image) — same tags as the static-mode host config.
+              {{ ("sub_filter '<title>DIGIT</title>' '<title>" ~ (site_title | replace('$', '') | e) ~ "</title>';") if site_title | default('') else '' }}
+              sub_filter '</head>' '{{ lookup('template', 'link-preview-head.j2') | trim }}<script src="/digit-ui/globalConfigs.js"></script></head>';
 
               # gzip SCOPED to this static-UI location only (not server-level),
               # so the Kong proxy in `location /` below is byte-identical to
