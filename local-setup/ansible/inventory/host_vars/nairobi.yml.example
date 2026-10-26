@@ -86,6 +86,11 @@ core_postal_configs:
 # /var/www/brand/ when nginx_features.brand_assets: true (off below).
 footer_logo_url: ""
 footer_bw_logo_url: ""
+# Link previews for shared links (see _example.yml): the county's name and the
+# Bonga Nai hero artwork instead of "DIGIT" and the DIGIT logo.
+site_title: "Bonga Nai | Nairobi City County"
+site_description: "Report a problem with a Nairobi City County service, get a case number within seconds and follow it until it is resolved."
+site_share_image: "/digit-ui/brand/bonga-share.jpg"
 
 # ── feature toggles (exact Nairobi City County shape, except MCP — see header) ──
 asset_s3_bucket: pg-egov-assets

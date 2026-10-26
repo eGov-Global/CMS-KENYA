@@ -737,6 +737,16 @@ grafana_anonymous_enabled: false
 # theme_primary_color_2: "#137a63"      # light accent — buttons, focus rings
 # theme_sidebar_selected_bg: "#e6f2ef"  # selected nav row background
 
+# ── Link previews ──
+# What WhatsApp, Slack and e-mail show for a shared link to the UI. They read
+# only the static page head, never the running app, so without these the card
+# says "DIGIT". Injected by nginx sub_filter; omit `site_title` to keep the
+# neutral head. `site_share_image` is a path on this site (made absolute with
+# `domain`) or a full URL; 1200x630, under ~300 KB.
+# site_title: "Bonga Nai | Nairobi City County"
+# site_description: "Report a problem with a county service and follow it until it is resolved."
+# site_share_image: "/digit-ui/brand/bonga-share.jpg"
+
 # ── Accounts the deploy uses for its own API calls ──
 # Change bootstrap_user/bootstrap_password to move OFF the well-known
 # defaults. They are used for every bootstrap call the playbook makes AND
