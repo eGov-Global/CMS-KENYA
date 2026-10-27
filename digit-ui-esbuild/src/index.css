@@ -331,7 +331,8 @@
 .citizen body:has(.citizen-form-wrapper) .navbar,
 .citizen body:has(.citizen-form-wrapper) .topbar,
 body:has(.citizen-form-wrapper) .navbar,
-body:has(.citizen-form-wrapper) .topbar {
+body:has(.citizen-form-wrapper) .topbar,
+body:has(.citizen-form-wrapper) .digit-topbar {
   background-color: rgba(11, 45, 30, 0.55) !important;
   background-color: color-mix(in srgb, var(--color-header-bg, #0b2d1e) 62%, transparent) !important;
 }

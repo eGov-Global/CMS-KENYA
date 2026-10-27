@@ -5,6 +5,7 @@ import DashboardHeader from "./DashboardHeader";
 import DashboardFilters from "./DashboardFilters";
 import Sidebar from "./Sidebar";
 import DashboardFooter from "./DashboardFooter";
+import PublicTopBar from "./PublicTopBar";
 
 const DashboardLayout = ({
   children,
@@ -36,13 +37,18 @@ const DashboardLayout = ({
   readOnly = false,
   publicMode = false,
 }) => {
+  // Only the explicitly-configured overrides become inline variables. Writing
+  // the others as empty strings would still count as declarations and would
+  // shadow the stylesheet's tenant-theme fallback chain.
   const brandStyle = useMemo(() => {
     const theme = getBrandTheme();
-    return {
-      "--brand-teal": theme.teal,
-      "--brand-dark": theme.dark,
-      "--brand-slate": theme.slate,
-    };
+    return Object.fromEntries(
+      Object.entries({
+        "--brand-teal": theme.teal,
+        "--brand-dark": theme.dark,
+        "--brand-slate": theme.slate,
+      }).filter(([, value]) => Boolean(value))
+    );
   }, []);
 
   return (
@@ -60,6 +66,7 @@ const DashboardLayout = ({
           main column like every other mode (#1797). */}
       {!embedded && !publicMode && <Sidebar onSignOut={onSignOut} />}
       <div className="tw-flex tw-min-w-0 tw-flex-1 tw-flex-col tw-overflow-hidden">
+        {publicMode && <PublicTopBar />}
         {/* Embedded only: standalone renders its own dark Sidebar, which
             already carries the navigation this trail substitutes for. */}
         {embedded && <DashboardBreadcrumb />}
@@ -84,7 +91,8 @@ const DashboardLayout = ({
           scope={scope}
           readOnly={readOnly}
           publicMode={publicMode}
-          showLanguageMenu={!embedded}
+          // The public page's top bar carries the switcher instead.
+          showLanguageMenu={!embedded && !publicMode}
         />
         <main
           className={

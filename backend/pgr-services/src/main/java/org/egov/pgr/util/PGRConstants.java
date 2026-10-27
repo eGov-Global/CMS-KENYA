@@ -193,6 +193,11 @@ public class PGRConstants {
     public static final String MDMS_UI_CONSTANTS_MASTER = "UIConstants";
     public static final String MDMS_UI_CONSTANTS_JSONPATH = "$.MdmsRes.RAINMAKER-PGR.UIConstants";
     public static final String MDMS_ACTION_WINDOWS_KEYWORD = "actionWindows";
+    // --- Reopen window (RAINMAKER-PGR.UIConstants.REOPENSLA) ---
+    // REOPENSLA is the millisecond window after resolution/rejection during which a complaint
+    // may still be reopened. It is the single source of truth for both the citizen and the
+    // employee/CSR path — the UI gates on it and validateReOpen() enforces it server-side.
+    public static final String MDMS_REOPEN_SLA_KEYWORD = "REOPENSLA";
 
     // --- Config-driven notifications (RAINMAKER-PGR.NotificationRouting / NotificationTemplate) ---
     public static final String MDMS_NOTIFICATION_ROUTING_MASTER = "NotificationRouting";
@@ -234,11 +239,9 @@ public class PGRConstants {
 
     public static final String ESCALATE = "ESCALATE";
 
-    // MDMS master under module RAINMAKER-PGR (mdms-v2 schema code
-    // RAINMAKER-PGR.MDMS_ESCALATION_CONFIG, seeded by default-data-handler):
-    // the per-tenant visibility feature flag + resolver config. The JSONPATH
-    // constant is where that master lands in an MdmsRes payload.
-    
+    // One escalation policy master under RAINMAKER-PGR (MDMS v2 schema code
+    // RAINMAKER-PGR.EscalationConfig). The JSONPath constant is where that
+    // master lands in an MdmsRes payload.
     public static final String MDMS_ESCALATION_CONFIG = "EscalationConfig";
 
     // MDMS master under module RAINMAKER-PGR (mdms-v2 schema code

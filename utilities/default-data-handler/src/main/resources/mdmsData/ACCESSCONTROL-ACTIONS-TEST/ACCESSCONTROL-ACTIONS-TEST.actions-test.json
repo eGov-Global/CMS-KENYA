@@ -2783,27 +2783,51 @@
     "method": "POST"
   },
   {
-    "id": 2650,
+    "id": 30,
+    "name": "MDMS",
     "url": "/mdms-v2/v2/_create/common-masters.AnalyticsProvider",
-    "code": "null",
-    "name": "analyticsProviderCreate",
-    "path": "",
-    "enabled": true,
-    "displayName": "analytics provider create",
+    "displayName": "Create Analytics Provider",
     "orderNumber": 1,
-    "serviceCode": "mdms url",
-    "parentModule": ""
+    "parentModule": "",
+    "enabled": true,
+    "serviceCode": "MDMS",
+    "code": "null",
+    "path": ""
   },
   {
-    "id": 2651,
+    "id": 31,
+    "name": "MDMS",
     "url": "/mdms-v2/v2/_update/common-masters.AnalyticsProvider",
-    "code": "null",
-    "name": "analyticsProviderUpdate",
-    "path": "",
-    "enabled": true,
-    "displayName": "analytics provider update",
+    "displayName": "Update Analytics Provider",
     "orderNumber": 1,
-    "serviceCode": "mdms url",
-    "parentModule": ""
+    "parentModule": "",
+    "enabled": true,
+    "serviceCode": "MDMS",
+    "code": "null",
+    "path": ""
+  },
+  {
+    "id": 2649,
+    "name": "MDMS",
+    "url": "/mdms-v2/v2/_create/RAINMAKER-PGR.EscalationConfig",
+    "displayName": "create RAINMAKER-PGR.EscalationConfig",
+    "orderNumber": 1,
+    "parentModule": "",
+    "enabled": true,
+    "serviceCode": "MDMS",
+    "code": "null",
+    "path": ""
+  },
+  {
+    "id": 2650,
+    "name": "MDMS",
+    "url": "/mdms-v2/v2/_update/RAINMAKER-PGR.EscalationConfig",
+    "displayName": "update RAINMAKER-PGR.EscalationConfig",
+    "orderNumber": 1,
+    "parentModule": "",
+    "enabled": true,
+    "serviceCode": "MDMS",
+    "code": "null",
+    "path": ""
   }
 ]

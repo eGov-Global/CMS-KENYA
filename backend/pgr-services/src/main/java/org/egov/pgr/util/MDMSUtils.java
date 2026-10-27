@@ -18,9 +18,10 @@ import org.springframework.stereotype.Component;
 
 import org.egov.tracer.model.CustomException;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
 
 import static org.egov.pgr.util.PGRConstants.MDMS_MODULE_NAME;
@@ -44,6 +45,7 @@ import static org.egov.pgr.util.PGRConstants.MDMS_NOTIFICATION_PROVIDER_TEMPLATE
 import static org.egov.pgr.util.PGRConstants.MDMS_UI_CONSTANTS_MASTER;
 import static org.egov.pgr.util.PGRConstants.MDMS_UI_CONSTANTS_JSONPATH;
 import static org.egov.pgr.util.PGRConstants.MDMS_ACTION_WINDOWS_KEYWORD;
+import static org.egov.pgr.util.PGRConstants.MDMS_REOPEN_SLA_KEYWORD;
 
 @Slf4j
 @Component
@@ -113,6 +115,26 @@ public class MDMSUtils {
     // the CODE on lookup failure — so a transient MDMS hiccup during department-scoped search
     // would otherwise silently drop dual-read matches for every request until the NEXT successful
     // fetch, not just the one that hit the hiccup.
+    // Reopen window (RAINMAKER-PGR.UIConstants.REOPENSLA) in millis, cached with the same short
+    // TTL as the notification masters so a configurator edit takes effect without a pgr-services
+    // restart. Keyed by the REQUESTING tenant, not the state tenant: UIConstants may be overridden
+    // city-side (data/<state>/<city>/RAINMAKER-PGR/UIConstants.json), so a state-keyed entry would
+    // serve one city's window to its siblings. Only successful lookups are cached — a transient
+    // MDMS miss is retried on the next reopen attempt rather than pinning the property fallback.
+    private final Map<String, TimedReopenWindow> reopenWindowCache = new ConcurrentHashMap<>();
+
+    private static final class TimedReopenWindow {
+        final Long millis;
+        final long fetchedAt;
+        TimedReopenWindow(Long millis) { this.millis = millis; this.fetchedAt = System.currentTimeMillis(); }
+        boolean fresh(long ttlMs) { return System.currentTimeMillis() - fetchedAt < ttlMs; }
+    }
+
+    // Department code->name map, cached per tenant with the same TTL/never-cache-empty/
+    // serve-stale-on-failure semantics as the notification masters above — a transient MDMS
+    // hiccup during department-scoped search (see getDepartmentCodeToNameMap) would otherwise
+    // silently drop dual-read matches for every request until the NEXT successful fetch, not just
+    // the one that hit the hiccup.
     private static final class TimedMap {
         final Map<String, String> value;
         final long fetchedAt;
@@ -124,19 +146,26 @@ public class MDMSUtils {
     /**
      * serviceCode -> SLA in millis, derived from MDMS RAINMAKER-PGR.ComplaintHierarchy leaf rows'
      * slaHours (interior nodes carry no slaHours and are skipped by the Number guard below).
-     * Cached per state-level tenant with the same short TTL as the notification masters, so a
-     * configurator slaHours edit takes effect without a pgr-services restart. Returns an empty
-     * map (never null) on MDMS failure, so callers can fall back to the uniform business-level SLA.
+     * Resolved as a complete city map followed by a complete state map, and cached by requesting
+     * tenant with the same short TTL as the notification masters. Returns an empty map (never
+     * null) on MDMS failure, so callers can use an explicit non-type-specific fallback.
      */
     public Map<String, Long> getServiceCodeToSlaMillis(String tenantId) {
+        if (tenantId == null || tenantId.isBlank()) {
+            return Collections.emptyMap();
+        }
+        String requestedTenant = tenantId.trim();
         String stateTenant = multiStateInstanceUtil.getStateLevelTenant(tenantId);
         long ttl = config.getNotificationMdmsCacheTtlMs();
-        TimedSlaMap cached = serviceCodeToSlaCache.get(stateTenant);
+        TimedSlaMap cached = serviceCodeToSlaCache.get(requestedTenant);
         if (cached != null && cached.fresh(ttl)) return cached.value;
 
-        Map<String, Long> fetched = fetchServiceCodeToSlaMillis(stateTenant);
+        Map<String, Long> fetched = fetchServiceCodeToSlaMillis(requestedTenant);
+        if (fetched.isEmpty() && !requestedTenant.equals(stateTenant)) {
+            fetched = fetchServiceCodeToSlaMillis(stateTenant);
+        }
         if (!fetched.isEmpty()) {
-            serviceCodeToSlaCache.put(stateTenant, new TimedSlaMap(fetched));
+            serviceCodeToSlaCache.put(requestedTenant, new TimedSlaMap(fetched));
             return fetched;
         }
         // Empty fetch = transient MDMS miss OR a hierarchy that genuinely carries no slaHours.
@@ -146,21 +175,33 @@ public class MDMSUtils {
         return cached != null ? cached.value : fetched;
     }
 
-    private Map<String, Long> fetchServiceCodeToSlaMillis(String stateTenant) {
+    private Map<String, Long> fetchServiceCodeToSlaMillis(String tenantId) {
         Map<String, Long> map = new LinkedHashMap<>();
         try {
-            MdmsCriteriaReq req = getMDMSRequest(new RequestInfo(), stateTenant);
+            MdmsCriteriaReq req = getMDMSRequest(new RequestInfo(), tenantId);
             Object result = serviceRequestRepository.fetchResult(getMdmsSearchUrl(), req);
             List<Map<String, Object>> defs = JsonPath.read(result, MDMS_DATA_JSONPATH);
             for (Map<String, Object> def : defs) {
                 Object code = def.get(MDMS_DATA_SERVICE_CODE_KEYWORD);
                 Object sla = def.get(MDMS_DATA_SLA_KEYWORD);
-                if (code != null && sla instanceof Number)
-                    map.put(code.toString(), TimeUnit.HOURS.toMillis(((Number) sla).longValue()));
+                if (code != null && sla instanceof Number number) {
+                    try {
+                        BigDecimal milliseconds = new BigDecimal(number.toString())
+                                .multiply(BigDecimal.valueOf(3_600_000L));
+                        if (milliseconds.signum() >= 0) {
+                            map.put(code.toString(), milliseconds
+                                    .setScale(0, RoundingMode.CEILING)
+                                    .longValueExact());
+                        }
+                    } catch (NumberFormatException | ArithmeticException invalidSla) {
+                        log.error("Ignoring invalid slaHours {} for serviceCode {} in tenant {}",
+                                sla, code, tenantId);
+                    }
+                }
             }
         } catch (Exception e) {
             log.error("Failed to load serviceCode->SLA map for tenant {}; inbox SLA sort will fall back "
-                    + "to the business-level SLA", stateTenant, e);
+                    + "to the configured absolute escalation threshold", tenantId, e);
         }
         return map;
     }
@@ -506,6 +547,84 @@ public class MDMSUtils {
             return rows.get(0);
         } catch (Exception e) {
             log.error("Failed to read RAINMAKER-PGR.UIConstants for tenant {}", tenantId, e);
+            return null;
+        }
+    }
+
+    /**
+     * The reopen window in millis for the tenant, read from MDMS
+     * RAINMAKER-PGR.UIConstants.REOPENSLA — the same knob the citizen UI gates on, so the
+     * employee/CSR path and the server-side check enforce exactly one configured window
+     * (issue #925). Cached per REQUESTING tenant (not the state tenant) with a short TTL,
+     * because UIConstants may be overridden city-side.
+     *
+     * Falls back to the pgr.complain.idle.time property only when MDMS has no usable
+     * REOPENSLA (unseeded tenant or MDMS outage) — reopen must not silently become
+     * unbounded, nor start rejecting everything, just because MDMS blipped.
+     */
+    public long getReopenWindowMillis(RequestInfo requestInfo, String tenantId) {
+        String stateTenant = multiStateInstanceUtil.getStateLevelTenant(tenantId);
+        long ttl = config.getNotificationMdmsCacheTtlMs();
+
+        TimedReopenWindow cached = reopenWindowCache.get(tenantId);
+        if (cached != null && cached.fresh(ttl)) return cached.millis;
+
+        Long fetched = fetchReopenWindowMillis(requestInfo, tenantId, stateTenant);
+        if (fetched != null) {
+            reopenWindowCache.put(tenantId, new TimedReopenWindow(fetched));
+            return fetched;
+        }
+        // Serve a stale-but-known value over the property fallback: it is the configured
+        // intent, whereas the property is only a deployment-level backstop.
+        if (cached != null) return cached.millis;
+
+        log.warn("REOPENSLA not available from MDMS for tenant {} — falling back to "
+                + "pgr.complain.idle.time ({} ms)", tenantId, config.getComplainMaxIdleTime());
+        return config.getComplainMaxIdleTime();
+    }
+
+    /**
+     * Reads REOPENSLA for the tenant, trying the city tenant first then the state tenant
+     * (mirrors mDMSCall's fallback). Returns null when MDMS yields no usable positive value,
+     * so the caller can apply its own fallback.
+     */
+    private Long fetchReopenWindowMillis(RequestInfo requestInfo, String tenantId, String stateTenant) {
+        Long value = doFetchReopenWindowMillis(requestInfo, tenantId);
+        if (value == null && !stateTenant.equals(tenantId))
+            value = doFetchReopenWindowMillis(requestInfo, stateTenant);
+        return value;
+    }
+
+    private Long doFetchReopenWindowMillis(RequestInfo requestInfo, String tenantId) {
+        try {
+            List<MasterDetail> masterDetails = new ArrayList<>();
+            masterDetails.add(MasterDetail.builder().name(MDMS_UI_CONSTANTS_MASTER).build());
+            ModuleDetail moduleDetail = ModuleDetail.builder().masterDetails(masterDetails)
+                    .moduleName(MDMS_MODULE_NAME).build();
+            MdmsCriteriaReq req = MdmsCriteriaReq.builder()
+                    .requestInfo(requestInfo != null ? requestInfo : new RequestInfo())
+                    .mdmsCriteria(MdmsCriteria.builder()
+                            .moduleDetails(Collections.singletonList(moduleDetail))
+                            .tenantId(tenantId).build())
+                    .build();
+
+            Object result = serviceRequestRepository.fetchResult(getMdmsSearchUrl(), req);
+            List<Map<String, Object>> rows = JsonPath.read(result, MDMS_UI_CONSTANTS_JSONPATH);
+            if (rows == null || rows.isEmpty()) return null;
+
+            Object raw = rows.get(0).get(MDMS_REOPEN_SLA_KEYWORD);
+            if (!(raw instanceof Number)) return null;
+
+            long millis = ((Number) raw).longValue();
+            // A non-positive window would silently block every reopen; treat it as misconfigured
+            // and let the caller fall back rather than bricking the action.
+            if (millis <= 0) {
+                log.warn("Ignoring non-positive REOPENSLA ({}) for tenant {}", millis, tenantId);
+                return null;
+            }
+            return millis;
+        } catch (Exception e) {
+            log.error("Failed to read REOPENSLA from RAINMAKER-PGR.UIConstants for tenant {}", tenantId, e);
             return null;
         }
     }
