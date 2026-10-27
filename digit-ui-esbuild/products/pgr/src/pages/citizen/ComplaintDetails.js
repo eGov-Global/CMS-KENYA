@@ -12,12 +12,12 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { useQueryClient } from "react-query";
 import { statusLabel } from "../../utils/statusLabel";
-import { useParams, Link } from "react-router-dom";
+import { useHistory, useParams, Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 
 import { Loader } from "@egovernments/digit-ui-react-components";
 import { Toast } from "@egovernments/digit-ui-components";
-import { Card } from "@egovernments/digit-ui-components-v2";
+import { Button, Card } from "@egovernments/digit-ui-components-v2";
 import { AlertCircle } from "lucide-react";
 
 import { LOCALIZATION_KEY } from "../../constants/Localization";
@@ -352,6 +352,7 @@ function WorkflowComponent({ complaintDetails, id }) {
 
 const ComplaintDetailsPage = () => {
   const { t } = useTranslation();
+  const history = useHistory();
   const { id } = useParams();
   const tenantId =
     Digit.SessionStorage.get("CITIZEN.COMMON.HOME.CITY")?.code ||
@@ -460,6 +461,12 @@ const ComplaintDetailsPage = () => {
       ? expectedResolutionTime(complaintDetails?.service?.auditDetails?.createdTime, typeLeaf?.slaHours)
       : null;
 
+  const pageTitle = tr(`${LOCALIZATION_KEY.CS_HEADER}_COMPLAINT_SUMMARY`, "Complaint Summary");
+  const home = `/${window?.contextPath}/citizen/all-services`;
+  // An in-app push, as My Complaints' "File a Complaint" does: the wizard
+  // restores its session draft only after a reload, so this opens a clean form.
+  const fileAnother = `/${window?.contextPath}/citizen/pgr/create-complaint`;
+
   return (
     <div
       className="v2-scope"
@@ -481,6 +488,23 @@ const ComplaintDetailsPage = () => {
           flexWrap: "wrap",
         }}
       >
+        <nav
+          className="cms-breadcrumb"
+          aria-label={tr("CS_COMMON_BREADCRUMB", "Breadcrumb")}
+          style={{
+            flexBasis: "100%",
+            // The cms-* tokens are scoped to a .cms-details page root, which
+            // this layout does not use (it would recolour and re-inset the
+            // whole page); bind the one the breadcrumb link reads.
+            "--cms-accent": "var(--color-button-secondary-text, var(--color-primary-2, #2563EB))",
+          }}
+        >
+          <Link to={home} data-analytics-event="pgr.complaint.details-home">
+            {tr("CS_COMMON_HOME", "Home")}
+          </Link>
+          <span aria-hidden="true">/</span>
+          <span aria-current="page">{pageTitle}</span>
+        </nav>
         <h1
           style={{
             fontSize: "1.5rem",
@@ -490,7 +514,7 @@ const ComplaintDetailsPage = () => {
             lineHeight: 1.25,
           }}
         >
-          {tr(`${LOCALIZATION_KEY.CS_HEADER}_COMPLAINT_SUMMARY`, "Complaint Summary")}
+          {pageTitle}
         </h1>
         {status ? <StatusPill status={status} t={t} /> : null}
         {!isLoading && complaintDetails?.service ? (
@@ -626,14 +650,6 @@ const ComplaintDetailsPage = () => {
                   );
                 })}
               </div>
-              {complaintDetails?.workflow?.verificationDocuments?.length > 0 ? (
-                <div style={{ marginTop: "12px" }}>
-                  <SectionTitle>{t("CS_COMMON_ATTACHMENTS")}</SectionTitle>
-                  <div style={{ marginTop: "12px" }}>
-                    <ComplaintPhotos serviceWrapper={complaintDetails} />
-                  </div>
-                </div>
-              ) : null}
             </Card>
 
             {(() => {
@@ -671,6 +687,13 @@ const ComplaintDetailsPage = () => {
               </Card>
             ) : null}
 
+            {complaintDetails?.workflow?.verificationDocuments?.length > 0 ? (
+              <Card style={{ padding: "20px 24px", display: "flex", flexDirection: "column", gap: "12px" }}>
+                <SectionTitle>{t("CS_COMMON_ATTACHMENTS")}</SectionTitle>
+                <ComplaintPhotos serviceWrapper={complaintDetails} />
+              </Card>
+            ) : null}
+
             <Card style={{ padding: "20px 24px", display: "flex", flexDirection: "column", gap: "12px" }}>
               <SectionTitle>
                 {tr(`${LOCALIZATION_KEY.CS_COMMON}_TIMELINE`, "Activity timeline")}
@@ -679,6 +702,12 @@ const ComplaintDetailsPage = () => {
                 <WorkflowComponent complaintDetails={complaintDetails} id={id} />
               ) : null}
             </Card>
+
+            <div className="cms-details-actions">
+              <Button onClick={() => history.push(fileAnother)} data-analytics-event="pgr.complaint.details-file-another">
+                {tr("CS_FILE_ANOTHER", "File another complaint")}
+              </Button>
+            </div>
           </div>
         )}
       </div>

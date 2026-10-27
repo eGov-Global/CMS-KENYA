@@ -4,9 +4,10 @@
 // This is a strangler-fig replacement for the FormExplorer.js + steps-config/*
 // + FormComposerV2 stack. The same 6-step shape is preserved so:
 //   - the data shape submitted to /pgr/v1/_create is byte-identical
-//   - the boundary, geolocation, and image-upload behaviour stays in the
-//     existing components (PGRBoundaryComponent, GeoLocations) + the V2
-//     PgrFileUpload, just rendered inside v2 chrome
+//   - the boundary and geolocation behaviour stays in the existing components
+//     (PGRBoundaryComponent, GeoLocations); attachments use the #2038
+//     PhotoPicker (camera/gallery sheet, in-browser downscaling), widened to
+//     the file types this tenant accepts
 //   - server-side, redux, and post-submit response page see no change
 //
 // What changes vs FormExplorer:
@@ -24,7 +25,9 @@ import { complaintLabel } from "../../../utils/complaintLabel";
 import { isVisibleOnEntrance } from "../../../utils/testingTenant";
 import { EV, trackE, failureName } from "../../../utils/analytics";
 import PGRDatePicker from "../../../components/PGRDatePicker";
-import PgrFileUpload from "../../../components/PgrFileUpload";
+import useVoiceInputEnabled from "../../../hooks/pgr/useVoiceInputEnabled";
+import { MicButton, VoiceSheet, speechToTextSupported } from "./VoiceInput";
+import { PhotoPicker, PickedPhoto, revokePreviews } from "./PhotoPicker";
 import { useDispatch } from "react-redux";
 import { useHistory, useLocation } from "react-router-dom";
 import { useQueryClient } from "react-query";
@@ -265,25 +268,45 @@ interface StepShellProps {
   children: React.ReactNode;
 }
 
-// Consolidated 3-step wizard (was 6 screens). Each step groups what used to be
+// Consolidated 4-step wizard (was 6 screens). Each step groups what used to be
 // separate screens so the citizen reaches Submit in far fewer taps:
 //   complaint — "what is it about?" (related-to dispatcher) + the complaint type
 //               + the optional free-text address (UAT ask: describe the spot
 //               while describing the issue)
 //   where     — map pin + ward (auto-cascaded from the pin) + landmark
-//   details   — description + dynamic category fields + photos + consents → submit
+//   details   — description (typed or spoken) + dynamic category fields + photos
+//   review    — everything entered, then the declarations + confidential opt-in → submit
 const STEPS = [
   { id: "complaint", title: "Complaint", sub: "Tell us about the issue" },
   { id: "where", title: "Location", sub: "Where did it happen?" },
   { id: "details", title: "Details", sub: "Additional information" },
+  { id: "review", title: "Review", sub: "Check and submit" },
 ] as const;
 
 // URL segment per step — every tab is a real, unique, deep-linkable route:
-//   /citizen/pgr/create-complaint/complaint-type | /location | /details
+//   /citizen/pgr/create-complaint/complaint-type | /location | /details | /review
 // The URL is the single source of truth for the current step: browser
 // back/forward move between steps, a mid-flow F5 reopens the same step, and
 // analytics sees ordinary route pageviews (no virtual-pageview special case).
-const STEP_SLUGS = ["complaint-type", "location", "details"] as const;
+const STEP_SLUGS = ["complaint-type", "location", "details", "review"] as const;
+
+// Why NEXT / SUBMIT is disabled, in the citizen's words — keyed by the
+// stepBlocker reason so the hint and the disabled state can never disagree.
+const BLOCKER_HINTS: Record<string, [string, string]> = {
+  AuthorityRequired: ["CS_HINT_AUTHORITY_REQUIRED", "Choose who the complaint is for to continue."],
+  ComplaintTypeRequired: ["CS_HINT_TYPE_REQUIRED", "Choose a complaint type to continue."],
+  SubTypeRequired: ["CS_HINT_SUBTYPE_REQUIRED", "Choose a complaint subtype to continue."],
+  EmailInvalid: ["CS_HINT_EMAIL_INVALID", "Enter a valid email address, or leave it blank."],
+  LocationRequired: ["CS_HINT_LOCATION_REQUIRED", "Choose the ward where it happened to continue."],
+  DescriptionRequired: ["CS_HINT_DESCRIPTION_REQUIRED", "Describe the complaint in at least 20 characters to continue."],
+  DynamicFieldRequired: ["CS_HINT_DYNAMIC_REQUIRED", "Fill in the required details to continue."],
+  PhotosPending: ["CS_HINT_PHOTOS_PENDING", "Wait for the attachments to finish uploading, or remove any that failed."],
+  ConsentRequired: ["CS_HINT_CONSENT_REQUIRED", "Tick the declarations to submit."],
+};
+
+// The description's ceiling — the textarea's maxLength and the cap on spoken
+// text appended to it (CCSD-1956 keeps 20–1000).
+const DESCRIPTION_MAX = 1000;
 
 // Session-draft key for the whole wizard. All 3 steps live on ONE route with
 // plain component state, so a refresh (or leaving and re-entering the route)
@@ -567,6 +590,14 @@ interface StepBodyProps {
   // small spinner in-place instead of blanking the whole screen).
   catalogueLoading?: boolean;
   dispatcherLoading?: boolean;
+  // Voice input (browser speech-to-text, per-tenant VOICE_INPUT flag) and the
+  // attachments picked so far — owned by the orchestrator so they survive
+  // moving between steps.
+  canSpeak?: boolean;
+  onVoice?: () => void;
+  photos?: PickedPhoto[];
+  setPhotos?: (updater: (prev: PickedPhoto[]) => PickedPhoto[]) => void;
+  photoFiles?: Map<string, File>;
 }
 
 /**
@@ -739,6 +770,8 @@ function ComplaintHierarchyPicker({
                   ? tr(t, "CS_COMPLAINT_PICK_PARENT_FIRST", "Select the level above first")
                   : tr(t, "CS_COMPLAINT_PICK_ONE", "Select…")
               }
+              searchable
+              searchPlaceholder={tr(t, "CS_COMMON_SEARCH", "Search")}
               options={opts}
             />
           </Field>
@@ -868,6 +901,9 @@ function Step0Type({ data, patch, serviceDefs, hierarchyDef, nodes, t }: StepBod
               patch({ SelectComplaintType: picked, SelectSubComplaintType: null });
             }}
             placeholder={tr(t, "CS_COMPLAINT_PICK_TYPE", "Select a complaint type")}
+            // Type-to-filter: a type is typed for, not scanned for (#2038).
+            searchable
+            searchPlaceholder={tr(t, "CS_COMMON_SEARCH", "Search")}
             options={types.map((tp) => ({
               value: tp.menuPath,
               label: tp.menuPathName ?? tp.menuPath,
@@ -888,6 +924,8 @@ function Step0Type({ data, patch, serviceDefs, hierarchyDef, nodes, t }: StepBod
                 patch({ SelectSubComplaintType: picked });
               }}
               placeholder={tr(t, "CS_COMPLAINT_PICK_SUBTYPE", "Select a subtype")}
+              searchable
+              searchPlaceholder={tr(t, "CS_COMMON_SEARCH", "Search")}
               options={subTypes.map((s) => ({
                 value: s.serviceCode,
                 label: complaintLabel(t, s.serviceCode, s.name),
@@ -1066,14 +1104,10 @@ function Step2Location({ data, patch, resolvedTenant, t }: StepBodyProps) {
   );
 }
 
-function Step3Description({ data, patch, templateFields, t }: StepBodyProps) {
+function Step3Description({ data, patch, templateFields, t, canSpeak, onVoice }: StepBodyProps) {
   const fields = templateFields || [];
   const dyn = data.dynamicFields || {};
-  const extended = !!data.caseRelatedTo; // dispatcher flow active
   const setDyn = (key: string, value: unknown) => patch({ dynamicFields: { ...dyn, [key]: value } });
-  const consents = data.consents || [];
-  const toggleConsent = (code: string, on: boolean) =>
-    patch({ consents: on ? [...consents, code] : consents.filter((c) => c !== code) });
 
   return (
     <StepShell
@@ -1090,14 +1124,19 @@ function Step3Description({ data, patch, templateFields, t }: StepBodyProps) {
           required
           htmlFor="complaint-description"
         >
-          <Textarea
-            id="complaint-description"
-            data-matomo-mask
-            placeholder={tr(t, "CS_DESCRIBE_THE_ISSUE_PLACEHOLDER", "Describe the issue in your own words…")}
-            maxLength={1000}
-            value={data.description ?? ""}
-            onChange={(e) => patch({ description: e.target.value })}
-          />
+          {/* The mic sits inside the textarea's corner (the #2038 placement);
+              the extra right padding keeps typed text from running under it. */}
+          <div className={canSpeak ? "pgr-desc-with-mic" : undefined} style={{ position: "relative" }}>
+            <Textarea
+              id="complaint-description"
+              data-matomo-mask
+              placeholder={tr(t, "CS_DESCRIBE_THE_ISSUE_PLACEHOLDER", "Describe the issue in your own words…")}
+              maxLength={DESCRIPTION_MAX}
+              value={data.description ?? ""}
+              onChange={(e) => patch({ description: e.target.value })}
+            />
+            {canSpeak && onVoice ? <MicButton label={tr(t, "CS_VOICE_RECORD", "Record your complaint")} onClick={onVoice} /> : null}
+          </div>
           {/* CCSD-1956: 20–1000 chars + must be real words (not digits-only).
               Counter turns into the relevant hint until valid. */}
           <div className="mt-1 text-xs text-muted-foreground text-right">
@@ -1177,59 +1216,69 @@ function Step3Description({ data, patch, templateFields, t }: StepBodyProps) {
         })}
 
         {/* Complainant name + address + email moved to step 1 (ReporterDetailsCard, prefilled). */}
-
-        <div className="space-y-2">
-            {/* Consents are EXPLICIT at create (CCSD-1979 revisited: show at
-                create; hidden only on the details/view screens — CCSD-1988).
-                CCSD-2072: group the mandatory consents under an OBRIGATÓRIO
-                header and the confidential opt-in under OPCIONAL.
-                The truthfulness declaration and Terms & Conditions are mandatory
-                for every tenant and the confidential opt-in is always offered;
-                the dispatcher-flow declarations show only when a category
-                template is in play. */}
-            <div className="text-xs font-semibold uppercase tracking-wide" style={{ color: PRIMARY }}>
-              {tr(t, "PGR_CONSENT_SECTION_MANDATORY", "Mandatory")}
-              <span className="ml-0.5" style={{ color: "var(--color-error, #d4351c)" }} aria-hidden>
-                *
-              </span>
-            </div>
-            {[TRUTHFULNESS_CONSENT, ...(extended ? REQUIRED_CONSENTS : []), TERMS_CONSENT].map((c) => (
-              <label key={c.code} className="flex items-start gap-2 text-sm">
-                <input
-                  type="checkbox"
-                  style={CHECKBOX_STYLE}
-                  checked={consents.includes(c.code)}
-                  onChange={(e) => toggleConsent(c.code, e.target.checked)}
-                />
-                <span>
-                  {tr(t, c.labelKey, c.label)}
-                  {/* Same required marker the design-system Label renders. */}
-                  <span className="ml-0.5 text-destructive" style={{ color: "var(--color-error, #d4351c)" }} aria-hidden>
-                    *
-                  </span>
-                </span>
-              </label>
-            ))}
-            <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground pt-3 mt-1 border-t border-border">
-              {tr(t, "PGR_CONSENT_SECTION_OPTIONAL", "Optional")}
-            </div>
-            <label className="flex items-start gap-2 text-sm">
-              <input
-                type="checkbox"
-                style={CHECKBOX_STYLE}
-                checked={!!data.isConfidential}
-                onChange={(e) => patch({ isConfidential: e.target.checked })}
-              />
-              <span>
-                {tr(t, "PGR_EXT_IS_CONFIDENTIAL_LABEL", "Keep details confidential.")}{" "}
-                <span className="text-muted-foreground">
-                  {tr(t, "PGR_EXT_IS_CONFIDENTIAL_HINT", "Your name and phone number are not shown to the county officers handling this complaint.")}
-                </span>
-              </span>
-            </label>
-        </div>
       </div>
     </StepShell>
+  );
+}
+
+// Declarations + the confidential opt-in. Shown on the Review step, next to
+// Submit, since the citizen confirms what they are about to send.
+function ConsentsBlock({ data, patch, t }: StepBodyProps) {
+  const extended = !!data.caseRelatedTo; // dispatcher flow active
+  const consents = data.consents || [];
+  const toggleConsent = (code: string, on: boolean) =>
+    patch({ consents: on ? [...consents, code] : consents.filter((c) => c !== code) });
+  return (
+    <div className="space-y-2">
+      {/* Consents are EXPLICIT at create (CCSD-1979 revisited: show at
+          create; hidden only on the details/view screens — CCSD-1988).
+          CCSD-2072: group the mandatory consents under an OBRIGATÓRIO
+          header and the confidential opt-in under OPCIONAL.
+          The truthfulness declaration and Terms & Conditions are mandatory
+          for every tenant and the confidential opt-in is always offered;
+          the dispatcher-flow declarations show only when a category
+          template is in play. */}
+      <div className="text-xs font-semibold uppercase tracking-wide" style={{ color: PRIMARY }}>
+        {tr(t, "PGR_CONSENT_SECTION_MANDATORY", "Mandatory")}
+        <span className="ml-0.5" style={{ color: "var(--color-error, #d4351c)" }} aria-hidden>
+          *
+        </span>
+      </div>
+      {[TRUTHFULNESS_CONSENT, ...(extended ? REQUIRED_CONSENTS : []), TERMS_CONSENT].map((c) => (
+        <label key={c.code} className="flex items-start gap-2 text-sm">
+          <input
+            type="checkbox"
+            style={CHECKBOX_STYLE}
+            checked={consents.includes(c.code)}
+            onChange={(e) => toggleConsent(c.code, e.target.checked)}
+          />
+          <span>
+            {tr(t, c.labelKey, c.label)}
+            {/* Same required marker the design-system Label renders. */}
+            <span className="ml-0.5 text-destructive" style={{ color: "var(--color-error, #d4351c)" }} aria-hidden>
+              *
+            </span>
+          </span>
+        </label>
+      ))}
+      <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground pt-3 mt-1 border-t border-border">
+        {tr(t, "PGR_CONSENT_SECTION_OPTIONAL", "Optional")}
+      </div>
+      <label className="flex items-start gap-2 text-sm">
+        <input
+          type="checkbox"
+          style={CHECKBOX_STYLE}
+          checked={!!data.isConfidential}
+          onChange={(e) => patch({ isConfidential: e.target.checked })}
+        />
+        <span>
+          {tr(t, "PGR_EXT_IS_CONFIDENTIAL_LABEL", "Keep details confidential.")}{" "}
+          <span className="text-muted-foreground">
+            {tr(t, "PGR_EXT_IS_CONFIDENTIAL_HINT", "Your name and phone number are not shown to the county officers handling this complaint.")}
+          </span>
+        </span>
+      </label>
+    </div>
   );
 }
 
@@ -1240,7 +1289,7 @@ function Step3Description({ data, patch, templateFields, t }: StepBodyProps) {
 // and emits the SAME output the submit contract expects — a string[] of
 // fileStoreIds via onSelect → patch({ComplaintImagesPoint}) — which
 // mapFormDataToRequest turns into workflow.verificationDocuments. No new deps.
-function Step4Images({ data, patch, t }: StepBodyProps) {
+function Step4Images({ data, photos, setPhotos, photoFiles, t }: StepBodyProps) {
   // Same tenant the complaint submits under (resolved from the authority pick),
   // falling back to the citizen's home city / current ULB — so uploads land on
   // the tenant whose filestore the submit will reference.
@@ -1250,22 +1299,101 @@ function Step4Images({ data, patch, t }: StepBodyProps) {
     Digit.ULBService.getCurrentTenantId();
   return (
     <StepShell title={tr(t, "CS_ADDCOMPLAINT_UPLOAD_PHOTO", "Upload photos / attachments") + " " + tr(t, "CS_OPTIONAL_SUFFIX", "(Optional)")}>
-      <PgrFileUpload
-        t={t}
+      <PhotoPicker
+        photos={photos || []}
+        onChange={(updater) => setPhotos?.(updater)}
         tenantId={tenantId}
-        fieldKey="ComplaintImagesPoint"
-        value={Array.isArray(data.ComplaintImagesPoint) ? data.ComplaintImagesPoint : []}
-        onSelect={(_key: string, value: string[]) => {
-          patch({ ComplaintImagesPoint: value });
-        }}
+        tr={(key, fallback) => tr(t, key, fallback)}
+        fileStore={photoFiles}
       />
     </StepShell>
   );
 }
 
+// ── Review (step 4): what the citizen entered, read back before they commit,
+// then the declarations and the confidential opt-in beside Submit.
+function reviewCategory(data: FormData, t: (k: string) => string): string {
+  const type = data.SelectComplaintType;
+  const sub = data.SelectSubComplaintType;
+  const typeLabel = type ? type.menuPathName || complaintLabel(t, type.serviceCode, type.name) : "";
+  const subLabel = sub && sub.serviceCode !== type?.serviceCode ? complaintLabel(t, sub.serviceCode, sub.name) : "";
+  return [typeLabel, subLabel].filter(Boolean).join(" › ");
+}
+
+// Leaf first ("Embomos, Konoin"): the levels ride on the boundary the cascade
+// emits; a boundary without them (an older draft) falls back to its own name.
+function reviewLocation(data: FormData, t: (k: string) => string): string {
+  const boundary: any = data.SelectedBoundary;
+  const name = (node: any) => (node?.code && t(node.code) !== node.code ? t(node.code) : node?.name || node?.code || "");
+  const levels: any[] = Array.isArray(boundary?.levels) ? [...boundary.levels].reverse() : [];
+  const names = levels.map(name).filter(Boolean);
+  return names.length ? names.join(", ") : name(boundary);
+}
+
+function attachmentsLabel(count: number, t: (k: string) => string): string {
+  if (!count) return tr(t, "CS_FILE_NONE", "None");
+  return count === 1
+    ? tr(t, "CS_FILE_ONE_PHOTO", "1 attachment")
+    : tr(t, "CS_FILE_N_PHOTOS", "{count} attachments").replace("{count}", String(count));
+}
+
+function ReviewRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div
+      style={{
+        display: "grid",
+        gridTemplateColumns: "minmax(7rem, 11rem) 1fr",
+        gap: "0.75rem",
+        padding: "0.6rem 0",
+        borderBottom: "1px solid var(--color-border, #e5e7eb)",
+        fontSize: "0.875rem",
+      }}
+    >
+      <div style={{ color: "var(--color-text-secondary, #6B7280)", fontWeight: 500 }}>{label}</div>
+      <div data-matomo-mask style={{ color: "var(--color-text-heading, #363636)", overflowWrap: "anywhere", whiteSpace: "pre-wrap" }}>
+        {value || "—"}
+      </div>
+    </div>
+  );
+}
+
+function StepReview(props: StepBodyProps) {
+  const { data, t } = props;
+  const rows: Array<[string, string]> = [
+    // The authority's name may itself be a localisation key (as the step shows it).
+    ...(data.caseRelatedToName
+      ? [[tr(t, "CS_COMPLAINT_RELATED_TO_FIELD", "Complaint related to"), tr(t, data.caseRelatedToName, data.caseRelatedToName)] as [string, string]]
+      : []),
+    [t("CS_COMPLAINT_DETAILS_COMPLAINT_TYPE"), reviewCategory(data, t)],
+    [tr(t, "CS_FILE_STEP_LOCATION", "Location"), reviewLocation(data, t)],
+    ...(data.street ? [[tr(t, "ES_CREATECOMPLAINT_ADDRESS", "Address"), data.street] as [string, string]] : []),
+    ...(data.landmark ? [[tr(t, "CS_ADDCOMPLAINT_LANDMARK", "Landmark"), data.landmark] as [string, string]] : []),
+    [t("CS_COMPLAINT_DETAILS_ADDITIONAL_DETAILS_DESCRIPTION"), data.description || ""],
+    [tr(t, "CS_FILE_ATTACHMENTS", "Attachments"), attachmentsLabel((data.ComplaintImagesPoint || []).length, t)],
+  ];
+  return (
+    <div className="space-y-5">
+      <HintBanner
+        title={tr(props.t, "CS_HINT_REVIEW_TITLE", "Check your complaint")}
+        subtitle={tr(props.t, "CS_HINT_REVIEW_SUB", "Make sure everything is correct. Use Back to change anything.")}
+      />
+      <StepShell title={tr(t, "CS_FILE_REVIEW", "Review your complaint")}>
+        <div>
+          {rows.map(([label, value]) => (
+            <ReviewRow key={label} label={label} value={value} />
+          ))}
+        </div>
+      </StepShell>
+      <StepShell title={tr(t, "PGR_CONSENT_TITLE", "Declarations")}>
+        <ConsentsBlock {...props} />
+      </StepShell>
+    </div>
+  );
+}
+
 // ---------------------------------------------------------------------------
-// Composite steps (3-step wizard) — each groups the sub-bodies above so the
-// citizen completes the flow in 3 screens instead of 6. The sub-bodies keep
+// Composite steps (4-step wizard) — each groups the sub-bodies above so the
+// citizen completes the flow in 4 screens instead of 6. The sub-bodies keep
 // their own logic untouched; we just render them together.
 // ---------------------------------------------------------------------------
 
@@ -1282,7 +1410,44 @@ const WIZARD_CSS = `
 @media (max-width: 640px) {
   .pgr-step-sub { display:none; }
   .pgr-step-title { font-size:0.8rem; }
+  /* Four steps don't fit a phone with every title: only the current step is named. */
+  .pgr-step-title--idle { display:none; }
 }
+/* Room for the mic in the textarea's corner (the design-system Textarea
+   doesn't take an inline padding). */
+.pgr-desc-with-mic textarea { padding-right: 4.5rem !important; min-height: 8rem; }
+/* .body-container clips sideways overflow with overflow-x:hidden, which also
+   makes it a scroll container — the sticky footer would pin to a box that
+   never scrolls. clip clips the same without becoming a scroller (#2038). */
+.body-container:has(.pgr-create-v2) { overflow-x: clip; }
+/* The #2038 pieces used here (mic button, voice and photo sheets, photo list)
+   read the cms-* tokens, which the vendor stylesheet only defines under its
+   own page roots (.cms-file etc. — those also re-inset and recolour a whole
+   page). Bind the same values on this wizard instead. */
+.pgr-create-v2 {
+  --cms-accent: var(--color-button-secondary-text, var(--color-primary-2, #2563EB));
+  --cms-fill: var(--color-button-primary-bg-default, var(--color-primary-2, #2563EB));
+  --cms-on-fill: var(--color-button-primary-text, #FFFFFF);
+  --cms-accent-soft: #F3F6FC;
+  --cms-accent-line: #C7D2E4;
+  --cms-ink: #111827;
+  --cms-ink-2: #374151;
+  --cms-muted: #6B7280;
+  --cms-line: #E5E7EB;
+  --cms-panel: #F9FAFB;
+  --cms-panel-line: #E9ECF2;
+  --cms-danger: #DC2626;
+  --cms-warn: #B45309;
+  --cms-ok: #137A3E;
+}
+.pgr-wizard-footer {
+  position: sticky;
+  bottom: 0;
+  z-index: 5;
+  flex-wrap: wrap;
+  background: var(--color-background-primary, #ffffff) !important;
+}
+.pgr-wizard-hint { flex-basis: 100%; }
 /* Date input: a global (health-css) rule makes the calendar indicator
    position:absolute, so without position:relative on the input it escapes to
    the nearest positioned ancestor (it was showing up near the stepper). Anchor
@@ -1573,7 +1738,7 @@ function StepWhere(props: StepBodyProps) {
   );
 }
 
-// Step 3 — "Details": description + dynamic category fields + consents + photos.
+// Step 3 — "Details": description (typed or spoken) + dynamic category fields + photos.
 function StepDetails(props: StepBodyProps) {
   return (
     <div className="space-y-5">
@@ -1631,7 +1796,7 @@ function WizardProgress({
               </span>
               <div style={{ minWidth: 0 }}>
                 <div
-                  className="pgr-step-title text-sm"
+                  className={"pgr-step-title text-sm" + (active ? "" : " pgr-step-title--idle")}
                   style={{
                     overflow: "hidden",
                     textOverflow: "ellipsis",
@@ -1738,6 +1903,7 @@ const CreatePGRFlowV2: React.FC = () => {
   }, [urlIndex, goToStep]);
   const [formData, setFormData] = React.useState<FormData>(() => savedDraftRef.current.formData || {});
   const [submitting, setSubmitting] = React.useState(false);
+  const submitLockRef = React.useRef(false);
   const [error, setError] = React.useState<string | null>(null);
 
   // Mirror every change into the session draft. Deleted on successful create;
@@ -1933,7 +2099,70 @@ const CreatePGRFlowV2: React.FC = () => {
     if (error) setError(null);
   }, [error]);
 
-  // Consolidated 3-step wizard. The related-to dispatcher is no longer its own
+  // Attachments as the picker shows them. The form only keeps the uploaded
+  // fileStoreIds (ComplaintImagesPoint — what the draft stores and the payload
+  // sends); a draft restored after a reload shows them as named attachments
+  // without a thumbnail, since the files themselves are gone.
+  const [photos, setPhotos] = React.useState<PickedPhoto[]>(() =>
+    ((savedDraftRef.current.formData?.ComplaintImagesPoint as string[] | undefined) || []).map((fileStoreId, i) => ({
+      id: `restored-${fileStoreId}`,
+      name: tr(t, "CS_PHOTO_RESTORED", "Attachment {n}").replace("{n}", String(i + 1)),
+      size: 0,
+      previewUrl: "",
+      kind: "file" as const,
+      status: "done" as const,
+      fileStoreId,
+    }))
+  );
+  // The picked files and their previews outlive the Details step, which
+  // unmounts on every step change: Retry still has the file after a Back
+  // from Review, and a thumbnail is released only here, when the wizard goes.
+  const photoFilesRef = React.useRef(new Map<string, File>());
+  const photosRef = React.useRef(photos);
+  photosRef.current = photos;
+  React.useEffect(() => () => revokePreviews(photosRef.current), []);
+  React.useEffect(() => {
+    const ids = photos.filter((p) => p.status === "done" && p.fileStoreId).map((p) => p.fileStoreId as string);
+    setFormData((prev) => {
+      const current = Array.isArray(prev.ComplaintImagesPoint) ? prev.ComplaintImagesPoint : [];
+      const same = current.length === ids.length && current.every((id, i) => id === ids[i]);
+      return same ? prev : { ...prev, ComplaintImagesPoint: ids };
+    });
+  }, [photos]);
+  // An authority switch changes the tenant uploads go to (filestore ids are
+  // tenant-scoped): drop every attachment, including one still uploading —
+  // its completion then finds no row to update and is discarded.
+  const uploadTenantRef = React.useRef(formData.resolvedTenantId);
+  React.useEffect(() => {
+    if (uploadTenantRef.current === formData.resolvedTenantId) return;
+    uploadTenantRef.current = formData.resolvedTenantId;
+    setPhotos((prev) => {
+      revokePreviews(prev);
+      photoFilesRef.current.clear();
+      return [];
+    });
+  }, [formData.resolvedTenantId]);
+
+  // Voice input: the browser's speech-to-text, offered when it exists and the
+  // tenant hasn't switched VOICE_INPUT off. Spoken text is appended to what
+  // was typed, within the same ceiling.
+  const [voiceOpen, setVoiceOpen] = React.useState(false);
+  const browserCanSpeak = React.useMemo(() => speechToTextSupported(), []);
+  const voiceEnabled = useVoiceInputEnabled(resolvedTenant);
+  const canSpeak = browserCanSpeak && voiceEnabled;
+  const appendSpoken = React.useCallback(
+    (text: string) => {
+      const spoken = String(text || "").trim();
+      if (!spoken) return;
+      setFormData((prev) => {
+        const typed = (prev.description || "").trim();
+        return { ...prev, description: (typed ? `${typed} ${spoken}` : spoken).slice(0, DESCRIPTION_MAX) };
+      });
+    },
+    []
+  );
+
+  // Consolidated 4-step wizard. The related-to dispatcher is no longer its own
   // step — it folds into step "complaint" (rendered above the type picker), so
   // the step list is constant regardless of whether the dispatcher is seeded.
   const steps = STEPS;
@@ -1949,7 +2178,8 @@ const CreatePGRFlowV2: React.FC = () => {
   // One source of truth: NEXT's disabled state and the Error/ValidationError
   // analytics reason both derive from it, so they can never disagree.
   const stepBlocker = React.useMemo<string | null>(() => {
-    switch (curId) {
+    const blockerFor = (id: string): string | null => {
+    switch (id) {
       case "complaint": {
         // Dispatcher (if seeded) must be answered, then a leaf complaint type.
         if (hasDispatcher && !formData.caseRelatedTo) return "AuthorityRequired";
@@ -1979,6 +2209,12 @@ const CreatePGRFlowV2: React.FC = () => {
         for (const f of templateFields) {
           if (f.mandatory && !String((formData.dynamicFields || {})[f.fieldKey] ?? "").trim()) return "DynamicFieldRequired";
         }
+        // An attachment still uploading would be missing from the payload; a
+        // failed one needs a retry or a remove, not a silent drop.
+        if (photos.some((p) => p.status !== "done")) return "PhotosPending";
+        return null;
+      }
+      case "review": {
         // The dispatcher-flow consents are required once an authority/template is in play
         // (checkboxes restored at create — CCSD-1979 revisited).
         if (formData.caseRelatedTo && REQUIRED_CONSENTS.some((c) => !(formData.consents || []).includes(c.code))) {
@@ -1991,10 +2227,16 @@ const CreatePGRFlowV2: React.FC = () => {
       default:
         return null;
     }
+    };
+    // Review re-checks every earlier step: browser Back lets the citizen edit
+    // a step and come Forward without passing through its NEXT again.
+    return curId === "review"
+      ? blockerFor("complaint") || blockerFor("where") || blockerFor("details") || blockerFor("review")
+      : blockerFor(curId || "");
     // templateFields/hasDispatcher must be deps: with a restored draft the memo
     // otherwise never recomputes when the catalogue/templates settle AFTER
     // mount, letting a last-step draft submit with empty mandatory dynamic fields.
-  }, [stepIndex, formData, serviceDefs, templateFields, hasDispatcher]);
+  }, [stepIndex, formData, serviceDefs, templateFields, hasDispatcher, photos]);
   const stepIsValid = !stepBlocker;
 
   // ── Behaviour analytics (catalogue events; the steps themselves are real
@@ -2062,10 +2304,25 @@ const CreatePGRFlowV2: React.FC = () => {
         history.push(`/${window?.contextPath || "digit-ui"}/citizen/login?from=${from}`);
         return;
       }
+      // A second tap while the create is in flight (a slow network, a double
+      // tap) must not file the complaint twice: the state flag only disables
+      // the button after a render, so the guard is a ref.
+      if (submitLockRef.current) return;
+      submitLockRef.current = true;
       setSubmitting(true);
       trackE(EV.COMPLAINT_SUBMITTED);
       const user = Digit.UserService.getUser();
-      const payload = mapFormDataToRequest(formData, resolvedTenant, user?.info ?? user, evidenceDocType);
+      let payload: ReturnType<typeof mapFormDataToRequest>;
+      try {
+        payload = mapFormDataToRequest(formData, resolvedTenant, user?.info ?? user, evidenceDocType);
+      } catch (e: any) {
+        // A payload that can't be built must not leave the button spinning.
+        submitLockRef.current = false;
+        setSubmitting(false);
+        setError(t("CORE_COMMON_REQUIRED_ERRMSG"));
+        trackE(EV.COMPLAINT_FAILED, failureName(e));
+        return;
+      }
 
       // Best-effort auto-assignment: department code comes from the picked
       // ComplaintHierarchy leaf, jurisdiction from the submitted locality.
@@ -2108,6 +2365,7 @@ const CreatePGRFlowV2: React.FC = () => {
         onError: (err: any) => {
           dispatch({ type: "CREATE_COMPLAINT", payload: { responseInfo: { status: "failed" } } });
           trackE(EV.COMPLAINT_FAILED, failureName(err));
+          submitLockRef.current = false;
           setSubmitting(false);
           history.push(`/${window?.contextPath || "digit-ui"}/citizen/pgr/response`);
         },
@@ -2120,8 +2378,16 @@ const CreatePGRFlowV2: React.FC = () => {
           // segmentable by type without any identifying data.
           trackE(EV.COMPLAINT_CREATED, formData.SelectComplaintType?.name || formData.SelectComplaintType?.serviceCode || "");
           await client.refetchQueries(["complaintsList"]);
+          submitLockRef.current = false;
           setSubmitting(false);
-          history.push(`/${window?.contextPath || "digit-ui"}/citizen/pgr/response`);
+          // What the confirmation page reads back (route state, never the URL).
+          const filedSummary = {
+            category: reviewCategory(formData, t),
+            location: reviewLocation(formData, t),
+            filedAt: Date.now(),
+            photos: (formData.ComplaintImagesPoint || []).length,
+          };
+          history.push(`/${window?.contextPath || "digit-ui"}/citizen/pgr/response`, { filedSummary });
         },
       });
       return;
@@ -2156,10 +2422,16 @@ const CreatePGRFlowV2: React.FC = () => {
     resolvedTenant,
     catalogueLoading: isMDMSLoading || catalogueStale,
     dispatcherLoading: isDispatcherLoading,
+    canSpeak,
+    onVoice: () => setVoiceOpen(true),
+    photos,
+    setPhotos,
+    photoFiles: photoFilesRef.current,
   };
+  const blockerHint = stepBlocker && BLOCKER_HINTS[stepBlocker] ? tr(t, BLOCKER_HINTS[stepBlocker][0], BLOCKER_HINTS[stepBlocker][1]) : null;
 
   return (
-    <ScreenContainer>
+    <ScreenContainer className="pgr-create-v2">
       <div style={{ padding: "0.75rem 1.25rem 0 1.25rem", flexShrink: 0 }}>
         <ScreenHeader
           title={tr(t, "CS_COMMON_FILE_A_COMPLAINT", "File a Complaint")}
@@ -2193,6 +2465,7 @@ const CreatePGRFlowV2: React.FC = () => {
         {curId === "complaint" && <StepComplaint {...stepProps} />}
         {curId === "where" && <StepWhere {...stepProps} />}
         {curId === "details" && <StepDetails {...stepProps} />}
+        {curId === "review" && <StepReview {...stepProps} />}
         {error ? (
           <div
             role="alert"
@@ -2202,7 +2475,14 @@ const CreatePGRFlowV2: React.FC = () => {
           </div>
         ) : null}
       </div>
-      <FormFooter>
+      {/* Sticky, so Back and Next stay on screen on a phone while a long step
+          scrolls (the #2038 footer). The hint says what still blocks NEXT. */}
+      <FormFooter className="pgr-wizard-footer">
+        {blockerHint ? (
+          <p className="pgr-wizard-hint text-xs" aria-live="polite" style={{ margin: 0, color: "var(--color-warning, #9E5F00)" }}>
+            {blockerHint}
+          </p>
+        ) : null}
         <Button variant="outline" onClick={handleBack} type="button">
           {stepIndex === 0 ? (
             tr(t, "CS_COMMON_CANCEL", "Cancel")
@@ -2245,6 +2525,13 @@ const CreatePGRFlowV2: React.FC = () => {
           </Button>
         </span>
       </FormFooter>
+      <VoiceSheet
+        open={voiceOpen}
+        onClose={() => setVoiceOpen(false)}
+        onUse={appendSpoken}
+        tr={(key, fallback) => tr(t, key, fallback)}
+        locale={Digit.StoreData?.getCurrentLanguage?.()}
+      />
     </ScreenContainer>
   );
 };
