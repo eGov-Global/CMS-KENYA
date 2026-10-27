@@ -3,7 +3,7 @@
 //
 // Strangler-fig replacement for the legacy ComplaintsList.js (which
 // rendered react-components Cards + the per-item <Complaint /> tile).
-// Data layer is preserved — same `useComplaintsListByMobile` hook, same
+// Data layer is preserved — the same complaints-list query, same
 // ServiceWrapper shape, same revalidate-on-mount cadence.
 //
 // What changes:
@@ -16,18 +16,46 @@
 //     rejected) on the right. Click anywhere to drill in.
 //   - Empty + error states use the same Card surface and theme colors
 //     instead of the legacy raw <Card> with text.
+//   - Upstream's My Complaints search, count and paging (v2.12.1) on these
+//     cards: a search over the complaint number, type, category and
+//     description, newest first, ten to a page.
 
-import React, { useEffect } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { complaintLabel } from "../../utils/complaintLabel";
 import { statusLabel } from "../../utils/statusLabel";
 import { isVisibleOnEntrance } from "../../utils/testingTenant";
+import { pageOf, searchComplaints } from "../../utils/citizenComplaints";
+import { EV, trackE } from "../../utils/analytics";
 import { useTranslation } from "react-i18next";
 import { useHistory, useRouteMatch } from "react-router-dom";
 
 import { Loader } from "@egovernments/digit-ui-react-components";
-import { Button, Card } from "@egovernments/digit-ui-components-v2";
-import { ChevronRight, FilePlus2, Inbox } from "lucide-react";
+import { Button, Card, Input } from "@egovernments/digit-ui-components-v2";
+import { ChevronLeft, ChevronRight, FilePlus2, Inbox, Search } from "lucide-react";
 import { LOCALE, LOCALIZATION_KEY } from "../../constants/Localization";
+
+const PAGE_SIZE = 10;
+// pgr-services' largest page (pgr.search.max.limit). Without a limit the search
+// returns its default 100, and the search and pages here only see what it returns.
+const FETCH_LIMIT = 200;
+// The search and page, kept for the tab so Back from a complaint returns to
+// the same view rather than the first page. Only Back, Forward and a reload
+// restore it: opening My Complaints afresh starts clean. Upstream's key.
+const VIEW_KEY = "pgr.citizen.my-complaints.view";
+const FRESH_VIEW = { query: "", page: 1 };
+
+// The saved view names its citizen: a session expiry clears only the auth keys
+// from sessionStorage, so the next person to sign in on this tab would
+// otherwise be shown the previous one's search.
+function readView(owner) {
+  try {
+    const saved = JSON.parse(window.sessionStorage.getItem(VIEW_KEY) || "null");
+    if (!saved || saved.owner !== owner) return FRESH_VIEW;
+    return { query: typeof saved.query === "string" ? saved.query : "", page: Number(saved.page) || 1 };
+  } catch (e) {
+    return FRESH_VIEW;
+  }
+}
 
 // Terminal states across standard PGR + the mz.igsae CMS workflow (CANCELLED/CLOSEDAFTER*
 // are CMS terminals). Keyed by status name — see ComplaintDetails.js for the rationale.
@@ -100,39 +128,79 @@ function StatusPill({ status, t }) {
   );
 }
 
-function ComplaintRow({ data, onClick, t, typeName }) {
-  const { serviceRequestId, applicationStatus, auditDetails } = data;
-  // The list aggregates complaints across authority tenants (mz.ige/mz.igsae/…)
-  // while the list-level serviceDefs are fetched at the CITIZEN's tenant — so
-  // foreign complaints missed the map and rendered the raw serviceCode. Fetch
-  // the hierarchy at THIS complaint's tenant (same read-at-complaint-tenant fix
-  // as the details page; react-query dedupes rows of the same tenant into one
-  // request, cached indefinitely). NOTE the useCustomMDMS v2 quirk: the tenant
-  // must ride inside the 5th (mdmsv2) arg — the positional one is ignored.
-  const { data: ownRows } = Digit.Hooks.useCustomMDMS(
-    data.tenantId,
+// The list aggregates complaints across authority tenants (mz.ige/mz.igsae/…)
+// while the list-level serviceDefs are fetched at the CITIZEN's tenant — so
+// foreign complaints missed the map and rendered the raw serviceCode. Fetch
+// the hierarchy at each complaint's OWN tenant (same read-at-complaint-tenant
+// fix as the details page), once per tenant. It is read here rather than in
+// the row because the search has to match those names on every page, and only
+// the shown page's rows render. NOTE the useCustomMDMS v2 quirk: the tenant
+// must ride inside the 5th (mdmsv2) arg — the positional one is ignored.
+function TenantHierarchy({ tenantId, onLoad }) {
+  const { data } = Digit.Hooks.useCustomMDMS(
+    tenantId,
     "RAINMAKER-PGR",
     [{ name: "ComplaintHierarchy" }],
     {
       cacheTime: Infinity,
-      enabled: !!data.tenantId,
+      enabled: !!tenantId,
       select: (raw) => raw?.["RAINMAKER-PGR"]?.ComplaintHierarchy || [],
     },
-    { schemaCode: "PGR_COMPLAINT_HIERARCHY_DETAILS", tenantId: data.tenantId }
+    { schemaCode: "PGR_COMPLAINT_HIERARCHY_DETAILS", tenantId }
   );
-  const own = React.useMemo(() => {
-    const rows = Array.isArray(ownRows) ? ownRows : [];
-    const self = rows.find((n) => n?.code === data.serviceCode);
-    return self ? { code: self.code, name: self.name } : null;
-  }, [ownRows, data.serviceCode]);
-  // Card title = the LEAF complaint type (what the citizen actually filed —
-  // "Operating without a licence"), not a hierarchy ancestor: on a personal
-  // list the specific type is how people recognize their complaint, while the
-  // 1st level ("Business") would render near-identical cards. Key-based
-  // localization (COMPLAINT_HIERARCHY.<code>) with the node name as fallback;
-  // OTHERS when nothing resolves.
-  const title =
-    complaintLabel(t, own?.code || data.serviceCode, own?.name || typeName) || t("CS_COMPLAINT_TYPE_OTHERS");
+  useEffect(() => {
+    if (Array.isArray(data)) onLoad(tenantId, data);
+  }, [data, tenantId, onLoad]);
+  return null;
+}
+
+/**
+ * The citizen's complaints as the cards show them and the search matches them,
+ * so a complaint is found by the words on its card.
+ *
+ * Entrance scoping for the testing tenant comes first, so the search, the
+ * count and the pages all agree: the citizen "my complaints" search runs at
+ * the STATE tenant, which spans every child tenant — so a tester who used a
+ * personal mobile on the testing entrance would otherwise see TST- rows mixed
+ * into their real list here. The prod entrance drops testing-tenant rows; the
+ * testing entrance lists ONLY them. Which tenants are "testing" comes from the
+ * isTestingTenant flag (config fallback) — see utils/testingTenant.
+ * Deployments without a testing setup are untouched.
+ *
+ * Card title = the LEAF complaint type (what the citizen actually filed —
+ * "Operating without a licence"), not a hierarchy ancestor: on a personal
+ * list the specific type is how people recognize their complaint, while the
+ * 1st level ("Business") would render near-identical cards. Key-based
+ * localization (COMPLAINT_HIERARCHY.<code>) with the node name as fallback —
+ * the complaint's own tenant's node, else the citizen tenant's serviceDefs,
+ * else the cached code→name map; OTHERS when nothing resolves. The leaf's
+ * parent is the category, which the search matches but the card doesn't show.
+ */
+export function complaintRows(wrappers, { t, nodesByTenant = {}, defsByCode = {}, namesByCode = {} } = {}) {
+  return (Array.isArray(wrappers) ? wrappers : [])
+    .map((wrapper) => wrapper?.service)
+    .filter((service) => service && isVisibleOnEntrance(service.tenantId))
+    .map((service) => {
+      const nodes = nodesByTenant[service.tenantId] || [];
+      const own = nodes.find((n) => n?.code === service.serviceCode);
+      const def = defsByCode[service.serviceCode];
+      const parentCode = own ? own.parentCode : def?.menuPath;
+      const parentName = own ? nodes.find((n) => n?.code === own.parentCode)?.name : def?.menuPathName;
+      return {
+        id: service.serviceRequestId,
+        concern:
+          complaintLabel(t, service.serviceCode, own?.name || def?.name || namesByCode[service.serviceCode]) ||
+          t("CS_COMPLAINT_TYPE_OTHERS"),
+        category: parentCode ? complaintLabel(t, parentCode, parentName) : "",
+        description: service.description || "",
+        createdTime: service.auditDetails?.createdTime || 0,
+        service,
+      };
+    });
+}
+
+function ComplaintRow({ data, onClick, t, title }) {
+  const { serviceRequestId, applicationStatus, auditDetails } = data;
   const dateStr = auditDetails?.createdTime
     ? Digit.DateUtils.ConvertTimestampToDate(auditDetails.createdTime)
     : "";
@@ -140,6 +208,7 @@ function ComplaintRow({ data, onClick, t, typeName }) {
     <Card
       role="button"
       tabIndex={0}
+      data-analytics-event="pgr.my-complaints.open"
       onClick={onClick}
       onKeyDown={(e) => {
         if (e.key === "Enter" || e.key === " ") {
@@ -269,27 +338,54 @@ export const ComplaintsList = () => {
   const { t } = useTranslation();
   const history = useHistory();
   const { path } = useRouteMatch();
-  const { isLoading, error, data, revalidate } = Digit.Hooks.pgr.useComplaintsListByMobile(
-    tenantId,
-    mobileNumber
-  );
+  const { isLoading, error, data, revalidate } = Digit.Hooks.pgr.useComplaintsList(tenantId, {
+    mobileNumber,
+    limit: FETCH_LIMIT,
+  });
 
-  // serviceCode → the LEAF's own name, as a mount-time fallback while each
-  // row's own-tenant hierarchy fetch resolves (only helps complaints filed at
-  // the citizen's tenant; foreign-tenant rows resolve via the row fetch).
+  // serviceCode → the LEAF's def (its name, and its parent as menuPath /
+  // menuPathName), as a mount-time fallback while each tenant's own hierarchy
+  // fetch resolves (only helps complaints filed at the citizen's tenant;
+  // foreign-tenant rows resolve via TenantHierarchy).
   const serviceDefs = Digit.Hooks.pgr.useServiceDefs(tenantId, "PGR");
   const typeBySvcCode = React.useMemo(() => {
     const map = {};
     (serviceDefs || []).forEach((def) => {
-      if (def?.serviceCode) map[def.serviceCode] = { name: def.name };
+      if (def?.serviceCode) map[def.serviceCode] = def;
     });
     return map;
   }, [serviceDefs]);
+
+  const [nodesByTenant, setNodesByTenant] = useState({});
+  const onHierarchy = useCallback((hierarchyTenant, nodes) => {
+    setNodesByTenant((prev) => (prev[hierarchyTenant] === nodes ? prev : { ...prev, [hierarchyTenant]: nodes }));
+  }, []);
+
+  const owner = User?.info?.uuid;
+  const [initialView] = useState(() => (history.action === "POP" ? readView(owner) : FRESH_VIEW));
+  const [query, setQuery] = useState(initialView.query);
+  const [page, setPage] = useState(initialView.page);
+  const listRef = useRef(null);
 
   useEffect(() => {
     revalidate();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // A new search starts from its first page; the one restored on return
+  // keeps its page.
+  const restoredQuery = useRef(query);
+  useEffect(() => {
+    if (query !== restoredQuery.current) setPage(1);
+    restoredQuery.current = null;
+  }, [query]);
+  useEffect(() => {
+    try {
+      window.sessionStorage.setItem(VIEW_KEY, JSON.stringify({ query, page, owner }));
+    } catch (e) {
+      // Storage blocked: the view just isn't kept.
+    }
+  }, [query, page, owner]);
 
   const goCreate = () => history.push(`/${window.contextPath}/citizen/pgr/create-complaint`);
 
@@ -298,21 +394,41 @@ export const ComplaintsList = () => {
     return v === key ? fallback : v;
   };
 
-  // Entrance scoping for the testing tenant: the citizen "my complaints"
-  // search runs at the STATE tenant, which spans every child tenant — so a
-  // tester who used a personal mobile on the testing entrance would otherwise
-  // see TST- rows mixed into their real list here. The prod entrance drops
-  // testing-tenant rows; the testing entrance lists ONLY them. Which tenants
-  // are "testing" comes from the isTestingTenant flag (config fallback) —
-  // see utils/testingTenant. Deployments without a testing setup are untouched.
-  const visibleWrappers = React.useMemo(() => {
-    const all = data?.ServiceWrappers || [];
-    return all.filter(({ service }) => isVisibleOnEntrance(service?.tenantId));
-  }, [data]);
+  const rows = useMemo(
+    () =>
+      complaintRows(data?.ServiceWrappers, {
+        t,
+        nodesByTenant,
+        defsByCode: typeBySvcCode,
+        namesByCode: Digit.SessionStorage.get("complaintHierarchyNameByCode") || {},
+      }),
+    [data, nodesByTenant, typeBySvcCode, t]
+  );
+  const rowTenants = useMemo(() => [...new Set(rows.map((row) => row.service.tenantId).filter(Boolean))], [rows]);
+  const matches = useMemo(() => searchComplaints(rows, query), [rows, query]);
+  const shown = pageOf(matches, page, PAGE_SIZE);
+  const searching = query.trim().length > 0;
+
+  // The list region is the scroller: without this, Next from the bottom of a
+  // page lands at the bottom of the next one.
+  const goToPage = (next) => {
+    setPage(next);
+    if (listRef.current) listRef.current.scrollTop = 0;
+  };
+
+  const searchLabel = tr("CS_MY_COMPLAINTS_SEARCH", "Search for a complaint");
+  const countLabel =
+    matches.length === 1
+      ? tr("CS_MY_COMPLAINTS_COUNT_ONE", "1 complaint")
+      : tr("CS_MY_COMPLAINTS_COUNT", "{count} complaints").replace("{count}", matches.length);
+  const range = tr("CS_MY_COMPLAINTS_RANGE", "{from}–{to} of {total}")
+    .replace("{from}", shown.from)
+    .replace("{to}", shown.to)
+    .replace("{total}", shown.total);
 
   return (
     <div
-      className="v2-scope"
+      className="v2-scope cms-complaints"
       style={{
         display: "flex",
         flexDirection: "column",
@@ -332,22 +448,36 @@ export const ComplaintsList = () => {
           flexWrap: "wrap",
         }}
       >
-        <h1
-          style={{
-            fontSize: "1.5rem",
-            fontWeight: 700,
-            margin: 0,
-            color: "var(--color-primary-1, var(--color-primary-main, #c84c0e))",
-            lineHeight: 1.25,
-          }}
-        >
-          {tr(LOCALE.MY_COMPLAINTS, "My Complaints")}
-        </h1>
+        <div style={{ display: "flex", alignItems: "baseline", flexWrap: "wrap", gap: "4px 12px" }}>
+          <h1
+            style={{
+              fontSize: "1.5rem",
+              fontWeight: 700,
+              margin: 0,
+              color: "var(--color-primary-1, var(--color-primary-main, #c84c0e))",
+              lineHeight: 1.25,
+            }}
+          >
+            {tr(LOCALE.MY_COMPLAINTS, "My Complaints")}
+          </h1>
+          {!isLoading && !error && rows.length ? (
+            <span
+              aria-live="polite"
+              style={{ fontSize: "0.875rem", fontWeight: 500, color: "var(--color-text-secondary, #6B7280)" }}
+            >
+              {countLabel}
+            </span>
+          ) : null}
+        </div>
         <Button onClick={goCreate} leading={<FilePlus2 className="h-4 w-4" />}>
           {tr("CS_COMMON_FILE_A_COMPLAINT", "File a Complaint")}
         </Button>
       </header>
+      {rowTenants.map((rowTenant) => (
+        <TenantHierarchy key={rowTenant} tenantId={rowTenant} onLoad={onHierarchy} />
+      ))}
       <div
+        ref={listRef}
         style={{
           flex: "1 1 auto",
           minHeight: 0,
@@ -370,7 +500,7 @@ export const ComplaintsList = () => {
               </Button>
             }
           />
-        ) : !visibleWrappers.length ? (
+        ) : !rows.length ? (
           <EmptyState
             icon={<Inbox style={{ height: "1.5rem", width: "1.5rem" }} />}
             title={tr("CS_NO_COMPLAINTS_TITLE", "No complaints yet")}
@@ -382,23 +512,100 @@ export const ComplaintsList = () => {
             }
           />
         ) : (
-          <div
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              gap: "12px",
-            }}
-          >
-            {visibleWrappers.map(({ service }) => (
-              <ComplaintRow
-                key={service.serviceRequestId}
-                data={service}
-                t={t}
-                typeName={typeBySvcCode[service.serviceCode]?.name || (Digit.SessionStorage.get("complaintHierarchyNameByCode") || {})[service.serviceCode]}
-                onClick={() => history.push(`${path}/${service.serviceRequestId}`)}
+          <>
+            {/* Upstream's search-box classes (overrides.css). The root's
+                cms-complaints class is what lets the field's room for the icon
+                beat the global search-input padding rule. */}
+            <div className="cms-complaints-search">
+              <Search aria-hidden className="cms-complaints-search-icon" />
+              <Input
+                type="search"
+                data-matomo-mask
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                onBlur={() => {
+                  if (!searching) return;
+                  trackE(EV.SEARCH_STARTED, "MyComplaints", matches.length);
+                  if (!matches.length) trackE(EV.SEARCH_NO_RESULTS, "MyComplaints");
+                }}
+                placeholder={searchLabel}
+                aria-label={searchLabel}
+                className="cms-complaints-search-field"
               />
-            ))}
-          </div>
+            </div>
+            {!matches.length ? (
+              <EmptyState
+                icon={<Search style={{ height: "1.5rem", width: "1.5rem" }} />}
+                title={tr("CS_MY_COMPLAINTS_NO_MATCH_TITLE", "No complaints match your search")}
+                body={tr("CS_MY_COMPLAINTS_NO_MATCH_BODY", "Try a complaint number, or a word from the description.")}
+                action={
+                  <Button
+                    variant="outline"
+                    data-analytics-event="pgr.my-complaints.clear-search"
+                    onClick={() => setQuery("")}
+                  >
+                    {tr("CS_MY_COMPLAINTS_CLEAR_SEARCH", "Clear search")}
+                  </Button>
+                }
+              />
+            ) : (
+              <>
+                <div
+                  style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: "12px",
+                  }}
+                >
+                  {shown.rows.map((row) => (
+                    <ComplaintRow
+                      key={row.id}
+                      data={row.service}
+                      t={t}
+                      title={row.concern}
+                      onClick={() => history.push(`${path}/${row.id}`)}
+                    />
+                  ))}
+                </div>
+                {shown.pages > 1 ? (
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      flexWrap: "wrap",
+                      gap: "12px",
+                      marginTop: "16px",
+                    }}
+                  >
+                    <span style={{ fontSize: "0.8125rem", color: "var(--color-text-secondary, #6B7280)" }}>{range}</span>
+                    <span style={{ display: "inline-flex", gap: "8px" }}>
+                      <Button
+                        variant="outline"
+                        leading={<ChevronLeft className="h-4 w-4" />}
+                        disabled={shown.page <= 1}
+                        onClick={() => goToPage(shown.page - 1)}
+                        data-analytics-event="pgr.my-complaints.page"
+                        data-analytics-label="previous"
+                      >
+                        {tr("CS_COMMON_PREVIOUS", "Previous")}
+                      </Button>
+                      <Button
+                        variant="outline"
+                        trailing={<ChevronRight className="h-4 w-4" />}
+                        disabled={shown.page >= shown.pages}
+                        onClick={() => goToPage(shown.page + 1)}
+                        data-analytics-event="pgr.my-complaints.page"
+                        data-analytics-label="next"
+                      >
+                        {tr("CS_COMMON_NEXT", "Next")}
+                      </Button>
+                    </span>
+                  </div>
+                ) : null}
+              </>
+            )}
+          </>
         )}
       </div>
     </div>

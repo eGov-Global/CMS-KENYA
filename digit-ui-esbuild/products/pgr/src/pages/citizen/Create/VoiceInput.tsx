@@ -401,6 +401,12 @@ export function VoiceSheet({ open, onClose, onUse, tr, locale }: VoiceSheetProps
         <p className="cms-sheet-hint" aria-live="polite">
           {hint}
         </p>
+        {/* Where the audio goes: the browser's own speech service, not the county. */}
+        {recording ? (
+          <p className="cms-sheet-hint">
+            {tr("CS_VOICE_PRIVACY", "Your voice is turned into text by your browser's speech service (Google on Chrome, Apple on Safari), not by the county.")}
+          </p>
+        ) : null}
 
         <div className={`cms-voice-live ${state}`}>
           <span className="cms-voice-pulse" aria-hidden="true">
@@ -430,11 +436,15 @@ export function VoiceSheet({ open, onClose, onUse, tr, locale }: VoiceSheetProps
         </div>
 
         {recording && (transcript || interim) ? (
-          <p className="cms-voice-text">
+          <p className="cms-voice-text" data-matomo-mask>
             {transcript} <span className="cms-voice-interim">{interim}</span>
           </p>
         ) : null}
-        {ready ? <p className="cms-voice-result">{transcript}</p> : null}
+        {ready ? (
+          <p className="cms-voice-result" data-matomo-mask>
+            {transcript}
+          </p>
+        ) : null}
 
         {recording ? (
           <div className="cms-sheet-actions">

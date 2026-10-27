@@ -18,9 +18,10 @@ const App = () => {
   return (
     <React.Fragment>
       <div className="pgr-citizen-wrapper">
-        {/* Hide the top Back on the response page AND the create-complaint wizard
-            (the wizard has its own footer Back/Cancel — a second one up top is redundant). */}
-        {!location.pathname.includes("/response") && !location.pathname.includes("/create-complaint") && (
+        {/* Hide the top Back on the response page, the create-complaint wizard
+            (it has its own footer Back/Cancel) and a complaint's page (it has its
+            Home breadcrumb); the other screens keep this one. */}
+        {!/\/(response|create-complaint|complaints\/.+)/.test(location.pathname) && (
           <BackButton>{t("CS_COMMON_BACK")}</BackButton>
         )}
         <Switch>

@@ -10,6 +10,10 @@
 // "what next" copy, and a primary CTA back to the citizen home plus a
 // quieter outline CTA to view the complaint detail when applicable.
 //
+// After a new filing the card also lists what was filed (category, location,
+// time, photos). That summary arrives in the route's state from the filing
+// flow — the create response carries only codes.
+//
 // Failure path keeps the same shape with a destructive-toned icon and
 // a "Try again" CTA back to the create flow.
 //
@@ -18,10 +22,10 @@
 // the same component without retooling the registry.
 
 import React from "react";
-import { Link, useHistory } from "react-router-dom";
+import { Link, useHistory, useLocation } from "react-router-dom";
 import { useSelector } from "react-redux";
 import { useTranslation } from "react-i18next";
-import { CheckCircle2, AlertCircle, Eye } from "lucide-react";
+import { CheckCircle2, AlertCircle, Eye, Check, Copy } from "lucide-react";
 import { Button, Card } from "@egovernments/digit-ui-components-v2";
 import ReceiptActions from "../../components/ReceiptActions";
 
@@ -100,11 +104,54 @@ function ComplaintIdChip({ id }) {
   );
 }
 
+// Upstream's ComplaintNumber copy control; the chip carries the number here.
+function CopyIdButton({ id, tr }) {
+  const [copied, setCopied] = React.useState(false);
+  React.useEffect(() => {
+    if (!copied) return undefined;
+    const timer = window.setTimeout(() => setCopied(false), 2000);
+    return () => window.clearTimeout(timer);
+  }, [copied]);
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(id);
+      setCopied(true);
+    } catch {
+      // No clipboard permission: the number stays selectable.
+    }
+  };
+  const Icon = copied ? Check : Copy;
+  return (
+    <Button
+      variant="ghost"
+      size="sm"
+      onClick={copy}
+      aria-live="polite"
+      leading={<Icon className="h-4 w-4" />}
+      data-analytics-event="pgr.complaint.response-copy-number"
+    >
+      {copied ? tr("CS_COMMON_COPIED", "Copied") : tr("CS_COMMON_COPY", "Copy")}
+    </Button>
+  );
+}
+
+/** "Today, 10:42" for today, else the date and time. */
+function filedOn(ts, tr) {
+  const when = new Date(ts);
+  const time = when.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  if (when.toDateString() === new Date().toDateString()) {
+    return `${tr("CS_FILE_TODAY", "Today")}, ${time}`;
+  }
+  return `${when.toLocaleDateString([], { day: "numeric", month: "short", year: "numeric" })}, ${time}`;
+}
+
 const Response = () => {
   const { t } = useTranslation();
   const history = useHistory();
+  const location = useLocation();
   const appState = useSelector((state) => state)["pgr"] || {};
   const { complaints } = appState;
+  const summary = location.state?.filedSummary;
 
   React.useEffect(() => {
     if (appState.complaints?.response?.ServiceWrappers?.length > 0) {
@@ -121,6 +168,7 @@ const Response = () => {
   const wrapper = success ? complaints.response.ServiceWrappers[0] : null;
   const action = wrapper?.workflow?.action;
   const complaintId = wrapper?.service?.serviceRequestId;
+  const filed = success && action !== "REOPEN" && action !== "RATE";
 
   // /response is ONE route serving four different outcomes — canonicalise the
   // URL to /response/{created|reopened|rated|failed} (history.replace, once)
@@ -128,12 +176,14 @@ const Response = () => {
   // virtual pageview here double-counted the page (outcome + bare /response
   // in the visits log); the replace coalesces to one. The flows await the
   // update before navigating here, so the first render's redux slice is
-  // already the settled outcome. No id, no complaint data in the URL.
+  // already the settled outcome. No id, no complaint data in the URL. The
+  // route state (the filing summary) is handed on: a bare replace drops it,
+  // and the route remounts on the new URL.
   const outcome = !success ? "failed" : action === "REOPEN" ? "reopened" : action === "RATE" ? "rated" : "created";
   React.useEffect(() => {
     const base = `/${window?.contextPath}/citizen/pgr/response`;
     if (history.location?.pathname === base || history.location?.pathname === `${base}/`) {
-      history.replace(`${base}/${outcome}`);
+      history.replace(`${base}/${outcome}`, history.location?.state);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -170,6 +220,27 @@ const Response = () => {
     ? `/${window?.contextPath}/citizen/pgr/complaints/${complaintId}`
     : null;
   const retryFlow = `/${window?.contextPath}/citizen/pgr/create-complaint`;
+
+  const rows =
+    filed && summary
+      ? [
+          [tr("CS_FILE_CATEGORY_LABEL", "Complaint Category"), summary.category || "—"],
+          [tr("CS_FILE_STEP_LOCATION", "Location"), summary.location || "—"],
+          [tr("CS_FILE_FILED_ON", "Filed on"), summary.filedAt ? filedOn(summary.filedAt, tr) : "—"],
+          [
+            tr("CS_FILE_ATTACHMENTS", "Attachments"),
+            summary.photos == null
+              ? "—"
+              : summary.photos
+              ? tr(
+                  summary.photos === 1 ? "CS_FILE_ONE_PHOTO" : "CS_FILE_N_PHOTOS",
+                  // "attachment": documents and videos count too, as on the Review step.
+                  summary.photos === 1 ? "1 attachment" : "{count} attachments"
+                ).replace("{count}", String(summary.photos))
+              : tr("CS_FILE_NONE", "None"),
+          ],
+        ]
+      : [];
 
   return (
     <div
@@ -217,7 +288,20 @@ const Response = () => {
           >
             {headline}
           </h1>
-          {complaintId ? <ComplaintIdChip id={complaintId} /> : null}
+          {complaintId ? (
+            <div
+              style={{
+                display: "flex",
+                flexWrap: "wrap",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: "8px",
+              }}
+            >
+              <ComplaintIdChip id={complaintId} />
+              <CopyIdButton id={complaintId} tr={tr} />
+            </div>
+          ) : null}
           <p
             style={{
               margin: 0,
@@ -229,6 +313,46 @@ const Response = () => {
           >
             {supporting}
           </p>
+          {rows.length ? (
+            <dl
+              style={{
+                width: "100%",
+                margin: 0,
+                padding: "14px 16px",
+                display: "flex",
+                flexDirection: "column",
+                gap: "12px",
+                border: "1px solid var(--color-border, #e5e7eb)",
+                borderRadius: "var(--v2-radius, 0.5rem)",
+                fontSize: "0.875rem",
+                lineHeight: 1.5,
+                textAlign: "start",
+              }}
+            >
+              {rows.map(([label, value]) => (
+                // Label and value share a line while both fit and stack on a
+                // phone; the value's 999 grow takes the spare width, keeping the
+                // labels one column.
+                <div key={label} style={{ display: "flex", flexWrap: "wrap", alignItems: "baseline", gap: "2px 16px" }}>
+                  <dt style={{ flex: "1 1 9rem", color: "var(--color-text-secondary, #6B7280)", fontWeight: 500 }}>
+                    {label}
+                  </dt>
+                  <dd
+                    data-matomo-mask
+                    style={{
+                      flex: "999 1 12rem",
+                      minWidth: 0,
+                      margin: 0,
+                      color: "var(--color-text-heading, #363636)",
+                      wordBreak: "break-word",
+                    }}
+                  >
+                    {value}
+                  </dd>
+                </div>
+              ))}
+            </dl>
+          ) : null}
           <div
             style={{
               marginTop: "8px",
