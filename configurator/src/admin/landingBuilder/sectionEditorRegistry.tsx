@@ -14,6 +14,7 @@ import {
   Landmark, Megaphone, PanelBottom, Phone, Quote,
 } from 'lucide-react';
 import type { InspectorTab, LandingSectionData, ValidationIssue } from './types';
+import { slotLabel } from './fieldPaths';
 
 export type BuilderWidget =
   | 'loctext'   // localized text: shows RESOLVED message, edits staged locEdits
@@ -98,6 +99,11 @@ const themeField: BuilderFieldDef = {
   path: 'theme', label: 'Theme tokens', tab: 'design', widget: 'theme',
   help: 'Accent / background reference existing --pgrl-* theme tokens (Theme Config). No second theming system.',
 };
+
+const imageSlot = (slot: string): BuilderFieldDef => ({
+  path: `media.images.${slot}`, label: slotLabel(slot), tab: 'media', widget: 'media',
+  help: 'Click the picture on the page to get here. Leave empty for the built-in one.',
+});
 
 const mediaField = (label = 'Background image'): BuilderFieldDef => ({
   path: 'media.imageId', label, tab: 'media', widget: 'media',
@@ -210,7 +216,7 @@ export const SECTION_EDITOR_REGISTRY: Record<string, SectionEditorEntry> = {
     }),
   channels: entry('channels', 'Channels', Radio,
     'Service-channel cards.',
-    [mediaField('Round photo'), loc('titleKey', 'Title', { required: true }), loc('subtitleKey', 'Intro', { multiline: true }), themeField],
+    [mediaField('Round photo'), imageSlot('portrait'), loc('titleKey', 'Title', { required: true }), loc('subtitleKey', 'Intro', { multiline: true }), themeField],
     {
       items: {
         label: 'Channels', tab: 'content', withIcons: true, withDesc: true, withUrl: true,
@@ -258,7 +264,7 @@ export const SECTION_EDITOR_REGISTRY: Record<string, SectionEditorEntry> = {
     ]),
   footer: entry('footer', 'Footer', PanelBottom,
     'Structural layout is fixed (locked decision); texts are editable via Localization, logos via Branding.',
-    [mediaField('Footer logo'), ]),
+    [mediaField('Footer logo'), imageSlot('emblem')]),
 };
 
 export const SECTION_TYPES = Object.keys(SECTION_EDITOR_REGISTRY);

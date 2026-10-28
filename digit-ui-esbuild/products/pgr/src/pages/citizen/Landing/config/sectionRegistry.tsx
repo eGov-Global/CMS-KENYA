@@ -34,8 +34,8 @@ import {
   NewsItem,
 } from "../content";
 import { LandingRoutes } from "../routes";
-import { buildRichItems, mediaUrl, withItems } from "./resolve";
-import type { LandingSectionConfig } from "./types";
+import { buildRichItems, mediaUrl, slotUrl, withItems, defaultItems } from "./resolve";
+import type { LandingItemConfig, LandingSectionConfig } from "./types";
 import { EDITORIAL_SECTIONS } from "../variants/editorial";
 
 export type Slot = "header" | "main" | "footer";
@@ -65,8 +65,6 @@ export interface SectionEntry {
   slot: Slot;
   buildProps: (section: LandingSectionConfig, ctx: RenderCtx) => Record<string, any>;
 }
-
-
 
 export const SECTION_REGISTRY: Record<string, SectionEntry> = {
   navigation: {
@@ -119,7 +117,7 @@ export const SECTION_REGISTRY: Record<string, SectionEntry> = {
     buildProps: (s, ctx) => ({
       routes: ctx.routes,
       orbImageUrl: mediaUrl(s.media) ?? ctx.channelsOrbImageUrl ?? ctx.bandImageUrl,
-      personImageUrl: ctx.personImageUrl,
+      personImageUrl: slotUrl(s.media, "portrait") ?? ctx.personImageUrl,
       section: withItems(s, CHANNELS, ctx.routes),
     }),
   },
@@ -164,7 +162,7 @@ export const SECTION_REGISTRY: Record<string, SectionEntry> = {
     buildProps: (s, ctx) => ({
       routes: ctx.routes,
       logoUrl: mediaUrl(s.media) ?? ctx.footerLogoUrl,
-      emblemUrl: ctx.emblemUrl,
+      emblemUrl: slotUrl(s.media, "emblem") ?? ctx.emblemUrl,
       section: s,
     }),
   },
@@ -203,4 +201,16 @@ export function setActiveLayout(layout: LandingLayout): void {
 /** Section types whose picture the operator can replace (entries flagged `image`). */
 export function sectionTakesImage(type?: string): boolean {
   return !!(type && getEntry(type, activeLayout)?.image);
+}
+
+/** Each section type's built-in items as config rows, for the Builder. */
+export function defaultItemsByType(): Record<string, LandingItemConfig[]> {
+  return {
+    navigation: defaultItems(NAV_ITEMS),
+    types: defaultItems(MANIFESTATION_TYPES),
+    steps: defaultItems(HOW_STEPS),
+    channels: defaultItems(CHANNELS),
+    helplines: defaultItems(HELPLINES),
+    institutions: defaultItems(INSTITUTIONS),
+  };
 }

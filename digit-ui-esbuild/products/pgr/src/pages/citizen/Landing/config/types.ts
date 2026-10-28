@@ -44,6 +44,9 @@ export interface LandingItemConfig {
 export interface LandingMediaConfig {
   imageId?: string;
   altKey?: string;
+  /** Further pictures by slot (pattern, left, right, skyline, portrait,
+   *  emblem, card-<id>): a file-store id or an image URL each. */
+  images?: Record<string, string>;
 }
 
 export interface LandingSectionConfig {
