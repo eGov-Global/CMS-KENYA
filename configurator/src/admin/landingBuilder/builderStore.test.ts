@@ -172,3 +172,14 @@ describe('icons chosen on the page', () => {
     expect(reducer(before, { type: 'setItemIcon', code: 'steps', item: 'nope', iconId: 'Bell' })).toBe(before);
   });
 });
+
+describe('hover', () => {
+  it('remembers whether the hover came from the page, so the preview is not scrolled under the pointer', () => {
+    const fromList = reducer(initialState, { type: 'hover', code: 'hero' });
+    expect(fromList.hovered).toBe('hero');
+    expect(fromList.hoveredFromPage).toBe(false);
+    const fromPage = reducer(fromList, { type: 'hover', code: 'hero', source: 'page' });
+    expect(fromPage.hoveredFromPage).toBe(true);
+    expect(reducer(fromPage, { type: 'hover', code: null, source: 'page' }).hovered).toBeNull();
+  });
+});

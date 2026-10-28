@@ -45,7 +45,7 @@ export function PreviewFrame() {
         }
       }
       else if (msg.type === 'pgrl-preview-hover')
-        dispatch({ type: 'hover', code: typeof msg.code === 'string' ? msg.code : null });
+        dispatch({ type: 'hover', code: typeof msg.code === 'string' ? msg.code : null, source: 'page' });
       else if (msg.type === 'pgrl-preview-pick-media' && typeof msg.code === 'string') {
         // A picture on the page was clicked: that section's Media library opens for that slot.
         const slot = typeof msg.slot === 'string' && msg.slot !== 'main' ? msg.slot : null;
@@ -130,10 +130,12 @@ export function PreviewFrame() {
   }, [ready, state.selected]);
 
   // Hover a section card -> auto-scroll the preview to it (debounced so a
-  // quick sweep across the list doesn't thrash the page).
+  // quick sweep across the list doesn't thrash the page). Never for a hover
+  // reported by the page itself: that would scroll the section the pointer
+  // is on out from under it.
   const hoverScrollRef = useRef<number>();
   useEffect(() => {
-    if (!ready || !state.hovered) return;
+    if (!ready || !state.hovered || state.hoveredFromPage) return;
     window.clearTimeout(hoverScrollRef.current);
     hoverScrollRef.current = window.setTimeout(
       () => post({ type: 'pgrl-preview-scroll', code: state.hovered! }),
@@ -141,7 +143,7 @@ export function PreviewFrame() {
     );
     return () => window.clearTimeout(hoverScrollRef.current);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ready, state.hovered]);
+  }, [ready, state.hovered, state.hoveredFromPage]);
 
   const width = VIEWPORT_WIDTH[state.viewport] ?? 1280;
   const dirty = isDirty(state);

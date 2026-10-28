@@ -294,17 +294,25 @@ export function usePreviewBridge(): PreviewBridge {
     // The picture under the pointer: the smallest one, so a tagged detail
     // (pattern strip, card photo) wins over the full-bleed picture behind it.
     // A tag names the slot; untagged pictures are the section's main one.
+    const sectionOf = (el: Element | null): string | null => (el?.closest("[data-pgrl-code]") as HTMLElement | null)?.getAttribute("data-pgrl-code") || null;
+    const takesImage = (code: string | null): code is string => !!code && sectionTakesImage(typesRef.current[code]);
     const pictureFor = (node: HTMLElement | null, x: number, y: number): { el: HTMLElement; code: string; slot: string } | null => {
-      const root = node?.closest("[data-pgrl-code]") as HTMLElement | null;
-      const code = root?.getAttribute("data-pgrl-code") || null;
-      if (!root || !code || !sectionTakesImage(typesRef.current[code])) return null;
       const area = (el: Element) => { const r = el.getBoundingClientRect(); return r.width * r.height; };
       const under = (el: Element) => { const r = el.getBoundingClientRect(); return r.width > 24 && r.height > 24 && x >= r.left && x <= r.right && y >= r.top && y <= r.bottom; };
-      // Decorative pictures are aria-hidden; a tagged one is still a slot.
-      const pics = [...root.querySelectorAll("img")].filter((img) => (img.hasAttribute("data-pgrl-image") || img.getAttribute("aria-hidden") !== "true") && under(img)).sort((a, b) => area(a) - area(b));
+      // Tagged pictures anywhere on the page, by position: the event target may
+      // be a decorative overlay from the neighbouring section (a dot grid
+      // spilling over the band) while the pointer is visually on the picture.
+      const tagged = ([...document.querySelectorAll("img[data-pgrl-image]")] as HTMLElement[]).filter(under).sort((a, b) => area(a) - area(b))[0];
+      const taggedCode = tagged ? sectionOf(tagged) : null;
+      if (tagged && takesImage(taggedCode)) return { el: tagged, code: taggedCode, slot: tagged.getAttribute("data-pgrl-image") as string };
+      const root = node?.closest("[data-pgrl-code]") as HTMLElement | null;
+      const code = sectionOf(root);
+      if (!root || !takesImage(code)) return null;
+      // The section's main picture: a visible <img> or a background image.
+      const pics = [...root.querySelectorAll("img")].filter((img) => img.getAttribute("aria-hidden") !== "true" && under(img)).sort((a, b) => area(a) - area(b));
       const el = (pics[0] as HTMLElement | undefined)
         ?? ([...root.querySelectorAll<HTMLElement>("*")].find((e) => e.tagName !== "A" && getComputedStyle(e).backgroundImage.includes("url(") && under(e)));
-      return el ? { el, code, slot: el.getAttribute("data-pgrl-image") || "main" } : null;
+      return el ? { el, code, slot: "main" } : null;
     };
 
     // ---- On-page icon picker ------------------------------------------------
@@ -339,13 +347,11 @@ export function usePreviewBridge(): PreviewBridge {
       return svg ? codeForNode(svg as unknown as HTMLElement) : null;
     };
     // The tagged icon under the pointer, by position: a card's stretched link
-    // sits on top of its icon, so the event target is rarely the <svg>.
+    // (or a neighbour's decoration) sits on top, so the event target is rarely the <svg>.
     const iconAt = (node: HTMLElement | null, x: number, y: number): SVGElement | null => {
       const direct = node?.closest("svg[data-pgrl-item]") as SVGElement | null;
       if (direct) return direct;
-      const root = node?.closest("[data-pgrl-code]") as HTMLElement | null;
-      if (!root) return null;
-      return ([...root.querySelectorAll("svg[data-pgrl-item]")] as SVGElement[]).find((svg) => { const r = svg.getBoundingClientRect(); return r.width > 8 && x >= r.left - 4 && x <= r.right + 4 && y >= r.top - 4 && y <= r.bottom + 4; }) ?? null;
+      return ([...document.querySelectorAll("svg[data-pgrl-item]")] as SVGElement[]).find((svg) => { const r = svg.getBoundingClientRect(); return r.width > 8 && x >= r.left - 4 && x <= r.right + 4 && y >= r.top - 4 && y <= r.bottom + 4; }) ?? null;
     };
 
     let hoverEl: HTMLElement | null = null;

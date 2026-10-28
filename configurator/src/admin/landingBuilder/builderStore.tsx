@@ -30,7 +30,7 @@ type Action =
   | { type: 'loadError'; error: string }
   | { type: 'hydrate'; sections: MdmsRow[]; page?: MdmsRow; select?: string }
   | { type: 'select'; id: string; tab?: InspectorTab; focusField?: string | null }
-  | { type: 'hover'; code: string | null }
+  | { type: 'hover'; code: string | null; source?: 'page' }
   | { type: 'setTab'; tab: InspectorTab }
   | { type: 'patchSection'; code: string; patch: Partial<LandingSectionData>; coalesce?: string }
   | { type: 'patchPage'; patch: Partial<LandingPageData>; coalesce?: string }
@@ -61,6 +61,7 @@ export const initialState: BuilderState = {
   locEdits: {},
   selected: 'page',
   hovered: null,
+  hoveredFromPage: false,
   inspectorTab: 'content',
   focusField: null,
   previewMode: 'draft',
@@ -141,7 +142,9 @@ export function reducer(state: BuilderState, action: Action): BuilderState {
         focusField: action.focusField ?? null,
       };
     case 'hover':
-      return state.hovered === action.code ? state : { ...state, hovered: action.code };
+      return state.hovered === action.code && state.hoveredFromPage === (action.source === 'page')
+        ? state
+        : { ...state, hovered: action.code, hoveredFromPage: action.source === 'page' };
     case 'setTab':
       return { ...state, inspectorTab: action.tab, focusField: null };
     case 'patchSection': {

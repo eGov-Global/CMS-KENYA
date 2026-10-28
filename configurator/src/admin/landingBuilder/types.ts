@@ -100,6 +100,8 @@ export interface BuilderState {
   selected: string;
   /** Section the pointer is over (either pane) — drives both highlights. */
   hovered: string | null;
+  /** The hover came from the page itself (pointer over the preview), not the section list. */
+  hoveredFromPage: boolean;
   /** Inspector tab + a field to focus (set by click-to-edit in the preview). */
   inspectorTab: InspectorTab;
   focusField: string | null;
