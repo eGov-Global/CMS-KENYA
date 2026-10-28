@@ -39,7 +39,7 @@ export interface LandingSectionData {
   titleKey?: string;
   subtitleKey?: string;
   bodyKey?: string;
-  media?: { imageId?: string; altKey?: string };
+  media?: { imageId?: string; altKey?: string; images?: Record<string, string> };
   items?: LandingItemData[];
   theme?: { accent?: string; bg?: string };
   [key: string]: unknown;
@@ -92,6 +92,8 @@ export interface BuilderState {
   error?: string;
   page: PageEntry | null;
   sections: SectionEntry[];
+  /** The page's built-in items per section type (from the preview handshake). */
+  pageItems: Record<string, LandingItemData[]>;
   /** Staged localization text edits (all locales), saved with Save Draft. */
   locEdits: LocEdits;
   /** 'page' or a section code. */

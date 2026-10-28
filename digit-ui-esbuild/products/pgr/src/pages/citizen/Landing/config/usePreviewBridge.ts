@@ -20,8 +20,11 @@
 //   out: pgrl-preview-hover     { code | null }
 //   out: pgrl-preview-select    { code, field? }   click; field set for known
 //                                                  editable elements (titles)
-//   out: pgrl-preview-pick-media { code }         a section's picture was
-//                                                  clicked: open its Media library
+//   out: pgrl-preview-pick-media { code, slot }   a section's picture was
+//                                                  clicked ("main" or a named
+//                                                  slot): open its Media library
+//   out: pgrl-preview-pick-icon { code, item, iconId } an item's icon was
+//                                                  changed with the on-page picker
 //   out: pgrl-preview-edit      { code, key, text } text typed in place on the
 //                                                  page (click a text, type,
 //                                                  Enter / click away commits)
@@ -35,7 +38,9 @@ import type { ResolvedLandingConfig } from "./types";
 import { DEFAULT_LANDING_CONFIG } from "./defaults";
 import { LANDING_COPY } from "../content";
 import { LANDING_KEY_PREFIX } from "../useLandingCopy";
-import { sectionTakesImage } from "./sectionRegistry";
+import * as ReactDOM from "react-dom";
+import { sectionTakesImage, defaultItemsByType } from "./sectionRegistry";
+import { ICON_REGISTRY } from "./iconRegistry";
 
 /** Find a section by its config `code`. Every section root carries
  *  data-pgrl-code, so this stays exact when two rows share a type. */
@@ -215,12 +220,25 @@ export function usePreviewBridge(): PreviewBridge {
       }
       return map;
     };
-    const editableFor = (node: HTMLElement | null): { el: HTMLElement; key: string } | null => {
+    const editableFor = (node: HTMLElement | null, x?: number, y?: number): { el: HTMLElement; key: string } | null => {
       const map = textToKey();
+      // A stretched card link reports its title as text over the whole card, so
+      // the pointer must be inside the candidate's own box.
+      const contains = (el: HTMLElement) => { if (x === undefined || y === undefined) return true; const r = el.getBoundingClientRect(); return x >= r.left && x <= r.right && y >= r.top && y <= r.bottom; };
+      const text = (el: Element) => ((el as HTMLElement).innerText || el.textContent || "").trim();
       let el: HTMLElement | null = node;
       for (let i = 0; el && i < 4 && !el.hasAttribute("data-pgrl-code"); i++, el = el.parentElement) {
-        const key = map.get((el.innerText || el.textContent || "").trim());
-        if (key) return { el, key };
+        const t = text(el);
+        const key = map.get(t);
+        if (!key) continue;
+        // The innermost element that holds exactly this text (not a wrapper).
+        let inner: HTMLElement = el;
+        for (;;) {
+          const child = [...inner.children].find((c) => text(c) === t) as HTMLElement | undefined;
+          if (!child) break;
+          inner = child;
+        }
+        return contains(inner) ? { el: inner, key } : null;
       }
       return null;
     };
@@ -273,19 +291,61 @@ export function usePreviewBridge(): PreviewBridge {
     // Pictures are often full-bleed behind a text panel (the hero), so the
     // pointer target is rarely the <img> itself: hit-test the section's
     // pictures by position instead.
-    const pictureFor = (node: HTMLElement | null, x: number, y: number): { el: HTMLElement; code: string } | null => {
+    // The picture under the pointer: the smallest one, so a tagged detail
+    // (pattern strip, card photo) wins over the full-bleed picture behind it.
+    // A tag names the slot; untagged pictures are the section's main one.
+    const pictureFor = (node: HTMLElement | null, x: number, y: number): { el: HTMLElement; code: string; slot: string } | null => {
       const root = node?.closest("[data-pgrl-code]") as HTMLElement | null;
       const code = root?.getAttribute("data-pgrl-code") || null;
       if (!root || !code || !sectionTakesImage(typesRef.current[code])) return null;
-      const under = (el: Element) => { const r = el.getBoundingClientRect(); return r.width > 40 && r.height > 40 && x >= r.left && x <= r.right && y >= r.top && y <= r.bottom; };
-      const pics = [...root.querySelectorAll("img")].filter((img) => img.getAttribute("aria-hidden") !== "true" && under(img));
-      const el = (pics.sort((a, b) => b.getBoundingClientRect().width * b.getBoundingClientRect().height - a.getBoundingClientRect().width * a.getBoundingClientRect().height)[0] as HTMLElement | undefined)
-        ?? ([...root.querySelectorAll<HTMLElement>("*")].find((e) => e.tagName !== "A" && getComputedStyle(e).backgroundImage !== "none" && under(e)));
-      return el ? { el, code } : null;
+      const area = (el: Element) => { const r = el.getBoundingClientRect(); return r.width * r.height; };
+      const under = (el: Element) => { const r = el.getBoundingClientRect(); return r.width > 24 && r.height > 24 && x >= r.left && x <= r.right && y >= r.top && y <= r.bottom; };
+      // Decorative pictures are aria-hidden; a tagged one is still a slot.
+      const pics = [...root.querySelectorAll("img")].filter((img) => (img.hasAttribute("data-pgrl-image") || img.getAttribute("aria-hidden") !== "true") && under(img)).sort((a, b) => area(a) - area(b));
+      const el = (pics[0] as HTMLElement | undefined)
+        ?? ([...root.querySelectorAll<HTMLElement>("*")].find((e) => e.tagName !== "A" && getComputedStyle(e).backgroundImage.includes("url(") && under(e)));
+      return el ? { el, code, slot: el.getAttribute("data-pgrl-image") || "main" } : null;
+    };
+
+    // ---- On-page icon picker ------------------------------------------------
+    // Item icons carry data-pgrl-item (see buildRichItems); a click opens a
+    // small picker of the approved icons next to it.
+    let pickerHost: HTMLDivElement | null = null;
+    const closePicker = () => { if (pickerHost) { ReactDOM.unmountComponentAtNode(pickerHost); pickerHost.remove(); pickerHost = null; } };
+    const openPicker = (anchor: SVGElement, code: string, item: string) => {
+      closePicker();
+      const r = anchor.getBoundingClientRect();
+      pickerHost = document.createElement("div");
+      document.body.appendChild(pickerHost);
+      const choices = Object.keys(ICON_REGISTRY);
+      const left = Math.max(8, Math.min(r.left + window.scrollX, window.scrollX + window.innerWidth - 268));
+      const top = r.bottom + window.scrollY + 6;
+      const picker = React.createElement(
+        "div",
+        { role: "listbox", "aria-label": "Icon", style: { position: "absolute", left, top, zIndex: 80, width: 256, padding: 8, background: "#fff", border: "2px solid #059669", borderRadius: 8, boxShadow: "0 8px 24px rgba(0,0,0,.18)", display: "grid", gridTemplateColumns: "repeat(6, 1fr)", gap: 4 } },
+        ...choices.map((id) =>
+          React.createElement(
+            "button",
+            { key: id, type: "button", title: id, "aria-label": id, onClick: (e: Event) => { e.stopPropagation(); post({ type: "pgrl-preview-pick-icon", code, item, iconId: id }); closePicker(); },
+              style: { display: "flex", alignItems: "center", justifyContent: "center", height: 36, border: "1px solid #e5e7eb", borderRadius: 6, background: "#fff", cursor: "pointer" } },
+            React.createElement(ICON_REGISTRY[id] as any, { width: 18, height: 18 })
+          )
+        )
+      );
+      ReactDOM.render(picker, pickerHost);
     };
     const iconFor = (node: HTMLElement | null): string | null => {
       const svg = node?.closest("svg");
       return svg ? codeForNode(svg as unknown as HTMLElement) : null;
+    };
+    // The tagged icon under the pointer, by position: a card's stretched link
+    // sits on top of its icon, so the event target is rarely the <svg>.
+    const iconAt = (node: HTMLElement | null, x: number, y: number): SVGElement | null => {
+      const direct = node?.closest("svg[data-pgrl-item]") as SVGElement | null;
+      if (direct) return direct;
+      const root = node?.closest("[data-pgrl-code]") as HTMLElement | null;
+      if (!root) return null;
+      return ([...root.querySelectorAll("svg[data-pgrl-item]")] as SVGElement[]).find((svg) => { const r = svg.getBoundingClientRect(); return r.width > 8 && x >= r.left - 4 && x <= r.right + 4 && y >= r.top - 4 && y <= r.bottom + 4; }) ?? null;
     };
 
     let hoverEl: HTMLElement | null = null;
@@ -299,8 +359,9 @@ export function usePreviewBridge(): PreviewBridge {
     };
     const onPointerOverEdit = (e: Event) => {
       const t = e.target as HTMLElement | null;
-      const text = editableFor(t);
       const pe = e as PointerEvent;
+      if (iconAt(t, pe.clientX, pe.clientY)) { clearHover(); return; }
+      const text = editableFor(t, pe.clientX, pe.clientY);
       const pic = text ? null : pictureFor(t, pe.clientX, pe.clientY);
       const el = text?.el ?? pic?.el ?? null;
       if (el === hoverEl) return;
@@ -311,15 +372,36 @@ export function usePreviewBridge(): PreviewBridge {
       hoverEl.style.cursor = text ? "text" : "pointer";
       hoverEl.setAttribute("title", text ? "Click to edit this text" : "Click to replace this picture");
     };
+    let iconHover: SVGElement | null = null;
+    const onPointerOverIcon = (e: Event) => {
+      const pe = e as PointerEvent;
+      const svg = iconAt(e.target as HTMLElement | null, pe.clientX, pe.clientY);
+      if (iconHover && iconHover !== svg) { iconHover.style.outline = ""; iconHover.removeAttribute("title"); iconHover = null; }
+      if (svg && svg !== iconHover) { iconHover = svg; svg.setAttribute("title", "Click to change this icon"); svg.style.outline = HOVER_OUTLINE; svg.style.outlineOffset = "2px"; svg.style.cursor = "pointer"; }
+    };
 
     const onClick = (e: MouseEvent) => {
       const t = e.target as HTMLElement | null;
       if (!t) return;
+      // A choice inside the icon picker: let the click reach the picker's own
+      // handler (React listens on the picker host, below this capture listener).
+      if (pickerHost && pickerHost.contains(t)) return;
       e.preventDefault();
       if (editing && editing.el.contains(t)) return; // the caret moving inside the text being edited
       e.stopPropagation();
       endEdit(true);
-      const hit = editableFor(t);
+      closePicker();
+      // An icon is the smallest, most specific target: it wins over the text
+      // beside it and the picture behind it.
+      const svg = iconAt(t, e.clientX, e.clientY);
+      const iconCode = svg ? codeForNode(svg as unknown as HTMLElement) : null;
+      if (svg && iconCode) {
+        clearHover();
+        openPicker(svg, iconCode, svg.getAttribute("data-pgrl-item") as string);
+        post({ type: "pgrl-preview-select", code: iconCode, field: "items" });
+        return;
+      }
+      const hit = editableFor(t, e.clientX, e.clientY);
       if (hit) {
         clearHover();
         startEdit(hit.el, hit.key);
@@ -329,12 +411,11 @@ export function usePreviewBridge(): PreviewBridge {
       }
       const pic = pictureFor(t, e.clientX, e.clientY);
       if (pic) {
-        post({ type: "pgrl-preview-pick-media", code: pic.code });
+        post({ type: "pgrl-preview-pick-media", code: pic.code, slot: pic.slot });
         return;
       }
-      const iconCode = iconFor(t);
-      if (iconCode) {
-        post({ type: "pgrl-preview-select", code: iconCode, field: "items" });
+      if (iconFor(t)) {
+        post({ type: "pgrl-preview-select", code: iconFor(t) as string, field: "items" });
         return;
       }
       const field = fieldForNode(t);
@@ -351,13 +432,16 @@ export function usePreviewBridge(): PreviewBridge {
     document.addEventListener("click", onClick, true);
     document.addEventListener("pointerover", onPointerOverEdit, true);
     document.addEventListener("pointerout", clearHover, true);
-    post({ type: "pgrl-preview-ready", defaults: DEFAULT_LANDING_CONFIG });
+    document.addEventListener("pointerover", onPointerOverIcon, true);
+    post({ type: "pgrl-preview-ready", defaults: { ...DEFAULT_LANDING_CONFIG, items: defaultItemsByType() } });
     return () => {
       window.removeEventListener("message", onMessage);
       document.removeEventListener("pointerover", onPointerOver, true);
       document.removeEventListener("click", onClick, true);
       document.removeEventListener("pointerover", onPointerOverEdit, true);
       document.removeEventListener("pointerout", clearHover, true);
+      document.removeEventListener("pointerover", onPointerOverIcon, true);
+      closePicker();
       endEdit(false);
       clearHover();
       clearHighlight();

@@ -157,3 +157,18 @@ describe('persist on a tenant that is already set up', () => {
     expect(digitClient.mdmsCreate.mock.calls.filter((c) => c[1] === ACTIONS_SCHEMA)).toHaveLength(3);
   });
 });
+
+describe('icons chosen on the page', () => {
+  const pageItems = { steps: [{ code: 'step-1', labelKey: 'HOW_STEP_1' }, { code: 'step-2', labelKey: 'HOW_STEP_2' }] };
+  it('materialise the built-in items and set the icon on the clicked one', () => {
+    let state = reducer(loaded([row('steps', 50)]), { type: 'setPageItems', items: pageItems });
+    state = reducer(state, { type: 'setItemIcon', code: 'steps', item: 'step-2', iconId: 'Bell' });
+    const items = state.sections[0].draft.items!;
+    expect(items.map((i) => [i.code, i.iconId ?? null, i.order])).toEqual([['step-1', null, 10], ['step-2', 'Bell', 20]]);
+    expect(state.sections[0].state).toBe('dirty');
+  });
+  it('ignore an item the section does not have', () => {
+    const before = reducer(loaded([row('steps', 50)]), { type: 'setPageItems', items: pageItems });
+    expect(reducer(before, { type: 'setItemIcon', code: 'steps', item: 'nope', iconId: 'Bell' })).toBe(before);
+  });
+});

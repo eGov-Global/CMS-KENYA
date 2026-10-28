@@ -12,6 +12,7 @@ import { ensureLandingSetup, isAccessDenied } from './landingSetup';
 import { getEditorEntry } from './sectionEditorRegistry';
 import { persistLocEdits } from './localization';
 import type {
+  LandingItemData,
   BuilderState, HistorySnap, InspectorTab, LandingPageData, LandingSectionData,
   LocEdits, MdmsRow, PageEntry, PreviewConfig, SectionEntry, ValidationIssue,
 } from './types';
@@ -39,6 +40,8 @@ type Action =
   | { type: 'remove'; code: string }
   | { type: 'addSection'; sectionType: string; code: string }
   | { type: 'seedDefaults'; sections: LandingSectionData[]; page: LandingPageData }
+  | { type: 'setPageItems'; items: Record<string, LandingItemData[]> }
+  | { type: 'setItemIcon'; code: string; item: string; iconId: string }
   | { type: 'undo' }
   | { type: 'redo' }
   | { type: 'setPreviewMode'; mode: 'draft' | 'published' }
@@ -54,6 +57,7 @@ export const initialState: BuilderState = {
   loading: true,
   page: null,
   sections: [],
+  pageItems: {},
   locEdits: {},
   selected: 'page',
   hovered: null,
@@ -219,6 +223,19 @@ export function reducer(state: BuilderState, action: Action): BuilderState {
         ? state.page
         : { draft: { ...(state.page?.draft ?? {}), ...action.page, code: 'default' }, dirty: true };
       return { ...state, sections, page, past: [], future: [], validation: null };
+    }
+    case 'setPageItems':
+      return { ...state, pageItems: action.items };
+    case 'setItemIcon': {
+      // An icon chosen on the page. Items are copy-on-write: with no explicit
+      // items yet, the section's built-in list is materialised first.
+      const sec = state.sections.find((s) => s.draft.code === action.code);
+      if (!sec) return state;
+      const explicit = (sec.draft.items ?? []) as LandingItemData[];
+      const base = explicit.length ? explicit : (getEditorEntry(sec.draft.type)?.items?.inherited?.() ?? state.pageItems[sec.draft.type ?? ''] ?? []);
+      if (!base.some((it) => it.code === action.item)) return state;
+      const items = base.map((it, i) => ({ ...it, enabled: it.enabled ?? true, order: it.order ?? (i + 1) * 10, ...(it.code === action.item ? { iconId: action.iconId } : {}) }));
+      return reducer(state, { type: 'patchSection', code: action.code, patch: { items } });
     }
     case 'addSection': {
       const entryDef = getEditorEntry(action.sectionType);

@@ -35,8 +35,8 @@ import {
   NewsItem,
 } from "../content";
 import { LandingRoutes } from "../routes";
-import { buildRichItems, safeMediaSrc, fileStoreImageUrl, isFileStoreId } from "./resolve";
-import type { LandingMediaConfig, LandingSectionConfig } from "./types";
+import { buildRichItems, safeMediaSrc, fileStoreImageUrl, isFileStoreId, defaultItems, taggedIcon, defaultKey } from "./resolve";
+import type { LandingItemConfig, LandingMediaConfig, LandingSectionConfig } from "./types";
 
 export type Slot = "header" | "main" | "footer";
 
@@ -100,11 +100,30 @@ function mediaUrl(media?: LandingMediaConfig): string | undefined {
   return safeMediaSrc(id);
 }
 
+/** A section's further picture by slot (media.images[slot]). */
+function slotUrl(media: LandingMediaConfig | undefined, slot: string): string | undefined {
+  const id = media?.images?.[slot];
+  return id ? mediaUrl({ imageId: id }) : undefined;
+}
+
+/** Card pictures of the types section: slots named card-<type id>. */
+function cardImages(media?: LandingMediaConfig): Record<string, string> {
+  const out: Record<string, string> = {};
+  Object.entries(media?.images ?? {}).forEach(([slot, id]) => {
+    const url = slot.startsWith("card-") ? mediaUrl({ imageId: id }) : undefined;
+    if (url) out[slot.slice(5)] = url;
+  });
+  return out;
+}
+
 /** section with its items normalised to the rich runtime shape (or left absent
  *  so the leaf uses its default array). */
 const withItems = (s: LandingSectionConfig, def: any[], routes: LandingRoutes): LandingSectionConfig => ({
   ...s,
-  items: buildRichItems(s.items, def, routes as unknown as Record<string, string>) as any,
+  // Built-in items keep their shape; only the icon is wrapped so the Builder
+  // preview can tell which item an icon click belongs to.
+  items: (buildRichItems(s.items, def, routes as unknown as Record<string, string>)
+    ?? (def || []).map((d) => ({ ...d, icon: taggedIcon(d.icon, defaultKey(d)) }))) as any,
 });
 
 export const SECTION_REGISTRY: Record<string, SectionEntry> = {
@@ -134,7 +153,7 @@ export const SECTION_REGISTRY: Record<string, SectionEntry> = {
         // The small cut belongs to the shipped photo only; a configured image
         // has no sibling, so it is dropped rather than mismatched.
         imageSmallUrl: configured ? undefined : ctx.heroImageSmallUrl,
-        patternUrl: ctx.artwork?.heroPattern,
+        patternUrl: slotUrl(s.media, "pattern") ?? ctx.artwork?.heroPattern,
         section: withItems(s, [], ctx.routes),
       };
     },
@@ -142,16 +161,26 @@ export const SECTION_REGISTRY: Record<string, SectionEntry> = {
   types: {
     Component: TypesSection,
     slot: "main",
+    image: true,
     buildProps: (s, ctx) => ({
       routes: ctx.routes,
-      images: ctx.artwork?.categories,
+      images: { ...(ctx.artwork?.categories ?? {}), ...cardImages(s.media) },
       section: withItems(s, MANIFESTATION_TYPES, ctx.routes),
     }),
   },
   tagline: {
     Component: TaglineBand,
     slot: "main",
-    buildProps: (s, ctx) => ({ artwork: ctx.artwork, section: s }),
+    image: true,
+    buildProps: (s, ctx) => ({
+      artwork: {
+        ...ctx.artwork,
+        bandLeft: slotUrl(s.media, "left") ?? ctx.artwork?.bandLeft,
+        bandRight: slotUrl(s.media, "right") ?? ctx.artwork?.bandRight,
+        bandSkyline: slotUrl(s.media, "skyline") ?? ctx.artwork?.bandSkyline,
+      },
+      section: s,
+    }),
   },
   steps: {
     Component: HowItWorksSection,
@@ -168,7 +197,7 @@ export const SECTION_REGISTRY: Record<string, SectionEntry> = {
     buildProps: (s, ctx) => ({
       routes: ctx.routes,
       orbImageUrl: mediaUrl(s.media) ?? ctx.channelsOrbImageUrl ?? ctx.bandImageUrl,
-      personImageUrl: ctx.personImageUrl,
+      personImageUrl: slotUrl(s.media, "portrait") ?? ctx.personImageUrl,
       section: withItems(s, CHANNELS, ctx.routes),
     }),
   },
@@ -214,7 +243,7 @@ export const SECTION_REGISTRY: Record<string, SectionEntry> = {
     buildProps: (s, ctx) => ({
       routes: ctx.routes,
       logoUrl: mediaUrl(s.media) ?? ctx.footerLogoUrl,
-      emblemUrl: ctx.emblemUrl,
+      emblemUrl: slotUrl(s.media, "emblem") ?? ctx.emblemUrl,
       section: s,
     }),
   },
@@ -228,4 +257,16 @@ export function getEntry(type?: string): SectionEntry | undefined {
 /** Section types whose picture the operator can replace (entries flagged `image`). */
 export function sectionTakesImage(type?: string): boolean {
   return !!(type && SECTION_REGISTRY[type]?.image);
+}
+
+/** Each section type's built-in items as config rows, for the Builder. */
+export function defaultItemsByType(): Record<string, LandingItemConfig[]> {
+  return {
+    navigation: defaultItems(NAV_ITEMS),
+    types: defaultItems(MANIFESTATION_TYPES),
+    steps: defaultItems(HOW_STEPS),
+    channels: defaultItems(CHANNELS),
+    helplines: defaultItems(HELPLINES),
+    institutions: defaultItems(INSTITUTIONS),
+  };
 }

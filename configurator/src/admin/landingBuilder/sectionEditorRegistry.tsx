@@ -14,6 +14,7 @@ import {
   Landmark, Megaphone, PanelBottom, Phone, Quote,
 } from 'lucide-react';
 import type { InspectorTab, LandingSectionData, ValidationIssue } from './types';
+import { slotLabel } from './fieldPaths';
 
 export type BuilderWidget =
   | 'loctext'   // localized text: shows RESOLVED message, edits staged locEdits
@@ -99,6 +100,11 @@ const themeField: BuilderFieldDef = {
   help: 'Accent / background reference existing --pgrl-* theme tokens (Theme Config). No second theming system.',
 };
 
+const imageSlot = (slot: string): BuilderFieldDef => ({
+  path: `media.images.${slot}`, label: slotLabel(slot), tab: 'media', widget: 'media',
+  help: 'Click the picture on the page to get here. Leave empty for the built-in one.',
+});
+
 const mediaField = (label = 'Background image'): BuilderFieldDef => ({
   path: 'media.imageId', label, tab: 'media', widget: 'media',
   help: 'Upload a picture or paste an image URL; click the picture on the page to get here. Leave empty for the built-in one.',
@@ -169,7 +175,7 @@ export const SECTION_EDITOR_REGISTRY: Record<string, SectionEditorEntry> = {
       loc('bodyKey', 'Eyebrow / Badge'),
       loc('titleKey', 'Title', { required: true }),
       loc('subtitleKey', 'Subtitle', { multiline: true }),
-      mediaField(),
+      mediaField(), imageSlot('pattern'),
       { path: 'cta.primary', label: 'Primary CTA', tab: 'actions', widget: 'action',
         fixedKey: 'PGR_LANDING_HERO_CTA_SUBMIT', destination: 'Opens the submission form' },
       { path: 'cta.secondary', label: 'Secondary CTA', tab: 'actions', widget: 'action',
@@ -200,7 +206,7 @@ export const SECTION_EDITOR_REGISTRY: Record<string, SectionEditorEntry> = {
   // page supplies the default heading, so nothing is required here.
   tagline: entry('tagline', 'Tagline band', Quote,
     'Short slogan band between the service categories and the steps.',
-    [loc('titleKey', 'Heading')]),
+    [loc('titleKey', 'Heading'), imageSlot('left'), imageSlot('skyline'), imageSlot('right')]),
   steps: entry('steps', 'How it works', ListOrdered,
     'Numbered case-lifecycle steps.',
     [mediaField('Round photo'), loc('titleKey', 'Title', { required: true }), themeField],
@@ -212,7 +218,7 @@ export const SECTION_EDITOR_REGISTRY: Record<string, SectionEditorEntry> = {
     }),
   channels: entry('channels', 'Channels', Radio,
     'Service-channel cards.',
-    [mediaField('Round photo'), loc('titleKey', 'Title', { required: true }), loc('subtitleKey', 'Intro', { multiline: true }), themeField],
+    [mediaField('Round photo'), imageSlot('portrait'), loc('titleKey', 'Title', { required: true }), loc('subtitleKey', 'Intro', { multiline: true }), themeField],
     {
       items: {
         label: 'Channels', tab: 'content', withIcons: true, withDesc: true, withUrl: true,
@@ -260,7 +266,7 @@ export const SECTION_EDITOR_REGISTRY: Record<string, SectionEditorEntry> = {
     ]),
   footer: entry('footer', 'Footer', PanelBottom,
     'Structural layout is fixed (locked decision); texts are editable via Localization, logos via Branding.',
-    [mediaField('Footer logo'), ]),
+    [mediaField('Footer logo'), imageSlot('emblem')]),
 };
 
 export const SECTION_TYPES = Object.keys(SECTION_EDITOR_REGISTRY);

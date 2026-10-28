@@ -19,6 +19,7 @@ import { useBuilder } from './builderStore';
 import { getRecents, isUrl, uploadImage, type MediaAsset, IMAGE_RULES } from './media';
 import type { BuilderFieldDef } from './sectionEditorRegistry';
 import type { LandingSectionData } from './types';
+import { getPath, setPath } from './fieldPaths';
 
 export function MediaLibraryDialog({ def, code, draft }: { def: BuilderFieldDef; code: string; draft: LandingSectionData }) {
   const { state, dispatch } = useBuilder();
@@ -38,11 +39,11 @@ export function MediaLibraryDialog({ def, code, draft }: { def: BuilderFieldDef;
     if (openedFromPage) dispatch({ type: 'setTab', tab: 'media' }); // clears the focus
   };
 
-  const current = draft.media?.imageId;
+  const current = getPath(draft, def.path) as string | undefined;
   // An uploaded picture is stored by file-store id; show it from the stable path the page uses.
   const currentSrc = current ? (isUrl(current) ? current : `/filestore/v1/files/id?${new URLSearchParams({ tenantId: app.tenant ?? '', fileStoreId: current })}`) : undefined;
   const setImage = (imageId?: string) =>
-    dispatch({ type: 'patchSection', code, patch: { media: { ...(draft.media ?? {}), imageId } } });
+    dispatch({ type: 'patchSection', code, patch: setPath(draft, def.path, imageId) });
 
   const pick = (asset: MediaAsset) => {
     // An upload is stored by its file-store id: the page serves it by id at a
