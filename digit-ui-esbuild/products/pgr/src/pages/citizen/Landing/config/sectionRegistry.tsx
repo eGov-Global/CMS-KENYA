@@ -35,7 +35,7 @@ import {
   NewsItem,
 } from "../content";
 import { LandingRoutes } from "../routes";
-import { buildRichItems, safeMediaSrc } from "./resolve";
+import { buildRichItems, safeMediaSrc, fileStoreImageUrl, isFileStoreId } from "./resolve";
 import type { LandingMediaConfig, LandingSectionConfig } from "./types";
 
 export type Slot = "header" | "main" | "footer";
@@ -76,13 +76,28 @@ export interface SectionEntry {
   Component: React.ComponentType<any>;
   slot: Slot;
   buildProps: (section: LandingSectionConfig, ctx: RenderCtx) => Record<string, any>;
+  /** true when buildProps reads `section.media` — the Builder lets the
+   *  operator replace this section's picture by clicking it. */
+  image?: true;
 }
 
-/** media.imageId as a direct URL passes through (see safeMediaSrc); a bare
- *  filestore id is left for the P2 media phase and ignored here, so the
- *  section falls back to its default (no image). */
+/** The state tenant the Builder uploads pictures under (the page only runs
+ *  inside the DIGIT shell). */
+function stateTenantId(): string | undefined {
+  try {
+    return (window as any).Digit?.ULBService?.getStateId?.() || undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/** media.imageId is either a pasted URL (passed through safeMediaSrc) or the
+ *  file-store id of an uploaded picture, served anonymously at a stable path. */
 function mediaUrl(media?: LandingMediaConfig): string | undefined {
-  return safeMediaSrc(media?.imageId);
+  const id = media?.imageId;
+  const tenant = stateTenantId();
+  if (isFileStoreId(id) && tenant) return fileStoreImageUrl(id as string, tenant);
+  return safeMediaSrc(id);
 }
 
 /** section with its items normalised to the rich runtime shape (or left absent
@@ -96,6 +111,7 @@ export const SECTION_REGISTRY: Record<string, SectionEntry> = {
   navigation: {
     Component: LandingHeader,
     slot: "header",
+    image: true,
     buildProps: (s, ctx) => ({
       routes: ctx.routes,
       emblemUrl: mediaUrl(s.media) ?? ctx.emblemUrl,
@@ -106,6 +122,7 @@ export const SECTION_REGISTRY: Record<string, SectionEntry> = {
   hero: {
     Component: HeroSection,
     slot: "main",
+    image: true,
     // P4 (approved adapter tweak): hero trust "features" are items-driven when
     // config provides items[]; icons resolve through the whitelist. CTAs stay
     // application behavior (fixed destinations).
@@ -139,6 +156,7 @@ export const SECTION_REGISTRY: Record<string, SectionEntry> = {
   steps: {
     Component: HowItWorksSection,
     slot: "main",
+    image: true,
     // Square cut so the circular orb isn't a heavy crop of a wide photo;
     // falls back to the hero image when a deployment ships no square asset.
     buildProps: (s, ctx) => ({ orbImageUrl: mediaUrl(s.media) ?? ctx.stepsOrbImageUrl ?? ctx.heroImageUrl, section: withItems(s, HOW_STEPS, ctx.routes) }),
@@ -146,6 +164,7 @@ export const SECTION_REGISTRY: Record<string, SectionEntry> = {
   channels: {
     Component: ChannelsSection,
     slot: "main",
+    image: true,
     buildProps: (s, ctx) => ({
       routes: ctx.routes,
       orbImageUrl: mediaUrl(s.media) ?? ctx.channelsOrbImageUrl ?? ctx.bandImageUrl,
@@ -156,7 +175,8 @@ export const SECTION_REGISTRY: Record<string, SectionEntry> = {
   helplines: {
     Component: HelplinesSection,
     slot: "main",
-    buildProps: (s, ctx) => ({ routes: ctx.routes, skylineUrl: ctx.artwork?.bandSkyline, section: withItems(s, HELPLINES, ctx.routes) }),
+    image: true,
+    buildProps: (s, ctx) => ({ routes: ctx.routes, skylineUrl: mediaUrl(s.media) ?? ctx.artwork?.bandSkyline, section: withItems(s, HELPLINES, ctx.routes) }),
   },
   privacy: {
     Component: PrivacySection,
@@ -171,10 +191,11 @@ export const SECTION_REGISTRY: Record<string, SectionEntry> = {
   institutions: {
     Component: InstitutionsSection,
     slot: "main",
+    image: true,
     buildProps: (s, ctx) => ({
       routes: ctx.routes,
       // Phone-only photo card.
-      photoUrl: ctx.areasPhotoUrl ?? ctx.heroImageSmallUrl ?? ctx.heroImageUrl,
+      photoUrl: mediaUrl(s.media) ?? ctx.areasPhotoUrl ?? ctx.heroImageSmallUrl ?? ctx.heroImageUrl,
       section: withItems(s, INSTITUTIONS, ctx.routes),
     }),
   },
@@ -186,6 +207,7 @@ export const SECTION_REGISTRY: Record<string, SectionEntry> = {
   footer: {
     Component: LandingFooter,
     slot: "footer",
+    image: true,
     // Footer columns (GROUPS) stay the component default in v1 — their nested
     // group shape isn't expressible in the flat item schema; destinations are
     // already config-driven via `routes` and labels via PGR_LANDING_* keys.
@@ -201,4 +223,9 @@ export const SECTION_REGISTRY: Record<string, SectionEntry> = {
 export function getEntry(type?: string): SectionEntry | undefined {
   if (!type) return undefined;
   return SECTION_REGISTRY[type];
+}
+
+/** Section types whose picture the operator can replace (entries flagged `image`). */
+export function sectionTakesImage(type?: string): boolean {
+  return !!(type && SECTION_REGISTRY[type]?.image);
 }
