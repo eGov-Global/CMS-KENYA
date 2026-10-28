@@ -133,7 +133,7 @@ export function LandingFooter({ routes, logoUrl, emblemUrl, section }: LandingFo
         <div className="lg:col-span-3">
           <div className="flex items-center gap-3">
             {emblemUrl ? (
-              <img src={emblemUrl} alt="" className="h-16 w-16 shrink-0 object-contain" />
+              <img data-pgrl-image="emblem" src={emblemUrl} alt="" className="h-16 w-16 shrink-0 object-contain" />
             ) : logoUrl ? (
               <span className="flex h-14 shrink-0 items-center rounded-lg bg-white px-2">
                 <img src={logoUrl} alt="" className="h-full w-auto max-w-[150px] object-contain" />

@@ -8,11 +8,13 @@
  */
 import { createContext, useContext, useMemo, useReducer, type ReactNode } from 'react';
 import { digitClient } from '@/providers/bridge';
+import { ensureLandingSetup, isAccessDenied } from './landingSetup';
 import { getEditorEntry } from './sectionEditorRegistry';
 import { persistLocEdits } from './localization';
 import type {
+  LandingItemData,
   BuilderState, HistorySnap, InspectorTab, LandingPageData, LandingSectionData,
-  LocEdits, MdmsRow, PreviewConfig, SectionEntry, ValidationIssue,
+  LocEdits, MdmsRow, PageEntry, PreviewConfig, SectionEntry, ValidationIssue,
 } from './types';
 
 export const SECTION_SCHEMA = 'RAINMAKER-PGR.LandingSection';
@@ -28,7 +30,7 @@ type Action =
   | { type: 'loadError'; error: string }
   | { type: 'hydrate'; sections: MdmsRow[]; page?: MdmsRow; select?: string }
   | { type: 'select'; id: string; tab?: InspectorTab; focusField?: string | null }
-  | { type: 'hover'; code: string | null }
+  | { type: 'hover'; code: string | null; source?: 'page' }
   | { type: 'setTab'; tab: InspectorTab }
   | { type: 'patchSection'; code: string; patch: Partial<LandingSectionData>; coalesce?: string }
   | { type: 'patchPage'; patch: Partial<LandingPageData>; coalesce?: string }
@@ -37,6 +39,9 @@ type Action =
   | { type: 'duplicate'; code: string }
   | { type: 'remove'; code: string }
   | { type: 'addSection'; sectionType: string; code: string }
+  | { type: 'seedDefaults'; sections: LandingSectionData[]; page: LandingPageData }
+  | { type: 'setPageItems'; items: Record<string, LandingItemData[]> }
+  | { type: 'setItemIcon'; code: string; item: string; iconId: string }
   | { type: 'undo' }
   | { type: 'redo' }
   | { type: 'setPreviewMode'; mode: 'draft' | 'published' }
@@ -52,15 +57,17 @@ export const initialState: BuilderState = {
   loading: true,
   page: null,
   sections: [],
+  pageItems: {},
   locEdits: {},
   selected: 'page',
   hovered: null,
+  hoveredFromPage: false,
   inspectorTab: 'content',
   focusField: null,
   previewMode: 'draft',
   viewport: 'desktop',
   zoom: 1,
-  displayLocale: 'pt_PT',
+  displayLocale: 'en_IN',
   saving: false,
   lastSavedAt: null,
   validation: null,
@@ -135,7 +142,9 @@ export function reducer(state: BuilderState, action: Action): BuilderState {
         focusField: action.focusField ?? null,
       };
     case 'hover':
-      return state.hovered === action.code ? state : { ...state, hovered: action.code };
+      return state.hovered === action.code && state.hoveredFromPage === (action.source === 'page')
+        ? state
+        : { ...state, hovered: action.code, hoveredFromPage: action.source === 'page' };
     case 'setTab':
       return { ...state, inspectorTab: action.tab, focusField: null };
     case 'patchSection': {
@@ -204,6 +213,32 @@ export function reducer(state: BuilderState, action: Action): BuilderState {
         selected: state.selected === action.code ? 'page' : state.selected,
         validation: null,
       };
+    }
+    case 'seedDefaults': {
+      // A tenant with no saved rows: start from the page's built-in layout (what
+      // residents see today) as unsaved rows, so the Builder shows the live page
+      // and Save Draft / Publish persists exactly that. No-op once rows exist.
+      if (state.sections.some((s) => s.state !== 'deleted')) return state;
+      const sections: SectionEntry[] = [...action.sections]
+        .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+        .map((d) => ({ draft: { ...d }, state: 'created' as const }));
+      const page: PageEntry = state.page?.record
+        ? state.page
+        : { draft: { ...(state.page?.draft ?? {}), ...action.page, code: 'default' }, dirty: true };
+      return { ...state, sections, page, past: [], future: [], validation: null };
+    }
+    case 'setPageItems':
+      return { ...state, pageItems: action.items };
+    case 'setItemIcon': {
+      // An icon chosen on the page. Items are copy-on-write: with no explicit
+      // items yet, the section's built-in list is materialised first.
+      const sec = state.sections.find((s) => s.draft.code === action.code);
+      if (!sec) return state;
+      const explicit = (sec.draft.items ?? []) as LandingItemData[];
+      const base = explicit.length ? explicit : (getEditorEntry(sec.draft.type)?.items?.inherited?.() ?? state.pageItems[sec.draft.type ?? ''] ?? []);
+      if (!base.some((it) => it.code === action.item)) return state;
+      const items = base.map((it, i) => ({ ...it, enabled: it.enabled ?? true, order: it.order ?? (i + 1) * 10, ...(it.code === action.item ? { iconId: action.iconId } : {}) }));
+      return reducer(state, { type: 'patchSection', code: action.code, patch: { items } });
     }
     case 'addSection': {
       const entryDef = getEditorEntry(action.sectionType);
@@ -353,14 +388,33 @@ async function persistRows(state: BuilderState, tenantId: string, promote: boole
       { ...state.page.record, data: state.page.draft as Record<string, unknown> },
       true,
     );
+  } else if (state.page?.dirty) {
+    // First save on a tenant with no page row yet (hydrate gives a draft but no record).
+    const code = String(state.page.draft.code ?? 'default');
+    await digitClient.mdmsCreate(tenantId, PAGE_SCHEMA, code, { ...state.page.draft, code } as Record<string, unknown>);
   }
 }
 
 /** Save Draft: rows as-is + staged localization. Publish: also promote
  *  enabled sections to PUBLISHED. */
 export async function persist(state: BuilderState, tenantId: string, opts: { publish?: boolean } = {}): Promise<void> {
+  // Tenants onboarded before the landing masters existed have neither their
+  // schemas nor the gateway actions to write them; add what is missing first.
+  const setup = await ensureLandingSetup(tenantId);
   await persistLocEdits(tenantId, state.locEdits);
-  await persistRows(state, tenantId, !!opts.publish);
+  try {
+    await persistRows(state, tenantId, !!opts.publish);
+  } catch (e) {
+    // Access control caches role-actions (~15 min), so actions created a moment
+    // ago may not authorise yet. Say so instead of a bare 403.
+    if (setup.actionsCreated.length && isAccessDenied(e)) {
+      throw new Error(
+        'The landing page masters and their permissions were just set up for this tenant. '
+        + 'Permissions take up to 15 minutes to apply — please Publish again then.',
+      );
+    }
+    throw e;
+  }
 }
 
 export async function fetchAll(tenantId: string): Promise<{ sections: MdmsRow[]; page?: MdmsRow }> {

@@ -12,10 +12,24 @@ import type { LocEdits } from './types';
 export const LOC_MODULE = 'rainmaker-pgr';
 
 /** Languages offered in the Inspector / localization drawer. */
-export const BUILDER_LOCALES: Array<{ code: string; label: string; short: string }> = [
-  { code: 'pt_PT', label: 'Português', short: 'PT' },
-  { code: 'en_IN', label: 'English', short: 'EN' },
-];
+export interface BuilderLocale { code: string; label: string; short: string }
+const LOCALE_LABELS: Record<string, string> = { en: 'English', sw: 'Kiswahili', pt: 'Português' };
+export const builderLocale = (code: string): BuilderLocale => {
+  const lang = code.split(/[-_]/)[0].toLowerCase();
+  return { code, label: LOCALE_LABELS[lang] ?? code, short: lang.toUpperCase() };
+};
+/** The languages offered for editing: the tenant's (StateInfo) once the Builder
+ *  has loaded them, English until then. Mutated in place so every reader sees
+ *  the same list. */
+export const BUILDER_LOCALES: BuilderLocale[] = [builderLocale('en_IN')];
+export function setBuilderLocales(codes: string[]): void {
+  const list = codes.filter((c) => c && c !== 'default').map(builderLocale);
+  if (list.length) BUILDER_LOCALES.splice(0, BUILDER_LOCALES.length, ...list);
+}
+/** The language to edit first: English when the tenant has it, else its first. */
+export function defaultBuilderLocale(): string {
+  return BUILDER_LOCALES.find((l) => l.code.startsWith('en'))?.code ?? BUILDER_LOCALES[0]?.code ?? 'en_IN';
+}
 
 const cache = new Map<string, Record<string, string>>(); // locale -> key -> msg
 
