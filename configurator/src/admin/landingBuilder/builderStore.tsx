@@ -62,7 +62,7 @@ export const initialState: BuilderState = {
   previewMode: 'draft',
   viewport: 'desktop',
   zoom: 1,
-  displayLocale: 'pt_PT',
+  displayLocale: 'en_IN',
   saving: false,
   lastSavedAt: null,
   validation: null,
