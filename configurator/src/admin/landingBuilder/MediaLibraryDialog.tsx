@@ -16,12 +16,13 @@ import {
 import { toast } from '@/hooks/use-toast';
 import { useApp } from '../../App';
 import { useBuilder } from './builderStore';
-import { getRecents, isUrl, uploadImage, type MediaAsset } from './media';
+import { getRecents, isUrl, uploadImage, type MediaAsset, IMAGE_RULES } from './media';
 import type { BuilderFieldDef } from './sectionEditorRegistry';
 import type { LandingSectionData } from './types';
+import { getPath, setPath } from './fieldPaths';
 
 export function MediaLibraryDialog({ def, code, draft }: { def: BuilderFieldDef; code: string; draft: LandingSectionData }) {
-  const { dispatch } = useBuilder();
+  const { state, dispatch } = useBuilder();
   const { state: app } = useApp();
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -29,14 +30,27 @@ export function MediaLibraryDialog({ def, code, draft }: { def: BuilderFieldDef;
   const [query, setQuery] = useState('');
   const fileRef = useRef<HTMLInputElement>(null);
 
-  const current = draft.media?.imageId;
+  // Opened from the page (a picture was clicked): the preview selects this
+  // section with this field in focus, which shows the library until it closes.
+  const openedFromPage = state.selected === code && state.focusField === def.path;
+  const isOpen = open || openedFromPage;
+  const close = () => {
+    setOpen(false);
+    if (openedFromPage) dispatch({ type: 'setTab', tab: 'media' }); // clears the focus
+  };
+
+  const current = getPath(draft, def.path) as string | undefined;
+  // An uploaded picture is stored by file-store id; show it from the stable path the page uses.
+  const currentSrc = current ? (isUrl(current) ? current : `/filestore/v1/files/id?${new URLSearchParams({ tenantId: app.tenant ?? '', fileStoreId: current })}`) : undefined;
   const setImage = (imageId?: string) =>
-    dispatch({ type: 'patchSection', code, patch: { media: { ...(draft.media ?? {}), imageId } } });
+    dispatch({ type: 'patchSection', code, patch: setPath(draft, def.path, imageId) });
 
   const pick = (asset: MediaAsset) => {
-    // Store URL when we have one (renders everywhere today); else the id.
-    setImage(asset.url && isUrl(asset.url) ? asset.url : asset.fileStoreId);
-    setOpen(false);
+    // An upload is stored by its file-store id: the page serves it by id at a
+    // stable path, whereas the signed URL the upload returns expires. A pasted
+    // address is stored as given.
+    setImage(asset.fileStoreId ?? asset.url);
+    close();
   };
 
   const onUpload = async (file: File) => {
@@ -58,8 +72,8 @@ export function MediaLibraryDialog({ def, code, draft }: { def: BuilderFieldDef;
     <div className="space-y-1.5" data-field={def.path}>
       <Label className="text-xs font-medium">{def.label}</Label>
       <div className="flex items-center gap-2 rounded-md border border-border p-2">
-        {current && isUrl(current) ? (
-          <img src={current} alt="" className="h-10 w-14 rounded object-cover" />
+        {currentSrc ? (
+          <img src={currentSrc} alt="" className="h-10 w-14 rounded object-cover" />
         ) : (
           <span className="flex h-10 w-14 items-center justify-center rounded bg-muted">
             <ImageIcon className="h-4 w-4 text-muted-foreground" />
@@ -77,7 +91,7 @@ export function MediaLibraryDialog({ def, code, draft }: { def: BuilderFieldDef;
       </div>
       {def.help && <p className="m-0 text-[10px] text-muted-foreground">{def.help}</p>}
 
-      <Dialog open={open} onOpenChange={setOpen}>
+      <Dialog open={isOpen} onOpenChange={(v) => (v ? setOpen(true) : close())}>
         <DialogContent className="max-w-lg">
           <DialogHeader><DialogTitle>Media library</DialogTitle></DialogHeader>
           <div className="space-y-4">
@@ -86,11 +100,12 @@ export function MediaLibraryDialog({ def, code, draft }: { def: BuilderFieldDef;
                 <Upload className="mr-1 h-3.5 w-3.5" /> {busy ? 'Uploading…' : 'Upload image'}
               </Button>
               <input
-                ref={fileRef} type="file" accept="image/*" className="hidden"
+                ref={fileRef} type="file" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp" className="hidden"
                 onChange={(e) => e.target.files?.[0] && onUpload(e.target.files[0])}
               />
               <Input placeholder="Search recent…" value={query} onChange={(e) => setQuery(e.target.value)} className="h-8 flex-1 text-sm" />
             </div>
+            <p className="m-0 text-[11px] text-muted-foreground">{IMAGE_RULES}</p>
 
             <div className="flex items-center gap-2">
               <Link2 className="h-3.5 w-3.5 text-muted-foreground" />

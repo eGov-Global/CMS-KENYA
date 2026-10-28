@@ -10,7 +10,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { useBuilder, buildPreviewConfig, isDirty } from './builderStore';
 import { BUILDER_LOCALES, getLoadedMessages } from './localization';
-import type { InspectorTab, LocEdits } from './types';
+import type { InspectorTab, LandingPageData, LandingSectionData, LocEdits } from './types';
 
 const LANDING_PATH = '/digit-ui/landing?builderPreview=1';
 const VIEWPORT_WIDTH: Record<string, number> = { desktop: 1280, tablet: 768, mobile: 390 };
@@ -19,6 +19,12 @@ export function PreviewFrame() {
   const { state, dispatch } = useBuilder();
   const frameRef = useRef<HTMLIFrameElement>(null);
   const [ready, setReady] = useState(false);
+  // The page's built-in layout, reported with the ready handshake.
+  const [defaults, setDefaults] = useState<{ sections: LandingSectionData[]; page: LandingPageData } | null>(null);
+  const seededRef = useRef(false);
+  // Inline edits arrive in the message handler, which is bound once; read the live locale.
+  const localeRef = useRef(state.displayLocale);
+  useEffect(() => { localeRef.current = state.displayLocale; }, [state.displayLocale]);
   const debounceRef = useRef<number>();
 
   const post = (payload: Record<string, unknown>) =>
@@ -30,9 +36,29 @@ export function PreviewFrame() {
       if (e.origin !== window.location.origin) return;
       const msg = e.data;
       if (!msg || typeof msg !== 'object') return;
-      if (msg.type === 'pgrl-preview-ready') setReady(true);
+      if (msg.type === 'pgrl-preview-ready') {
+        setReady(true);
+        const d = msg.defaults;
+        if (d && typeof d === 'object' && Array.isArray(d.sections)) {
+          setDefaults({ sections: d.sections as LandingSectionData[], page: (d.page ?? {}) as LandingPageData });
+          if (d.items && typeof d.items === 'object') dispatch({ type: 'setPageItems', items: d.items });
+        }
+      }
       else if (msg.type === 'pgrl-preview-hover')
-        dispatch({ type: 'hover', code: typeof msg.code === 'string' ? msg.code : null });
+        dispatch({ type: 'hover', code: typeof msg.code === 'string' ? msg.code : null, source: 'page' });
+      else if (msg.type === 'pgrl-preview-pick-media' && typeof msg.code === 'string') {
+        // A picture on the page was clicked: that section's Media library opens for that slot.
+        const slot = typeof msg.slot === 'string' && msg.slot !== 'main' ? msg.slot : null;
+        dispatch({ type: 'select', id: msg.code, tab: 'media', focusField: slot ? `media.images.${slot}` : 'media.imageId' });
+      }
+      else if (msg.type === 'pgrl-preview-pick-icon' && typeof msg.code === 'string' && typeof msg.item === 'string' && typeof msg.iconId === 'string') {
+        dispatch({ type: 'setItemIcon', code: msg.code, item: msg.item, iconId: msg.iconId });
+      }
+      else if (msg.type === 'pgrl-preview-edit' && typeof msg.key === 'string' && typeof msg.text === 'string') {
+        // Text typed on the page: staged like an Inspector edit, for the language shown.
+        dispatch({ type: 'patchLoc', locale: localeRef.current, key: msg.key, text: msg.text, coalesce: `inline:${msg.key}` });
+        if (typeof msg.code === 'string') dispatch({ type: 'select', id: msg.code });
+      }
       else if (msg.type === 'pgrl-preview-select' && typeof msg.code === 'string') {
         dispatch({
           type: 'select',
@@ -45,6 +71,17 @@ export function PreviewFrame() {
     window.addEventListener('message', onMessage);
     return () => window.removeEventListener('message', onMessage);
   }, [dispatch]);
+
+  // A tenant with no saved rows: once the page has reported its built-in
+  // layout and the MDMS load has finished empty, seed the Builder from that
+  // layout as unsaved rows. Once per mount, so an operator who deletes every
+  // section does not get them back.
+  useEffect(() => {
+    if (!defaults || state.loading || state.error || seededRef.current) return;
+    seededRef.current = true;
+    if (state.sections.some((s) => s.state !== 'deleted')) return;
+    dispatch({ type: 'seedDefaults', sections: defaults.sections, page: defaults.page });
+  }, [defaults, state.loading, state.error, state.sections, dispatch]);
 
   // Out: config + staged localization + display locale (≤150 ms debounce).
   useEffect(() => {
@@ -93,10 +130,12 @@ export function PreviewFrame() {
   }, [ready, state.selected]);
 
   // Hover a section card -> auto-scroll the preview to it (debounced so a
-  // quick sweep across the list doesn't thrash the page).
+  // quick sweep across the list doesn't thrash the page). Never for a hover
+  // reported by the page itself: that would scroll the section the pointer
+  // is on out from under it.
   const hoverScrollRef = useRef<number>();
   useEffect(() => {
-    if (!ready || !state.hovered) return;
+    if (!ready || !state.hovered || state.hoveredFromPage) return;
     window.clearTimeout(hoverScrollRef.current);
     hoverScrollRef.current = window.setTimeout(
       () => post({ type: 'pgrl-preview-scroll', code: state.hovered! }),
@@ -104,7 +143,7 @@ export function PreviewFrame() {
     );
     return () => window.clearTimeout(hoverScrollRef.current);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ready, state.hovered]);
+  }, [ready, state.hovered, state.hoveredFromPage]);
 
   const width = VIEWPORT_WIDTH[state.viewport] ?? 1280;
   const dirty = isDirty(state);

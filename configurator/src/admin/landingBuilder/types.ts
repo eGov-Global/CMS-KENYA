@@ -39,7 +39,7 @@ export interface LandingSectionData {
   titleKey?: string;
   subtitleKey?: string;
   bodyKey?: string;
-  media?: { imageId?: string; altKey?: string };
+  media?: { imageId?: string; altKey?: string; images?: Record<string, string> };
   items?: LandingItemData[];
   theme?: { accent?: string; bg?: string };
   [key: string]: unknown;
@@ -92,12 +92,16 @@ export interface BuilderState {
   error?: string;
   page: PageEntry | null;
   sections: SectionEntry[];
+  /** The page's built-in items per section type (from the preview handshake). */
+  pageItems: Record<string, LandingItemData[]>;
   /** Staged localization text edits (all locales), saved with Save Draft. */
   locEdits: LocEdits;
   /** 'page' or a section code. */
   selected: string;
   /** Section the pointer is over (either pane) — drives both highlights. */
   hovered: string | null;
+  /** The hover came from the page itself (pointer over the preview), not the section list. */
+  hoveredFromPage: boolean;
   /** Inspector tab + a field to focus (set by click-to-edit in the preview). */
   inspectorTab: InspectorTab;
   focusField: string | null;

@@ -1,3 +1,4 @@
+import * as React from "react";
 // Pure resolution helpers for the config-driven landing (P1, CCSD-2006).
 //
 // MDMS config is untrusted, tenant-authored input, so everything here is
@@ -35,6 +36,17 @@ export function safeHref(url?: string): string {
   // wa.me / plain domain without scheme -> treat cautiously as external https
   if (/^wa\.me\//i.test(u) || /^www\./i.test(u)) return "https://" + u;
   return "#";
+}
+
+/** A file-store id (what the Builder stores for an uploaded picture). */
+export const isFileStoreId = (v?: string): boolean =>
+  typeof v === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v.trim());
+
+/** The public, non-expiring path the file store serves a picture at. The
+ *  signed URL the upload API returns expires, so it is never stored. */
+export function fileStoreImageUrl(fileStoreId: string, tenantId: string): string {
+  const q = new URLSearchParams({ tenantId, fileStoreId: fileStoreId.trim() });
+  return `/filestore/v1/files/id?${q.toString()}`;
 }
 
 /** Same allowlist narrowed for `<img src>`: an explicit https?: origin or an
@@ -103,13 +115,29 @@ export interface RichItem {
   order?: number;
 }
 
-const defaultKey = (d: any): string | undefined => d?.id ?? d?.code ?? d?.labelKey;
+export const defaultKey = (d: any): string | undefined => d?.id ?? d?.code ?? d?.labelKey ?? d?.titleKey;
 
 /** Build the runtime item list. When `rawItems` is empty/absent the caller uses
  *  its built-in default array instead (see section components) — so an
  *  unconfigured section is byte-identical to today. When present, each config
  *  item is normalised: icon string -> component, nav target -> route-key|url,
  *  and cosmetic fields inherited from the default of the same `code`. */
+/** The icon component with the item's code on its <svg>, so the Builder
+ *  preview can tell which item an icon click belongs to. */
+export function taggedIcon(Icon: IconComponent, code?: string): IconComponent {
+  if (!code) return Icon;
+  const Tagged = (props: Record<string, unknown>) => React.createElement(Icon as any, { ...props, "data-pgrl-item": code });
+  return Tagged as unknown as IconComponent;
+}
+
+/** A section's built-in items as config rows (code + text keys), so the
+ *  Builder can show and edit them before any are saved. */
+export function defaultItems(defaultArray: any[]): LandingItemConfig[] {
+  return (defaultArray || [])
+    .map((d) => ({ code: defaultKey(d), labelKey: d.titleKey ?? d.labelKey, descKey: d.descKey }))
+    .filter((it): it is LandingItemConfig & { code: string } => !!it.code);
+}
+
 export function buildRichItems(
   rawItems: LandingItemConfig[] | undefined,
   defaultArray: any[],
@@ -130,7 +158,7 @@ export function buildRichItems(
       return {
         id: it.code ?? base.id ?? `item-${i}`,
         code: it.code,
-        icon: resolveIcon(it.iconId, base.icon),
+        icon: taggedIcon(resolveIcon(it.iconId, base.icon), it.code),
         // Pass the *Default twin to c() as the fallback.
         labelKey: it.labelKey ?? base.labelKey,
         titleKey: it.labelKey ?? base.titleKey,
