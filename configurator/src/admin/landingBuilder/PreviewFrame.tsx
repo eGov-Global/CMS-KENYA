@@ -45,6 +45,10 @@ export function PreviewFrame() {
       }
       else if (msg.type === 'pgrl-preview-hover')
         dispatch({ type: 'hover', code: typeof msg.code === 'string' ? msg.code : null });
+      else if (msg.type === 'pgrl-preview-pick-media' && typeof msg.code === 'string') {
+        // A picture on the page was clicked: that section's Media library opens.
+        dispatch({ type: 'select', id: msg.code, tab: 'media', focusField: 'media.imageId' });
+      }
       else if (msg.type === 'pgrl-preview-edit' && typeof msg.key === 'string' && typeof msg.text === 'string') {
         // Text typed on the page: staged like an Inspector edit, for the language shown.
         dispatch({ type: 'patchLoc', locale: localeRef.current, key: msg.key, text: msg.text, coalesce: `inline:${msg.key}` });

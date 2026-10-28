@@ -37,6 +37,17 @@ export function safeHref(url?: string): string {
   return "#";
 }
 
+/** A file-store id (what the Builder stores for an uploaded picture). */
+export const isFileStoreId = (v?: string): boolean =>
+  typeof v === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v.trim());
+
+/** The public, non-expiring path the file store serves a picture at. The
+ *  signed URL the upload API returns expires, so it is never stored. */
+export function fileStoreImageUrl(fileStoreId: string, tenantId: string): string {
+  const q = new URLSearchParams({ tenantId, fileStoreId: fileStoreId.trim() });
+  return `/filestore/v1/files/id?${q.toString()}`;
+}
+
 /** Same allowlist narrowed for `<img src>`: an explicit https?: origin or an
  *  in-app path. Returns undefined so the caller falls back to no image. */
 export function safeMediaSrc(url?: string): string | undefined {
@@ -212,11 +223,23 @@ export function orderSections(
 // Registry adapters — shared by every layout's section entries
 // ---------------------------------------------------------------------------
 
-/** media.imageId as a direct URL passes through (see safeMediaSrc); a bare
- *  filestore id is left for the P2 media phase and ignored here, so the
- *  section falls back to its default (no image). */
+/** The state tenant the Builder uploads pictures under (the page only runs
+ *  inside the DIGIT shell). */
+function stateTenantId(): string | undefined {
+  try {
+    return (window as any).Digit?.ULBService?.getStateId?.() || undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/** media.imageId is either a pasted URL (passed through safeMediaSrc) or the
+ *  file-store id of an uploaded picture, served anonymously at a stable path. */
 export function mediaUrl(media?: LandingMediaConfig): string | undefined {
-  return safeMediaSrc(media?.imageId);
+  const id = media?.imageId;
+  const tenant = stateTenantId();
+  if (isFileStoreId(id) && tenant) return fileStoreImageUrl(id as string, tenant);
+  return safeMediaSrc(id);
 }
 
 /** section with its items normalised to the rich runtime shape (or left absent

@@ -20,6 +20,8 @@
 //   out: pgrl-preview-hover     { code | null }
 //   out: pgrl-preview-select    { code, field? }   click; field set for known
 //                                                  editable elements (titles)
+//   out: pgrl-preview-pick-media { code }         a section's picture was
+//                                                  clicked: open its Media library
 //   out: pgrl-preview-edit      { code, key, text } text typed in place on the
 //                                                  page (click a text, type,
 //                                                  Enter / click away commits)
@@ -33,6 +35,7 @@ import type { ResolvedLandingConfig } from "./types";
 import { DEFAULT_LANDING_CONFIG } from "./defaults";
 import { LANDING_COPY } from "../content";
 import { LANDING_KEY_PREFIX } from "../useLandingCopy";
+import { sectionTakesImage } from "./sectionRegistry";
 
 /** Find a section by its config `code`. Every section root carries
  *  data-pgrl-code, so this stays exact when two rows share a type. */
@@ -81,6 +84,8 @@ export function usePreviewBridge(): PreviewBridge {
   const i18nRef = React.useRef(i18n);
   i18nRef.current = i18n;
   const highlightRef = React.useRef<{ el: HTMLElement; label: HTMLElement } | null>(null);
+  // section code -> type, from the last config the Builder pushed.
+  const typesRef = React.useRef<Record<string, string>>({});
 
   React.useEffect(() => {
     if (!active) return;
@@ -158,7 +163,11 @@ export function usePreviewBridge(): PreviewBridge {
             /* ignore */
           }
         }
-        setConfig({ ...(msg.config as ResolvedLandingConfig) });
+        const cfg = msg.config as ResolvedLandingConfig;
+        const types: Record<string, string> = {};
+        (cfg.sections || []).forEach((s) => { if (s?.code && s?.type) types[s.code] = s.type; });
+        typesRef.current = types;
+        setConfig({ ...cfg });
       } else if (msg.type === "pgrl-preview-scroll" && typeof msg.code === "string") {
         const el = sectionRoot(msg.code);
         if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -258,6 +267,27 @@ export function usePreviewBridge(): PreviewBridge {
       sel?.removeAllRanges();
       sel?.addRange(range);
     };
+    // ---- Click-to-replace pictures / icons -----------------------------------
+    // A picture (<img> or an element with a background image) inside a section
+    // whose type reads `media` opens that section's Media library in the Builder.
+    // Pictures are often full-bleed behind a text panel (the hero), so the
+    // pointer target is rarely the <img> itself: hit-test the section's
+    // pictures by position instead.
+    const pictureFor = (node: HTMLElement | null, x: number, y: number): { el: HTMLElement; code: string } | null => {
+      const root = node?.closest("[data-pgrl-code]") as HTMLElement | null;
+      const code = root?.getAttribute("data-pgrl-code") || null;
+      if (!root || !code || !sectionTakesImage(typesRef.current[code])) return null;
+      const under = (el: Element) => { const r = el.getBoundingClientRect(); return r.width > 40 && r.height > 40 && x >= r.left && x <= r.right && y >= r.top && y <= r.bottom; };
+      const pics = [...root.querySelectorAll("img")].filter((img) => img.getAttribute("aria-hidden") !== "true" && under(img));
+      const el = (pics.sort((a, b) => b.getBoundingClientRect().width * b.getBoundingClientRect().height - a.getBoundingClientRect().width * a.getBoundingClientRect().height)[0] as HTMLElement | undefined)
+        ?? ([...root.querySelectorAll<HTMLElement>("*")].find((e) => e.tagName !== "A" && getComputedStyle(e).backgroundImage !== "none" && under(e)));
+      return el ? { el, code } : null;
+    };
+    const iconFor = (node: HTMLElement | null): string | null => {
+      const svg = node?.closest("svg");
+      return svg ? codeForNode(svg as unknown as HTMLElement) : null;
+    };
+
     let hoverEl: HTMLElement | null = null;
     const clearHover = () => {
       if (hoverEl && hoverEl !== editing?.el) {
@@ -268,14 +298,18 @@ export function usePreviewBridge(): PreviewBridge {
       hoverEl = null;
     };
     const onPointerOverEdit = (e: Event) => {
-      const hit = editableFor(e.target as HTMLElement | null);
-      if (hit?.el === hoverEl) return;
+      const t = e.target as HTMLElement | null;
+      const text = editableFor(t);
+      const pe = e as PointerEvent;
+      const pic = text ? null : pictureFor(t, pe.clientX, pe.clientY);
+      const el = text?.el ?? pic?.el ?? null;
+      if (el === hoverEl) return;
       clearHover();
-      if (!hit || hit.el === editing?.el) return;
-      hoverEl = hit.el;
+      if (!el || el === editing?.el) return;
+      hoverEl = el;
       hoverEl.style.outline = HOVER_OUTLINE;
-      hoverEl.style.cursor = "text";
-      hoverEl.setAttribute("title", "Click to edit this text");
+      hoverEl.style.cursor = text ? "text" : "pointer";
+      hoverEl.setAttribute("title", text ? "Click to edit this text" : "Click to replace this picture");
     };
 
     const onClick = (e: MouseEvent) => {
@@ -291,6 +325,16 @@ export function usePreviewBridge(): PreviewBridge {
         startEdit(hit.el, hit.key);
         const code = codeForNode(hit.el);
         if (code) post({ type: "pgrl-preview-select", code });
+        return;
+      }
+      const pic = pictureFor(t, e.clientX, e.clientY);
+      if (pic) {
+        post({ type: "pgrl-preview-pick-media", code: pic.code });
+        return;
+      }
+      const iconCode = iconFor(t);
+      if (iconCode) {
+        post({ type: "pgrl-preview-select", code: iconCode, field: "items" });
         return;
       }
       const field = fieldForNode(t);

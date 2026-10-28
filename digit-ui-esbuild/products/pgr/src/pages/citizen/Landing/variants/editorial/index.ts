@@ -20,6 +20,7 @@ import { EditorialFooter } from "./EditorialFooter";
 export const EDITORIAL_SECTIONS: Partial<Record<string, SectionEntry>> = {
   hero: {
     Component: EditorialHero,
+    image: true,
     slot: "main",
     buildProps: (s, ctx) => {
       const configured = mediaUrl(s.media);
@@ -63,6 +64,7 @@ export const EDITORIAL_SECTIONS: Partial<Record<string, SectionEntry>> = {
   },
   footer: {
     Component: EditorialFooter,
+    image: true,
     slot: "footer",
     buildProps: (s, ctx) => ({ routes: ctx.routes, logoUrl: mediaUrl(s.media) ?? ctx.footerLogoUrl, emblemUrl: ctx.emblemUrl, section: s }),
   },
