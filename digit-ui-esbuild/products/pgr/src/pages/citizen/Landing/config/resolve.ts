@@ -37,6 +37,17 @@ export function safeHref(url?: string): string {
   return "#";
 }
 
+/** A file-store id (what the Builder stores for an uploaded picture). */
+export const isFileStoreId = (v?: string): boolean =>
+  typeof v === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v.trim());
+
+/** The public, non-expiring path the file store serves a picture at. The
+ *  signed URL the upload API returns expires, so it is never stored. */
+export function fileStoreImageUrl(fileStoreId: string, tenantId: string): string {
+  const q = new URLSearchParams({ tenantId, fileStoreId: fileStoreId.trim() });
+  return `/filestore/v1/files/id?${q.toString()}`;
+}
+
 /** Same allowlist narrowed for `<img src>`: an explicit https?: origin or an
  *  in-app path. Returns undefined so the caller falls back to no image. */
 export function safeMediaSrc(url?: string): string | undefined {

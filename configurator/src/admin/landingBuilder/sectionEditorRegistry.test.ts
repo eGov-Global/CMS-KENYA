@@ -29,3 +29,13 @@ describe('builder section catalog', () => {
     }
   });
 });
+
+describe('picture fields', () => {
+  it('exist for every section type whose page entry reads media (click-to-replace)', () => {
+    const src = readFileSync(PAGE_REGISTRY, 'utf8');
+    const body = src.slice(src.indexOf('export const SECTION_REGISTRY'));
+    const withImage = [...body.matchAll(/^ {2}([a-z]+): \{[^}]*?\n {4}image: true,/gm)].map((m) => m[1]);
+    expect(withImage.length).toBeGreaterThan(4);
+    for (const type of withImage) expect(getEditorEntry(type)!.fields.some((f) => f.widget === 'media'), type).toBe(true);
+  });
+});
