@@ -22,6 +22,9 @@ export function PreviewFrame() {
   // The page's built-in layout, reported with the ready handshake.
   const [defaults, setDefaults] = useState<{ sections: LandingSectionData[]; page: LandingPageData } | null>(null);
   const seededRef = useRef(false);
+  // Inline edits arrive in the message handler, which is bound once; read the live locale.
+  const localeRef = useRef(state.displayLocale);
+  useEffect(() => { localeRef.current = state.displayLocale; }, [state.displayLocale]);
   const debounceRef = useRef<number>();
 
   const post = (payload: Record<string, unknown>) =>
@@ -42,6 +45,11 @@ export function PreviewFrame() {
       }
       else if (msg.type === 'pgrl-preview-hover')
         dispatch({ type: 'hover', code: typeof msg.code === 'string' ? msg.code : null });
+      else if (msg.type === 'pgrl-preview-edit' && typeof msg.key === 'string' && typeof msg.text === 'string') {
+        // Text typed on the page: staged like an Inspector edit, for the language shown.
+        dispatch({ type: 'patchLoc', locale: localeRef.current, key: msg.key, text: msg.text, coalesce: `inline:${msg.key}` });
+        if (typeof msg.code === 'string') dispatch({ type: 'select', id: msg.code });
+      }
       else if (msg.type === 'pgrl-preview-select' && typeof msg.code === 'string') {
         dispatch({
           type: 'select',
