@@ -8,11 +8,12 @@
  */
 import { createContext, useContext, useMemo, useReducer, type ReactNode } from 'react';
 import { digitClient } from '@/providers/bridge';
+import { ensureLandingSetup, isAccessDenied } from './landingSetup';
 import { getEditorEntry } from './sectionEditorRegistry';
 import { persistLocEdits } from './localization';
 import type {
   BuilderState, HistorySnap, InspectorTab, LandingPageData, LandingSectionData,
-  LocEdits, MdmsRow, PreviewConfig, SectionEntry, ValidationIssue,
+  LocEdits, MdmsRow, PageEntry, PreviewConfig, SectionEntry, ValidationIssue,
 } from './types';
 
 export const SECTION_SCHEMA = 'RAINMAKER-PGR.LandingSection';
@@ -37,6 +38,7 @@ type Action =
   | { type: 'duplicate'; code: string }
   | { type: 'remove'; code: string }
   | { type: 'addSection'; sectionType: string; code: string }
+  | { type: 'seedDefaults'; sections: LandingSectionData[]; page: LandingPageData }
   | { type: 'undo' }
   | { type: 'redo' }
   | { type: 'setPreviewMode'; mode: 'draft' | 'published' }
@@ -205,6 +207,19 @@ export function reducer(state: BuilderState, action: Action): BuilderState {
         validation: null,
       };
     }
+    case 'seedDefaults': {
+      // A tenant with no saved rows: start from the page's built-in layout (what
+      // residents see today) as unsaved rows, so the Builder shows the live page
+      // and Save Draft / Publish persists exactly that. No-op once rows exist.
+      if (state.sections.some((s) => s.state !== 'deleted')) return state;
+      const sections: SectionEntry[] = [...action.sections]
+        .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+        .map((d) => ({ draft: { ...d }, state: 'created' as const }));
+      const page: PageEntry = state.page?.record
+        ? state.page
+        : { draft: { ...(state.page?.draft ?? {}), ...action.page, code: 'default' }, dirty: true };
+      return { ...state, sections, page, past: [], future: [], validation: null };
+    }
     case 'addSection': {
       const entryDef = getEditorEntry(action.sectionType);
       if (!entryDef) return state;
@@ -353,14 +368,33 @@ async function persistRows(state: BuilderState, tenantId: string, promote: boole
       { ...state.page.record, data: state.page.draft as Record<string, unknown> },
       true,
     );
+  } else if (state.page?.dirty) {
+    // First save on a tenant with no page row yet (hydrate gives a draft but no record).
+    const code = String(state.page.draft.code ?? 'default');
+    await digitClient.mdmsCreate(tenantId, PAGE_SCHEMA, code, { ...state.page.draft, code } as Record<string, unknown>);
   }
 }
 
 /** Save Draft: rows as-is + staged localization. Publish: also promote
  *  enabled sections to PUBLISHED. */
 export async function persist(state: BuilderState, tenantId: string, opts: { publish?: boolean } = {}): Promise<void> {
+  // Tenants onboarded before the landing masters existed have neither their
+  // schemas nor the gateway actions to write them; add what is missing first.
+  const setup = await ensureLandingSetup(tenantId);
   await persistLocEdits(tenantId, state.locEdits);
-  await persistRows(state, tenantId, !!opts.publish);
+  try {
+    await persistRows(state, tenantId, !!opts.publish);
+  } catch (e) {
+    // Access control caches role-actions (~15 min), so actions created a moment
+    // ago may not authorise yet. Say so instead of a bare 403.
+    if (setup.actionsCreated.length && isAccessDenied(e)) {
+      throw new Error(
+        'The landing page masters and their permissions were just set up for this tenant. '
+        + 'Permissions take up to 15 minutes to apply — please Publish again then.',
+      );
+    }
+    throw e;
+  }
 }
 
 export async function fetchAll(tenantId: string): Promise<{ sections: MdmsRow[]; page?: MdmsRow }> {
