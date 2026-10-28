@@ -17,7 +17,8 @@ import { useApp } from '../../App';
 import {
   BuilderProvider, useBuilder, fetchAll, persist, validateAll, isDirty,
 } from './builderStore';
-import { loadMessages, BUILDER_LOCALES } from './localization';
+import { loadMessages, BUILDER_LOCALES, setBuilderLocales, defaultBuilderLocale } from './localization';
+import { useAvailableLocales } from '@/hooks/useAvailableLocales';
 import { BuilderToolbar } from './BuilderToolbar';
 import { SectionListPane } from './SectionListPane';
 import { PreviewFrame } from './PreviewFrame';
@@ -37,9 +38,14 @@ function BuilderInner() {
   const preselect = params.id ?? search.get('select') ?? undefined;
   const dirty = isDirty(state);
 
-  // Load rows + warm the localization cache (both locales) once.
+  // Load rows + warm the localization cache for the tenant's languages once
+  // (StateInfo); the Builder edits English first where the tenant has it.
+  const { locales: tenantLocales, isLoading: localesLoading } = useAvailableLocales();
   useEffect(() => {
+    if (localesLoading) return;
     let cancelled = false;
+    setBuilderLocales(tenantLocales.map((l) => l.value));
+    dispatch({ type: 'setDisplayLocale', locale: defaultBuilderLocale() });
     dispatch({ type: 'loadStart' });
     Promise.all([
       fetchAll(tenantId),
@@ -51,7 +57,7 @@ function BuilderInner() {
       .catch((e) => !cancelled && dispatch({ type: 'loadError', error: String((e as Error)?.message ?? e) }));
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tenantId]);
+  }, [tenantId, localesLoading]);
 
   // Unsaved-changes guard.
   useEffect(() => {
