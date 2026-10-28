@@ -13,7 +13,10 @@
 //          edits preview instantly; locale switches the display language.
 //   in:  pgrl-preview-scroll    { code }
 //   in:  pgrl-preview-highlight { code | null }    Figma-style outline + label
-//   out: pgrl-preview-ready     {}
+//   out: pgrl-preview-ready     { defaults }     the page's built-in layout
+//                                                  (defaults.ts), so a tenant with
+//                                                  no saved rows can start the
+//                                                  Builder from what is live
 //   out: pgrl-preview-hover     { code | null }
 //   out: pgrl-preview-select    { code, field? }   click; field set for known
 //                                                  editable elements (titles)
@@ -24,6 +27,7 @@
 import * as React from "react";
 import { useTranslation } from "react-i18next";
 import type { ResolvedLandingConfig } from "./types";
+import { DEFAULT_LANDING_CONFIG } from "./defaults";
 
 /** Find a section by its config `code`. Every section root carries
  *  data-pgrl-code, so this stays exact when two rows share a type. */
@@ -182,7 +186,7 @@ export function usePreviewBridge(): PreviewBridge {
     window.addEventListener("message", onMessage);
     document.addEventListener("pointerover", onPointerOver, true);
     document.addEventListener("click", onClick, true);
-    post({ type: "pgrl-preview-ready" });
+    post({ type: "pgrl-preview-ready", defaults: DEFAULT_LANDING_CONFIG });
     return () => {
       window.removeEventListener("message", onMessage);
       document.removeEventListener("pointerover", onPointerOver, true);

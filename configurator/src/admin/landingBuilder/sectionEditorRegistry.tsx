@@ -11,7 +11,7 @@
 import type { LucideIcon } from 'lucide-react';
 import {
   Image, Navigation, LayoutGrid, ListOrdered, Radio, Lock, Newspaper,
-  Landmark, Megaphone, PanelBottom,
+  Landmark, Megaphone, PanelBottom, Phone, Quote,
 } from 'lucide-react';
 import type { InspectorTab, LandingSectionData, ValidationIssue } from './types';
 
@@ -196,6 +196,11 @@ export const SECTION_EDITOR_REGISTRY: Record<string, SectionEditorEntry> = {
         help: 'Overrides the built-in four when set.', newItem: newItem('type'),
       },
     }),
+  // Closing band of the top of the page ("Let's Make NAIROBI Work"); the
+  // page supplies the default heading, so nothing is required here.
+  tagline: entry('tagline', 'Tagline band', Quote,
+    'Short slogan band between the service categories and the steps.',
+    [loc('titleKey', 'Heading')]),
   steps: entry('steps', 'How it works', ListOrdered,
     'Numbered case-lifecycle steps.',
     [loc('titleKey', 'Title', { required: true }), themeField],
@@ -212,6 +217,16 @@ export const SECTION_EDITOR_REGISTRY: Record<string, SectionEditorEntry> = {
       items: {
         label: 'Channels', tab: 'content', withIcons: true, withDesc: true, withUrl: true,
         help: 'Overrides the built-in four when set.', newItem: newItem('channel'),
+      },
+    }),
+  // Emergency / county help-line numbers; items are tel: links.
+  helplines: entry('helplines', 'Help lines', Phone,
+    'Emergency and county help-line numbers.',
+    [loc('titleKey', 'Title'), loc('subtitleKey', 'Intro', { multiline: true })],
+    {
+      items: {
+        label: 'Help lines', tab: 'content', withIcons: false, withDesc: true, withUrl: true,
+        help: 'Overrides the built-in numbers when set. Use tel: links.', newItem: newItem('line'),
       },
     }),
   privacy: entry('privacy', 'Privacy', Lock,
