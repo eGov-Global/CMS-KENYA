@@ -10,7 +10,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { useBuilder, buildPreviewConfig, isDirty } from './builderStore';
 import { BUILDER_LOCALES, getLoadedMessages } from './localization';
-import type { InspectorTab, LocEdits } from './types';
+import type { InspectorTab, LandingPageData, LandingSectionData, LocEdits } from './types';
 
 const LANDING_PATH = '/digit-ui/landing?builderPreview=1';
 const VIEWPORT_WIDTH: Record<string, number> = { desktop: 1280, tablet: 768, mobile: 390 };
@@ -19,6 +19,9 @@ export function PreviewFrame() {
   const { state, dispatch } = useBuilder();
   const frameRef = useRef<HTMLIFrameElement>(null);
   const [ready, setReady] = useState(false);
+  // The page's built-in layout, reported with the ready handshake.
+  const [defaults, setDefaults] = useState<{ sections: LandingSectionData[]; page: LandingPageData } | null>(null);
+  const seededRef = useRef(false);
   const debounceRef = useRef<number>();
 
   const post = (payload: Record<string, unknown>) =>
@@ -30,7 +33,13 @@ export function PreviewFrame() {
       if (e.origin !== window.location.origin) return;
       const msg = e.data;
       if (!msg || typeof msg !== 'object') return;
-      if (msg.type === 'pgrl-preview-ready') setReady(true);
+      if (msg.type === 'pgrl-preview-ready') {
+        setReady(true);
+        const d = msg.defaults;
+        if (d && typeof d === 'object' && Array.isArray(d.sections)) {
+          setDefaults({ sections: d.sections as LandingSectionData[], page: (d.page ?? {}) as LandingPageData });
+        }
+      }
       else if (msg.type === 'pgrl-preview-hover')
         dispatch({ type: 'hover', code: typeof msg.code === 'string' ? msg.code : null });
       else if (msg.type === 'pgrl-preview-select' && typeof msg.code === 'string') {
@@ -45,6 +54,17 @@ export function PreviewFrame() {
     window.addEventListener('message', onMessage);
     return () => window.removeEventListener('message', onMessage);
   }, [dispatch]);
+
+  // A tenant with no saved rows: once the page has reported its built-in
+  // layout and the MDMS load has finished empty, seed the Builder from that
+  // layout as unsaved rows. Once per mount, so an operator who deletes every
+  // section does not get them back.
+  useEffect(() => {
+    if (!defaults || state.loading || state.error || seededRef.current) return;
+    seededRef.current = true;
+    if (state.sections.some((s) => s.state !== 'deleted')) return;
+    dispatch({ type: 'seedDefaults', sections: defaults.sections, page: defaults.page });
+  }, [defaults, state.loading, state.error, state.sections, dispatch]);
 
   // Out: config + staged localization + display locale (≤150 ms debounce).
   useEffect(() => {
