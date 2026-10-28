@@ -20,6 +20,9 @@
 //   out: pgrl-preview-hover     { code | null }
 //   out: pgrl-preview-select    { code, field? }   click; field set for known
 //                                                  editable elements (titles)
+//   out: pgrl-preview-edit      { code, key, text } text typed in place on the
+//                                                  page (click a text, type,
+//                                                  Enter / click away commits)
 //
 // Navigation is BLOCKED in preview mode: link clicks become select messages
 // instead of navigating the iframe away from the page.
@@ -28,6 +31,8 @@ import * as React from "react";
 import { useTranslation } from "react-i18next";
 import type { ResolvedLandingConfig } from "./types";
 import { DEFAULT_LANDING_CONFIG } from "./defaults";
+import { LANDING_COPY } from "../content";
+import { LANDING_KEY_PREFIX } from "../useLandingCopy";
 
 /** Find a section by its config `code`. Every section root carries
  *  data-pgrl-code, so this stays exact when two rows share a type. */
@@ -129,8 +134,17 @@ export function usePreviewBridge(): PreviewBridge {
           Object.entries(msg.messages as Record<string, Record<string, string>>).forEach(
             ([lng, res]) => {
               try {
-                i18nRef.current?.addResources?.(lng, "translations", res);
-                i18nRef.current?.addResources?.(lng, "translation", res);
+                for (const ns of ["translations", "translation"]) {
+                  // A landing key the Builder no longer sends (edit undone) must
+                  // fall back to the built-in text again. i18next cannot drop a
+                  // key, so set it to its own name — what the copy resolver
+                  // treats as "unresolved".
+                  const bundle = (i18nRef.current?.getResourceBundle?.(lng, ns) || {}) as Record<string, unknown>;
+                  Object.keys(bundle).forEach((k) => {
+                    if (k.startsWith(LANDING_KEY_PREFIX) && !(k in res)) i18nRef.current?.addResource?.(lng, ns, k, k);
+                  });
+                  i18nRef.current?.addResources?.(lng, ns, res);
+                }
               } catch {
                 /* ignore */
               }
@@ -169,11 +183,116 @@ export function usePreviewBridge(): PreviewBridge {
     };
 
     // Click -> select; block in-preview navigation.
+    // ---- Click-to-edit text ------------------------------------------------
+    // Every visible string is a PGR_LANDING_* message (store or built-in deck),
+    // so the text itself identifies its key: an element whose own text equals
+    // a known value becomes editable in place; Enter / click away commits the
+    // new text to the Builder, Escape restores it. Plain text only.
+    const EDIT_OUTLINE = "2px solid #059669";
+    const HOVER_OUTLINE = "1px dashed rgba(5,150,105,.75)";
+    const textToKey = (): Map<string, string> => {
+      const map = new Map<string, string>();
+      const lang = String(i18nRef.current?.language || "en");
+      const short = lang.split(/[-_]/)[0];
+      Object.entries(LANDING_COPY as Record<string, Record<string, string | undefined>>).forEach(([k, v]) => {
+        const text = v?.[short] ?? v?.en;
+        if (text) map.set(text.trim(), LANDING_KEY_PREFIX + k);
+      });
+      for (const ns of ["translations", "translation"]) {
+        const bundle = (i18nRef.current?.getResourceBundle?.(lang, ns) || {}) as Record<string, unknown>;
+        Object.entries(bundle).forEach(([k, text]) => {
+          if (k.startsWith(LANDING_KEY_PREFIX) && typeof text === "string" && text.trim()) map.set(text.trim(), k);
+        });
+      }
+      return map;
+    };
+    const editableFor = (node: HTMLElement | null): { el: HTMLElement; key: string } | null => {
+      const map = textToKey();
+      let el: HTMLElement | null = node;
+      for (let i = 0; el && i < 4 && !el.hasAttribute("data-pgrl-code"); i++, el = el.parentElement) {
+        const key = map.get((el.innerText || el.textContent || "").trim());
+        if (key) return { el, key };
+      }
+      return null;
+    };
+    type Editing = { el: HTMLElement; key: string; code: string | null; original: string; onKey: (e: KeyboardEvent) => void; onBlur: () => void };
+    let editing: Editing | null = null;
+    const endEdit = (commit: boolean) => {
+      if (!editing) return;
+      const { el, key, code, original, onKey, onBlur } = editing;
+      editing = null;
+      el.removeEventListener("keydown", onKey);
+      el.removeEventListener("blur", onBlur);
+      el.removeAttribute("contenteditable");
+      el.removeAttribute("data-pgrl-editing");
+      el.style.outline = "";
+      el.style.outlineOffset = "";
+      const text = (el.innerText || "").trim();
+      if (!commit || !text || text === original) {
+        el.textContent = original;
+        return;
+      }
+      post({ type: "pgrl-preview-edit", code, key, text });
+    };
+    const startEdit = (el: HTMLElement, key: string) => {
+      const original = (el.innerText || "").trim();
+      const onKey = (e: KeyboardEvent) => {
+        if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); endEdit(true); }
+        else if (e.key === "Escape") { e.preventDefault(); endEdit(false); }
+        e.stopPropagation();
+      };
+      const onBlur = () => endEdit(true);
+      editing = { el, key, code: codeForNode(el), original, onKey, onBlur };
+      el.setAttribute("contenteditable", "plaintext-only");
+      if (!el.isContentEditable) el.setAttribute("contenteditable", "true");
+      el.setAttribute("data-pgrl-editing", key);
+      el.style.outline = EDIT_OUTLINE;
+      el.style.outlineOffset = "2px";
+      el.addEventListener("keydown", onKey);
+      el.addEventListener("blur", onBlur);
+      el.focus();
+      const range = document.createRange();
+      range.selectNodeContents(el);
+      range.collapse(false);
+      const sel = window.getSelection();
+      sel?.removeAllRanges();
+      sel?.addRange(range);
+    };
+    let hoverEl: HTMLElement | null = null;
+    const clearHover = () => {
+      if (hoverEl && hoverEl !== editing?.el) {
+        hoverEl.style.outline = "";
+        hoverEl.style.cursor = "";
+        hoverEl.removeAttribute("title");
+      }
+      hoverEl = null;
+    };
+    const onPointerOverEdit = (e: Event) => {
+      const hit = editableFor(e.target as HTMLElement | null);
+      if (hit?.el === hoverEl) return;
+      clearHover();
+      if (!hit || hit.el === editing?.el) return;
+      hoverEl = hit.el;
+      hoverEl.style.outline = HOVER_OUTLINE;
+      hoverEl.style.cursor = "text";
+      hoverEl.setAttribute("title", "Click to edit this text");
+    };
+
     const onClick = (e: MouseEvent) => {
       const t = e.target as HTMLElement | null;
       if (!t) return;
       e.preventDefault();
+      if (editing && editing.el.contains(t)) return; // the caret moving inside the text being edited
       e.stopPropagation();
+      endEdit(true);
+      const hit = editableFor(t);
+      if (hit) {
+        clearHover();
+        startEdit(hit.el, hit.key);
+        const code = codeForNode(hit.el);
+        if (code) post({ type: "pgrl-preview-select", code });
+        return;
+      }
       const field = fieldForNode(t);
       if (field) {
         post({ type: "pgrl-preview-select", ...field });
@@ -186,11 +305,17 @@ export function usePreviewBridge(): PreviewBridge {
     window.addEventListener("message", onMessage);
     document.addEventListener("pointerover", onPointerOver, true);
     document.addEventListener("click", onClick, true);
+    document.addEventListener("pointerover", onPointerOverEdit, true);
+    document.addEventListener("pointerout", clearHover, true);
     post({ type: "pgrl-preview-ready", defaults: DEFAULT_LANDING_CONFIG });
     return () => {
       window.removeEventListener("message", onMessage);
       document.removeEventListener("pointerover", onPointerOver, true);
       document.removeEventListener("click", onClick, true);
+      document.removeEventListener("pointerover", onPointerOverEdit, true);
+      document.removeEventListener("pointerout", clearHover, true);
+      endEdit(false);
+      clearHover();
       clearHighlight();
     };
   }, [active]);
