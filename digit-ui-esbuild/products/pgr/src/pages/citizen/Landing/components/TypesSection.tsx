@@ -126,7 +126,7 @@ export function TypesSection({ routes, images, section }: TypesSectionProps) {
                       setting it; click-through, so a tap on it follows the card's link. */}
                   {photo && (
                     <div className="pointer-events-none relative">
-                      <img src={photo} alt="" loading="lazy" decoding="async" className="absolute inset-0 h-full w-full object-cover" />
+                      <img data-pgrl-image={`card-${type.id}`} src={photo} alt="" loading="lazy" decoding="async" className="absolute inset-0 h-full w-full object-cover" />
                     </div>
                   )}
                 </article>

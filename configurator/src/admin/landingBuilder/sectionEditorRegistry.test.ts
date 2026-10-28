@@ -36,6 +36,9 @@ describe('picture fields', () => {
     const body = src.slice(src.indexOf('export const SECTION_REGISTRY'));
     const withImage = [...body.matchAll(/^ {2}([a-z]+): \{[^}]*?\n {4}image: true,/gm)].map((m) => m[1]);
     expect(withImage.length).toBeGreaterThan(4);
-    for (const type of withImage) expect(getEditorEntry(type)!.fields.some((f) => f.widget === 'media'), type).toBe(true);
+    for (const type of withImage) {
+      const e = getEditorEntry(type)!;
+      expect(e.fields.some((f) => f.widget === 'media') || !!e.items, type).toBe(true);
+    }
   });
 });

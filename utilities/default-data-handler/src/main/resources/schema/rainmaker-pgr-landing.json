@@ -64,6 +64,13 @@
             },
             "altKey": {
               "type": "string"
+            },
+            "images": {
+              "type": "object",
+              "description": "Further pictures of the section by slot (pattern, left, right, skyline, portrait, emblem, card-<id>): a file-store id or an image URL each.",
+              "additionalProperties": {
+                "type": "string"
+              }
             }
           },
           "additionalProperties": false
