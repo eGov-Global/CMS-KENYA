@@ -1,10 +1,14 @@
-# Per-tenant compose overlay for bomet (state tenant `ke`).
+# Per-tenant compose overlay for bomet (state tenant `bo`).
 #
-# This file is copied to the target server as
-# /opt/digit/docker-compose.<inventory_hostname>.yml by the per-tenant overlay
-# step in playbook-deploy.yml, then included in every `docker compose` call.
-# Use it for bomet-only env tweaks and image pins that don't belong in the
-# shared docker-compose.egov-digit.yaml.
+# deploy.sh copies this to $digit_dir/docker-compose.bomet.yml and layers it
+# LAST on every compose call, so these values survive every redeploy. Put
+# tenant-only settings here — never edit docker-compose.egov-digit.yaml on the
+# box by hand (the deploy overwrites it). Secrets do NOT belong here: they go in
+# host_vars -> .env (see templates/digit.env.j2).
+#
+# Not needed here because the deploy sets them from host_vars: the pg -> bo
+# tenant ids, EGOV_UI_APP_HOST_MAP's key, EGOV_STATELEVEL_TENANT (hrms), the
+# +254 mobile country code/regex and Grafana's domain.
 services:
   # Inbox defaults STATE_LEVEL/PARENT_LEVEL to mz; bomet has no DataSecurity at
   # mz → encryptionPolicyConfiguration crash on boot. Pin both to ke.
@@ -19,20 +23,78 @@ services:
     environment:
       SPRING_FLYWAY_ENABLED: "false"
 
+  # Shared file ships pg.citya, which the deploy's `: pg$` rewrite does not match.
+  egov-enc-service:
+    environment:
+      STATE_LEVEL_TENANT_ID: "bo"
+
+  egov-user:
+    environment:
+      # Citizens register on first login; no separate registration OTP.
+      CITIZEN_REGISTRATION_WITHLOGIN_ENABLED: "true"
+      OTP_VALIDATION_REGISTER_MANDATORY: "false"
+      # OTPs go straight to egov-otp (otp-publisher -> Ozeki), not through Kong.
+      EGOV_OTP_HOST: "http://egov-otp:8089/"
+      # v2.12.1 renders this from host_vars enable_otp_services, which is false
+      # for bomet and would turn the FIXED test OTP on. Bomet sends real OTPs.
+      CITIZEN_LOGIN_PASSWORD_OTP_FIXED_ENABLED: "false"
+
+  egov-filestore:
+    environment:
+      # Upstream map + application/zip for .docx (some browsers report it so).
+      ALLOWED_FORMATS_MAP: "{jpg:{'image/jpg','image/jpeg'},jpeg:{'image/jpeg','image/jpg'},png:{'image/png'},pdf:{'application/pdf'},odt:{'application/vnd.oasis.opendocument.text'},ods:{'application/vnd.oasis.opendocument.spreadsheet'},docx:{'application/x-tika-msoffice','application/x-tika-ooxml','application/vnd.oasis.opendocument.text','application/msword','application/zip'},doc:{'application/x-tika-msoffice','application/x-tika-ooxml','application/vnd.oasis.opendocument.text','application/msword'},dxf:{'text/plain','application/dxf','application/octet-stream','image/vnd.dxf','image/vnd.dxf; format=ascii','image/vnd.dxf; format=binary','image/vnd.dxb'},csv:{'text/plain'},txt:{'text/plain'},xlsx:{'application/x-tika-ooxml','application/x-tika-msoffice','application/vnd.ms-excel','application/vnd.openxmlformats-officedocument.spreadsheetml.sheet','application/zip'},xls:{'application/x-tika-ooxml','application/x-tika-msoffice','application/vnd.ms-excel','multipart/form-data'},zip:{'application/zip','application/octet-stream'},geojson:{'application/json','text/plain','application/geo+json','multipart/form-data'},json:{'application/json','text/plain'},mp4:{'video/mp4'},mov:{'video/quicktime'},avi:{'video/x-msvideo'},mkv:{'video/x-matroska'},webm:{'video/webm'},pptx:{'application/vnd.openxmlformats-officedocument.presentationml.presentation','application/vnd.ms-powerpoint','application/x-tika-ooxml','application/zip','application/octet-stream'}}"
+
   # Config-driven notifications cutover (design D1/D4/D8). Bomet is the FIRST
   # tenant on the new path: PGR reads PGR.NotificationRouting +
   # PGR.NotificationTemplate from MDMS, renders + localizes per recipient, and
   # publishes one pre-rendered event per (recipient × channel) to
   # complaints.domain.events. The shared egov-digit default stays 'false', so
-  # only Bomet flips here. This per-tenant overlay survives Ansible re-runs.
-  # Requires the pass-through novu-bridge (notifications
-  # profile, enable_novu: true) and the seeded MDMS masters.
+  # only Bomet flips here. Requires novu-bridge (Bomet runs it in direct mode:
+  # the notifications-direct profile, no Novu server) and the seeded MDMS masters.
   pgr-services:
     environment:
       PGR_NOTIFICATION_CONFIG_DRIVEN: "true"
       # Bomet carries the canonical state-level EscalationConfig and workflow
       # self-loop. Keep the shared default disabled; this tenant is explicitly
       # preflighted and opted in through its overlay.
-      PGR_ESCALATION_ENABLED: "true"
+      # "false" until migration guide step 6a is done on this box (guide 1.5;
+      # upgrade step 6 refuses "true"). Set back to "true" for guide step 6b.
+      PGR_ESCALATION_ENABLED: "false"
       PGR_ESCALATION_INTERVAL_MS: "300000"
       KAFKA_TOPICS_COMPLAINTS_DOMAIN_EVENTS: complaints.domain.events
+      # Intake channels offered in the UI.
+      ALLOWED_SOURCE: "whatsapp,web,mobile,RB Bot,email,inperson,letter,linhaverde"
+      # Read by MigrationService (no default); the v2.12.1 shared file dropped it.
+      PGR_STATELEVEL_TENANTID: "bo"
+      # This DB's internal microservice user (v2.12.1 default is another box's).
+      EGOV_INTERNAL_MICROSERVICE_USER_UUID: "0523dabd-07fd-4823-be36-7d963bd577b5"
+      # Set on the v2.12 box (bomet-uat pgr build); v2.12.1's
+      # application.properties does not reference them — drop once confirmed unused.
+      PGR_ESCALATION_STATES: "PENDINGATLME,ESCALATEDLEVEL1,ESCALATEDLEVEL2,ESCALATEDLEVEL3"
+      # v2.12.1 reads the states to escalate from here instead (the line above
+      # is the v2.12 name, no longer read). Bomet keeps its level-state
+      # workflow: ESCALATE moves PENDINGATLME -> ESCALATEDLEVEL1 -> 2 -> 3.
+      # Used only while the EscalationConfig record has no eligibleStatuses.
+      PGR_ESCALATION_ELIGIBLE_STATUSES: "PENDINGATLME,ESCALATEDLEVEL1,ESCALATEDLEVEL2,ESCALATEDLEVEL3"
+      EGOV_IDGEN_PGR_SERVICEREQUESTID_STRIP_SEQUENCE_PADDING: "true"
+
+  # Direct SMS (Ozeki) and e-mail with no Novu server (profile
+  # notifications-direct), as on the v2.12 box. Values come from .env, rendered
+  # from host_vars (see digit.env.j2.bomet-snippet).
+  novu-bridge:
+    environment:
+      NOVU_BRIDGE_CHANNELS_ENABLED: ${NOVU_BRIDGE_CHANNELS_ENABLED:-SMS,EMAIL}
+      NOVU_BRIDGE_DIRECT_CHANNELS: ${NOVU_BRIDGE_DIRECT_CHANNELS:-}
+      NOVU_BRIDGE_DIRECT_SMS_PROVIDER: ${NOVU_BRIDGE_DIRECT_SMS_PROVIDER:-ozeki}
+      NOVU_BRIDGE_DIRECT_SMS_BASE_URL: ${NOVU_BRIDGE_DIRECT_SMS_BASE_URL:-}
+      NOVU_BRIDGE_DIRECT_SMS_USERNAME: ${NOVU_BRIDGE_DIRECT_SMS_USERNAME:-}
+      NOVU_BRIDGE_DIRECT_SMS_PASSWORD: ${NOVU_BRIDGE_DIRECT_SMS_PASSWORD:-}
+      NOVU_BRIDGE_DIRECT_SMS_TOKEN: ${NOVU_BRIDGE_DIRECT_SMS_TOKEN:-}
+      NOVU_BRIDGE_DIRECT_EMAIL_FROM: ${NOVU_BRIDGE_DIRECT_EMAIL_FROM:-}
+      NOVU_BRIDGE_KAFKA_USER_OTP_SMS_TOPIC: egov.core.notification.sms
+      SPRING_MAIL_HOST: ${SPRING_MAIL_HOST:-}
+      SPRING_MAIL_PORT: ${SPRING_MAIL_PORT:-587}
+      SPRING_MAIL_USERNAME: ${SPRING_MAIL_USERNAME:-}
+      SPRING_MAIL_PASSWORD: ${SPRING_MAIL_PASSWORD:-}
+      SPRING_MAIL_SMTP_AUTH: ${SPRING_MAIL_SMTP_AUTH:-true}
+      SPRING_MAIL_SMTP_STARTTLS: ${SPRING_MAIL_SMTP_STARTTLS:-true}

@@ -3332,3 +3332,4 @@ volumes:
   openbao_data: null
   novu_mongo_data: null
   gatus_data: null
+  clamav_data: null   # ClamAV signature DB (profile file-scan)

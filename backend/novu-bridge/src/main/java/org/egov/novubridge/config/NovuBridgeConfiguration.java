@@ -121,6 +121,22 @@ public class NovuBridgeConfiguration {
     @Value("${novu.bridge.workflow.id.email:complaints-email}")
     private String novuWorkflowEmail;
 
+    // ---- WhatsApp needs its own Twilio integration, explicitly targeted ----
+    // Novu resolves which integration to use per channel by picking the PRIMARY
+    // one for that channel UNLESS the trigger names an explicit
+    // overrides.<channel>.integrationIdentifier. Twilio WhatsApp delivery is
+    // modeled in Novu as an "sms"-channel step (see TwilioProviderStrategy), so
+    // a second, WhatsApp-registered Twilio integration living alongside the
+    // primary (plain SMS) one on that same "sms" channel is otherwise never
+    // picked — every trigger, SMS or WhatsApp, would keep resolving to the
+    // primary SMS integration's (non-WhatsApp) sender number. Set this to the
+    // identifier of that distinct WhatsApp integration to route WHATSAPP
+    // triggers there. Left blank (the default), no override is sent — existing
+    // deployments that haven't onboarded a separate WhatsApp integration yet
+    // see no behavior change.
+    @Value("${novu.bridge.integration.id.whatsapp:}")
+    private String whatsappIntegrationId;
+
     // ---- OTP delivery via a generic-sms gateway (independent of the PGR pass-through
     // below) ---- Empty (default) = OTP triggers plain, Novu's primary SMS integration
     // delivers. "ozeki" or "bongatech" = attach that gateway's generic-sms overrides
@@ -148,6 +164,25 @@ public class NovuBridgeConfiguration {
     // call), since it doesn't change with how the request travels. Unused by Ozeki.
     @Value("${novu.bridge.sms.sender.id:}")
     private String smsSenderId;
+
+    // ---- SMSCountry legacy bulk API (direct, not via Novu) ----
+    // Its form-encoded request and plain-text response cannot ride Novu's
+    // generic-sms provider, which injects a JSON _passthrough body, so
+    // SmsCountryClient talks to the gateway directly. Credentials are the
+    // SMSCountry panel login; that account type issues no API key.
+    @Value("${novu.bridge.smscountry.url:http://api.smscountry.com/SMSCwebservice_bulk.aspx}")
+    private String smsCountryUrl;
+
+    @Value("${novu.bridge.smscountry.user:}")
+    private String smsCountryUser;
+
+    @Value("${novu.bridge.smscountry.password:}")
+    private String smsCountryPassword;
+
+    /** True when the SMS leg should bypass Novu and go straight to SMSCountry. */
+    public boolean isSmsCountryDirect() {
+        return "smscountry".equalsIgnoreCase(smsProvider == null ? "" : smsProvider.trim());
+    }
 
     // ---- PGR pass-through SMS delivery via a generic-sms gateway (independent of the
     // OTP flag above) ---- Empty (default) = plain complaint SMS delivers via

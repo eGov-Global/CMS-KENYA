@@ -1091,6 +1091,13 @@ nginx_features:
   grafana: true              # /grafana/ — Grafana dashboards
   root_to_digit_ui: false    # serve / (the bare domain) from digit-ui instead of the default landing
 
+# Where / (the bare domain) redirects, e.g. "/digit-ui/landing". Empty = not
+# set (then nginx_features.root_to_digit_ui decides). Wins over root_to_digit_ui.
+# nginx_root_redirect: ""
+# Folder on the box served at /static-assets/ (tenant logos and banners that
+# MDMS logo URLs point at). The deploy does not create or sync it.
+# nginx_static_assets_dir: ""
+
 # If true, the playbook will NOT render `templates/nginx-site.conf.j2` into
 # /etc/nginx/sites-available/ and will NOT touch /etc/nginx/sites-enabled/.
 # nginx still gets installed (apt task is unconditional) but the operator's
