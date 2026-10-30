@@ -19,7 +19,7 @@ initContainers: {}
 # Without a rebuild the boundary/location UI wiring is stale. Refs #1160.
 image:
   repository: "digit-ui-esbuild"
-  tag: "2.12-5137119"
+  tag: "2.12.1-7a38661"
 replicas: "1"
 httpPort: 80
 healthChecks:
@@ -66,8 +66,6 @@ globalConfigs:
   mapTenant: "pg"
   employeeModuleDenylist: ["IM"]
   loginTenantAllowlist: []
-  # Employee inbox default list includes Resolved/Rejected (#46); false hides them until filtered (#144).
-  pgrInboxIncludeResolvedRejected: true
   coreMobileConfigs: {"countryCode": "+91", "mobileNumberRegex": "^[6-9][0-9]{9}$"}
   corePostalConfigs: {}
   dashboardMetricsEnabled: false

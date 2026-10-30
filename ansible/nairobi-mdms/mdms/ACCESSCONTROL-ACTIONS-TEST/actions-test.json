@@ -28023,108 +28023,35 @@
     }
   },
   {
-    "tenantId": "ciboot",
+    "tenantId": "ke",
     "data": {
-      "id": 2635,
-      "url": "/pgr-services/v2/request/_chronology",
+      "id": 2649,
+      "url": "/mdms-v2/v2/_create/RAINMAKER-PGR.EscalationConfig",
+      "name": "MDMS",
+      "displayName": "create RAINMAKER-PGR.EscalationConfig",
+      "orderNumber": 1,
+      "parentModule": "",
+      "enabled": true,
+      "serviceCode": "MDMS",
       "code": "null",
-      "name": "Chronology Filtered Search",
       "path": "",
-      "enabled": false,
-      "displayName": "Chronology Filtered Search",
-      "orderNumber": 0,
-      "serviceCode": "pgr-services",
-      "parentModule": ""
-    }
-  },
-  {
-    "tenantId": "cids30947",
-    "data": {
-      "id": 2635,
-      "url": "/pgr-services/v2/request/_chronology",
-      "code": "null",
-      "name": "Chronology Filtered Search",
-      "path": "",
-      "enabled": false,
-      "displayName": "Chronology Filtered Search",
-      "orderNumber": 0,
-      "serviceCode": "pgr-services",
-      "parentModule": ""
-    }
-  },
-  {
-    "tenantId": "ciwf30832",
-    "data": {
-      "id": 2635,
-      "url": "/pgr-services/v2/request/_chronology",
-      "code": "null",
-      "name": "Chronology Filtered Search",
-      "path": "",
-      "enabled": false,
-      "displayName": "Chronology Filtered Search",
-      "orderNumber": 0,
-      "serviceCode": "pgr-services",
-      "parentModule": ""
-    }
-  },
-  {
-    "tenantId": "ciwfi31083",
-    "data": {
-      "id": 2635,
-      "url": "/pgr-services/v2/request/_chronology",
-      "code": "null",
-      "name": "Chronology Filtered Search",
-      "path": "",
-      "enabled": false,
-      "displayName": "Chronology Filtered Search",
-      "orderNumber": 0,
-      "serviceCode": "pgr-services",
-      "parentModule": ""
+      "method": "POST"
     }
   },
   {
     "tenantId": "ke",
     "data": {
-      "id": 2635,
-      "url": "/pgr-services/v2/request/_chronology",
+      "id": 2650,
+      "url": "/mdms-v2/v2/_update/RAINMAKER-PGR.EscalationConfig",
+      "name": "MDMS",
+      "displayName": "update RAINMAKER-PGR.EscalationConfig",
+      "orderNumber": 1,
+      "parentModule": "",
+      "enabled": true,
+      "serviceCode": "MDMS",
       "code": "null",
-      "name": "Chronology Filtered Search",
       "path": "",
-      "enabled": false,
-      "displayName": "Chronology Filtered Search",
-      "orderNumber": 0,
-      "serviceCode": "pgr-services",
-      "parentModule": ""
-    }
-  },
-  {
-    "tenantId": "pg",
-    "data": {
-      "id": 2635,
-      "url": "/pgr-services/v2/request/_chronology",
-      "code": "null",
-      "name": "Chronology Filtered Search",
-      "path": "",
-      "enabled": false,
-      "displayName": "Chronology Filtered Search",
-      "orderNumber": 0,
-      "serviceCode": "pgr-services",
-      "parentModule": ""
-    }
-  },
-  {
-    "tenantId": "statea",
-    "data": {
-      "id": 2635,
-      "url": "/pgr-services/v2/request/_chronology",
-      "code": "null",
-      "name": "Chronology Filtered Search",
-      "path": "",
-      "enabled": false,
-      "displayName": "Chronology Filtered Search",
-      "orderNumber": 0,
-      "serviceCode": "pgr-services",
-      "parentModule": ""
+      "method": "POST"
     }
   }
 ]

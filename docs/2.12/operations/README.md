@@ -19,6 +19,7 @@ to hand us a report we can act on straight away.
 | **Mid-incident and want one page** | **[cheatsheet.md](cheatsheet.md)** |
 | **Setting up monitoring** so you hear about problems first | **[alerts-setup.md](alerts-setup.md)** and **[alert-channels.md](alert-channels.md)** |
 | **Looking at a Grafana dashboard** and unsure what it means | **[dashboards.md](dashboards.md)** |
+| **Moving PostgreSQL onto the named volume** (before a path fix or `db_fast_path`) | **[postgres-volume-migration.md](postgres-volume-migration.md)** |
 | **Looking something up** | **[reference.md](reference.md)** |
 
 The handbook assumes a first line and a second line, and the two runbooks are written for
@@ -125,7 +126,7 @@ own timings. What each one shows and which panels to read is
 > raise it with us: a Viewer can run arbitrary Loki queries, and the logs contain live
 > session tokens. See [alerts-setup.md § Before you start](alerts-setup.md#before-you-start).
 >
-> **Credentials.** The health dashboard needs no login; Grafana does, so the service desk
+> **Credentials.** The health dashboard and Grafana both need a login, so the service desk
 > needs accounts in advance — see above. For everything else — the Novu notification
 > dashboard, the SMS/WhatsApp provider console, or server access — **ask your system
 > administrator**. Never send credentials in a ticket or a chat message, including to us.
@@ -244,6 +245,7 @@ and whether it is **reproducible on demand**.
 | **[incident-report.md](incident-report.md)** | L1 + L2 | At every handover. The three-part template and evidence checklist |
 | **[alerts-setup.md](alerts-setup.md)** | L2 | Making the system tell you first. Rules, thresholds, provisioning |
 | **[alert-channels.md](alert-channels.md)** | L2 | Where alerts land — Slack, Chat, Teams, email, WhatsApp, SMS |
+| **[postgres-volume-migration.md](postgres-volume-migration.md)** | L2 | One-off. Moving a live database out of the anonymous volume it landed in (#2085) |
 | **[dashboards.md](dashboards.md)** | L1 + L2 | At a desk, with Grafana open. What each of the nine dashboards shows and which panels to read |
 | **[reference.md](reference.md)** | everyone | Lookup: service catalogue, coverage, retention, queries, glossary |
 

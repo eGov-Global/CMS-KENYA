@@ -174,8 +174,8 @@ A complaint that stays unresolved past its allowed time moves up automatically �
 
 | | |
 |---|---|
-| Enable/disable | On by default (`pgr.escalation.enabled=true`); per-deployment override `PGR_ESCALATION_ENABLED`. |
-| City data | `RAINMAKER-PGR.EscalationConfig` — how many levels (`maxDepth`), the time allowed per level, optional per-category overrides. Design default: 3 levels at 1 h / 4 h / 24 h — but as of this validation this master has **no live seed path**, so a fresh tenant doesn't actually receive it (the scheduler silently falls back to a hardcoded 5-day default when no record exists). |
+| Enable/disable | Off by default (`pgr.escalation.enabled=false`); enable per deployment with `PGR_ESCALATION_ENABLED` after rollout preflight. |
+| City data | `RAINMAKER-PGR.EscalationConfig` — cumulative percentage thresholds against `ComplaintHierarchy.slaHours`, optional exact-service-code overrides, and absolute fallback thresholds. Design default: 80% / 120% / 200%, with 1 h / 4 h / 24 h as fallback — but this master has **no generic live seed path**, so an unseeded tenant uses cumulative 5 / 10 / 15-day thresholds expanded from the service's configured 5-day interval. |
 | Service settings | `pgr.escalation.interval.ms`, `.batch.size`, `.default.sla.ms`, `.max.depth`, `.kafka.topic=pgr-escalation-events` — **this messaging topic must exist** while escalation is on. |
 | Prerequisite | `Workflow.BusinessServiceMasterConfig` must contain a `PGR` row (`active:true, isStatelevel:true`). |
 
@@ -227,7 +227,7 @@ Lets an employee holding more than one department/role see and switch which one 
 | | |
 |---|---|
 | Enable | Ships with the employee UI and complaints service; no flag. |
-| Service settings | `pgr.employee.context.resolver-role-codes` / `.citizen-role-codes` / `.admin-role-codes` (env `PGR_EMPLOYEE_CONTEXT_*`) — which roles the switcher treats as resolver / citizen-facing / admin. Defaults: `PGR_LME,GRO,DGRO` / `CITIZEN` / `PGR_ADMIN,SUPERUSER,MDMS_ADMIN,HRMS_ADMIN,STADMIN,SUPERVISOR,PGR_SUPERVISOR`. |
+| Service settings | `pgr.employee.context.resolver-role-codes` / `.citizen-role-codes` / `.admin-role-codes` (env `PGR_EMPLOYEE_CONTEXT_*`) — which roles the switcher treats as resolver / citizen-facing / admin. Defaults: `PGR_LME` (was `PGR_LME,GRO,DGRO` — see *Changed defaults* in the config changelog; needs a rebuild) / `CITIZEN` / `PGR_ADMIN,SUPERUSER,MDMS_ADMIN,HRMS_ADMIN,STADMIN,SUPERVISOR,PGR_SUPERVISOR`. |
 
 ### 12. Other Optional Add-Ons (deployment flags)
 
