@@ -107,7 +107,11 @@ const system_error = new State('system_error');
 
 const typeGroup = new Group('type').setStates([walkComplaintTypes]).setStart('complaintType2Step');
 const locationGroup = new Group('location').setStates([walkBoundaries]).setStart('boundary');
-const otherGroup = new Group('other').setStates([askIntitution, askDescription, askForAttachments]).setStart('institution');
+// The institution name is a ComplaintTemplateType field: without a caseRelatedTo
+// there is no template to hold it, and pgr-services rejects the complaint.
+const otherGroup = config.caseRelatedTo
+  ? new Group('other').setStates([askIntitution, askDescription, askForAttachments]).setStart('institution')
+  : new Group('other').setStates([askDescription, askForAttachments]).setStart('description');
 
 const fileComplaintGroup = new Group('fileComplaint')
   .setStates([typeGroup, locationGroup, otherGroup, askConsent, consentDeclined, askConfidentiality, confirmSubmission, persistComplaint])
