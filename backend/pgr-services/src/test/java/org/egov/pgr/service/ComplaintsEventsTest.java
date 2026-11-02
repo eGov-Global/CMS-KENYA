@@ -35,8 +35,6 @@ public class ComplaintsEventsTest {
     @Mock
     private WorkflowService workflowService;
     @Mock
-    private ServiceRequestValidator serviceRequestValidator;
-    @Mock
     private ServiceRequestValidator validator;
     @Mock
     private Producer producer;
@@ -58,6 +56,8 @@ public class ComplaintsEventsTest {
     private SearchAccessPolicyService searchAccessPolicyService;
     @Mock
     private FieldVisibilityService fieldVisibilityService;
+    @Mock
+    private EscalationService escalationService;
 
     @InjectMocks
     private PGRService pgrService;
@@ -75,6 +75,8 @@ public class ComplaintsEventsTest {
         when(config.getUpdateTopic()).thenReturn("update-pgr-request");
         when(config.getInboxUpdateTopic()).thenReturn("inbox-pgr-events");
         when(mdmsUtils.mDMSCall(any(ServiceRequest.class))).thenReturn(buildMdmsData());
+        when(validator.validateUpdate(any(ServiceRequest.class), any())).thenAnswer(
+                invocation -> ((ServiceRequest) invocation.getArgument(0)).getService());
         when(config.getIsComplaintsDomainEventEnabled()).thenReturn(true);
         when(config.getComplaintsDomainEventsTopic()).thenReturn("complaints.domain.events");
         when(config.getComplaintsDomainEventDefaultLocale()).thenReturn("en_IN");

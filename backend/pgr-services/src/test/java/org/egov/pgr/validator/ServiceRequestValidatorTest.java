@@ -185,7 +185,7 @@ public class ServiceRequestValidatorTest {
         return root;
     }
 
-    // ── validateReOpen: window source and anti-forgery (#925, #1252) ───────────
+    // ── validateActionWindow (REOPEN): window source and anti-forgery (#925, #1252) ───────────
 
     private static final long WINDOW_MS = 6 * 60 * 60 * 1000L;   // MDMS REOPENSLA
     // Deliberately NOT the shipped pgr.complain.idle.time default (259200000) — an arbitrary,

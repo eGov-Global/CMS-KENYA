@@ -154,9 +154,3 @@ charts/*.tgz
 # ─── Operator Local Testing ──────────────────────────────────────────────────
 local-testing/
 .agent/
-<<<<<<< HEAD
-.playwright-mcp/
-# Strix local scan output (not committed)
-strix_runs/
-=======
->>>>>>> origin/upgrade-master

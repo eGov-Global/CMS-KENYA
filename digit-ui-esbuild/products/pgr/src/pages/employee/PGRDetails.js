@@ -25,6 +25,7 @@ import useExtendedAttributesEnabled from "../../hooks/pgr/useExtendedAttributesE
 import { EV, trackE } from "../../utils/analytics";
 import ReceiptActions from "../../components/ReceiptActions";
 import ReturnedToGroNotice from "../../components/ReturnedToGroNotice";
+import { formDataForAction } from "./workflowUpdate";
 
 // CCSD-2167 (employee side) — route-back / terminal actions derive their
 // assignee from the complaint's OWN workflow history, exactly like the citizen
@@ -137,6 +138,7 @@ const buildActionFormConfig = ({ action, assigneeRoles = [], isTerminal = false,
     form: [{ body }],
   };
 };
+
 
 
 const PGRDetails = () => {
@@ -423,13 +425,15 @@ const PGRDetails = () => {
     // Build the same generic form config the modal renders, so mandatory-field validation stays in sync.
     const actionConfig = { formConfig: buildActionFormConfig({ ...selectedAction, assigneeMandatory: isAssigneeMandatory(selectedAction) }) };
 
+    // Only this action's own fields, whatever else the form state holds (#1967).
+    const fields = formDataForAction(actionConfig, _data);
     const missingFields = [];
 
     actionConfig.formConfig.form.forEach((section) => {
       section.body.forEach((field) => {
         if (field.isMandatory) {
           const fieldKey = field.key;
-          const fieldValue = _data?.[fieldKey];
+          const fieldValue = fields[fieldKey];
 
           // For dropdowns or components, also check if selected value is valid object or string
           const isEmpty =
@@ -583,7 +587,6 @@ const PGRDetails = () => {
           }
           setToast({ show: true, label: t(`${msg}_SUCCESSFULLY`), type: "success" });
           await refreshData();
-          clearSessionFormData();
         }
       },
     });
@@ -1116,6 +1119,8 @@ const PGRDetails = () => {
       {/* Workflow Modal for Actions */}
       {openModal && selectedAction && (
         <PGRWorkflowModal
+          // A new action starts from an empty form (#1967).
+          key={selectedAction.action}
           selectedAction={selectedAction}
           sessionFormData={sessionFormData}
           setSessionFormData={setSessionFormData}

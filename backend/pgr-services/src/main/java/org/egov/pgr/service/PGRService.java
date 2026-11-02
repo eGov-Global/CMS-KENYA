@@ -50,8 +50,6 @@ public class PGRService {
 
     private WorkflowService workflowService;
 
-    private ServiceRequestValidator serviceRequestValidator;
-
     private ServiceRequestValidator validator;
 
     private Producer producer;
@@ -77,10 +75,13 @@ public class PGRService {
     private EmployeeDepartmentScopeService employeeDepartmentScopeService;
 
     private EmployeeJurisdictionScopeService employeeJurisdictionScopeService;
+    private EscalationService escalationService;
+
+    private EscalationLockManager escalationLockManager;
 
     @Autowired
     public PGRService(EnrichmentService enrichmentService, UserService userService, WorkflowService workflowService,
-                      ServiceRequestValidator serviceRequestValidator, ServiceRequestValidator validator, Producer producer,
+                      ServiceRequestValidator validator, Producer producer,
                       PGRConfiguration config, PGRRepository repository, MDMSUtils mdmsUtils,
                       ComplaintDomainEventService complaintDomainEventService, PGRUtils pgrUtils,
                       ExtendedAttributesValidationService extendedAttributesValidationService,
@@ -88,11 +89,12 @@ public class PGRService {
                       SearchAccessPolicyService searchAccessPolicyService,
                       FieldVisibilityService fieldVisibilityService,
                       EmployeeDepartmentScopeService employeeDepartmentScopeService,
-                      EmployeeJurisdictionScopeService employeeJurisdictionScopeService) {
+                      EmployeeJurisdictionScopeService employeeJurisdictionScopeService,
+                      EscalationService escalationService,
+                      EscalationLockManager escalationLockManager) {
         this.enrichmentService = enrichmentService;
         this.userService = userService;
         this.workflowService = workflowService;
-        this.serviceRequestValidator = serviceRequestValidator;
         this.validator = validator;
         this.producer = producer;
         this.config = config;
@@ -106,6 +108,8 @@ public class PGRService {
         this.fieldVisibilityService = fieldVisibilityService;
         this.employeeDepartmentScopeService = employeeDepartmentScopeService;
         this.employeeJurisdictionScopeService = employeeJurisdictionScopeService;
+        this.escalationService = escalationService;
+        this.escalationLockManager = escalationLockManager;
     }
 
 
@@ -120,7 +124,7 @@ public class PGRService {
 		Object mdmsData = mdmsUtils.mDMSCall(request);
 		validator.validateCreate(request, mdmsData);
 		enrichmentService.enrichCreateRequest(request);
-		workflowService.updateWorkflowStatus(request);
+		escalationService.prepareCreate(request.getService());
 
 		Service service = request.getService();
 
@@ -135,12 +139,14 @@ public class PGRService {
 		ExtendedAttributes ext = service.getExtendedAttributes();
 		ComplaintTemplateTypeConfig cfg = null;
 		ExtendedAttributes plainExt = null;
+		EnrichmentService.UserContactDetails pendingContact = null;
 		if (ext != null) {
 			if (ext.getIsConfidential() == null) ext.setIsConfidential(false);
 			if (isConfidentialityFlagOnly(ext)) {
 				// Citizen "keep my details confidential" without a category template: nothing
 				// to validate or encrypt — the flag alone drives complainant masking on read.
-				enrichmentService.enrichUserContactDetails(request);
+				pendingContact = enrichmentService.detachUserContactDetails(request);
+				enrichmentService.syncUserContactDetails(request, pendingContact);
 			} else {
 				cfg = mdmsUtils.fetchComplaintTemplateTypeConfig(
 						request.getRequestInfo(), tenantId, ext.getCaseRelatedTo());
@@ -151,9 +157,12 @@ public class PGRService {
 				plainExt = ext.copy(); // snapshot before encrypt — avoids decrypt round-trip for response
 				service.setExtendedAttributes(
 						encryptionDecryptionService.encrypt(ext, cfg, tenantId));
-				enrichmentService.enrichUserContactDetails(request);
+				pendingContact = enrichmentService.detachUserContactDetails(request);
+				enrichmentService.syncUserContactDetails(request, pendingContact);
 			}
 		}
+
+		workflowService.updateWorkflowStatus(request);
 
 		complaintDomainEventService.publishWorkflowTransitionEvent(request, fromState);
 
@@ -244,11 +253,32 @@ public class PGRService {
 
 
     /**
-     * Updates the complaint (used to forward the complaint from one application status to another)
+     * Updates a complaint through the normal validation, workflow, persistence,
+     * inbox, domain-event, and notification pipeline.
      * @param request The request containing the complaint to be updated
      * @return
      */
     public ServiceRequest update(ServiceRequest request){
+        return updateWithEscalationLock(request, false);
+    }
+
+    /** Scheduler entry point: same update pipeline, with unchanged encrypted fields preserved. */
+    public ServiceRequest updateAutomaticEscalation(ServiceRequest request) {
+        return updateWithEscalationLock(request, true);
+    }
+
+    private ServiceRequest updateWithEscalationLock(ServiceRequest request, boolean automaticEscalation) {
+        boolean escalation = request.getWorkflow() != null
+                && org.egov.pgr.util.PGRConstants.ESCALATE.equalsIgnoreCase(request.getWorkflow().getAction());
+        if (!escalation) {
+            return updateInternal(request, false);
+        }
+        Service service = request.getService();
+        return escalationLockManager.withComplaintLock(service.getTenantId(), service.getId(),
+                () -> updateInternal(request, automaticEscalation));
+    }
+
+    private ServiceRequest updateInternal(ServiceRequest request, boolean automaticEscalation) {
         String tenantId = request.getService().getTenantId();
         String fromState = request.getService().getApplicationStatus();
         // The stored record owns the complaint's identity: a workflow update can neither re-link
@@ -259,9 +289,14 @@ public class PGRService {
         if (stored != null)
             adoptStoredIdentity(request, stored);
         Object mdmsData = mdmsUtils.mDMSCall(request);
-        validator.validateUpdate(request, mdmsData);
+        Service persistedService = validator.validateUpdate(request, mdmsData);
+        fromState = persistedService.getApplicationStatus();
+        if (automaticEscalation) {
+            escalationService.prepareUpdate(request, persistedService, true);
+        } else {
+            escalationService.prepareUpdate(request, persistedService);
+        }
         enrichmentService.enrichUpdateRequest(request);
-        workflowService.updateWorkflowStatus(request);
 
         Service updateService = request.getService();
 		Map<String, Object> existing = pgrUtils.extractAdditionalDetails(updateService.getAdditionalDetail());
@@ -278,7 +313,8 @@ public class PGRService {
 		ExtendedAttributes updatedExt = updateService.getExtendedAttributes();
 		ComplaintTemplateTypeConfig cfg = null;
 		ExtendedAttributes plainExt = null;
-		if (updatedExt != null) {
+		EnrichmentService.UserContactDetails pendingContact = null;
+		if (updatedExt != null && !automaticEscalation) {
 			if (updatedExt.getIsConfidential() == null) updatedExt.setIsConfidential(false);
 			if (isConfidentialityFlagOnly(updatedExt)) {
 				syncContactDetailsIfOwner(request, stored);
@@ -301,9 +337,16 @@ public class PGRService {
 			}
 		}
 
+        workflowService.updateWorkflowStatus(request);
+
         complaintDomainEventService.publishWorkflowTransitionEvent(request, fromState);
         producer.push(tenantId, config.getUpdateTopic(), request);
         producer.push(tenantId, config.getInboxUpdateTopic(), request);
+        if (request.getWorkflow() != null
+                && org.egov.pgr.util.PGRConstants.ESCALATE.equalsIgnoreCase(request.getWorkflow().getAction())) {
+            producer.push(tenantId, config.getEscalationKafkaTopic(),
+                    escalationService.buildEscalationEvent(request));
+        }
 
 		if (plainExt != null)
 			updateService.setExtendedAttributes(plainExt);
@@ -466,6 +509,14 @@ public class PGRService {
         // _plainsearch needs field-level masking, it needs its own action + policy end-to-end
         // (row AND field), not a borrowed one.
 
+        // plainSearch stays record-level unrestricted (see PGRRepository/PGRQueryBuilder — no scope
+        // threaded into the query) AND, deliberately, unrestricted at the field-visibility level too:
+        // _plainsearch is a distinct endpoint from _search and must not reuse _search's
+        // ACCESSCONTROL-ACTIONS-TEST action/policy (id 2008) for field masking here — that policy's
+        // scope/attributes were authored for _search's semantics, not this endpoint's. If
+        // _plainsearch needs field-level masking, it needs its own action + policy end-to-end
+        // (row AND field), not a borrowed one.
+
         Map<Long, List<ServiceWrapper>> sortedWrappers = new TreeMap<>(Collections.reverseOrder());
         for(ServiceWrapper svc : enrichedServiceWrappers){
             if(sortedWrappers.containsKey(svc.getService().getAuditDetails().getCreatedTime())){
@@ -603,12 +654,6 @@ public class PGRService {
         return hasAnyRole(requestInfo, viewerRoles);
     }
 
-    /** extendedAttributes carrying only the citizen's confidentiality choice — no category template
-     *  and none of the contact fields that would be forwarded to the user service. */
-    private static boolean isConfidentialityFlagOnly(ExtendedAttributes ext) {
-        return ext.getCaseRelatedTo() == null && ext.getDynamicFields().isEmpty()
-                && ext.getEmail() == null && ext.getComplainantAddress() == null;
-    }
 
     /**
      * A confidential complaint hides WHO complained, not only its template fields: the complainant
@@ -683,6 +728,28 @@ public class PGRService {
     /** The complainant acting through a citizen session. Ownership counts for nothing on a staff
      *  session (see isAuthorizedForConfidential), so an employee can neither read nor switch off
      *  the confidentiality of a complaint linked to their own account without the viewer role. */
+    /** extendedAttributes carrying only the citizen's confidentiality choice — no category template
+     *  and none of the contact fields that would be forwarded to the user service. */
+    private static boolean isConfidentialityFlagOnly(ExtendedAttributes ext) {
+        return ext.getCaseRelatedTo() == null && ext.getDynamicFields().isEmpty()
+                && ext.getEmail() == null && ext.getComplainantAddress() == null;
+    }
+
+    /** Contact details ride on extendedAttributes to the user service; on update only the
+     *  complainant may change their own — anyone else's copy is dropped before the Kafka push. */
+    private void syncContactDetailsIfOwner(ServiceRequest request, Service stored) {
+        if (stored == null || callerIsOwner(request.getRequestInfo(), stored)) {
+            EnrichmentService.UserContactDetails contact = enrichmentService.detachUserContactDetails(request);
+            enrichmentService.syncUserContactDetails(request, contact);
+            return;
+        }
+        ExtendedAttributes ext = request.getService().getExtendedAttributes();
+        if (ext != null) {
+            ext.setEmail(null);
+            ext.setComplainantAddress(null);
+        }
+    }
+
     private static boolean callerIsOwner(RequestInfo requestInfo, Service stored) {
         org.egov.common.contract.request.User caller = requestInfo.getUserInfo();
         return caller != null && caller.getUuid() != null && caller.getUuid().equals(stored.getAccountId())
@@ -725,19 +792,6 @@ public class PGRService {
         if (mustStayConfidential) ext.setIsConfidential(true);
     }
 
-    /** Contact details ride on extendedAttributes to the user service; on update only the
-     *  complainant may change their own — anyone else's copy is dropped before the Kafka push. */
-    private void syncContactDetailsIfOwner(ServiceRequest request, Service stored) {
-        if (stored == null || callerIsOwner(request.getRequestInfo(), stored)) {
-            enrichmentService.enrichUserContactDetails(request);
-            return;
-        }
-        ExtendedAttributes ext = request.getService().getExtendedAttributes();
-        if (ext != null) {
-            ext.setEmail(null);
-            ext.setComplainantAddress(null);
-        }
-    }
 
     private String getDepartmentFromMDMS(ServiceRequest request, Object mdmsData) {
 

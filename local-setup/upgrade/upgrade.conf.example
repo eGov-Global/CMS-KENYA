@@ -1,0 +1,88 @@
+# Tenant upgrade settings. Copy to upgrade.conf.<tenant> and edit.
+#
+#   cp upgrade.conf.example upgrade.conf.bomet
+#   ./upgrade.sh --config upgrade.conf.bomet
+#
+# A value set here wins over the environment; leave a key commented out to set
+# it from the environment for a one-off run. Anything left unset falls back to the
+# default shown in the comment, so a minimal config is just TENANT.
+
+# ── Required ─────────────────────────────────────────────────────────────────
+TENANT=bomet
+
+# ── Identity ─────────────────────────────────────────────────────────────────
+# STATE_TENANT is the MDMS state-level tenant. Defaults to host_vars
+# state_tenant_id, then to TENANT. Preflight checks it has MDMS data.
+#STATE_TENANT=bo
+
+# ── Paths ────────────────────────────────────────────────────────────────────
+# REPO defaults to the checkout this script lives in, which is correct when you
+# run it from a clone on the server. It must be checked out at the release you
+# are deploying: step 5 compares the box's config against it.
+#REPO=/home/admin1/Pictures/CMS-KENYA
+
+# The box's deploy dir. If it is not /opt/digit, host_vars must say
+# digit_dir: <the same path> or the deploy builds a new, empty stack (preflight
+# refuses).
+#DIGIT_DIR=/opt/digit
+#HOST_VARS=$REPO/local-setup/ansible/inventory/host_vars/$TENANT.yml
+#BACKUP_ROOT=$HOME
+
+# ── Containers ───────────────────────────────────────────────────────────────
+#PG_CONTAINER=docker-postgres
+#DB_USER=egov
+#DB_NAME=egov
+#KAFKA_CONTAINER=digit-redpanda
+#KONG_CONTAINER=kong-gateway
+
+# ── Endpoints (loopback: these bind to 127.0.0.1 from v2.12.1 on) ────────────
+#KONG_URL=http://127.0.0.1:18000
+#MDMS_URL=http://127.0.0.1:18094
+# Public base used only by the step 10 smoke tests.
+#PUBLIC_URL=http://localhost
+# Host header for the smoke tests when nginx routes by server_name and
+# PUBLIC_URL is localhost/an IP.
+#PUBLIC_HOST=
+
+# ── Credentials ──────────────────────────────────────────────────────────────
+# The deploy must be able to log in as this user BEFORE bootstrap_password is
+# set in host_vars, so this is still the pre-rotation password at upgrade time.
+# Leave ADMIN_PASSWORD unset here and export it, or put it in a 0600 file and
+# point ADMIN_PASSWORD_FILE at it, rather than committing it.
+#ADMIN_USER=ADMIN
+#ADMIN_PASSWORD_FILE=/root/.digit-admin-password
+
+# ── Stack ────────────────────────────────────────────────────────────────────
+#COMPOSE_PROFILES=mcp,notifications
+# Space-separated, relative to DIGIT_DIR, in the order compose should see them.
+#COMPOSE_FILES="docker-compose.egov-digit.yaml docker-compose.fast-path.yml docker-compose.migrations.yml docker-compose.monitoring.yml"
+# Extra overlay started with --no-deps after the main stack (only if set).
+#START_EXTRA_FILES="docker-compose.file-scan.yml"
+#START_EXTRA_PROFILES=file-scan
+#START_EXTRA_SERVICES="clamav filestore-scan-proxy"
+# Containers that lose the startup race with MDMS and are restarted once the
+# rest is healthy; then readiness is proven with a real admin login.
+# Default uses the compose project name (basename of DIGIT_DIR).
+#RESTART_AFTER_START="<project>-egov-user-1 egov-hrms <project>-egov-workflow-v2-1"
+#READY_TIMEOUT=900
+#OPENBAO_CONTAINER=openbao
+
+# ── Config retention (steps 5 and 8) ─────────────────────────────────────────
+# Commit of THIS repo the box was last deployed from. With it, edits made on
+# the box are 3-way merged onto the new release after the deploy; without it
+# they are only reported. To find it, try candidates until most config files
+# match, e.g.:
+#   git show <ref>:local-setup/gatus/config.yaml | diff - $DIGIT_DIR/gatus/config.yaml
+#CONFIG_BASE_REF=
+# Files (relative to DIGIT_DIR) put back exactly as they were, skipping the merge.
+#RETAIN_VERBATIM="kong/kong.yml"
+# Containers restarted after step 8 changes a file.
+#RESTART_AFTER_RESTORE="kong-gateway digit-gatus"
+# Advanced: what step 5 looks at (see lib/config_retain.sh for defaults).
+#RETAIN_SCAN="docker-compose.*.yml kong nginx gatus scripts db"
+#RETAIN_TEMPLATED=".env nginx/globalConfigs.js nginx/digit-ui.conf configurator-runtime/config.js"
+#RETAIN_IGNORE="*.bak* *.jar *.sql *.sql.gz *.tgz *.progress *.pinned */node_modules/*"
+
+# ── Expectations checked after the deploy ────────────────────────────────────
+# Leave EXPECT_SCHEMA_VERSION empty to skip the pgr_services_schema assertion.
+#EXPECT_SCHEMA_VERSION=20260915000000
