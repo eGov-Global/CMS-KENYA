@@ -284,6 +284,29 @@ services:
     environment: { SPRING_FLYWAY_ENABLED: "false" }
     depends_on: { egov-localization-migration: { condition: service_completed_successfully } }
 
+  # The WhatsApp chatbot's database objects: its session tables and its
+  # localised messages (backend/xstate-chatbot/nodejs/db/migration/main).
+  # The chatbot itself can run outside compose; nothing here depends on it.
+  # No published Kenya image yet: build it locally from that db folder as
+  # xstate-chatbot-db:local, or point XSTATE_CHATBOT_DB_IMAGE at a pushed one.
+  xstate-chatbot-db:
+    image: ${XSTATE_CHATBOT_DB_IMAGE:-xstate-chatbot-db:local}
+    container_name: xstate-chatbot-db
+    profiles: ["chatbot"]
+    depends_on:
+      postgres-db: { condition: service_healthy }
+      # the messages migration writes egov-localization's message table
+      egov-localization-migration: { condition: service_completed_successfully }
+    environment:
+      DB_URL: jdbc:postgresql://postgres-db:5432/egov
+      SCHEMA_TABLE: xstate_chatbot_schema
+      FLYWAY_USER: egov
+      FLYWAY_PASSWORD: ${POSTGRES_PASSWORD:-egov123}
+      # the db Dockerfile copies migration/main to /flyway/sql
+      FLYWAY_LOCATIONS: filesystem:/flyway/sql
+    restart: "no"
+    networks: [egov-network]
+
   egov-enc-service-migration:
     image: egovio/egov-enc-service-db:2.12-87e13fe
     container_name: egov-enc-service-migration
