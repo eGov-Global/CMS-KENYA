@@ -7906,5 +7906,23 @@
         "message": "Couldn't withdraw the complaint. Please try again.",
         "module": "rainmaker-pgr",
         "locale": "default"
+    },
+    {
+        "code": "PGR_CONSENT_PRIVACY_NOTICE_LABEL",
+        "message": "I confirm that I have read and understood the Privacy Notice, which explains how the county collects, uses, stores and protects my personal data.",
+        "module": "rainmaker-pgr",
+        "locale": "default"
+    },
+    {
+        "code": "PGR_CONSENT_PRIVACY_NOTICE_OPEN_PAGE",
+        "message": "Open the full notice in a new tab",
+        "module": "rainmaker-pgr",
+        "locale": "default"
+    },
+    {
+        "code": "PGR_LANDING_PRIVACY_PAGE_VERSION",
+        "message": "1",
+        "module": "rainmaker-pgr",
+        "locale": "default"
     }
 ]

@@ -1,11 +1,11 @@
 // Data-protection block. Copy states only what the service enforces — no
-// confidentiality claim (see content.ts). The "read the privacy notice" link is
-// left out until the county supplies a real notice (routes.PRIVACY is still "#").
+// confidentiality claim (see content.ts). Links to the in-app Privacy Notice.
 
 import * as React from "react";
-import { ShieldCheck } from "lucide-react";
+import { ShieldCheck, ArrowRight } from "lucide-react";
 import { Section, revealIndex } from "./Section";
 import { ShieldIllustration } from "./Illustrations";
+import { CtaLink } from "./CtaLink";
 import { useLandingCopy } from "../useLandingCopy";
 import { sectionDomId } from "../config/resolve";
 import { LandingRoutes } from "../routes";
@@ -20,6 +20,7 @@ export interface PrivacySectionProps {
 export function PrivacySection({ routes, section }: PrivacySectionProps) {
   const { c } = useLandingCopy();
   const domId = sectionDomId(section?.code, "privacy");
+  const link = c("PRIVACY_LINK");
 
   return (
     <Section
@@ -50,6 +51,11 @@ export function PrivacySection({ routes, section }: PrivacySectionProps) {
           <p className="mb-0 mt-3 max-w-[56ch] text-sm leading-relaxed text-[hsl(var(--pgrl-ink-soft))] md:text-base">
             {c(section?.subtitleKey, "PRIVACY_P2")}
           </p>
+          {link && routes.PRIVACY && routes.PRIVACY !== "#" && (
+            <CtaLink to={routes.PRIVACY} variant="subtle" className="mt-4 text-base" trailing={<ArrowRight aria-hidden className="h-4 w-4" />}>
+              {link}
+            </CtaLink>
+          )}
         </div>
       </div>
       <div className="pgrl-reveal-item hidden lg:col-span-4 lg:block" style={revealIndex(2)}>

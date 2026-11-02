@@ -63,6 +63,8 @@ export const DEFAULT_LANDING_ROUTES: LandingRoutes = {
   REGISTER_COMPLAINT: "/citizen/pgr/create-complaint",
   TRACK_COMPLAINT: "/citizen/pgr/complaints",
   CITIZEN_LOGIN: "/citizen/login",
+  /** In-app Privacy Notice page (PrivacyPolicyPage, mounted by core App.js). */
+  PRIVACY: "/privacy-policy",
   // NOTE: confirm the employee entry point for your deployment.
   EMPLOYEE_LOGIN: "/employee",
 
@@ -72,7 +74,6 @@ export const DEFAULT_LANDING_ROUTES: LandingRoutes = {
   ABOUT: "#",
   CONTACTS: "#",
   FAQ: "#",
-  PRIVACY: "#",
   TERMS: "#",
   ACCESSIBILITY: "#",
   NEWS: "#",

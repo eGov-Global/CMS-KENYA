@@ -9892,5 +9892,29 @@
         "message": "Administrator",
         "module": "rainmaker-common",
         "locale": "en_IN"
+    },
+    {
+        "code": "CS_LOGIN_PRIVACY_NOTICE_LINE",
+        "message": "By continuing you accept that your phone number is used to verify you, as explained in the",
+        "module": "rainmaker-common",
+        "locale": "en_IN"
+    },
+    {
+        "code": "CS_LOGIN_PRIVACY_NOTICE_LINK",
+        "message": "Privacy Notice",
+        "module": "rainmaker-common",
+        "locale": "en_IN"
+    },
+    {
+        "code": "CS_LOGIN_PRIVACY_NOTICE_ACCEPT",
+        "message": "I confirm that I have read and understood the Privacy Notice, which explains how the county collects, uses, stores and protects my personal data.",
+        "module": "rainmaker-common",
+        "locale": "en_IN"
+    },
+    {
+        "code": "CS_LOGIN_PRIVACY_NOTICE_READ",
+        "message": "Read the Privacy Notice",
+        "module": "rainmaker-common",
+        "locale": "en_IN"
     }
 ]

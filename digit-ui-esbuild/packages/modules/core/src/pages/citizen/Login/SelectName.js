@@ -17,6 +17,10 @@ const SelectName = ({ config, onSelect, t, isDisabled }) => {
   const rules = input.validation || {};
   const pattern = useMemo(() => (rules.pattern ? new RegExp(rules.pattern) : null), [rules.pattern]);
   const [name, setName] = useState("");
+  // Privacy Notice acknowledgement (Bomet DPIA): a new resident confirms the
+  // county's notice before the account is created.
+  const [accepted, setAccepted] = useState(false);
+  const ctx = window?.contextPath || "digit-ui";
 
   const tr = (key, fallback) => {
     const v = key ? t(key) : key;
@@ -35,7 +39,7 @@ const SelectName = ({ config, onSelect, t, isDisabled }) => {
 
   const handleSubmit = (e) => {
     e?.preventDefault?.();
-    if (!isValid || isDisabled) return;
+    if (!accepted || !isValid || isDisabled) return;
     onSelect({ [input.name || "name"]: value });
   };
 
@@ -57,7 +61,21 @@ const SelectName = ({ config, onSelect, t, isDisabled }) => {
               invalid={!!error}
             />
           </V2Field>
-          <V2Button type="submit" disabled={!isValid || isDisabled} loading={isDisabled} width="full">
+          <label style={{ display: "flex", alignItems: "flex-start", gap: "8px", fontSize: "0.875rem", lineHeight: 1.5 }}>
+            <input
+              type="checkbox"
+              checked={accepted}
+              onChange={(e) => setAccepted(e.target.checked)}
+              style={{ marginTop: "0.2rem", flexShrink: 0, width: "1rem", height: "1rem" }}
+            />
+            <span>
+              {tr("CS_LOGIN_PRIVACY_NOTICE_ACCEPT", "I confirm that I have read and understood the Privacy Notice, which explains how the county collects, uses, stores and protects my personal data.")}{" "}
+              <a href={`/${ctx}/privacy-policy`} target="_blank" rel="noopener noreferrer">
+                {tr("CS_LOGIN_PRIVACY_NOTICE_READ", "Read the Privacy Notice")}
+              </a>
+            </span>
+          </label>
+          <V2Button type="submit" disabled={!isValid || isDisabled || !accepted} loading={isDisabled} width="full">
             {stepText(config?.texts?.nextText, "Continue")}
           </V2Button>
         </form>
