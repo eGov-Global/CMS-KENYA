@@ -28,6 +28,7 @@ import PgrFileUpload from "../../../components/PgrFileUpload";
 import { useDispatch } from "react-redux";
 import { useHistory, useLocation } from "react-router-dom";
 import { useQueryClient } from "react-query";
+import { LANDING_COPY } from "../Landing/content";
 
 import {
   ScreenContainer,
@@ -132,6 +133,8 @@ interface FormData {
   resolvedTenantId?: string; // sub-tenant the complaint files under (ComplaintRelatedToMap.tenantCode)
   dynamicFields?: Record<string, unknown>;
   consents?: string[];
+  /** Version of the Privacy Notice the resident acknowledged (PGR_LANDING_PRIVACY_PAGE_VERSION). */
+  privacyNoticeVersion?: string;
   isConfidential?: boolean; // "Keep details confidential" — backend masks the complainant for staff
   // Reporter identity (step 1, optional, prefilled from the citizen profile).
   // Travels in extendedAttributes — deliberately NOT citizen.name: posting an
@@ -246,6 +249,43 @@ const TERMS_CONSENT = {
   labelKey: "PGR_CONSENT_TERMS_LABEL",
   label: "I agree to the Terms & Conditions and to the county using my contact details to send me updates on this complaint.",
 } as const;
+
+// Privacy Notice acknowledgement, required on EVERY complaint (Bomet DPIA,
+// DPO's outstanding action — the wording is the DPO's). The notice is the
+// in-app privacy page (PGR_LANDING_PRIVACY_PAGE_*); it opens inline under the
+// checkbox so the resident never leaves the half-filled form.
+const PRIVACY_CONSENT = {
+  code: "PRIVACY_NOTICE",
+  labelKey: "PGR_CONSENT_PRIVACY_NOTICE_LABEL",
+  label: "I confirm that I have read and understood the Privacy Notice, which explains how the county collects, uses, stores and protects my personal data.",
+} as const;
+const PRIVACY_NOTICE_PARAGRAPHS = ["PRIVACY_PAGE_P1", "PRIVACY_PAGE_P2", "PRIVACY_PAGE_P3", "PRIVACY_PAGE_P4", "PRIVACY_PAGE_P5"] as const;
+
+/** The Privacy Notice, folded under its checkbox: the page's own text, so one
+ *  notice (per county, per language) serves the page and the form. */
+function PrivacyNoticeInline({ t }: { t: (k: string) => string }) {
+  const [open, setOpen] = React.useState(false);
+  const ctx = (typeof window !== "undefined" && (window as any)?.contextPath) || "digit-ui";
+  const copy = (key: keyof typeof LANDING_COPY) => tr(t, `PGR_LANDING_${key}`, (LANDING_COPY[key] as { en: string }).en);
+  return (
+    <div className="ml-6 text-sm">
+      <button type="button" className="p-0 bg-transparent border-0 underline cursor-pointer" style={{ color: PRIMARY }} aria-expanded={open} onClick={() => setOpen((o) => !o)}>
+        {copy("PRIVACY_LINK")}
+      </button>
+      {open && (
+        <div className="mt-2 rounded-md border border-border p-3 space-y-2 text-muted-foreground" role="region" aria-label={copy("PRIVACY_PAGE_TITLE")}>
+          <div className="font-semibold text-foreground">{copy("PRIVACY_PAGE_TITLE")}</div>
+          {PRIVACY_NOTICE_PARAGRAPHS.map((k) => (
+            <p key={k} className="m-0 leading-relaxed">{copy(k)}</p>
+          ))}
+          <a href={`/${ctx}/privacy-policy`} target="_blank" rel="noopener noreferrer" className="inline-block underline" style={{ color: PRIMARY }}>
+            {tr(t, "PGR_CONSENT_PRIVACY_NOTICE_OPEN_PAGE", "Open the full notice in a new tab")}
+          </a>
+        </div>
+      )}
+    </div>
+  );
+}
 
 // Consistent checkbox styling: fixed-size box with a theme-accent (centered native
 // tick), nudged to align with the first line of the label text.
@@ -387,6 +427,7 @@ function mapFormDataToRequest(formData: FormData, tenantId: string, user: any, d
   // the backend accepts without a category template; on create it only adds
   // its own keys (department, serviceName) on top of what is sent here.
   additionalDetail.consents = formData.consents || [];
+  if (formData.privacyNoticeVersion) additionalDetail.privacyNoticeVersion = formData.privacyNoticeVersion;
   additionalDetail.consentsAcceptedAt = timestamp;
   let extendedAttributes: Record<string, unknown> | undefined;
   if (formData?.caseRelatedTo) {
@@ -1073,7 +1114,10 @@ function Step3Description({ data, patch, templateFields, t }: StepBodyProps) {
   const setDyn = (key: string, value: unknown) => patch({ dynamicFields: { ...dyn, [key]: value } });
   const consents = data.consents || [];
   const toggleConsent = (code: string, on: boolean) =>
-    patch({ consents: on ? [...consents, code] : consents.filter((c) => c !== code) });
+    patch({
+      consents: on ? [...consents, code] : consents.filter((c) => c !== code),
+      ...(code === PRIVACY_CONSENT.code ? { privacyNoticeVersion: on ? tr(t, "PGR_LANDING_PRIVACY_PAGE_VERSION", "1") : undefined } : {}),
+    });
 
   return (
     <StepShell
@@ -1193,7 +1237,7 @@ function Step3Description({ data, patch, templateFields, t }: StepBodyProps) {
                 *
               </span>
             </div>
-            {[TRUTHFULNESS_CONSENT, ...(extended ? REQUIRED_CONSENTS : []), TERMS_CONSENT].map((c) => (
+            {[TRUTHFULNESS_CONSENT, ...(extended ? REQUIRED_CONSENTS : []), TERMS_CONSENT, PRIVACY_CONSENT].map((c) => (
               <label key={c.code} className="flex items-start gap-2 text-sm">
                 <input
                   type="checkbox"
@@ -1210,6 +1254,7 @@ function Step3Description({ data, patch, templateFields, t }: StepBodyProps) {
                 </span>
               </label>
             ))}
+            <PrivacyNoticeInline t={t} />
             <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground pt-3 mt-1 border-t border-border">
               {tr(t, "PGR_CONSENT_SECTION_OPTIONAL", "Optional")}
             </div>
@@ -1985,7 +2030,7 @@ const CreatePGRFlowV2: React.FC = () => {
           return "ConsentRequired";
         }
         // The truthfulness declaration and Terms & Conditions are required on every complaint.
-        if ([TRUTHFULNESS_CONSENT, TERMS_CONSENT].some((c) => !(formData.consents || []).includes(c.code))) return "ConsentRequired";
+        if ([TRUTHFULNESS_CONSENT, TERMS_CONSENT, PRIVACY_CONSENT].some((c) => !(formData.consents || []).includes(c.code))) return "ConsentRequired";
         return null;
       }
       default:

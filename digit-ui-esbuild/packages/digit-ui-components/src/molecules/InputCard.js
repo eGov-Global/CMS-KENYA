@@ -30,7 +30,7 @@ const InputCard = ({
       {texts?.header && <CardHeader>{t(texts.header)}</CardHeader>}
       {texts?.cardText && <CardText>{t(texts.cardText)}</CardText>}
       {children}
-      {texts.submitBarLabel ? <Button disabled={isDisable} submit={submit} label={t(texts.submitBarLabel)} onClick={onNext} /> : null}
+      {texts.submitBarLabel ? <Button disabled={isDisable} isDisabled={!!isDisable} submit={submit} label={t(texts.submitBarLabel)} onClick={onNext} /> : null}
       {texts.skipLabel ? <CardText> {t(texts.skipLabel)} </CardText> : null}
       {texts.skipText ? <ActionLinks label={t(texts.skipText)} onClick={onSkip} /> : null}
       {isMultipleAllow && texts.addMultipleText ? <ActionLinks label={t(texts.addMultipleText)} onClick={onAdd} /> : null}

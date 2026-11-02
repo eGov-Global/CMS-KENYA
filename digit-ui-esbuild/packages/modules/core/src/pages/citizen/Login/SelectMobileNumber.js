@@ -123,6 +123,22 @@ const SelectMobileNumber = ({
               {cardText}
             </p>
           ) : null}
+          {/* Privacy notice at the point of collection (Bomet DPIA): the phone
+              number is the first personal data the resident gives. */}
+          <p
+            style={{
+              margin: 0,
+              fontSize: "0.8125rem",
+              color: "var(--color-text-secondary, #6B7280)",
+              lineHeight: 1.5,
+            }}
+          >
+            {tr("CS_LOGIN_PRIVACY_NOTICE_LINE", "By continuing you accept that your phone number is used to verify you, as explained in the")}{" "}
+            <a href={`/${window?.contextPath || "digit-ui"}/privacy-policy`} target="_blank" rel="noopener noreferrer">
+              {tr("CS_LOGIN_PRIVACY_NOTICE_LINK", "Privacy Notice")}
+            </a>
+            .
+          </p>
         </header>
 
         <form
