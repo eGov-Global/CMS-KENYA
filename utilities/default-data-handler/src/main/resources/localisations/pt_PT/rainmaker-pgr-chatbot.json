@@ -1,0 +1,338 @@
+[
+    {
+        "code": "chatbot.pgr.attachment.failed",
+        "message": "Lamentamos, não foi possível processar o seu anexo. A continuar sem ele.",
+        "module": "rainmaker-pgr",
+        "locale": "pt_PT"
+    },
+    {
+        "code": "chatbot.pgr.attachment.question",
+        "message": "Se possível, anexe uma fotografia ou um documento relativo à sua manifestação.\n\n*1.* Continuar sem anexar.",
+        "module": "rainmaker-pgr",
+        "locale": "pt_PT"
+    },
+    {
+        "code": "chatbot.pgr.attachment.tooLarge",
+        "message": "Esse ficheiro é demasiado grande. Envie um ficheiro com menos de {{limit}}MB.",
+        "module": "rainmaker-pgr",
+        "locale": "pt_PT"
+    },
+    {
+        "code": "chatbot.pgr.boundary.preamble",
+        "message": "*{{level}}*\nEnvie o número correspondente ao local da sua manifestação: \n",
+        "module": "rainmaker-pgr",
+        "locale": "pt_PT"
+    },
+    {
+        "code": "chatbot.pgr.choice.accept",
+        "message": "Aceitar",
+        "module": "rainmaker-pgr",
+        "locale": "pt_PT"
+    },
+    {
+        "code": "chatbot.pgr.choice.cancel",
+        "message": "Cancelar",
+        "module": "rainmaker-pgr",
+        "locale": "pt_PT"
+    },
+    {
+        "code": "chatbot.pgr.choice.change",
+        "message": "Alterar",
+        "module": "rainmaker-pgr",
+        "locale": "pt_PT"
+    },
+    {
+        "code": "chatbot.pgr.choice.confidential",
+        "message": "Confidencial",
+        "module": "rainmaker-pgr",
+        "locale": "pt_PT"
+    },
+    {
+        "code": "chatbot.pgr.choice.confirm",
+        "message": "Confirmar",
+        "module": "rainmaker-pgr",
+        "locale": "pt_PT"
+    },
+    {
+        "code": "chatbot.pgr.choice.decline",
+        "message": "Rejeitar",
+        "module": "rainmaker-pgr",
+        "locale": "pt_PT"
+    },
+    {
+        "code": "chatbot.pgr.choice.notConfidential",
+        "message": "Sem confidencialidade",
+        "module": "rainmaker-pgr",
+        "locale": "pt_PT"
+    },
+    {
+        "code": "chatbot.pgr.choice.submit",
+        "message": "Submeter",
+        "module": "rainmaker-pgr",
+        "locale": "pt_PT"
+    },
+    {
+        "code": "chatbot.pgr.complaintType.preamble",
+        "message": "*{{level}}*\nEnvie o número da opção desejada: \n",
+        "module": "rainmaker-pgr",
+        "locale": "pt_PT"
+    },
+    {
+        "code": "chatbot.pgr.confidentiality.question",
+        "message": "{{label}}\n\n{{hint}}\n\n*1.* Manter os meus dados confidenciais.\n*2.* Continuar sem confidencialidade.",
+        "module": "rainmaker-pgr",
+        "locale": "pt_PT"
+    },
+    {
+        "code": "chatbot.pgr.confirmSubmission.question",
+        "message": "Confirme os dados:\n\n{{summary}}\n\n*1.* Submeter.\n*2.* Cancelar.",
+        "module": "rainmaker-pgr",
+        "locale": "pt_PT"
+    },
+    {
+        "code": "chatbot.pgr.confirmation",
+        "message": "Manifestação registada com sucesso.\n\nCategoria: {{1}}\nReferência: {{2}}\nData: {{3}}\n\nA sua manifestação será analisada pela instituição responsável.\nPode acompanhar o estado no portal *{{serviceName}}* ou na aplicação móvel.\nObrigado por contribuir para a melhoria dos serviços públicos.\n\n{{serviceName}}\n{{portalUrl}}",
+        "module": "rainmaker-pgr",
+        "locale": "pt_PT"
+    },
+    {
+        "code": "chatbot.pgr.consent.declined",
+        "message": "A sua manifestação não foi registada, pois o consentimento é necessário para o seu tratamento.\n\nEscreva *reiniciar* quando quiser começar de novo.",
+        "module": "rainmaker-pgr",
+        "locale": "pt_PT"
+    },
+    {
+        "code": "chatbot.pgr.consent.question",
+        "message": "Antes de registarmos a sua manifestação, confirme o seguinte:\n\n{{statements}}\n\n*1.* Aceitar.\n*2.* Rejeitar",
+        "module": "rainmaker-pgr",
+        "locale": "pt_PT"
+    },
+    {
+        "code": "chatbot.pgr.description.question",
+        "message": "Descreva a sua manifestação numa única mensagem, com pelo menos {{minLength}} caracteres.",
+        "module": "rainmaker-pgr",
+        "locale": "pt_PT"
+    },
+    {
+        "code": "chatbot.pgr.description.tooShort",
+        "message": "Essa descrição é demasiado curta. Descreva a sua manifestação com pelo menos {{minLength}} caracteres, numa única mensagem.",
+        "module": "rainmaker-pgr",
+        "locale": "pt_PT"
+    },
+    {
+        "code": "chatbot.pgr.error.authentication",
+        "message": "Lamentamos, não foi possível verificar a sua conta. Tente novamente dentro de momentos.",
+        "module": "rainmaker-pgr",
+        "locale": "pt_PT"
+    },
+    {
+        "code": "chatbot.pgr.error.externalService",
+        "message": "Lamentamos, o serviço está temporariamente indisponível. Tente novamente em breve.",
+        "module": "rainmaker-pgr",
+        "locale": "pt_PT"
+    },
+    {
+        "code": "chatbot.pgr.error.generic",
+        "message": "Lamentamos, ocorreu um erro ao processar o seu pedido. Tente novamente.",
+        "module": "rainmaker-pgr",
+        "locale": "pt_PT"
+    },
+    {
+        "code": "chatbot.pgr.error.retry",
+        "message": "A opção indicada não parece ser válida.\n\nEscolha uma opção válida para continuar.",
+        "module": "rainmaker-pgr",
+        "locale": "pt_PT"
+    },
+    {
+        "code": "chatbot.pgr.error.system",
+        "message": "Lamentamos, o nosso sistema tem um problema e não é possível concluir o seu pedido agora. Pode tentar novamente dentro de alguns minutos.",
+        "module": "rainmaker-pgr",
+        "locale": "pt_PT"
+    },
+    {
+        "code": "chatbot.pgr.error.validation",
+        "message": "Lamentamos, não foi possível processar o seu pedido. Verifique o seu número de telemóvel ({{digits}} dígitos) e tente novamente.",
+        "module": "rainmaker-pgr",
+        "locale": "pt_PT"
+    },
+    {
+        "code": "chatbot.pgr.institution.question",
+        "message": "A que instituição se refere a sua manifestação?\n\nEscreva e envie o nome da instituição.",
+        "module": "rainmaker-pgr",
+        "locale": "pt_PT"
+    },
+    {
+        "code": "chatbot.pgr.institution.tooLong",
+        "message": "Esse nome é demasiado longo. Envie o nome da instituição com um máximo de {{maxLength}} caracteres.",
+        "module": "rainmaker-pgr",
+        "locale": "pt_PT"
+    },
+    {
+        "code": "chatbot.pgr.locale.question",
+        "message": "Para escolher o idioma, envie o número da opção pretendida: \n\n{{options}}",
+        "module": "rainmaker-pgr",
+        "locale": "pt_PT"
+    },
+    {
+        "code": "chatbot.pgr.menu.cancelled",
+        "message": "A sua sessão foi cancelada.",
+        "module": "rainmaker-pgr",
+        "locale": "pt_PT"
+    },
+    {
+        "code": "chatbot.pgr.menu.options",
+        "message": "*Menu* \n\n*1.* Apresentar uma manifestação\n*2.* Cancelar",
+        "module": "rainmaker-pgr",
+        "locale": "pt_PT"
+    },
+    {
+        "code": "chatbot.pgr.notAuthorized",
+        "message": "Lamentamos, este número ainda não está autorizado a utilizar este serviço.",
+        "module": "rainmaker-pgr",
+        "locale": "pt_PT"
+    },
+    {
+        "code": "chatbot.pgr.onboarding.name.change",
+        "message": "Indique o seu nome para continuar.",
+        "module": "rainmaker-pgr",
+        "locale": "pt_PT"
+    },
+    {
+        "code": "chatbot.pgr.onboarding.name.confirm",
+        "message": "Confirmar o nome: {{name}}?\n\n*1.* Confirmar o nome.\n*2.* Alterar o nome.",
+        "module": "rainmaker-pgr",
+        "locale": "pt_PT"
+    },
+    {
+        "code": "chatbot.pgr.onboarding.name.confirmProfile",
+        "message": "Nos nossos registos, este número está associado ao nome  *“{{name}}”*.\n\n*1.* Confirmar o nome.\n*2.* Alterar o nome.",
+        "module": "rainmaker-pgr",
+        "locale": "pt_PT"
+    },
+    {
+        "code": "chatbot.pgr.onboarding.name.question",
+        "message": "Nos nossos registos não encontrámos nenhum nome associado a este número.\n\nEscreva o seu nome para continuar:",
+        "module": "rainmaker-pgr",
+        "locale": "pt_PT"
+    },
+    {
+        "code": "chatbot.pgr.onboarding.nameInformation",
+        "message": "Para um atendimento personalizado, gostaríamos de confirmar o seu nome.",
+        "module": "rainmaker-pgr",
+        "locale": "pt_PT"
+    },
+    {
+        "code": "chatbot.pgr.onboarding.thankYou",
+        "message": "Obrigado pela confirmação.\nÉ um prazer servi-lo(a).",
+        "module": "rainmaker-pgr",
+        "locale": "pt_PT"
+    },
+    {
+        "code": "chatbot.pgr.onboarding.welcome",
+        "message": "Estimado(a) Cidadão(ã),\n\nBem-vindo(a) ao chatbot do {{serviceName}} no WhatsApp\nJá pode apresentar a sua manifestação através do WhatsApp.\n\nPara cancelar em qualquer momento, escreva *Cancelar*.",
+        "module": "rainmaker-pgr",
+        "locale": "pt_PT"
+    },
+    {
+        "code": "chatbot.pgr.option.more",
+        "message": "Ver mais ...",
+        "module": "rainmaker-pgr",
+        "locale": "pt_PT"
+    },
+    {
+        "code": "chatbot.pgr.session.expired",
+        "message": "A sua sessão anterior expirou.\n\n*1.* Continuar de onde terminou.\n*2.* Iniciar uma nova conversa.",
+        "module": "rainmaker-pgr",
+        "locale": "pt_PT"
+    },
+    {
+        "code": "chatbot.pgr.session.invalid",
+        "message": "Responda *1* para continuar ou *2* para começar de novo.",
+        "module": "rainmaker-pgr",
+        "locale": "pt_PT"
+    },
+    {
+        "code": "chatbot.pgr.session.resumed",
+        "message": "A continuar a sua conversa anterior. Envie a sua próxima mensagem.",
+        "module": "rainmaker-pgr",
+        "locale": "pt_PT"
+    },
+    {
+        "code": "chatbot.pgr.submissionStalled",
+        "message": "Lamentamos, não foi possível concluir o seu pedido. A sessão foi terminada — envie uma mensagem para recomeçar.",
+        "module": "rainmaker-pgr",
+        "locale": "pt_PT"
+    },
+    {
+        "code": "chatbot.pgr.summary.category",
+        "message": "Categoria",
+        "module": "rainmaker-pgr",
+        "locale": "pt_PT"
+    },
+    {
+        "code": "chatbot.pgr.summary.confidentiality",
+        "message": "Confidencialidade",
+        "module": "rainmaker-pgr",
+        "locale": "pt_PT"
+    },
+    {
+        "code": "chatbot.pgr.summary.description",
+        "message": "Descrição",
+        "module": "rainmaker-pgr",
+        "locale": "pt_PT"
+    },
+    {
+        "code": "chatbot.pgr.summary.district",
+        "message": "Distrito",
+        "module": "rainmaker-pgr",
+        "locale": "pt_PT"
+    },
+    {
+        "code": "chatbot.pgr.summary.institution",
+        "message": "Instituição",
+        "module": "rainmaker-pgr",
+        "locale": "pt_PT"
+    },
+    {
+        "code": "chatbot.pgr.summary.location",
+        "message": "Local",
+        "module": "rainmaker-pgr",
+        "locale": "pt_PT"
+    },
+    {
+        "code": "chatbot.pgr.summary.municipality",
+        "message": "Município",
+        "module": "rainmaker-pgr",
+        "locale": "pt_PT"
+    },
+    {
+        "code": "chatbot.pgr.summary.no",
+        "message": "Não",
+        "module": "rainmaker-pgr",
+        "locale": "pt_PT"
+    },
+    {
+        "code": "chatbot.pgr.summary.subject",
+        "message": "Assunto",
+        "module": "rainmaker-pgr",
+        "locale": "pt_PT"
+    },
+    {
+        "code": "chatbot.pgr.summary.type",
+        "message": "Tipo",
+        "module": "rainmaker-pgr",
+        "locale": "pt_PT"
+    },
+    {
+        "code": "chatbot.pgr.summary.yes",
+        "message": "Sim",
+        "module": "rainmaker-pgr",
+        "locale": "pt_PT"
+    },
+    {
+        "code": "chatbot.pgr.welcome",
+        "message": "Estimado(a) {{name}},\n\nBem-vindo(a) ao chatbot {{serviceName}} no WhatsApp.\nJá pode apresentar a sua manifestação através do WhatsApp.\n\nPara cancelar em qualquer momento, escreva *Cancelar*.",
+        "module": "rainmaker-pgr",
+        "locale": "pt_PT"
+    }
+]

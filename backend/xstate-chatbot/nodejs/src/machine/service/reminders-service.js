@@ -109,7 +109,7 @@ class RemindersService {
 // "egov" was India's reset word; nothing here responds to it.
 let messages = {
   reminder:{
-    en_IN: 'You have not selected any option.\n\n👉 To continue, send your choice, or type *reset* to start over.',
+    en_IN: 'You have not selected any option.\n\nTo continue, send your choice, or type *restart* to start over.',
     pt_PT: 'Não selecionou nenhuma opção.\n\nPara continuar, envie a sua escolha, ou escreva *reiniciar* para começar de novo.',
     hi_IN: 'आपने कोई विकल्प नहीं चुना है।\n\n👉 जारी रखने के लिए, कृपया टाइप करें और egov भेजें',
     pa_IN: 'ਤੁਸੀਂ ਕੋਈ ਵਿਕਲਪ ਨਹੀਂ ਚੁਣਿਆ ਹੈ.\n\n👉 ਜਾਰੀ ਰੱਖਣ ਲਈ, ਕਿਰਪਾ ਕਰਕੇ ਟਾਈਪ ਕਰੋ ਅਤੇ egov ਭੇਜੋ'

@@ -1,12 +1,14 @@
 module.exports = {
   menu: {
-    // No `code`: a live localization row under chatbot.pgr.menu.question still
-    // holds the old two-option wording, and get_message would prefer it.
+    // Not chatbot.pgr.menu.question: a live row under that code still holds the
+    // old two-option wording, and get_message would prefer it.
     singleOptionQuestion: {
-      en_IN: 'Please type and send *1* to file a new complaint, or *2* to cancel.',
+      code: 'chatbot.pgr.menu.options',
+      en_IN: '*Menu* \n\n*1.* File a complaint\n*2.* Cancel',
       pt_PT: '*Menu* \n\n*1.* Apresentar uma manifestação\n*2.* Cancelar'
     },
     cancelled: {
+      code: 'chatbot.pgr.menu.cancelled',
       en_IN: 'Your session has been cancelled.',
       pt_PT: 'A sua sessão foi cancelada.'
     }
@@ -17,10 +19,11 @@ module.exports = {
       level: {
         question: {
           preamble: {
-            // no `code` - the real localization service has an old translation
-            // stored under chatbot.pgr.hierarchy.preamble (get_message would
-            // check that first, shadowing any wording change made here)
-            en_IN : 'Please type and send the number to select a {{level}} from the list below 👇\n',
+            // not chatbot.pgr.hierarchy.preamble - the real localization service
+            // has an old translation stored there (get_message would check that
+            // first, shadowing any wording change made here)
+            code: 'chatbot.pgr.complaintType.preamble',
+            en_IN : '*{{level}}*\nSend the number of the option you want: \n',
             pt_PT : '*{{level}}*\nEnvie o número da opção desejada: \n'
           }
         }
@@ -29,8 +32,9 @@ module.exports = {
     boundary: {
       question: {
         preamble: {
-          // no `code` - same reason as complaintType2Step's preamble above
-          en_IN: 'Please type and send the number to select the {{level}} for your grievance 👇\n',
+          // a new code - same reason as complaintType2Step's preamble above
+          code: 'chatbot.pgr.boundary.preamble',
+          en_IN: '*{{level}}*\nSend the number of the location of your complaint: \n',
           pt_PT: '*{{level}}*\nEnvie o número correspondente ao local da sua manifestação: \n'
         }
       }
@@ -82,12 +86,12 @@ module.exports = {
       },
       question: {
         code: 'chatbot.pgr.consent.question',
-        en_IN: 'Before your grievance is filed, please confirm the following:\n\n{{statements}}\n\n👉 Type and send *1* to accept.\n👉 Type and send *2* to decline.',
+        en_IN: 'Before we register your complaint, please confirm the following:\n\n{{statements}}\n\n*1.* Accept.\n*2.* Decline',
         pt_PT: 'Antes de registarmos a sua manifestação, confirme o seguinte:\n\n{{statements}}\n\n*1.* Aceitar.\n*2.* Rejeitar'
       },
       declined: {
         code: 'chatbot.pgr.consent.declined',
-        en_IN: 'Your grievance has not been filed, as consent is required to process it.\n\nType *reiniciar* whenever you would like to start again.',
+        en_IN: 'Your complaint has not been registered, as consent is required to process it.\n\nType *restart* whenever you would like to start again.',
         pt_PT: 'A sua manifestação não foi registada, pois o consentimento é necessário para o seu tratamento.\n\nEscreva *reiniciar* quando quiser começar de novo.'
       }
     },
@@ -104,70 +108,73 @@ module.exports = {
       },
       question: {
         code: 'chatbot.pgr.confidentiality.question',
-        en_IN: '{{label}}\n\n{{hint}}\n\n👉 Type and send *1* to keep your details confidential.\n👉 Type and send *2* to continue without confidentiality.',
+        en_IN: '{{label}}\n\n{{hint}}\n\n*1.* Keep my details confidential.\n*2.* Continue without confidentiality.',
         pt_PT: '{{label}}\n\n{{hint}}\n\n*1.* Manter os meus dados confidenciais.\n*2.* Continuar sem confidencialidade.'
       }
     },
     institution: {
       question: {
         code: 'chatbot.pgr.institution.question',
-        en_IN: 'Which institution is your grievance about?\n\nPlease type and send its name.',
+        en_IN: 'Which institution is your complaint about?\n\nType and send the name of the institution.',
         pt_PT: 'A que instituição se refere a sua manifestação?\n\nEscreva e envie o nome da instituição.'
       },
       tooLong: {
         code: 'chatbot.pgr.institution.tooLong',
-        en_IN: 'That name is too long. Please send the institution name using at most {{maxLength}} characters.',
+        en_IN: 'That name is too long. Send the institution name with at most {{maxLength}} characters.',
         pt_PT: 'Esse nome é demasiado longo. Envie o nome da instituição com um máximo de {{maxLength}} caracteres.'
       }
     },
     description: {
       question: {
         code: 'chatbot.pgr.description.question',
-        en_IN: 'Please describe your grievance in one message, using at least {{minLength}} characters.',
+        en_IN: 'Describe your complaint in a single message, with at least {{minLength}} characters.',
         pt_PT: 'Descreva a sua manifestação numa única mensagem, com pelo menos {{minLength}} caracteres.'
       },
       tooShort: {
         code: 'chatbot.pgr.description.tooShort',
-        en_IN: 'That description is too short. Please describe your grievance in at least {{minLength}} characters, in a single message.',
+        en_IN: 'That description is too short. Describe your complaint with at least {{minLength}} characters, in a single message.',
         pt_PT: 'Essa descrição é demasiado curta. Descreva a sua manifestação com pelo menos {{minLength}} caracteres, numa única mensagem.'
       }
     },
     imageUpload: {
       question: {
         code: 'chatbot.pgr.attachment.question',
-        en_IN: 'If possible, attach a photo or document of your grievance.\n\nTo continue without attaching, type and send *1*',
+        en_IN: 'If possible, attach a photo or a document related to your complaint.\n\n*1.* Continue without attaching.',
         pt_PT: 'Se possível, anexe uma fotografia ou um documento relativo à sua manifestação.\n\n*1.* Continuar sem anexar.'
       },
       failed: {
-        en_IN: "Sorry, we couldn't process your attachment. Continuing without it.",
+        code: 'chatbot.pgr.attachment.failed',
+        en_IN: 'Sorry, it was not possible to process your attachment. Continuing without it.',
         pt_PT: 'Lamentamos, não foi possível processar o seu anexo. A continuar sem ele.'
       },
       tooLarge: {
-        en_IN: 'That file is too large. Please send a file under {{limit}}MB.',
+        code: 'chatbot.pgr.attachment.tooLarge',
+        en_IN: 'That file is too large. Send a file smaller than {{limit}}MB.',
         pt_PT: 'Esse ficheiro é demasiado grande. Envie um ficheiro com menos de {{limit}}MB.'
       }
     },
     confirmSubmission: {
       question: {
-        en_IN: 'Please confirm the details:\n\n{{summary}}\n\n*1.* Submit.\n*2.* Cancel.',
+        code: 'chatbot.pgr.confirmSubmission.question',
+        en_IN: 'Confirm the details:\n\n{{summary}}\n\n*1.* Submit.\n*2.* Cancel.',
         pt_PT: 'Confirme os dados:\n\n{{summary}}\n\n*1.* Submeter.\n*2.* Cancelar.'
       },
-      type: { en_IN: 'Type', pt_PT: 'Tipo' },
-      category: { en_IN: 'Category', pt_PT: 'Categoria' },
-      subject: { en_IN: 'Subject', pt_PT: 'Assunto' },
-      location: { en_IN: 'Location', pt_PT: 'Local' },
-      district: { en_IN: 'District', pt_PT: 'Distrito' },
-      municipality: { en_IN: 'Municipality', pt_PT: 'Município' },
-      institution: { en_IN: 'Institution', pt_PT: 'Instituição' },
-      description: { en_IN: 'Description', pt_PT: 'Descrição' },
-      confidentiality: { en_IN: 'Confidentiality', pt_PT: 'Confidencialidade' },
-      yes: { en_IN: 'Yes', pt_PT: 'Sim' },
-      no: { en_IN: 'No', pt_PT: 'Não' }
+      type: { code: 'chatbot.pgr.summary.type', en_IN: 'Type', pt_PT: 'Tipo' },
+      category: { code: 'chatbot.pgr.summary.category', en_IN: 'Category', pt_PT: 'Categoria' },
+      subject: { code: 'chatbot.pgr.summary.subject', en_IN: 'Subject', pt_PT: 'Assunto' },
+      location: { code: 'chatbot.pgr.summary.location', en_IN: 'Location', pt_PT: 'Local' },
+      district: { code: 'chatbot.pgr.summary.district', en_IN: 'District', pt_PT: 'Distrito' },
+      municipality: { code: 'chatbot.pgr.summary.municipality', en_IN: 'Municipality', pt_PT: 'Município' },
+      institution: { code: 'chatbot.pgr.summary.institution', en_IN: 'Institution', pt_PT: 'Instituição' },
+      description: { code: 'chatbot.pgr.summary.description', en_IN: 'Description', pt_PT: 'Descrição' },
+      confidentiality: { code: 'chatbot.pgr.summary.confidentiality', en_IN: 'Confidentiality', pt_PT: 'Confidencialidade' },
+      yes: { code: 'chatbot.pgr.summary.yes', en_IN: 'Yes', pt_PT: 'Sim' },
+      no: { code: 'chatbot.pgr.summary.no', en_IN: 'No', pt_PT: 'Não' }
     },
     persistComplaint: {
       code: 'chatbot.pgr.confirmation',
-      en_IN: 'Your complaint has been registered successfully.\n\nCategory: {{1}}\nReference: {{2}}\nDate: {{3}}\n\nYour complaint will be reviewed by the responsible institution.\nYou can follow its progress on the *Fala Cidadão Portal* or in the mobile app.\nThank you for helping improve public services.\n\nFala Cidadão\nhttps://www.falacidadao.gov.mz',
-      pt_PT: 'Manifestação registada com sucesso.\n\nCategoria: {{1}}\nReferência: {{2}}\nData: {{3}}\n\nA sua manifestação será analisada pela instituição responsável.\nPode acompanhar o estado no *Portal Fala Cidadão* ou na aplicação móvel.\nObrigado por contribuir para a melhoria dos serviços públicos.\n\nFala Cidadão\nhttps://www.falacidadao.gov.mz'
+      en_IN: 'Complaint registered successfully.\n\nCategory: {{1}}\nReference: {{2}}\nDate: {{3}}\n\nYour complaint will be reviewed by the responsible institution.\nYou can follow its status on the *{{serviceName}}* portal or in the mobile app.\nThank you for helping to improve public services.\n\n{{serviceName}}\n{{portalUrl}}',
+      pt_PT: 'Manifestação registada com sucesso.\n\nCategoria: {{1}}\nReferência: {{2}}\nData: {{3}}\n\nA sua manifestação será analisada pela instituição responsável.\nPode acompanhar o estado no portal *{{serviceName}}* ou na aplicação móvel.\nObrigado por contribuir para a melhoria dos serviços públicos.\n\n{{serviceName}}\n{{portalUrl}}'
     },
     cityFuzzySearch: {
       question: {

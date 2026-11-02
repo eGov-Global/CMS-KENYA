@@ -17,6 +17,16 @@ function get_input(event, scrub = true) {
   return scrub ? input.trim().toLowerCase() : input;
 }
 
+// {{serviceName}} and {{portalUrl}} name the deployment, not the conversation, so
+// they are filled here for every message, in-code or localised. Without a portal
+// URL its line is dropped rather than left blank.
+function fillServiceTokens(text) {
+  if (typeof text !== 'string') return text;
+  return text
+    .split('{{serviceName}}').join(config.serviceName)
+    .replace(/\n?\{\{portalUrl\}\}/g, (match) => (config.portalUrl ? match.replace('{{portalUrl}}', config.portalUrl) : ''));
+}
+
 function get_message(bundle, locale = config.defaultLocale) {
   locale = locale || config.defaultLocale;
   if (bundle.code) {
@@ -27,9 +37,9 @@ function get_message(bundle, locale = config.defaultLocale) {
       localised = undefined;
     }
     const text = localised && localised[locale];
-    if (text && String(text).trim()) return text;
+    if (text && String(text).trim()) return fillServiceTokens(text);
   }
-  return (bundle[locale] === undefined) ? bundle[config.defaultLocale] : bundle[locale];
+  return fillServiceTokens((bundle[locale] === undefined) ? bundle[config.defaultLocale] : bundle[locale]);
 }
 
 
@@ -123,13 +133,13 @@ let global_messages = {
   error: {
     retry: {
       code: 'chatbot.pgr.error.retry',
-      en_IN: 'Selected option seems to be invalid 😐\n\nPlease select the valid option to proceed further.',
-      pt_PT: 'A opção indicada não parece ser válida 😐\n\nEscolha uma opção válida para continuar.'
+      en_IN: 'The option you sent does not seem to be valid.\n\nChoose a valid option to continue.',
+      pt_PT: 'A opção indicada não parece ser válida.\n\nEscolha uma opção válida para continuar.'
     }
   },
   system_error: {
     code: 'chatbot.pgr.error.system',
-    en_IN: 'I am sorry, our system has a problem and I cannot fulfill your request right now. Could you try again in a few minutes please?',
+    en_IN: 'Sorry, our system has a problem and your request cannot be completed right now. You can try again in a few minutes.',
     pt_PT: 'Lamentamos, o nosso sistema tem um problema e não é possível concluir o seu pedido agora. Pode tentar novamente dentro de alguns minutos.'
   },
   [INTENTION_MORE]: {

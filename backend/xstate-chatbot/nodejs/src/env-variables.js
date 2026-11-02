@@ -61,6 +61,11 @@ const envVariables = {
     descriptionMinLength: parseInt(process.env.DESCRIPTION_MIN_LENGTH || '20', 10),
 
     caseRelatedTo: process.env.CASE_RELATED_TO || null,
+
+    // the service's public name and portal, shown in chatbot messages as
+    // {{serviceName}} and {{portalUrl}}
+    serviceName: process.env.SERVICE_NAME || 'Citizen Feedback',
+    portalUrl: process.env.PORTAL_URL || '',
     instituteNameMaxLength: parseInt(process.env.INSTITUTE_NAME_MAX_LENGTH || '300', 10),
 
     // boundary-service registers many unrelated hierarchy types per tenant

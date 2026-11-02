@@ -1,0 +1,338 @@
+[
+    {
+        "code": "chatbot.pgr.attachment.failed",
+        "message": "Sorry, it was not possible to process your attachment. Continuing without it.",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "chatbot.pgr.attachment.question",
+        "message": "If possible, attach a photo or a document related to your complaint.\n\n*1.* Continue without attaching.",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "chatbot.pgr.attachment.tooLarge",
+        "message": "That file is too large. Send a file smaller than {{limit}}MB.",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "chatbot.pgr.boundary.preamble",
+        "message": "*{{level}}*\nSend the number of the location of your complaint: \n",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "chatbot.pgr.choice.accept",
+        "message": "Accept",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "chatbot.pgr.choice.cancel",
+        "message": "Cancel",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "chatbot.pgr.choice.change",
+        "message": "Change",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "chatbot.pgr.choice.confidential",
+        "message": "Confidential",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "chatbot.pgr.choice.confirm",
+        "message": "Confirm",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "chatbot.pgr.choice.decline",
+        "message": "Decline",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "chatbot.pgr.choice.notConfidential",
+        "message": "Not confidential",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "chatbot.pgr.choice.submit",
+        "message": "Submit",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "chatbot.pgr.complaintType.preamble",
+        "message": "*{{level}}*\nSend the number of the option you want: \n",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "chatbot.pgr.confidentiality.question",
+        "message": "{{label}}\n\n{{hint}}\n\n*1.* Keep my details confidential.\n*2.* Continue without confidentiality.",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "chatbot.pgr.confirmSubmission.question",
+        "message": "Confirm the details:\n\n{{summary}}\n\n*1.* Submit.\n*2.* Cancel.",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "chatbot.pgr.confirmation",
+        "message": "Complaint registered successfully.\n\nCategory: {{1}}\nReference: {{2}}\nDate: {{3}}\n\nYour complaint will be reviewed by the responsible institution.\nYou can follow its status on the *{{serviceName}}* portal or in the mobile app.\nThank you for helping to improve public services.\n\n{{serviceName}}\n{{portalUrl}}",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "chatbot.pgr.consent.declined",
+        "message": "Your complaint has not been registered, as consent is required to process it.\n\nType *restart* whenever you would like to start again.",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "chatbot.pgr.consent.question",
+        "message": "Before we register your complaint, please confirm the following:\n\n{{statements}}\n\n*1.* Accept.\n*2.* Decline",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "chatbot.pgr.description.question",
+        "message": "Describe your complaint in a single message, with at least {{minLength}} characters.",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "chatbot.pgr.description.tooShort",
+        "message": "That description is too short. Describe your complaint with at least {{minLength}} characters, in a single message.",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "chatbot.pgr.error.authentication",
+        "message": "Sorry, we could not verify your account. Please try again in a moment.",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "chatbot.pgr.error.externalService",
+        "message": "Sorry, our service is temporarily unavailable. Please try again shortly.",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "chatbot.pgr.error.generic",
+        "message": "Sorry, there was an error processing your request. Please try again.",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "chatbot.pgr.error.retry",
+        "message": "The option you sent does not seem to be valid.\n\nChoose a valid option to continue.",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "chatbot.pgr.error.system",
+        "message": "Sorry, our system has a problem and your request cannot be completed right now. You can try again in a few minutes.",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "chatbot.pgr.error.validation",
+        "message": "Sorry, we could not process your request. Please check your mobile number ({{digits}} digits) and try again.",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "chatbot.pgr.institution.question",
+        "message": "Which institution is your complaint about?\n\nType and send the name of the institution.",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "chatbot.pgr.institution.tooLong",
+        "message": "That name is too long. Send the institution name with at most {{maxLength}} characters.",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "chatbot.pgr.locale.question",
+        "message": "To choose the language, send the number of the option you want: \n\n{{options}}",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "chatbot.pgr.menu.cancelled",
+        "message": "Your session has been cancelled.",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "chatbot.pgr.menu.options",
+        "message": "*Menu* \n\n*1.* File a complaint\n*2.* Cancel",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "chatbot.pgr.notAuthorized",
+        "message": "Sorry, this number is not yet authorized to use this service.",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "chatbot.pgr.onboarding.name.change",
+        "message": "Enter your name to continue.",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "chatbot.pgr.onboarding.name.confirm",
+        "message": "Confirm the name: {{name}}?\n\n*1.* Confirm the name.\n*2.* Change the name.",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "chatbot.pgr.onboarding.name.confirmProfile",
+        "message": "In our records, this number is linked to the name  *“{{name}}”*.\n\n*1.* Confirm the name.\n*2.* Change the name.",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "chatbot.pgr.onboarding.name.question",
+        "message": "We did not find any name linked to this number in our records.\n\nType your name to continue:",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "chatbot.pgr.onboarding.nameInformation",
+        "message": "For a personalised service, we would like to confirm your name.",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "chatbot.pgr.onboarding.thankYou",
+        "message": "Thank you for the confirmation.\nIt is a pleasure to serve you.",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "chatbot.pgr.onboarding.welcome",
+        "message": "Dear Citizen,\n\nWelcome to the {{serviceName}} chatbot on WhatsApp\nYou can now file your complaint through WhatsApp.\n\nTo cancel at any time, type *Cancel*.",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "chatbot.pgr.option.more",
+        "message": "See more ...",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "chatbot.pgr.session.expired",
+        "message": "Your previous session timed out.\n\n*1.* Resume where you left off.\n*2.* Start a new conversation.",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "chatbot.pgr.session.invalid",
+        "message": "Reply *1* to resume or *2* to start over.",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "chatbot.pgr.session.resumed",
+        "message": "Resuming your previous conversation. Please send your next message.",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "chatbot.pgr.submissionStalled",
+        "message": "Sorry, we could not complete your request. The session has been closed — send a message to start again.",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "chatbot.pgr.summary.category",
+        "message": "Category",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "chatbot.pgr.summary.confidentiality",
+        "message": "Confidentiality",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "chatbot.pgr.summary.description",
+        "message": "Description",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "chatbot.pgr.summary.district",
+        "message": "District",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "chatbot.pgr.summary.institution",
+        "message": "Institution",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "chatbot.pgr.summary.location",
+        "message": "Location",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "chatbot.pgr.summary.municipality",
+        "message": "Municipality",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "chatbot.pgr.summary.no",
+        "message": "No",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "chatbot.pgr.summary.subject",
+        "message": "Subject",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "chatbot.pgr.summary.type",
+        "message": "Type",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "chatbot.pgr.summary.yes",
+        "message": "Yes",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    },
+    {
+        "code": "chatbot.pgr.welcome",
+        "message": "Dear {{name}},\n\nWelcome to the {{serviceName}} chatbot on WhatsApp.\nYou can now file your complaint through WhatsApp.\n\nTo cancel at any time, type *Cancel*.",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
+    }
+]
