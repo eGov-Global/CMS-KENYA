@@ -286,9 +286,10 @@ services:
 
   # The WhatsApp chatbot's database objects: its session tables and its
   # localised messages (backend/xstate-chatbot/nodejs/db/migration/main).
-  # The chatbot itself can run outside compose; nothing here depends on it.
-  # No published Kenya image yet: build it locally from that db folder as
-  # xstate-chatbot-db:local, or point XSTATE_CHATBOT_DB_IMAGE at a pushed one.
+  # The chatbot service (tenant overlay, e.g. docker-compose.bomet.yml) waits for
+  # it. No published Kenya image yet: the deploy builds it from that db folder
+  # as xstate-chatbot-db:local when enable_chatbot is on, or set
+  # XSTATE_CHATBOT_DB_IMAGE (host_vars chatbot_db_image) to a pushed one.
   xstate-chatbot-db:
     image: ${XSTATE_CHATBOT_DB_IMAGE:-xstate-chatbot-db:local}
     container_name: xstate-chatbot-db
