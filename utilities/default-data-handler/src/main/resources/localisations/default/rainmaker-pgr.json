@@ -7888,5 +7888,11 @@
         "message": "Couldn't withdraw the complaint. Please try again.",
         "module": "rainmaker-pgr",
         "locale": "default"
+    },
+    {
+        "code": "PGR_RECEIPT_VIEW",
+        "message": "View Application",
+        "module": "rainmaker-pgr",
+        "locale": "default"
     }
 ]
