@@ -17,6 +17,7 @@ import React, { useEffect, useState, useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { useHistory } from "react-router-dom";
 import { formPayloadToCreateComplaint } from "../../../utils";
+import { stampAutoAssignment } from "../../../utils/autoAssign";
 import { fieldsFromSchema, deriveCaseRelatedTo } from "../../../utils/extendedAttributes";
 import { compareLabels } from "../../../utils/sortByLabel";
 
@@ -75,6 +76,12 @@ const CreateComplaintForm = ({
 
   // Hook for creating a complaint
   const { mutate: CreateComplaintMutation } = Digit.Hooks.pgr.useCreateComplaint(tenantId);
+  // Same client-side routing the citizen flow uses (utils/autoAssign.js). APPLY
+  // goes straight to PENDINGATLME with no ASSIGN step, so a complaint filed
+  // here without `workflow.assignes` had no holder: the escalation scheduler
+  // skipped it and a manual ESCALATE failed with ESCALATION_NO_ASSIGNEE
+  // (#74, #194). Prefetched while the operator fills the form.
+  const autoAssignment = Digit.Hooks.pgr.useAutoAssignment(tenantId);
 
   // Fetch the list of service definitions (e.g., complaint types) for current tenant
   const serviceDefs = Digit.Hooks.pgr.useServiceDefs(tenantId, "PGR");
@@ -648,6 +655,16 @@ const CreateComplaintForm = ({
       caseRelatedTo,
       fieldKeys: extFields.map((f) => f.fieldKey),
     });
+    // Best-effort: department from the picked sub-type (or type when the
+    // hierarchy stops there), jurisdiction from the submitted locality. A null
+    // resolution submits the payload unchanged, as on the citizen side.
+    const leaf = _data?.SelectSubComplaintType ?? _data?.SelectComplaintType;
+    const assignment = autoAssignment.resolve({
+      departmentCode: leaf?.department,
+      localityCode: payload?.service?.address?.locality?.code,
+      seed: `${user?.info?.uuid ?? ""}:${Date.now()}`,
+    });
+    stampAutoAssignment(payload, assignment, "employee-create");
     handleResponseForCreateComplaint(payload);
   };
 
