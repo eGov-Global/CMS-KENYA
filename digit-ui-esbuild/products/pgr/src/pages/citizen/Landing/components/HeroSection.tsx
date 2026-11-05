@@ -88,6 +88,7 @@ export function HeroSection({ routes, imageUrl, imageSmallUrl, patternUrl, secti
     >
       {patternUrl && (
         <img
+          data-pgrl-image="pattern"
           src={patternUrl}
           alt=""
           aria-hidden

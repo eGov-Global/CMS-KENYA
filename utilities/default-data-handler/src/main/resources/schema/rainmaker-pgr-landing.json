@@ -2,7 +2,7 @@
   {
     "tenantId": "{tenantid}",
     "code": "RAINMAKER-PGR.LandingSection",
-    "description": "One row per configurable public-landing section (config-driven landing, CCSD-2005). type selects the section component (v1 catalog: hero, navigation, types, steps, channels, privacy, news, institutions, cta, footer) — intentionally NOT enum-constrained here so new types can be added later without a schema recreation (MDMS schema _update is unsupported); the catalog is enforced by the runtime LandingRenderer type->component registry and the Configurator type picker. order sorts; enabled toggles; status gates DRAFT vs PUBLISHED (runtime renders PUBLISHED). Text is carried as PGR_LANDING_* localization keys (never inline translated text); media is a filestore id; items are cards/links/steps for the section. WhatsApp FAB and the utility bar are page-level toggles on LandingPageConfig, not section types.",
+    "description": "One row per public-landing section (config-driven landing, CCSD-2005). `type` picks the section component; not an enum, so new types need no schema recreation (schema _update is unsupported) — the runtime registry and the Configurator catalog enforce the list. `order` sorts, `enabled` toggles, `status` gates DRAFT vs PUBLISHED. Text travels as PGR_LANDING_* localization keys, media as a filestore id, items as the section's cards/links/steps.",
     "isActive": true,
     "definition": {
       "type": "object",
@@ -64,6 +64,13 @@
             },
             "altKey": {
               "type": "string"
+            },
+            "images": {
+              "type": "object",
+              "description": "Further pictures of the section by slot (pattern, left, right, skyline, portrait, emblem, card-<id>): a file-store id or an image URL each.",
+              "additionalProperties": {
+                "type": "string"
+              }
             }
           },
           "additionalProperties": false

@@ -26,16 +26,7 @@ import { MediaLibraryDialog } from './MediaLibraryDialog';
 import { ICON_CHOICES } from './iconChoices';
 import type { InspectorTab, LandingItemData, LandingSectionData } from './types';
 
-const getPath = (obj: Record<string, unknown> | undefined, path: string): unknown =>
-  path.split('.').reduce<unknown>((acc, k) => (acc && typeof acc === 'object' ? (acc as Record<string, unknown>)[k] : undefined), obj);
-
-const setPath = (draft: LandingSectionData, path: string, value: unknown): Partial<LandingSectionData> => {
-  const [head, ...rest] = path.split('.');
-  if (!rest.length) return { [head]: value } as Partial<LandingSectionData>;
-  const nested = { ...((draft as Record<string, unknown>)[head] as Record<string, unknown> | undefined) };
-  nested[rest.join('.')] = value; // schema nests only one level (media.imageId, theme.accent)
-  return { [head]: nested } as Partial<LandingSectionData>;
-};
+import { getPath, setPath, slotLabel } from './fieldPaths';
 
 /** Human-readable localized text field: edits the MESSAGE for the display
  *  locale (staged in locEdits) — never the key. */
@@ -137,7 +128,8 @@ function ItemsEditor({ cfg, code, draft }: { cfg: ItemsEditorConfig; code: strin
   // Copy-on-write inheritance: with no explicit items[], show the built-in
   // defaults as rows; the first mutation materialises them into the config.
   const explicit = (draft.items ?? []) as LandingItemData[];
-  const items: LandingItemData[] = explicit.length ? explicit : (cfg.inherited?.() ?? []);
+  // ...or the page's own defaults for this section type (sent with the preview handshake).
+  const items: LandingItemData[] = explicit.length ? explicit : (cfg.inherited?.() ?? state.pageItems[draft.type ?? ''] ?? []);
   const patch = (next: LandingItemData[]) =>
     dispatch({ type: 'patchSection', code, patch: { items: next.length ? next : undefined } });
   const setItem = (i: number, p: Partial<LandingItemData>) =>
@@ -374,6 +366,12 @@ export function Inspector() {
 
   const tab = state.inspectorTab;
   const tabFields = fieldsByTab.get(tab) ?? [];
+  // Pictures by slot that the page set (card-<id> …) but the catalog does not list, plus the slot just clicked on the page.
+  const extraSlotFields: BuilderFieldDef[] = state.inspectorTab === 'media'
+    ? [...new Set([...Object.keys(section.draft.media?.images ?? {}), ...(state.focusField?.startsWith('media.images.') ? [state.focusField.slice('media.images.'.length)] : [])])]
+        .filter((slot) => !tabFields.some((f) => f.path === `media.images.${slot}`))
+        .map((slot) => ({ path: `media.images.${slot}`, label: slotLabel(slot), tab: 'media' as const, widget: 'media' as const, help: 'Set from the page; leave empty for the built-in one.' }))
+    : [];
   const itemsHere = entry.items && entry.items.tab === tab ? entry.items : undefined;
 
   return (
@@ -420,7 +418,7 @@ export function Inspector() {
           {tabFields.length === 0 && !itemsHere && (
             <p className="m-0 text-xs text-muted-foreground">Nothing to configure in this tab for {entry.label}.</p>
           )}
-          {tabFields.map((def, i) => {
+          {[...tabFields, ...extraSlotFields].map((def, i) => {
             const groupHeader = def.group && def.group !== tabFields[i - 1]?.group ? (
               <h3 className="mb-0 mt-2 border-t border-border pt-3 text-xs font-semibold">{def.group}</h3>
             ) : null;

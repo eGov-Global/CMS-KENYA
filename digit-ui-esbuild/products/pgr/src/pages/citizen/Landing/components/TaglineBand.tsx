@@ -32,7 +32,7 @@ export function TaglineBand({ artwork, section }: TaglineBandProps) {
     >
       {artwork?.bandLeft && (
         <img
-          src={artwork.bandLeft}
+          data-pgrl-image="left" src={artwork.bandLeft}
           alt=""
           aria-hidden
           loading="lazy"
@@ -42,7 +42,7 @@ export function TaglineBand({ artwork, section }: TaglineBandProps) {
       )}
       {artwork?.bandSkyline && (
         <img
-          src={artwork.bandSkyline}
+          data-pgrl-image="skyline" src={artwork.bandSkyline}
           alt=""
           aria-hidden
           loading="lazy"
@@ -52,7 +52,7 @@ export function TaglineBand({ artwork, section }: TaglineBandProps) {
       )}
       {artwork?.bandRight && (
         <img
-          src={artwork.bandRight}
+          data-pgrl-image="right" src={artwork.bandRight}
           alt=""
           aria-hidden
           loading="lazy"

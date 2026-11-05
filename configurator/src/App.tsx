@@ -163,6 +163,13 @@ function ManagementAdminResources() {
         {canViewResource('boundary-hierarchies') && <Resource name="boundary-hierarchies" list={BoundaryHierarchyList} show={BoundaryHierarchyShow} create={BoundaryHierarchyCreate} />}
         {canViewResource('complaint-hierarchies') && <Resource name="complaint-hierarchies" list={ComplaintHierarchyList} show={ComplaintHierarchyShow} create={ComplaintHierarchyCreate} />}
 
+        {/* CCSD-2008: config-driven landing masters — full generic CRUD (the
+            P4 Builder replaces only the edit surface via customEditor; same
+            resource, routes and MDMS APIs). dedicated:true keeps them out of
+            the auto-loop below, so routes are declared explicitly here. */}
+        {canViewResource('landing-sections') && <Resource name="landing-sections" list={MdmsResourcePage} show={MdmsResourceShow} edit={MdmsResourceEdit} create={MdmsResourceCreate} />}
+        {canViewResource('landing-page-config') && <Resource name="landing-page-config" list={MdmsResourcePage} show={MdmsResourceShow} edit={MdmsResourceEdit} create={MdmsResourceCreate} />}
+
         {/* Novu-into-configurator: read-only notification surfaces served by the
             novu-bridge proxy (not egov-mdms). Names match the 'custom' registry
             keys the data provider branches on. Routable at

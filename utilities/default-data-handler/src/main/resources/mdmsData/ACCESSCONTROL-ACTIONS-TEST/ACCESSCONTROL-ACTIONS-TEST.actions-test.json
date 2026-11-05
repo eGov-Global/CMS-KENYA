@@ -2805,5 +2805,53 @@
     "orderNumber": 1,
     "serviceCode": "mdms url",
     "parentModule": ""
+  },
+  {
+    "id": 2652,
+    "name": "MDMS",
+    "url": "/mdms-v2/v2/_create/RAINMAKER-PGR.LandingSection",
+    "displayName": "create RAINMAKER-PGR.LandingSection",
+    "orderNumber": 1,
+    "parentModule": "",
+    "enabled": true,
+    "serviceCode": "MDMS v2",
+    "code": "null",
+    "path": ""
+  },
+{
+    "id": 2653,
+    "name": "MDMS",
+    "url": "/mdms-v2/v2/_update/RAINMAKER-PGR.LandingSection",
+    "displayName": "update RAINMAKER-PGR.LandingSection",
+    "orderNumber": 1,
+    "parentModule": "",
+    "enabled": true,
+    "serviceCode": "MDMS v2",
+    "code": "null",
+    "path": ""
+  },
+{
+    "id": 2654,
+    "name": "MDMS",
+    "url": "/mdms-v2/v2/_create/RAINMAKER-PGR.LandingPageConfig",
+    "displayName": "create RAINMAKER-PGR.LandingPageConfig",
+    "orderNumber": 1,
+    "parentModule": "",
+    "enabled": true,
+    "serviceCode": "MDMS v2",
+    "code": "null",
+    "path": ""
+  },
+{
+    "id": 2655,
+    "name": "MDMS",
+    "url": "/mdms-v2/v2/_update/RAINMAKER-PGR.LandingPageConfig",
+    "displayName": "update RAINMAKER-PGR.LandingPageConfig",
+    "orderNumber": 1,
+    "parentModule": "",
+    "enabled": true,
+    "serviceCode": "MDMS v2",
+    "code": "null",
+    "path": ""
   }
 ]
