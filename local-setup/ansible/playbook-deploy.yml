@@ -1677,6 +1677,7 @@
               + (['keycloak']      if enable_keycloak      | default(false) else [])
               + (['otp']           if enable_otp_services  | default(false) else [])
               + (['matomo']        if enable_matomo        | default(false) else [])
+              + (['chatbot']       if enable_chatbot       | default(false) else [])
               + _obs_profiles
             ) | join(',')
           }}
@@ -1796,6 +1797,39 @@
       changed_when: true
       when:
         - build_otp_publisher | default(false)
+
+    # ==================== Build the WhatsApp chatbot images locally =========
+    # No published Kenya chatbot images yet. With `enable_chatbot: true` and no
+    # `chatbot_image` / `chatbot_db_image` in host_vars, build both from
+    # backend/xstate-chatbot/nodejs as xstate-chatbot:local and
+    # xstate-chatbot-db:local, the compose defaults. The app's
+    # Dockerfile.dockerignore keeps .env, certs and node_modules out of the image.
+    - name: "Build xstate-chatbot image locally (when enable_chatbot)"
+      ansible.builtin.command: >-
+        docker build
+        -t xstate-chatbot:local
+        --build-arg WORK_DIR=.
+        -f backend/xstate-chatbot/nodejs/Dockerfile
+        backend/xstate-chatbot/nodejs
+      args:
+        chdir: "{{ playbook_dir }}/../.."
+      changed_when: true
+      when:
+        - enable_chatbot | default(false)
+        - not (chatbot_image | default(''))
+
+    - name: "Build xstate-chatbot-db image locally (when enable_chatbot)"
+      ansible.builtin.command: >-
+        docker build
+        -t xstate-chatbot-db:local
+        -f backend/xstate-chatbot/nodejs/db/Dockerfile
+        backend/xstate-chatbot/nodejs/db
+      args:
+        chdir: "{{ playbook_dir }}/../.."
+      changed_when: true
+      when:
+        - enable_chatbot | default(false)
+        - not (chatbot_db_image | default(''))
 
     # ==================== Build digit-ui from source ====================
     # Mirrors the configurator + mcp fold-ins: when `build_digit_ui: true`,
