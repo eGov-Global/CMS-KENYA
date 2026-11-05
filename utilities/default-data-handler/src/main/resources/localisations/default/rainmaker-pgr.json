@@ -7924,5 +7924,11 @@
         "message": "1",
         "module": "rainmaker-pgr",
         "locale": "default"
+    },
+    {
+        "code": "CS_IMAGE_TOO_LARGE",
+        "message": "That photo is over 10 MB. Choose a smaller one.",
+        "module": "rainmaker-pgr",
+        "locale": "default"
     }
 ]

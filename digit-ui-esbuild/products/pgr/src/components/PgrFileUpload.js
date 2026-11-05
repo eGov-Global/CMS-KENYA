@@ -1,6 +1,7 @@
 import React from "react";
 import { parseFilestoreEntry } from "../utils/attachmentKind";
 import { EV, trackE, failureName, sizeBucket } from "../utils/analytics";
+import { fitImageForUpload, isImageFile, IMAGE_PICK_LIMIT_BYTES } from "../utils/imageFit";
 
 // Shared PGR file uploader — the SAME component/UX as the citizen create
 // wizard's Step-4 uploader (CreatePGRFlowV2 PgrFileUpload): dashed drop-zone
@@ -256,12 +257,20 @@ const PgrFileUpload = ({ t, tenantId, value, onSelect, fieldKey, accept = DEFAUL
     }
     const accepted = [];
     for (const f of files.slice(0, room)) {
-      if (f.size > MAX_BYTES) {
+      // Photos up to 10 MB are accepted and scaled down before upload (#67);
+      // every other kind keeps the per-file ceiling as it is.
+      if (isImageFile(f) && f.size > IMAGE_PICK_LIMIT_BYTES) {
+        setError(tr(t, "CS_IMAGE_TOO_LARGE", "That photo is over 10 MB. Choose a smaller one."));
+        trackE(EV.ATTACHMENT_FAILED, "TooLarge");
+        continue;
+      }
+      const file = isImageFile(f) ? await fitImageForUpload(f) : f;
+      if (file.size > MAX_BYTES) {
         setError(tr(t, "CS_FILE_TOO_LARGE", "File is too large (max 5 MB)."));
         trackE(EV.ATTACHMENT_FAILED, "TooLarge");
         continue;
       }
-      accepted.push(f);
+      accepted.push(file);
     }
     if (accepted.length === 0) return;
     setBusy(true);
@@ -361,7 +370,7 @@ const PgrFileUpload = ({ t, tenantId, value, onSelect, fieldKey, accept = DEFAUL
         {busy ? tr(t, "CS_UPLOADING", "Uploading…") : tr(t, "CS_UPLOAD_CHOOSE", "Choose files")}
       </span>
       <p className="pgr-upload-hint">
-        {hint || tr(t, "CS_UPLOAD_HINT", `JPG, PNG, PDF, DOC, DOCX, XLS, XLSX, MP4, MOV, AVI, MKV up to 5 MB each. You can upload up to ${maxFiles} files.`)}
+        {hint || tr(t, "CS_UPLOAD_HINT", `JPG, PNG, PDF, DOC, DOCX, XLS, XLSX, MP4, MOV, AVI, MKV up to 5 MB each (photos up to 10 MB). You can upload up to ${maxFiles} files.`)}
       </p>
     </div>
   );
