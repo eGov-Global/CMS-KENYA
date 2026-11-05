@@ -125,6 +125,12 @@ digit-config-service:
   data_tables: [eg_config_data]
   baseline_fresh: true
 
+xstate-chatbot:
+  canonical: xstate_chatbot_schema
+  aliases: []
+  data_tables: [eg_chat_state_v2]
+  baseline_fresh: true
+
 audit-service:
   canonical: audit_service_schema
   aliases: []

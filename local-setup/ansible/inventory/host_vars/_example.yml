@@ -465,6 +465,27 @@ twilio_auth_token: ""
 twilio_whatsapp_from: "whatsapp:+14155238886"   # Twilio Sandbox default
 
 
+# ────────── Inbound WhatsApp chatbot (optional) ──────────
+# enable_chatbot: true starts xstate-chatbot and its migrator (compose profile
+# "chatbot"; the service is defined in the tenant overlay, e.g.
+# docker-compose.bomet.yml). Without chatbot_image / chatbot_db_image the deploy
+# builds both from backend/xstate-chatbot/nodejs as :local images.
+# It uses the twilio_account_sid / twilio_auth_token above. Point the Twilio
+# sender's webhook at <chatbot_webhook_base_url>/xstate-chatbot/message.
+# The service account must exist as an HRMS employee with the EMPLOYEE, CSR and
+# ACCOUNT_ADMIN roles before the chatbot can file complaints.
+enable_chatbot: false
+# chatbot_image: ""                               # pushed image instead of xstate-chatbot:local
+# chatbot_db_image: ""                            # pushed image instead of xstate-chatbot-db:local
+chatbot_whatsapp_business_number: ""              # sender, national form (e.g. 7XXXXXXXX)
+chatbot_twilio_whatsapp_number: ""                # sender, E.164 (e.g. +2547XXXXXXXX)
+# chatbot_webhook_base_url: ""                    # defaults to https://<domain> (http when tls_enabled: false)
+chatbot_service_account_username: "CHATBOT"
+chatbot_service_account_password: ""             # secret
+chatbot_reminder_token: ""                        # secret; guards the reminder endpoint
+chatbot_allowed_mobile_numbers: ""                # comma-separated allow-list; empty = everyone
+
+
 # ────────── Ordinary SMS through a NON-Twilio gateway (optional) ──────────
 # For deployments that cannot use Twilio for SMS — e.g. the account has no SMS
 # compliance registration — the bridge can route the SMS leg through another

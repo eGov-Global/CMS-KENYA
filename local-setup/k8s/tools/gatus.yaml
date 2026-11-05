@@ -480,6 +480,18 @@ data:
         alerts:
           - type: slack
 
+      # -------------------- profile: chatbot --------------------
+      # Not deployed on k3s; defined here so both tiers keep the same catalogue.
+      - name: WhatsApp Chatbot
+        group: Chatbot
+        enabled: ${GATUS_PROFILE_CHATBOT}
+        url: "http://xstate-chatbot:8082/xstate-chatbot/health"
+        interval: 30s
+        conditions:
+          - "[STATUS] == 200"
+        alerts:
+          - type: slack
+
       # ==================== API Gateway ====================
       - name: Kong Gateway (Proxy)
         group: API Gateway
@@ -832,6 +844,8 @@ spec:
             - name: GATUS_PROFILE_KEYCLOAK
               value: "false"
             - name: GATUS_PROFILE_NOTIFICATIONS
+              value: "false"
+            - name: GATUS_PROFILE_CHATBOT
               value: "false"
             - name: GATUS_PROFILE_MATOMO
               value: "false"

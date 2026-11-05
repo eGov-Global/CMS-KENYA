@@ -176,6 +176,11 @@ plugins:
           ["/novu-bridge/novu-adapter/v1/providers/test-send"]=true,
         }
         local uri = kong.request.get_path()
+        -- /xstate-chatbot (WhatsApp chatbot): the messaging provider calls its webhook
+        -- with a form body and no DIGIT token, and the chatbot checks the provider's
+        -- signature itself. It calls DIGIT APIs as its own service account, so those
+        -- calls still go through the checks below.
+        if uri == "/xstate-chatbot" or uri:find("/xstate-chatbot/", 1, true) == 1 then return end
         local is_protected = not AUTH_OPTIONAL[uri]
         local function deny_unauth()
           if ENFORCE_UNAUTH then
@@ -941,3 +946,15 @@ services:
       status_code: 200
       content_type: application/json
       body: '{"ResponseInfo":{"apiId":"Rainmaker","ver":".01","ts":"","resMsgId":"uief87324","msgId":"","status":"successful"},"totalCount":0,"unreadCount":0,"events":[]}'
+# xstate-chatbot: the WhatsApp chatbot (compose profile "chatbot", Bomet overlay).
+# Exempt from the DIGIT token check in the pre-function above: the messaging
+# provider calls its webhook without a DIGIT token.
+- name: xstate-chatbot
+  url: http://xstate-chatbot:8082
+  tags:
+  - chatbot
+  routes:
+  - name: xstate-chatbot-route
+    paths:
+    - /xstate-chatbot
+    strip_path: false

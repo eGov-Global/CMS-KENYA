@@ -474,6 +474,19 @@ endpoints:
     alerts:
       - type: slack
 
+  # -------------------- profile: chatbot --------------------
+  # The WhatsApp chatbot (Bomet overlay). Its migrator, xstate-chatbot-db, is a
+  # one-shot and EXEMPT in .github/scripts/check-gatus-coverage.py.
+  - name: WhatsApp Chatbot
+    group: Chatbot
+    enabled: ${GATUS_PROFILE_CHATBOT}
+    url: "http://xstate-chatbot:8082/xstate-chatbot/health"
+    interval: 30s
+    conditions:
+      - "[STATUS] == 200"
+    alerts:
+      - type: slack
+
   # ==================== API Gateway ====================
   - name: Kong Gateway (Proxy)
     group: API Gateway

@@ -32,3 +32,90 @@ services:
       PGR_NOTIFICATION_CONFIG_DRIVEN: "true"
       KAFKA_TOPICS_COMPLAINTS_DOMAIN_EVENTS: complaints.domain.events
 
+  # WhatsApp chatbot (xstate-chatbot), code in backend/xstate-chatbot/nodejs.
+  # Off unless host_vars has `enable_chatbot: true` (compose profile "chatbot").
+  # Same shape as Mozambique's (CMS-MOZAMBIQUE docker-compose.ige.yml), with
+  # Bomet's tenant, numbers and boundary hierarchy:
+  #   - no host port: Twilio reaches it through nginx -> Kong /xstate-chatbot;
+  #   - its DB objects come from xstate-chatbot-db (docker-compose.migrations.yml);
+  #   - secrets (Twilio, service-account password) come from .env / host_vars only.
+  # No published Kenya image yet: built locally as xstate-chatbot:local, or set
+  # XSTATE_CHATBOT_IMAGE to a pushed one.
+  xstate-chatbot:
+    image: ${XSTATE_CHATBOT_IMAGE:-xstate-chatbot:local}
+    container_name: xstate-chatbot
+    restart: unless-stopped
+    profiles: ["chatbot"]
+    depends_on:
+      xstate-chatbot-db:
+        condition: service_completed_successfully
+      pgbouncer:
+        condition: service_healthy
+      kong:
+        condition: service_started
+    environment:
+      NAME: xstate-chatbot
+      SERVICE_PORT: "8082"            # kong.yml: http://xstate-chatbot:8082
+      CONTEXT_PATH: /xstate-chatbot
+      # -- Channel (Twilio) --
+      WHATSAPP_PROVIDER: Twilio
+      SERVICE_PROVIDER: eGov
+      WHATSAPP_BUSINESS_NUMBER: ${CHATBOT_WHATSAPP_BUSINESS_NUMBER:-}
+      TWILIO_WHATSAPP_NUMBER: ${CHATBOT_TWILIO_WHATSAPP_NUMBER:-}
+      TWILIO_ACCOUNT_SID: ${TWILIO_ACCOUNT_SID:-}
+      TWILIO_AUTH_TOKEN: ${TWILIO_AUTH_TOKEN:-}
+      TWILIO_BASE_URL: ""
+      # Public origin Twilio calls; the signature check is computed against it.
+      TWILIO_WEBHOOK_BASE_URL: ${CHATBOT_WEBHOOK_BASE_URL:-}
+      TWILIO_VERIFY_WEBHOOK_SIGNATURE: "true"
+      # Content templates are account-scoped; plain text until Bomet has its own.
+      TWILIO_TEMPLATES_ENABLED: "false"
+      REMINDER_AUTH_TOKEN: ${CHATBOT_REMINDER_TOKEN:-}
+      DEV_PROXY_ENABLED: "false"
+      # -- Who the bot acts as (HRMS employee CHATBOT) --
+      USER_SERVICE_ACCOUNT_USERNAME: ${CHATBOT_SERVICE_ACCOUNT_USERNAME:-CHATBOT}
+      USER_SERVICE_ACCOUNT_PASSWORD: ${CHATBOT_SERVICE_ACCOUNT_PASSWORD:-}
+      USER_SERVICE_ACCOUNT_TENANT: bo
+      ROOT_TENANTID: bo
+      ALLOWED_MOBILE_NUMBERS: ${CHATBOT_ALLOWED_MOBILE_NUMBERS:-}
+      # -- Bomet numbers, language, conversation --
+      # Fallback only: the bot reads common-masters.MobileNumberValidation first.
+      DEFAULT_COUNTRY_CODE: "+254"
+      DEFAULT_MOBILE_REGEX: "^[17][0-9]{8}$$"
+      MOBILE_NUMBER_LENGTH: "9"
+      SUPPORTED_LOCALES: en_IN
+      TIMEZONE: Africa/Nairobi
+      CANCEL_WORDS: cancel,stop
+      RESET_WORDS: reset,restart,hello,hi
+      BOUNDARY_HIERARCHY_TYPE: BOMET-Hierarchy
+      CITIZEN_PLACEHOLDER_NAME: Citizen
+      AVG_SESSION_TIME: "30"
+      # -- DIGIT services, all through Kong --
+      EGOV_SERVICES_HOST: http://kong:8000/
+      EXTERNAL_HOST: http://kong:8000/
+      EGOV_SEARCHER_HOST: http://kong:8000/
+      USER_SERVICE_HOST: http://kong:8000/
+      LOCALIZATION_SERVICE_HOST: http://kong:8000/
+      PGR_VERSION: v2
+      # -- Sessions in Postgres (survive restarts); keep ONE replica --
+      REPO_PROVIDER: Postgres
+      DB_HOST: pgbouncer
+      DB_PORT: "5432"
+      DB_NAME: egov
+      DB_USER: egov
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-egov123}
+      DB_SSL: "false"
+      # -- Telemetry only --
+      KAFKA_BOOTSTRAP_SERVER: redpanda:9092
+      KAFKA_CONSUMER_ENABLED: "false"
+      ENABLE_SANDBOX_MODE: "false"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8082/xstate-chatbot/health >/dev/null 2>&1 || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 40s
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: [ALL]
+    networks:
+      - egov-network
