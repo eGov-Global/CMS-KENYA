@@ -172,7 +172,10 @@ public class EscalationScheduler {
                             .service(complaint)
                             .workflow(Workflow.builder()
                                     .action(ESCALATE)
-                                    .comments("Auto-escalated after complaint SLA threshold at level " + currentLevel)
+                                    // The comment names the step this escalation IS (1-based), not the
+                                    // 0-based count before it; currentLevel is already reconciled with
+                                    // the workflow history, so a prior manual escalation counts (#141).
+                                    .comments("Auto-escalated after complaint SLA threshold at level " + (currentLevel + 1))
                                     .build())
                             .build();
                     pgrService.updateAutomaticEscalation(escalationRequest);
