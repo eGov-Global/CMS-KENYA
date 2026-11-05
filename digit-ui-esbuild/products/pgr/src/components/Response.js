@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { ActionBar, SubmitBar, ArrowLeft, ArrowForward } from "@egovernments/digit-ui-react-components";
 import { Button } from "@egovernments/digit-ui-components";
 import { PanelCard } from "@egovernments/digit-ui-components";
+import { Eye } from "lucide-react";
 import ReceiptActions from "./ReceiptActions";
 
 const Response = () => {
@@ -13,6 +14,7 @@ const Response = () => {
   const { state } = useLocation();
   const back = state?.back ? state?.back : "BACK";
   const receiptTitle = t("PGR_RECEIPT_TITLE") === "PGR_RECEIPT_TITLE" ? "Complaint Application" : t("PGR_RECEIPT_TITLE");
+  const viewLabel = t("PGR_RECEIPT_VIEW") === "PGR_RECEIPT_VIEW" ? "View Application" : t("PGR_RECEIPT_VIEW");
 
   return (
     <>
@@ -52,7 +54,20 @@ const Response = () => {
         // right-aligned line and leaves no room for the share sheet.
         <section className="pgr-receipt-row" aria-label={receiptTitle}>
           <p className="pgr-receipt-row__label">{receiptTitle}</p>
-          <ReceiptActions complaintId={state.responseId} tenantId={Digit.ULBService.getCurrentTenantId()} />
+          <ReceiptActions
+            complaintId={state.responseId}
+            tenantId={Digit.ULBService.getCurrentTenantId()}
+            // Counter operators asked to open the application they just filed
+            // without going through the inbox (#185).
+            extraActions={[
+              {
+                key: "view",
+                label: viewLabel,
+                icon: Eye,
+                onClick: () => history.push(`/${window.contextPath}/employee/pgr/complaint-details/${state.responseId}`),
+              },
+            ]}
+          />
         </section>
       ) : null}
       <ActionBar className="mc_back">

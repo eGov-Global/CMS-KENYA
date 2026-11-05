@@ -37,7 +37,7 @@ import static org.mockito.Mockito.when;
  * isEmpty() short-circuit, or the unresolved-mobileNumber short-circuit.
  *
  * <p>PGRService is constructed explicitly rather than via {@code @InjectMocks}: its constructor
- * takes two ServiceRequestValidator params, which makes by-type mock resolution ambiguous.
+ * wires the validator explicitly so count policy failures are isolated from the repository.
  */
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
@@ -46,7 +46,6 @@ public class PGRServiceCountScopingTest {
     @Mock private EnrichmentService enrichmentService;
     @Mock private UserService userService;
     @Mock private WorkflowService workflowService;
-    @Mock private ServiceRequestValidator serviceRequestValidator;
     @Mock private ServiceRequestValidator validator;
     @Mock private Producer producer;
     @Mock private PGRConfiguration config;
@@ -60,16 +59,19 @@ public class PGRServiceCountScopingTest {
     @Mock private FieldVisibilityService fieldVisibilityService;
     @Mock private EmployeeDepartmentScopeService employeeDepartmentScopeService;
     @Mock private EmployeeJurisdictionScopeService employeeJurisdictionScopeService;
+    @Mock private EscalationService escalationService;
+    @Mock private EscalationLockManager escalationLockManager;
 
     private PGRService pgrService;
 
     @BeforeEach
     void setup() {
         pgrService = new PGRService(enrichmentService, userService, workflowService,
-                serviceRequestValidator, validator, producer, config, repository, mdmsUtils,
+                validator, producer, config, repository, mdmsUtils,
                 complaintDomainEventService, pgrUtils, extendedAttributesValidationService,
                 encryptionDecryptionService, searchAccessPolicyService, fieldVisibilityService,
-                employeeDepartmentScopeService, employeeJurisdictionScopeService);
+                employeeDepartmentScopeService, employeeJurisdictionScopeService,
+                escalationService, escalationLockManager);
     }
 
     private RequestInfo requestInfo() {

@@ -30,6 +30,7 @@ import org.mockito.quality.Strictness;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.function.Supplier;
 import java.util.List;
 import java.util.Set;
 
@@ -79,6 +80,8 @@ class PGRServiceConfidentialComplainantTest {
     @Mock private FieldVisibilityService fieldVisibilityService;
     @Mock private EmployeeDepartmentScopeService employeeDepartmentScopeService;
     @Mock private EmployeeJurisdictionScopeService employeeJurisdictionScopeService;
+    @Mock private EscalationService escalationService;
+    @Mock private EscalationLockManager escalationLockManager;
 
     private PGRService pgrService;
 
@@ -87,10 +90,15 @@ class PGRServiceConfidentialComplainantTest {
         when(config.getStateLevelTenantIdLength()).thenReturn(2);
         when(pgrUtils.extractAdditionalDetails(any())).thenReturn(new HashMap<>());
         when(pgrUtils.deepMerge(any(), any())).thenReturn(new HashMap<>());
-        pgrService = new PGRService(enrichmentService, userService, workflowService, validator, validator, producer,
+        when(escalationLockManager.withComplaintLock(any(), any(), any())).thenAnswer(invocation -> {
+            Supplier<ServiceRequest> operation = invocation.getArgument(2);
+            return operation.get();
+        });
+        pgrService = new PGRService(enrichmentService, userService, workflowService, validator, producer,
                 config, repository, mdmsUtils, complaintDomainEventService, pgrUtils,
                 extendedAttributesValidationService, encryptionDecryptionService, searchAccessPolicyService,
-                fieldVisibilityService, employeeDepartmentScopeService, employeeJurisdictionScopeService);
+                fieldVisibilityService, employeeDepartmentScopeService, employeeJurisdictionScopeService,
+                escalationService, escalationLockManager);
     }
 
     // ── search ────────────────────────────────────────────────────────────────
@@ -274,7 +282,7 @@ class PGRServiceConfidentialComplainantTest {
 
         pgrService.update(request(employee("officer-1"), service(flagOnly(true))));
 
-        verify(enrichmentService, never()).enrichUserContactDetails(any());
+        verify(enrichmentService, never()).syncUserContactDetails(any(), any());
     }
 
     @Test
@@ -284,7 +292,7 @@ class PGRServiceConfidentialComplainantTest {
 
         pgrService.update(request);
 
-        verify(enrichmentService).enrichUserContactDetails(request);
+        verify(enrichmentService).syncUserContactDetails(eq(request), any());
     }
 
     @Test
@@ -372,8 +380,11 @@ class PGRServiceConfidentialComplainantTest {
 
     /** What the repository returns for the complaint being updated. */
     private void storedIs(ExtendedAttributes storedExt) {
+        ServiceWrapper stored = wrapper(storedExt);
         when(repository.getServiceWrappers(any(RequestSearchCriteria.class)))
-                .thenReturn(new ArrayList<>(List.of(wrapper(storedExt))));
+                .thenReturn(new ArrayList<>(List.of(stored)));
+        // validateUpdate now hands the persisted record back to the service (PR 181).
+        when(validator.validateUpdate(any(), any())).thenReturn(stored.getService());
     }
 
     private static ServiceRequest request(RequestInfo requestInfo, Service service) {
