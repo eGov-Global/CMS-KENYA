@@ -7888,5 +7888,11 @@
         "message": "Couldn't withdraw the complaint. Please try again.",
         "module": "rainmaker-pgr",
         "locale": "default"
+    },
+    {
+        "code": "CS_IMAGE_TOO_LARGE",
+        "message": "That photo is over 10 MB. Choose a smaller one.",
+        "module": "rainmaker-pgr",
+        "locale": "default"
     }
 ]
