@@ -234,3 +234,35 @@ export const resolveAutoAssignee = ({ employees, departmentCode, localityCode, b
     return null;
   }
 };
+
+/**
+ * Stamps a resolved assignment onto a create payload: `workflow.assignes` so
+ * APPLY lands in that employee's "My" inbox, and an `additionalDetail.autoAssignment`
+ * audit record. `additionalDetail` is MERGED, never replaced — the forms already
+ * serialise other data there — and it is sent as an object, since pgr-services'
+ * extractAdditionalDetails only keeps Map-shaped payloads. A null assignment
+ * leaves the payload untouched: routing never blocks a submission.
+ */
+export const stampAutoAssignment = (payload, assignment, source) => {
+  if (!payload || !assignment || !assignment.uuid) return payload;
+  payload.workflow = { ...(payload.workflow || {}), assignes: [assignment.uuid] };
+  const svc = payload.service || (payload.service = {});
+  let existing = {};
+  try {
+    const raw = svc.additionalDetail;
+    existing = typeof raw === "string" ? JSON.parse(raw || "{}") : raw || {};
+  } catch (e) {
+    existing = {};
+  }
+  svc.additionalDetail = {
+    ...existing,
+    autoAssignment: {
+      assignee: assignment.uuid,
+      departmentCode: assignment.department,
+      tier: assignment.tier,
+      ...(assignment.jurisdiction ? { jurisdiction: assignment.jurisdiction } : {}),
+      source,
+    },
+  };
+  return payload;
+};
