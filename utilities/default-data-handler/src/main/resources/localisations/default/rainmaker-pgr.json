@@ -7924,5 +7924,11 @@
         "message": "1",
         "module": "rainmaker-pgr",
         "locale": "default"
+    },
+    {
+        "code": "PGR_RECEIPT_VIEW",
+        "message": "View Application",
+        "module": "rainmaker-pgr",
+        "locale": "default"
     }
 ]

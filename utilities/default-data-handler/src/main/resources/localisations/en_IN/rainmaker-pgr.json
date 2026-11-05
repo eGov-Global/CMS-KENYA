@@ -9268,5 +9268,11 @@
         "message": "1",
         "module": "rainmaker-pgr",
         "locale": "en_IN"
+    },
+    {
+        "code": "PGR_RECEIPT_VIEW",
+        "message": "View Application",
+        "module": "rainmaker-pgr",
+        "locale": "en_IN"
     }
 ]
