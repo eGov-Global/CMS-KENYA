@@ -27,6 +27,7 @@ node docs/migration/ccrs-migrate.cjs --host http://<gateway> --tenant mz [--pass
 | hierarchy | 2-level → N-level complaint hierarchy (preserve/derive) | `migrate.cjs`, `preflight-dryrun.cjs` (= `--dry-run`), `run-data-migration.sh` |
 | pgr-masters | RelatedToMap / TemplateType / ExtAttrSchema seeds | `seed-pgr-masters.cjs`, `seed-data.cjs` |
 | landing | landing sections + page config + PGR_LANDING_* keys | `landing-config/seed-landing-config.sh` |
+| loc | catch an existing tenant up with the `localisations/<locale>/<module>.json` seeds (opt-in `--loc`) | hand-written `_upsert` calls after every deploy |
 | cms | CMS roles / actions / grants / workflow (opt-in `--cms`) | `seed-pgr-masters.cjs CMS=1` |
 | banner | tenant.citymodule schema + rows + PGR bannerImage | `fix-citymodule.sh` (API-doable part) |
 | gzip | /digit-ui gzip + Cache-Control verify/apply (opt-in `--gzip`) | `docs/ops/digit-ui-compression.md` manual steps |
@@ -59,6 +60,37 @@ node docs/migration/ccrs-migrate.cjs --host http://<gateway> --tenant mz [--pass
   rollback on failure → reload → re-probe.
 - Anywhere else: `PARTIAL` with remediation → `docs/ops/digit-ui-compression.md`
   (ansible boxes: `cd local-setup/ansible && ./deploy.sh <host> --tags nginx`).
+
+### loc (opt-in: `--loc`)
+
+A fresh tenant gets its localisation from the MCP bootstrap, but keys added to
+the seeds later never reach a live tenant by themselves — the UI shows the raw
+key (`PGR_RECEIPT_TITLE`) until someone upserts it by hand. This phase closes
+that gap from the seeds in the checkout, for `--locale` (default `en_IN`):
+
+- Per module (`--loc-modules`, default `rainmaker-pgr,rainmaker-common`): reads
+  `utilities/default-data-handler/src/main/resources/localisations/<locale>/<module>.json`,
+  searches the tenant, and **adds only the keys it lacks**. Texts the tenant
+  already has are never touched — operators reword messages per tenant.
+- `--loc-update KEY1,KEY2` is the **only overwrite path**: those keys' live
+  text is replaced by the seed's (use it for a seed fix that must reach a
+  tenant, e.g. a stale hint). A key not in any seed is reported
+  (`LOC_UPDATE_UNKNOWN_KEY`), never silently skipped.
+- `PGR_LANDING_*` is never sent here — the landing phase owns those keys, and
+  on forks whose landing copy lives in code, seeding them would override it.
+- A failed live search plans nothing for that module (it is never mistaken for
+  an empty tenant). `--dry-run` prints the per-module plan.
+- Ends with the localisation `cache-bust`; if a box still serves raw keys,
+  evict its cache: `docker exec digit-redis redis-cli DEL computedMessages messages`.
+
+```bash
+# see the plan
+node docs/migration/ccrs-migrate.cjs --host https://<gateway> --tenant nb --user ADMIN --pass '…' \
+     --only loc --loc-update PGR_EXT_IS_CONFIDENTIAL_HINT --dry-run
+# apply
+node docs/migration/ccrs-migrate.cjs --host https://<gateway> --tenant nb --user ADMIN --pass '…' \
+     --only loc --loc-update PGR_EXT_IS_CONFIDENTIAL_HINT
+```
 
 Seed data stays in `docs/migration/seed/` and the DDH resources tree — the
 runner reads them from the checkout it lives in.
