@@ -106,6 +106,10 @@ const ReceiptActions = ({
   actions = ALL_ACTIONS,
   variant = "outline",
   className,
+  // Caller-supplied buttons shown after the receipt ones, in the same strip
+  // (e.g. the counter operator's "View Application" on the success page):
+  // [{ key, label, icon, onClick }].
+  extraActions = [],
 }) => {
   const { t } = useTranslation();
   const shouldFetch = !providedDetails && !!complaintId;
@@ -138,10 +142,10 @@ const ReceiptActions = ({
       </div>
     );
   }
-  return <ReceiptActionsReady complaintDetails={complaintDetails} actions={actions} variant={variant} className={className} />;
+  return <ReceiptActionsReady complaintDetails={complaintDetails} actions={actions} variant={variant} className={className} extraActions={extraActions} />;
 };
 
-const ReceiptActionsReady = ({ complaintDetails, actions, variant, className }) => {
+const ReceiptActionsReady = ({ complaintDetails, actions, variant, className, extraActions = [] }) => {
   const { t } = useTranslation();
   const [busy, setBusy] = useState(null); // which action is running
   const [notice, setNotice] = useState(null); // { tone: "error" | "info", text }
@@ -433,6 +437,11 @@ const ReceiptActionsReady = ({ complaintDetails, actions, variant, className }) 
             </Button>
           );
         })}
+        {extraActions.map(({ key, label, icon: Icon, onClick }) => (
+          <Button key={key} variant={variant} type="button" onClick={onClick} disabled={!!busy} leading={Icon ? <Icon className="h-4 w-4" /> : undefined}>
+            {label}
+          </Button>
+        ))}
       </div>
       {dialog}
       {!dialogOpen ? noticeEl : null}
