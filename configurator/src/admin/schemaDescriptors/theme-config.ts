@@ -83,6 +83,10 @@ export const themeConfigDescriptor: SchemaDescriptor = {
       'colors.sidebar-icon-active',
       'colors.sidebar-selected-bg',
       'colors.sidebar-selected-text',
+      'colors.citizen-sidebar-selected-bg',
+      'colors.citizen-sidebar-selected-text',
+      'colors.citizen-sidebar-hover-bg',
+      'colors.citizen-sidebar-hover-text',
     ] },
 
     { title: 'Status', fields: [
@@ -233,6 +237,14 @@ export const themeConfigDescriptor: SchemaDescriptor = {
       help: 'Background of the persistent "selected" pill on the active sidebar item.' },
     { path: 'colors.sidebar-selected-text', widget: 'color', label: 'Sidebar / selected text',
       help: 'Text color inside the selected pill.' },
+    { path: 'colors.citizen-sidebar-selected-bg', widget: 'color', label: 'Citizen menu / selected bg',
+      help: 'Optional. The citizen side menu\'s selected row only (not the employee sidebar or the landing page). Empty = use Sidebar / selected bg.' },
+    { path: 'colors.citizen-sidebar-selected-text', widget: 'color', label: 'Citizen menu / selected text',
+      help: 'Optional. Label and icon on the citizen menu\'s selected row. Empty = a readable colour is picked for the selected bg.' },
+    { path: 'colors.citizen-sidebar-hover-bg', widget: 'color', label: 'Citizen menu / hover bg',
+      help: 'Optional. Citizen menu row background on hover. Empty = use Sidebar / hover bg.' },
+    { path: 'colors.citizen-sidebar-hover-text', widget: 'color', label: 'Citizen menu / hover accent',
+      help: 'Optional. Citizen menu label, icon and leading-edge marker on hover. Empty = use Sidebar / hover text, no marker.' },
 
     // ── Status (4 severities × 3 roles + 2 cards = 14) ──────────────────────
     { path: 'colors.status-success-text', widget: 'color', label: 'Status success / text',
