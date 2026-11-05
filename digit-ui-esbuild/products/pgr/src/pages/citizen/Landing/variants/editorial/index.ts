@@ -6,7 +6,7 @@
 // component.
 
 import type { SectionEntry } from "../../config/sectionRegistry";
-import { mediaUrl, withItems } from "../../config/resolve";
+import { mediaUrl, slotUrl, withItems } from "../../config/resolve";
 import { MANIFESTATION_TYPES, HOW_STEPS, CHANNELS, HELPLINES, INSTITUTIONS } from "../../content";
 import { EditorialHero } from "./EditorialHero";
 import { EditorialTypes } from "./EditorialTypes";
@@ -20,6 +20,7 @@ import { EditorialFooter } from "./EditorialFooter";
 export const EDITORIAL_SECTIONS: Partial<Record<string, SectionEntry>> = {
   hero: {
     Component: EditorialHero,
+    image: true,
     slot: "main",
     buildProps: (s, ctx) => {
       const configured = mediaUrl(s.media);
@@ -63,7 +64,8 @@ export const EDITORIAL_SECTIONS: Partial<Record<string, SectionEntry>> = {
   },
   footer: {
     Component: EditorialFooter,
+    image: true,
     slot: "footer",
-    buildProps: (s, ctx) => ({ routes: ctx.routes, logoUrl: mediaUrl(s.media) ?? ctx.footerLogoUrl, emblemUrl: ctx.emblemUrl, section: s }),
+    buildProps: (s, ctx) => ({ routes: ctx.routes, logoUrl: mediaUrl(s.media) ?? ctx.footerLogoUrl, emblemUrl: slotUrl(s.media, "emblem") ?? ctx.emblemUrl, section: s }),
   },
 };

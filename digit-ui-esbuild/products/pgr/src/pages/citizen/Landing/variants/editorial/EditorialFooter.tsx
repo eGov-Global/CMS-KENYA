@@ -46,7 +46,7 @@ export function EditorialFooter({ routes, logoUrl, emblemUrl, section }: Editori
         <div className="lg:col-span-4">
           <div className="flex items-center gap-3">
             {emblemUrl ? (
-              <img src={emblemUrl} alt="" className="h-16 w-16 shrink-0 object-contain" />
+              <img data-pgrl-image="emblem" src={emblemUrl} alt="" className="h-16 w-16 shrink-0 object-contain" />
             ) : logoUrl ? (
               <img src={logoUrl} alt="" className="h-14 w-auto max-w-[150px] shrink-0 object-contain" />
             ) : null}

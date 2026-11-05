@@ -194,7 +194,7 @@ export function ChannelsSection({ routes, orbImageUrl, personImageUrl, section }
               aria-hidden
               className="relative h-28 w-28 shrink-0 overflow-hidden rounded-full border-4 border-solid border-[hsl(var(--pgrl-accent)/0.8)] shadow-xl md:h-40 md:w-40"
             >
-              <img src={personImageUrl} alt="" loading="lazy" decoding="async" className="h-full w-full object-cover" />
+              <img data-pgrl-image="portrait" src={personImageUrl} alt="" loading="lazy" decoding="async" className="h-full w-full object-cover" />
             </span>
           ) : (
             <span

@@ -43,7 +43,22 @@ export function addRecent(asset: MediaAsset): void {
   }
 }
 
+export const IMAGE_TYPES: Record<string, string> = { 'image/jpeg': 'JPG', 'image/png': 'PNG', 'image/webp': 'WebP' };
+export const MAX_IMAGE_BYTES = 1.5 * 1024 * 1024;
+export const IMAGE_RULES = 'JPG, PNG or WebP, up to 1.5 MB (about 1600 px wide is enough).';
+
+/** Why a file cannot be used as a landing picture, or null when it can.
+ *  Residents open the page on low-end phones over poor networks, so size is
+ *  capped; SVG and other types are refused (an SVG can carry scripts). */
+export function imageFileProblem(file: { type?: string; size?: number; name?: string }): string | null {
+  if (!IMAGE_TYPES[file.type ?? '']) return `${file.name ?? 'This file'} is not a JPG, PNG or WebP picture.`;
+  if ((file.size ?? 0) > MAX_IMAGE_BYTES) return `${file.name ?? 'This file'} is ${((file.size ?? 0) / 1024 / 1024).toFixed(1)} MB; the limit is 1.5 MB.`;
+  return null;
+}
+
 export async function uploadImage(tenantId: string, file: File): Promise<MediaAsset> {
+  const problem = imageFileProblem(file);
+  if (problem) throw new Error(problem);
   const buf = new Uint8Array(await file.arrayBuffer());
   const fileStoreId = await digitClient.filestoreUpload(
     tenantId,

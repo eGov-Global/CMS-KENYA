@@ -11,9 +11,10 @@
 import type { LucideIcon } from 'lucide-react';
 import {
   Image, Navigation, LayoutGrid, ListOrdered, Radio, Lock, Newspaper,
-  Landmark, Megaphone, PanelBottom,
+  Landmark, Megaphone, PanelBottom, Phone, Quote,
 } from 'lucide-react';
 import type { InspectorTab, LandingSectionData, ValidationIssue } from './types';
+import { slotLabel } from './fieldPaths';
 
 export type BuilderWidget =
   | 'loctext'   // localized text: shows RESOLVED message, edits staged locEdits
@@ -99,9 +100,14 @@ const themeField: BuilderFieldDef = {
   help: 'Accent / background reference existing --pgrl-* theme tokens (Theme Config). No second theming system.',
 };
 
+const imageSlot = (slot: string): BuilderFieldDef => ({
+  path: `media.images.${slot}`, label: slotLabel(slot), tab: 'media', widget: 'media',
+  help: 'Click the picture on the page to get here. Leave empty for the built-in one.',
+});
+
 const mediaField = (label = 'Background image'): BuilderFieldDef => ({
   path: 'media.imageId', label, tab: 'media', widget: 'media',
-  help: 'From the platform file store, or paste an image URL.',
+  help: 'Upload a picture or paste an image URL; click the picture on the page to get here. Leave empty for the built-in one.',
 });
 
 const trimStrings = (d: LandingSectionData): LandingSectionData => {
@@ -194,9 +200,14 @@ export const SECTION_EDITOR_REGISTRY: Record<string, SectionEditorEntry> = {
         help: 'Overrides the built-in four when set.', newItem: newItem('type'),
       },
     }),
+  // Closing band of the top of the page ("Let's Make NAIROBI Work"); the
+  // page supplies the default heading, so nothing is required here.
+  tagline: entry('tagline', 'Tagline band', Quote,
+    'Short slogan band between the service categories and the steps.',
+    [loc('titleKey', 'Heading')]),
   steps: entry('steps', 'How it works', ListOrdered,
     'Numbered case-lifecycle steps.',
-    [loc('titleKey', 'Title', { required: true }), themeField],
+    [mediaField('Round photo'), loc('titleKey', 'Title', { required: true }), themeField],
     {
       items: {
         label: 'Steps', tab: 'content', withIcons: true, withDesc: false, withUrl: false,
@@ -205,11 +216,21 @@ export const SECTION_EDITOR_REGISTRY: Record<string, SectionEditorEntry> = {
     }),
   channels: entry('channels', 'Channels', Radio,
     'Service-channel cards.',
-    [loc('titleKey', 'Title', { required: true }), loc('subtitleKey', 'Intro', { multiline: true }), themeField],
+    [mediaField('Round photo'), imageSlot('portrait'), loc('titleKey', 'Title', { required: true }), loc('subtitleKey', 'Intro', { multiline: true }), themeField],
     {
       items: {
         label: 'Channels', tab: 'content', withIcons: true, withDesc: true, withUrl: true,
         help: 'Overrides the built-in four when set.', newItem: newItem('channel'),
+      },
+    }),
+  // Emergency / county help-line numbers; items are tel: links.
+  helplines: entry('helplines', 'Help lines', Phone,
+    'Emergency and county help-line numbers.',
+    [mediaField('Skyline picture'), loc('titleKey', 'Title'), loc('subtitleKey', 'Intro', { multiline: true })],
+    {
+      items: {
+        label: 'Help lines', tab: 'content', withIcons: false, withDesc: true, withUrl: true,
+        help: 'Overrides the built-in numbers when set. Use tel: links.', newItem: newItem('line'),
       },
     }),
   privacy: entry('privacy', 'Privacy', Lock,
@@ -225,7 +246,7 @@ export const SECTION_EDITOR_REGISTRY: Record<string, SectionEditorEntry> = {
     [loc('titleKey', 'Heading', { required: true })]),
   institutions: entry('institutions', 'Institutions', Landmark,
     'IGE / IGSAE legitimacy block.',
-    [loc('titleKey', 'Title', { required: true }), themeField],
+    [mediaField('Photo'), loc('titleKey', 'Title', { required: true }), themeField],
     {
       items: {
         label: 'Institutions', tab: 'content', withIcons: true, withDesc: true, withUrl: false,
@@ -243,7 +264,7 @@ export const SECTION_EDITOR_REGISTRY: Record<string, SectionEditorEntry> = {
     ]),
   footer: entry('footer', 'Footer', PanelBottom,
     'Structural layout is fixed (locked decision); texts are editable via Localization, logos via Branding.',
-    []),
+    [mediaField('Footer logo'), imageSlot('emblem')]),
 };
 
 export const SECTION_TYPES = Object.keys(SECTION_EDITOR_REGISTRY);

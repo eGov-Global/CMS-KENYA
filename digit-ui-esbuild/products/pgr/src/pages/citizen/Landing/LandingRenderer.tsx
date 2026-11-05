@@ -23,7 +23,7 @@ import { useLandingCopy } from "./useLandingCopy";
 import { UtilityBar, LanguageOption, DEFAULT_LANGUAGES } from "./components/UtilityBar";
 import { WhatsAppFab } from "./components/WhatsAppFab";
 
-import { getEntry, isLandingLayout, LandingLayout, RenderCtx, Slot } from "./config/sectionRegistry";
+import { getEntry, isLandingLayout, LandingLayout, RenderCtx, setActiveLayout, Slot } from "./config/sectionRegistry";
 import type { LandingSectionConfig, ResolvedLandingConfig } from "./config/types";
 
 export interface LandingRendererProps {
@@ -88,6 +88,7 @@ export function LandingRenderer({
   const page = config.page || {};
   const configLayout = page.theme?.layout;
   const layout: LandingLayout = isLandingLayout(configLayout) ? configLayout : layoutProp ?? "classic";
+  React.useEffect(() => setActiveLayout(layout), [layout]);
   // Off by default: the header is a single self-contained bar now, and the
   // strip's own content (gov name, sign-in) duplicated the header/footer.
   // Still restorable per tenant via LandingPageConfig.showUtilityBar.

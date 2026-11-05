@@ -34,8 +34,8 @@ import {
   NewsItem,
 } from "../content";
 import { LandingRoutes } from "../routes";
-import { buildRichItems, mediaUrl, withItems } from "./resolve";
-import type { LandingSectionConfig } from "./types";
+import { buildRichItems, mediaUrl, slotUrl, withItems, defaultItems } from "./resolve";
+import type { LandingItemConfig, LandingSectionConfig } from "./types";
 import { EDITORIAL_SECTIONS } from "../variants/editorial";
 
 export type Slot = "header" | "main" | "footer";
@@ -58,16 +58,18 @@ export interface RenderCtx {
 }
 
 export interface SectionEntry {
+  /** true when buildProps reads `section.media` — the Builder lets the
+   *  operator replace this section's picture by clicking it. */
+  image?: true;
   Component: React.ComponentType<any>;
   slot: Slot;
   buildProps: (section: LandingSectionConfig, ctx: RenderCtx) => Record<string, any>;
 }
 
-
-
 export const SECTION_REGISTRY: Record<string, SectionEntry> = {
   navigation: {
     Component: LandingHeader,
+    image: true,
     slot: "header",
     buildProps: (s, ctx) => ({
       routes: ctx.routes,
@@ -78,6 +80,7 @@ export const SECTION_REGISTRY: Record<string, SectionEntry> = {
   },
   hero: {
     Component: HeroSection,
+    image: true,
     slot: "main",
     // P4 (approved adapter tweak): hero trust "features" are items-driven when
     // config provides items[]; icons resolve through the whitelist. CTAs stay
@@ -101,6 +104,7 @@ export const SECTION_REGISTRY: Record<string, SectionEntry> = {
   },
   steps: {
     Component: HowItWorksSection,
+    image: true,
     slot: "main",
     // Square cut so the circular orb isn't a heavy crop of a wide photo;
     // falls back to the hero image when a deployment ships no square asset.
@@ -108,11 +112,12 @@ export const SECTION_REGISTRY: Record<string, SectionEntry> = {
   },
   channels: {
     Component: ChannelsSection,
+    image: true,
     slot: "main",
     buildProps: (s, ctx) => ({
       routes: ctx.routes,
       orbImageUrl: mediaUrl(s.media) ?? ctx.channelsOrbImageUrl ?? ctx.bandImageUrl,
-      personImageUrl: ctx.personImageUrl,
+      personImageUrl: slotUrl(s.media, "portrait") ?? ctx.personImageUrl,
       section: withItems(s, CHANNELS, ctx.routes),
     }),
   },
@@ -133,11 +138,12 @@ export const SECTION_REGISTRY: Record<string, SectionEntry> = {
   },
   institutions: {
     Component: InstitutionsSection,
+    image: true,
     slot: "main",
     buildProps: (s, ctx) => ({
       routes: ctx.routes,
       // Phone-only photo card: the small hero cut phones already downloaded.
-      photoUrl: ctx.heroImageSmallUrl ?? ctx.heroImageUrl,
+      photoUrl: mediaUrl(s.media) ?? ctx.heroImageSmallUrl ?? ctx.heroImageUrl,
       section: withItems(s, INSTITUTIONS, ctx.routes),
     }),
   },
@@ -148,6 +154,7 @@ export const SECTION_REGISTRY: Record<string, SectionEntry> = {
   },
   footer: {
     Component: LandingFooter,
+    image: true,
     slot: "footer",
     // Footer columns (GROUPS) stay the component default in v1 — their nested
     // group shape isn't expressible in the flat item schema; destinations are
@@ -155,7 +162,7 @@ export const SECTION_REGISTRY: Record<string, SectionEntry> = {
     buildProps: (s, ctx) => ({
       routes: ctx.routes,
       logoUrl: mediaUrl(s.media) ?? ctx.footerLogoUrl,
-      emblemUrl: ctx.emblemUrl,
+      emblemUrl: slotUrl(s.media, "emblem") ?? ctx.emblemUrl,
       section: s,
     }),
   },
@@ -182,4 +189,28 @@ export function isLandingLayout(v: unknown): v is LandingLayout {
 export function getEntry(type?: string, layout: LandingLayout = "classic"): SectionEntry | undefined {
   if (!type) return undefined;
   return LAYOUT_OVERRIDES[layout]?.[type] ?? SECTION_REGISTRY[type];
+}
+
+/** The layout the page is rendering (LandingRenderer sets it), so the
+ *  Builder's picture hit-test asks the right registry. */
+let activeLayout: LandingLayout = "classic";
+export function setActiveLayout(layout: LandingLayout): void {
+  activeLayout = layout;
+}
+
+/** Section types whose picture the operator can replace (entries flagged `image`). */
+export function sectionTakesImage(type?: string): boolean {
+  return !!(type && getEntry(type, activeLayout)?.image);
+}
+
+/** Each section type's built-in items as config rows, for the Builder. */
+export function defaultItemsByType(): Record<string, LandingItemConfig[]> {
+  return {
+    navigation: defaultItems(NAV_ITEMS),
+    types: defaultItems(MANIFESTATION_TYPES),
+    steps: defaultItems(HOW_STEPS),
+    channels: defaultItems(CHANNELS),
+    helplines: defaultItems(HELPLINES),
+    institutions: defaultItems(INSTITUTIONS),
+  };
 }
