@@ -30,18 +30,14 @@
 // Do NOT add a claim here that the BRD does not support — this is the
 // public-facing promise of the service.
 //
-// The top of the page (strip, masthead, hero, service categories and slogan
-// band) follows the county's Bonga Nai landing design of 2026-10-12 word for
-// word, including its four service categories.
-//
 // News defaults are placeholders; production deployments pass real items via
 // the `news` prop on <PGRLandingPage />.
 
 import type * as React from "react";
 import {
-  HeartPulse,
+  Building2,
   Leaf,
-  Store,
+  Coins,
   Landmark,
   Send,
   Hash,
@@ -53,8 +49,10 @@ import {
   Bell,
   Phone,
   MapPin,
+  ShieldAlert,
+  Siren,
+  Flame,
 } from "lucide-react";
-import { RoadIcon } from "./components/Illustrations";
 import type { LandingRoutes } from "./routes";
 
 // Loose icon type: lucide-react@1.x has no LucideIcon export.
@@ -63,16 +61,12 @@ export type IconComponent = React.ComponentType<{ className?: string; "aria-hidd
 export const LANDING_COPY = {
   // Chrome ------------------------------------------------------------------
   GOV_NAME: { en: "Nairobi City County Government" },
-  // Utility strip and masthead name (set in capitals by the layout).
-  COUNTY_NAME: { en: "Nairobi City County" },
   PORTAL_NAME: { en: "Bonga Nai" },
   ORG_NAMES: { en: "Office of the County Chief Officer · Public Participation, Citizen Engagement and Customer Service" },
   FOOTER_ORG: { en: "Nairobi City County Government" },
   TAGLINE: { en: "You report it. The County acts on it." },
   // The county's own slogan, as carried on its crest.
   MOTTO_VALUES: { en: "Let's Make Nairobi Work" },
-  // The word of the motto the slogan band sets in bold capitals.
-  MOTTO_EMPHASIS: { en: "Nairobi" },
   SKIP_LINK: { en: "Skip to main content" },
   UTILITY_PHONE_LABEL: { en: "Nairobi City County Government" },
   UTILITY_GREEN_LINE: { en: "County Help Line" },
@@ -91,60 +85,69 @@ export const LANDING_COPY = {
   NAV_TRAINING: { en: "Help" },
   NAV_ABOUT: { en: "About" },
   NAV_CONTACTS: { en: "Contacts" },
-  NAV_ABOUT_PORTAL: { en: "About Bonga Nai" },
-  NAV_HELP_FAQ: { en: "Help & FAQs" },
 
   // Hero -----------------------------------------------------------------—--
-  HERO_SLOGAN: { en: "A Cleaner • Greener • Safer Nairobi" },
-  // The last word is set in gold.
+  HERO_EYEBROW: { en: "Nairobi City County Government · Kenya" },
   HERO_TITLE: { en: "Bonga Nai" },
-  HERO_HEADLINE: { en: "Speak up. Nairobi works." },
   HERO_PILOT_NOTICE: {
     en:
       "Pilot phase: complaints are handled for six Sub-Counties — Makadara, Lang'ata, Kibra, Kasarani, Embakasi North and Kamukunji. Other parts of Nairobi will follow as the service scales up to all 85 wards.",
   },
   HERO_LEDE: {
     en:
-      "Report a problem with a county service, get a case number within seconds, and follow it until it is resolved. Every case is assigned to an officer in the responsible department and escalated automatically if it misses its deadline.",
+      "Bonga Nai means speak up, Nairobi. Report a problem with a county service, get a case number within seconds, and follow it until it is resolved. Every case is assigned to an officer in the responsible department and escalated automatically if it misses its deadline.",
   },
   HERO_CTA_SUBMIT: { en: "Report an Issue" },
   HERO_CTA_TRACK: { en: "Track a Complaint" },
-  // Hero benefits: a title and a line under it.
-  HERO_BENEFIT_ID_TITLE: { en: "No National ID needed" },
-  HERO_BENEFIT_ID_DESC: { en: "Just your name and mobile number" },
-  HERO_BENEFIT_CASE_TITLE: { en: "Unique case number" },
-  HERO_BENEFIT_CASE_DESC: { en: "Get your case number instantly" },
-  HERO_BENEFIT_SMS_TITLE: { en: "SMS updates" },
-  HERO_BENEFIT_SMS_DESC: { en: "Receive updates on your phone" },
-  HERO_BENEFIT_DEADLINE_TITLE: { en: "Time-bound resolution" },
-  HERO_BENEFIT_DEADLINE_DESC: { en: "Escalated automatically if it misses deadline" },
-  // Single-line hero features for MDMS-configured hero items (the Builder
-  // seeds these keys).
   HERO_TRUST_CONFIDENTIAL: { en: "No National ID needed, just your name and mobile number" },
   HERO_TRUST_CASE_NUMBER: { en: "Unique case number" },
   HERO_TRUST_NOTIFICATIONS: { en: "SMS acknowledgement with your case number" },
   HERO_CHANNELS_LABEL: { en: "Also available through:" },
-  // Hand-lettered tagline on the phone photo card of the areas section.
+  HERO_PHOTO_CAPTION: { en: "Nairobi City County customer-service centre" },
+  // Hand-lettered tagline over the hero photo and on the phone photo card.
   HERO_SCRIPT: { en: "A Cleaner, Greener Nairobi" },
   // Speech bubble on the circular photos beside the steps and channels.
   ORB_TAGLINE: { en: "Your Voice Matters" },
+  // Headline figures under the hero — every one from the BRD (§1, §3, §5.2, §6).
+  STAT_SUBCOUNTIES_VALUE: { en: "6" },
+  STAT_SUBCOUNTIES_LABEL: { en: "pilot sub-counties" },
+  STAT_WARDS_VALUE: { en: "17" },
+  STAT_WARDS_LABEL: { en: "wards in the pilot" },
+  STAT_SLA_VALUE: { en: "72 h" },
+  STAT_SLA_LABEL: { en: "to resolve, then automatic escalation" },
+  STAT_DEPARTMENTS_VALUE: { en: "17" },
+  STAT_DEPARTMENTS_LABEL: { en: "departments in the complaint catalogue" },
   HERO_CHANNEL_APP: { en: "Counter desks at ward and sub-county offices" },
   HERO_CHANNEL_WA: { en: "SMS case updates" },
   HERO_CHANNEL_LINE: { en: "County help line" },
 
-  // Service categories ("types" section) --------------------------------—--
-  TYPES_KICKER: { en: "Report issues by service category" },
-  TYPES_HEADING: { en: "What would you like to report?" },
-  TYPES_SUBHEADING: { en: "Select a category to report an issue related to county services." },
-  TYPES_VIEW_ALL: { en: "View all categories" },
-  TYPE_MOBILITY_TITLE: { en: "Mobility & Works" },
-  TYPE_MOBILITY_DESC: { en: "Roads, drainage, street lighting, footpaths and infrastructure." },
-  TYPE_HEALTH_TITLE: { en: "Public Health" },
-  TYPE_HEALTH_DESC: { en: "Waste collection, sanitation, public toilets, food safety and disease control." },
-  TYPE_GREEN_TITLE: { en: "Environment" },
-  TYPE_GREEN_DESC: { en: "Clean and green spaces, parks, trees, noise control and environmental management." },
-  TYPE_MARKETS_TITLE: { en: "Revenue & Markets" },
-  TYPE_MARKETS_DESC: { en: "Markets, business permits, county revenues and trading infrastructure." },
+  // Service areas ("types" section) -------------------------------------—--
+  TYPES_EYEBROW: { en: "Service areas" },
+  TYPES_TITLE: { en: "What You Can Report" },
+  TYPES_INTRO: {
+    en:
+      "Pick the department your complaint is about, then choose a complaint type, a sub-type and your ward. That is what routes the case to the right officer and starts its deadline.",
+  },
+  TYPE_URBAN_TITLE: { en: "Urban Development & Planning" },
+  TYPE_URBAN_DESC: {
+    en:
+      "Illegal construction, planning permit delays, and other development-control issues in your ward. Illegal construction cases carry a 72-hour deadline; permit delays 48 hours.",
+  },
+  TYPE_ENVIRONMENT_TITLE: { en: "Environment / Green Nairobi" },
+  TYPE_ENVIRONMENT_DESC: {
+    en:
+      "Illegal dumping, water contamination and other environmental hazards. Water contamination is a 24-hour case; illegal dumping 48 hours.",
+  },
+  TYPE_FINANCE_TITLE: { en: "Finance & Economic Planning" },
+  TYPE_FINANCE_DESC: {
+    en:
+      "Incorrect billing, payments not reflected, land rates disputes and clearances, illegal clamping and parking ticket disputes. Illegal clamping is a 4-hour case.",
+  },
+  TYPE_BOROUGHS_TITLE: { en: "Boroughs & Sub-County Administration" },
+  TYPE_BOROUGHS_DESC: {
+    en:
+      "Market stall disputes, illegal hawking and other matters handled by your Sub-County Administrator and the Borough Managers.",
+  },
   TYPE_CTA: { en: "Report an issue" },
 
   // How it works -----------------------------------------------------------
@@ -171,18 +174,22 @@ export const LANDING_COPY = {
       "You are notified by SMS when your case is registered, assigned, escalated, resolved and closed. The same deadline applies to every complaint, whichever channel you used.",
   },
 
-  // Customer Service help lines ("helplines" section) -----------------—---
-  HELPLINES_CS_EYEBROW: { en: "Customer service" },
-  HELPLINES_CS_TITLE: { en: "Call Customer Service" },
-  HELPLINES_CS_INTRO: {
-    en: "Speak to a call agent: they log your complaint for you and read your case number back to you.",
+  // Emergency helplines ------------------------------------------------—---
+  HELPLINES_EYEBROW: { en: "Emergency" },
+  HELPLINES_TITLE: { en: "Emergency Helplines" },
+  HELPLINES_INTRO: {
+    en: "For emergencies call the services below directly — this portal is for county service complaints, not emergencies.",
   },
-  HELPLINE_CS_NOTE: { en: "Calling about a complaint you have already filed? Have your case number ready." },
+  HELPLINE_POLICE_TITLE: { en: "Police" },
+  HELPLINE_POLICE_DESC: { en: "Crime, accidents and threats to safety" },
+  HELPLINE_AMBULANCE_TITLE: { en: "Ambulance" },
+  HELPLINE_AMBULANCE_DESC: { en: "Medical emergencies" },
+  HELPLINE_FIRE_TITLE: { en: "Fire & Rescue" },
+  HELPLINE_FIRE_DESC: { en: "Fire, flooding and rescue" },
   HELPLINE_COUNTY_TITLE: { en: "County Help Line" },
-  // Labels on the help-line tiles (CONTACT.hotlines).
-  HELPLINE_LINE_24_7: { en: "Open 24/7" },
-  HELPLINE_LINE_MOBILE: { en: "Mobile" },
-  HELPLINE_LINE_LANDLINE: { en: "Landline" },
+  HELPLINE_COUNTY_DESC: { en: "County services and the Disaster Management & Coordination help line — call agents log your complaint for you" },
+  HELPLINE_DISASTER_TITLE: { en: "Disaster Management" },
+  HELPLINE_DISASTER_DESC: { en: "Building collapse, major incidents" },
   HELPLINES_CALL: { en: "Call" },
 
   // Channels -----------------------------------------------------------—---
@@ -347,24 +354,13 @@ export type LandingCopyKey = keyof typeof LANDING_COPY;
 // lines, and each is its own tel: link — one link over them all could only
 // ever dial the first. The BRD's dedicated Nai Pepea call-centre number is
 // not yet assigned; until it is, the county's published help line is used.
-export interface HotlineNumber {
-  tel: string;
-  display: string;
-  /** Short qualifier shown after the number in running text, e.g. "24/7". */
-  note?: string;
-  /** Label on the number's help-line tile. */
-  labelKey?: LandingCopyKey;
-}
-
 export const CONTACT = {
   hotline: "+254725624489",
-  // The same line as the utility strip shows it, in international form.
-  hotlineDisplay: "+254 725 624 489",
   hotlines: [
-    { tel: "+254725624489", display: "0725 624 489", note: "24/7", labelKey: "HELPLINE_LINE_24_7" },
-    { tel: "+254730047047", display: "0730 047 047", labelKey: "HELPLINE_LINE_MOBILE" },
-    { tel: "+254207247047", display: "020 724 7047", labelKey: "HELPLINE_LINE_LANDLINE" },
-  ] as ReadonlyArray<HotlineNumber>,
+    { tel: "+254725624489", display: "0725 624 489 (24/7)" },
+    { tel: "+254730047047", display: "0730 047 047" },
+    { tel: "+254207247047", display: "020 724 7047" },
+  ],
   email: "lydiagatheru@yahoo.com",
   poBox: "City Hall, P.O. Box 30075-00100, Nairobi, Kenya",
 } as const;
@@ -386,19 +382,13 @@ export const SOCIAL_LINKS: SocialLink[] = [
 
 export interface NavItem {
   labelKey: LandingCopyKey;
-  route?: keyof LandingRoutes;
-  /** Literal destination (an in-page "#section" anchor) when no route applies. */
-  href?: string;
+  route: keyof LandingRoutes;
 }
 
-// About and Help jump to the page's own sections (their DOM ids come from
-// sectionDomId): there is no separate about or FAQ page yet.
 export const NAV_ITEMS: NavItem[] = [
   { labelKey: "NAV_HOME", route: "HOME" },
   { labelKey: "NAV_SUBMIT", route: "REGISTER_COMPLAINT" },
-  { labelKey: "NAV_TRACK", route: "TRACK_COMPLAINT" },
-  { labelKey: "NAV_ABOUT_PORTAL", href: "#pgr-landing-steps" },
-  { labelKey: "NAV_HELP_FAQ", href: "#pgr-landing-channels" },
+  { labelKey: "NAV_TRACK", route: "TRACK_COMPLAINT" }
 ];
 
 export interface ManifestationType {
@@ -406,20 +396,19 @@ export interface ManifestationType {
   icon: IconComponent;
   titleKey: LandingCopyKey;
   descKey: LandingCopyKey;
-  /** CSS var (HSL triple) filling the card's round icon. */
+  /** CSS var (HSL triple) driving the card's accent tint. */
   accentVar: string;
   route: keyof LandingRoutes;
 }
 
-// The design's four service categories. `id` is the matching department code
-// in Bonga's catalogue; it also keys the card photo the deployment entry
-// supplies (LandingArtwork.categories). Every card opens the complaint form,
-// where the citizen picks the exact type.
+// The four pilot departments with confirmed escalation contacts (BRD §3, §6.2).
+// `id` is the department code from ansible/nairobi-mdms (resolve.ts inherits
+// icon/accent from the matching default item by code).
 export const MANIFESTATION_TYPES: ManifestationType[] = [
-  { id: "mobility_works", icon: RoadIcon, titleKey: "TYPE_MOBILITY_TITLE", descKey: "TYPE_MOBILITY_DESC", accentVar: "--pgrl-top-gold", route: "REGISTER_COMPLAINT" },
-  { id: "health_wellness_and_nutrition", icon: HeartPulse, titleKey: "TYPE_HEALTH_TITLE", descKey: "TYPE_HEALTH_DESC", accentVar: "--pgrl-top-leaf", route: "REGISTER_COMPLAINT" },
-  { id: "green_nairobi", icon: Leaf, titleKey: "TYPE_GREEN_TITLE", descKey: "TYPE_GREEN_DESC", accentVar: "--pgrl-top-leaf", route: "REGISTER_COMPLAINT" },
-  { id: "finance_and_economic_planning_affairs", icon: Store, titleKey: "TYPE_MARKETS_TITLE", descKey: "TYPE_MARKETS_DESC", accentVar: "--pgrl-top-gold", route: "REGISTER_COMPLAINT" },
+  { id: "DEPT_06", icon: Building2, titleKey: "TYPE_URBAN_TITLE", descKey: "TYPE_URBAN_DESC", accentVar: "--pgrl-type-complaint", route: "REGISTER_COMPLAINT" },
+  { id: "DEPT_07", icon: Leaf, titleKey: "TYPE_ENVIRONMENT_TITLE", descKey: "TYPE_ENVIRONMENT_DESC", accentVar: "--pgrl-type-petition", route: "REGISTER_COMPLAINT" },
+  { id: "DEPT_03", icon: Coins, titleKey: "TYPE_FINANCE_TITLE", descKey: "TYPE_FINANCE_DESC", accentVar: "--pgrl-type-grievance", route: "REGISTER_COMPLAINT" },
+  { id: "DEPT_10", icon: Landmark, titleKey: "TYPE_BOROUGHS_TITLE", descKey: "TYPE_BOROUGHS_DESC", accentVar: "--pgrl-type-report", route: "REGISTER_COMPLAINT" },
 ];
 
 export interface HowStep {
@@ -469,16 +458,31 @@ export interface HelplineItem {
   numberDisplay: string;
   /** More than one line for the same service: each number renders as its own
    *  tel: link (href/numberDisplay then describe the first). */
-  numbers?: ReadonlyArray<HotlineNumber>;
+  numbers?: ReadonlyArray<{ tel: string; display: string }>;
 }
 
-// The help lines shown on the landing page: Nairobi City County Customer
-// Service only. The county asked on 2026-10-12 for the police, ambulance and
-// fire numbers to come off the page. The tiles take their numbers and labels
-// from CONTACT.hotlines. Override via the MDMS LandingSection items
-// (labelKey / descKey / navigationUrl "tel:…").
+// Emergency helplines shown on the landing page (Nairobi UAT). 999 / 112 are
+// Kenya's national emergency numbers; the fire card carries the Nairobi City
+// County Fire Brigade lines and the county card the county help lines, whose
+// 24/7 line (0725 624 489) nairobi.go.ke also lists as the Disaster Management
+// & Coordination help line — so there is no separate disaster card.
+// Override any card via the MDMS LandingSection items (labelKey / descKey /
+// navigationUrl "tel:…").
 export const HELPLINES: HelplineItem[] = [
-  { id: "county", icon: Phone, titleKey: "HELPLINE_COUNTY_TITLE", descKey: "HELPLINE_CS_NOTE", href: `tel:${CONTACT.hotline}`, numberDisplay: CONTACT.hotlines[0].display, numbers: CONTACT.hotlines },
+  { id: "police", icon: ShieldAlert, titleKey: "HELPLINE_POLICE_TITLE", descKey: "HELPLINE_POLICE_DESC", href: "tel:999", numberDisplay: "999" },
+  { id: "ambulance", icon: Siren, titleKey: "HELPLINE_AMBULANCE_TITLE", descKey: "HELPLINE_AMBULANCE_DESC", href: "tel:112", numberDisplay: "112" },
+  // Nairobi City County Fire Brigade (nairobi.go.ke/emergency-services): the
+  // two county fire lines plus the toll-free short code.
+  {
+    id: "fire", icon: Flame, titleKey: "HELPLINE_FIRE_TITLE", descKey: "HELPLINE_FIRE_DESC",
+    href: "tel:+254202222181", numberDisplay: "020 222 2181",
+    numbers: [
+      { tel: "+254202222181", display: "020 222 2181" },
+      { tel: "+254202344599", display: "020 234 4599" },
+      { tel: "1508", display: "1508 (toll-free)" },
+    ],
+  },
+  { id: "county", icon: Phone, titleKey: "HELPLINE_COUNTY_TITLE", descKey: "HELPLINE_COUNTY_DESC", href: `tel:${CONTACT.hotline}`, numberDisplay: CONTACT.hotlines[0].display, numbers: CONTACT.hotlines },
 ];
 
 export interface InstitutionItem {

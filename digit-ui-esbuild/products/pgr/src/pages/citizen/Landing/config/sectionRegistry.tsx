@@ -14,7 +14,6 @@
 
 import { HeroSection } from "../components/HeroSection";
 import { TypesSection } from "../components/TypesSection";
-import { TaglineBand } from "../components/TaglineBand";
 import { HowItWorksSection } from "../components/HowItWorksSection";
 import { ChannelsSection } from "../components/ChannelsSection";
 import { HelplinesSection } from "../components/HelplinesSection";
@@ -40,18 +39,6 @@ import type { LandingMediaConfig, LandingSectionConfig } from "./types";
 
 export type Slot = "header" | "main" | "footer";
 
-/** Artwork for the top of the page, supplied by the deployment entry. */
-export interface LandingArtwork {
-  /** Faint pattern along the hero's left edge. */
-  heroPattern?: string;
-  /** Service-category card photos, keyed by category id (MANIFESTATION_TYPES). */
-  categories?: Record<string, string>;
-  /** Slogan band: the triangle mosaics at either end and the skyline line art. */
-  bandLeft?: string;
-  bandRight?: string;
-  bandSkyline?: string;
-}
-
 export interface RenderCtx {
   routes: LandingRoutes;
   news: NewsItem[];
@@ -67,9 +54,6 @@ export interface RenderCtx {
   channelsOrbImageUrl?: string;
   emblemUrl?: string;
   footerLogoUrl?: string;
-  artwork?: LandingArtwork;
-  /** Phone photo card of the areas section (falls back to the hero photo). */
-  areasPhotoUrl?: string;
 }
 
 export interface SectionEntry {
@@ -117,7 +101,6 @@ export const SECTION_REGISTRY: Record<string, SectionEntry> = {
         // The small cut belongs to the shipped photo only; a configured image
         // has no sibling, so it is dropped rather than mismatched.
         imageSmallUrl: configured ? undefined : ctx.heroImageSmallUrl,
-        patternUrl: ctx.artwork?.heroPattern,
         section: withItems(s, [], ctx.routes),
       };
     },
@@ -125,16 +108,7 @@ export const SECTION_REGISTRY: Record<string, SectionEntry> = {
   types: {
     Component: TypesSection,
     slot: "main",
-    buildProps: (s, ctx) => ({
-      routes: ctx.routes,
-      images: ctx.artwork?.categories,
-      section: withItems(s, MANIFESTATION_TYPES, ctx.routes),
-    }),
-  },
-  tagline: {
-    Component: TaglineBand,
-    slot: "main",
-    buildProps: (s, ctx) => ({ artwork: ctx.artwork, section: s }),
+    buildProps: (s, ctx) => ({ routes: ctx.routes, section: withItems(s, MANIFESTATION_TYPES, ctx.routes) }),
   },
   steps: {
     Component: HowItWorksSection,
@@ -156,7 +130,7 @@ export const SECTION_REGISTRY: Record<string, SectionEntry> = {
   helplines: {
     Component: HelplinesSection,
     slot: "main",
-    buildProps: (s, ctx) => ({ routes: ctx.routes, skylineUrl: ctx.artwork?.bandSkyline, section: withItems(s, HELPLINES, ctx.routes) }),
+    buildProps: (s, ctx) => ({ routes: ctx.routes, section: withItems(s, HELPLINES, ctx.routes) }),
   },
   privacy: {
     Component: PrivacySection,
@@ -173,8 +147,8 @@ export const SECTION_REGISTRY: Record<string, SectionEntry> = {
     slot: "main",
     buildProps: (s, ctx) => ({
       routes: ctx.routes,
-      // Phone-only photo card.
-      photoUrl: ctx.areasPhotoUrl ?? ctx.heroImageSmallUrl ?? ctx.heroImageUrl,
+      // Phone-only photo card: the small hero cut phones already downloaded.
+      photoUrl: ctx.heroImageSmallUrl ?? ctx.heroImageUrl,
       section: withItems(s, INSTITUTIONS, ctx.routes),
     }),
   },

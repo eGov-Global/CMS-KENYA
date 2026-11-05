@@ -58,26 +58,6 @@ export const LandingLink = React.forwardRef<HTMLAnchorElement, LandingLinkProps>
     const handleClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
       onClick?.(e);
       if (e.defaultPrevented) return;
-      // In-page "#section" links. index.html pins fresh pages to the top for a
-      // few seconds and counts only wheel/touch/keys as the user taking over,
-      // so a click straight after load would be pulled back: announce the
-      // jump as user intent, then scroll and record the hash without a
-      // router navigation.
-      if (href0.length > 1 && href0.startsWith("#") && !isModifiedEvent(e)) {
-        const section = document.getElementById(href0.slice(1));
-        if (section) {
-          e.preventDefault();
-          window.dispatchEvent(new Event("digit:user-scroll"));
-          const reduceMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
-          // A link in the phone menu closes the menu in this same click; scroll
-          // on the next frame, once the menu's height has left the layout.
-          window.requestAnimationFrame(() =>
-            section.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "start" })
-          );
-          window.history.replaceState(window.history.state, "", href0);
-        }
-        return;
-      }
       if (
         router?.history &&
         isInternal &&
