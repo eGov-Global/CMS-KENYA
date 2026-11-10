@@ -53,7 +53,10 @@ export const getPGREmployeeLinks = (t) => {
       label: t("ES_PGR_ADMIN_SEARCH"),
       link: `${base}/admin-search`,
       roles: ["SUPERUSER", "CMS_ADMIN"],
-      icon: "Search",
+      // Magnifier on a solid card rather than the plain magnifier the row above
+      // uses: an admin otherwise saw two identical Search glyphs in a row, and
+      // the outline variants (FindInPage) were too close at sidebar size.
+      icon: "Pageview",
     },
   ];
   return links.filter((link) => Digit.Utils.didEmployeeHasAtleastOneRole(link.roles));
