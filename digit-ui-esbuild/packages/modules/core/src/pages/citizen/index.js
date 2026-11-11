@@ -296,7 +296,10 @@ const Home = ({
     window.open(obj);
   };
 
-  const hideSidebar = sidebarHiddenFor.some((e) => window.location.href.includes(e));
+  // `pathname` is the router's reactive value; window.location is not React
+  // state, so reading it during render went stale across client-side
+  // navigation (a push, a <Redirect>, the /citizen → module-home hop) (#52).
+  const hideSidebar = sidebarHiddenFor.some((e) => pathname.includes(e));
   const appRoutes = modules.map(({ code, tenants }, index) => {
     const Module = Digit.ComponentRegistryService.getComponent(`${code}Module`);
     return Module ? (
