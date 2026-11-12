@@ -373,6 +373,31 @@ body:has(.citizen-form-wrapper) .citizen {
   background-color: var(--color-header-bg, #0b2d1e);
 }
 
+/* No separate footer bar on sign-in: the photo runs to the bottom of the page
+   and "Powered by DIGIT" sits on it, over a soft dark fade that keeps the white
+   logo readable on any tenant's photo (#215). The photo used to stop at the
+   footer (and 16px earlier on phones, where the container is not flex), which
+   left a solid strip. The strips above stay painted as a fallback; the
+   full-screen landscape on body::before must stay covered. */
+body:has(.citizen-form-wrapper) .citizen {
+  position: relative;
+}
+.citizen .citizen-home-container > .citizen-form-wrapper {
+  min-height: 100vh !important;
+  min-height: 100dvh !important;
+  /* keep the card clear of the footer that now overlaps the photo */
+  padding-bottom: calc(24px + var(--v2-page-footer-height, 40px)) !important;
+}
+body:has(.citizen-form-wrapper) .citizen > .citizen-home-footer {
+  position: absolute !important;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 101; /* above the container's z-index: 100 */
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.32), rgba(0, 0, 0, 0)) !important;
+  border-top: 1px solid rgba(255, 255, 255, 0.12) !important;
+}
+
 /* The citizen card is white-on-white today; on the photo it needs its own
    surface and a little breathing room at phone widths. */
 .citizen .citizen-form-wrapper[style*="--banner-url"] {
