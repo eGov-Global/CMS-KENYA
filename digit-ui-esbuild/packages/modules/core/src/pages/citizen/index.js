@@ -139,11 +139,14 @@ const Home = ({
     window.open(obj);
   };
 
-  const hideSidebar = sidebarHiddenFor.some((e) => window.location.href.includes(e));
+  // `pathname` is the router's reactive value; window.location is not React
+  // state, so reading it during render went stale across client-side
+  // navigation (a push, a <Redirect>, the /citizen → module-home hop) (#52).
+  const hideSidebar = sidebarHiddenFor.some((e) => pathname.includes(e));
   // The sign-in steps sit on the navy ground the employee sign-in uses, where
   // only the white wordmark reads; the colour one is the fallback for a
   // deployment that configures just that.
-  const onSignIn = /\/citizen\/(login|register)(\/|$)/.test(window.location.pathname);
+  const onSignIn = /\/citizen\/(login|register)(\/|$)/.test(pathname);
   const footerMark =
     (onSignIn && window?.globalConfigs?.getConfig?.("DIGIT_FOOTER_BW")) || window?.globalConfigs?.getConfig?.("DIGIT_FOOTER");
   const appRoutes = modules.map(({ code, tenants }, index) => {
