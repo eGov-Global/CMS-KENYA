@@ -77,6 +77,10 @@ java-args: "-Dspring.profiles.active=monitoring"
 env: |
   - name: SPRING_KAFKA_CONSUMER_GROUP_ID
     value: egov-pgr-services
+  # Same as the compose files: the pinned image rejects the employee create
+  # form's channels without it. Mirrors allowed.source in application.properties.
+  - name: ALLOWED_SOURCE
+    value: "whatsapp,web,mobile,RB Bot,email,inperson,letter,linhaverde"
   - name: SPRING_KAFKA_PRODUCER_KEY_SERIALIZER
     value: org.apache.kafka.common.serialization.StringSerializer
   {{- if index .Values "global" "serializers-timezone-in-ist" }}

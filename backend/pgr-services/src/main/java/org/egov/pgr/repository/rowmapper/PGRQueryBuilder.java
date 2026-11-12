@@ -172,6 +172,13 @@ public class PGRQueryBuilder {
             addToPreparedStatement(preparedStmtList, createdBy);
         }
 
+        // Set by PGRService#applyConfidentialIdentityGuard: "search by this person" from an
+        // uncleared caller must not confirm that they filed a confidential complaint.
+        if (criteria.isExcludeConfidential()) {
+            addClauseIfRequired(preparedStmtList, builder);
+            builder.append(" COALESCE(ser.extended_attributes->>'isConfidential','false') <> 'true'");
+        }
+
         Set<String> serviceRequestIds = criteria.getServiceRequestIds();
         if (!CollectionUtils.isEmpty(serviceRequestIds)) {
             addClauseIfRequired(preparedStmtList, builder);

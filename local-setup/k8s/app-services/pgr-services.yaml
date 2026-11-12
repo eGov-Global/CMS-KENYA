@@ -70,6 +70,10 @@ spec:
               value: "false"
             - name: NOTIFICATION_ALLOWED_ON_STATUS
               value: "open,assigned,rejected,resolved"
+            # Same as the compose files: the pinned image rejects the employee create
+            # form's channels without it. Mirrors allowed.source in application.properties.
+            - name: ALLOWED_SOURCE
+              value: "whatsapp,web,mobile,RB Bot,email,inperson,letter,linhaverde"
             - name: EGOV_USR_EVENTS_NOTIFICATION_ENABLED
               value: "true"
             - name: EGOV_USR_EVENTS_CREATE_TOPIC

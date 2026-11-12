@@ -18,6 +18,7 @@ import org.egov.pgr.util.MDMSUtils;
 import org.egov.pgr.util.NotificationUtil;
 import org.egov.pgr.util.PGRUtils;
 import org.egov.pgr.web.models.Notification.*;
+import org.egov.pgr.web.models.ExtendedAttributes;
 import org.egov.pgr.web.models.ServiceWrapper;
 import org.egov.pgr.web.models.RequestInfoWrapper;
 import org.egov.pgr.web.models.ServiceRequest;
@@ -959,6 +960,9 @@ public class NotificationService {
             String eventName = EVENT_NAME_PREFIX + action.toUpperCase(Locale.ROOT);
             String locale = config.getNotificationDefaultLocale();
             Map<String, String> values = buildPlaceholderValues(request);
+            // Staff audiences never get the complainant's name on a confidential complaint; the
+            // citizen's own messages keep it.
+            Map<String, String> staffValues = withoutComplainant(values, request);
 
             Set<String> emitted = new HashSet<>();
             // Memoize resolved recipients per (audience, assigneeOnly) so a role authored on
@@ -967,6 +971,7 @@ public class NotificationService {
             for (RoutingMatch match : matches) {
                 String audience = match.getAudience();
                 String channel = match.getChannel();
+                Map<String, String> audienceValues = AUDIENCE_CITIZEN.equalsIgnoreCase(audience) ? values : staffValues;
                 List<ResolvedRecipient> recipients;
                 String audienceKey = audience.toUpperCase(Locale.ROOT) + "|" + match.isAssigneeOnly();
                 if (audienceCache.containsKey(audienceKey)) {
@@ -1004,7 +1009,7 @@ public class NotificationService {
                                 request.getService().getServiceRequestId());
                     } else {
                         providerTemplateId = String.valueOf(pt.get("templateId"));
-                        contentVariables = buildContentVariables(pt.get("variables"), values);
+                        contentVariables = buildContentVariables(pt.get("variables"), audienceValues);
                     }
                 }
                 String body = null;
@@ -1029,13 +1034,13 @@ public class NotificationService {
                     try {
                         if (!rendered) {
                             body = templateRenderer.render(tenantId, audience, action, toState,
-                                    channel, locale, values);
+                                    channel, locale, audienceValues);
                             // EMAIL requires a non-empty subject (Novu's email step rejects a blank
                             // one, dropping the whole send). Render the template's subject and fall
                             // back to a sensible default if it is missing/blank.
                             if ("EMAIL".equalsIgnoreCase(channel)) {
                                 subject = templateRenderer.renderSubject(tenantId, audience, action, toState,
-                                        channel, locale, values);
+                                        channel, locale, audienceValues);
                                 if (!StringUtils.hasText(subject))
                                     subject = "Complaint " + request.getService().getServiceRequestId();
                             }
@@ -1214,6 +1219,14 @@ public class NotificationService {
         if (u == null) return null;
         String phone = buildMobileWithCountryCode(u.getMobileNumber(), u.getCountryCode());
         return new ResolvedRecipient(u.getUuid(), AUDIENCE_EMPLOYEE, u.getName(), phone, u.getEmailId(), locale);
+    }
+
+    private static Map<String, String> withoutComplainant(Map<String, String> values, ServiceRequest request) {
+        ExtendedAttributes ext = request.getService().getExtendedAttributes();
+        if (ext == null || !ext.getIsConfidentialSafe()) return values;
+        Map<String, String> copy = new HashMap<>(values);
+        copy.remove("citizen_name");
+        return copy;
     }
 
     private Map<String, String> buildPlaceholderValues(ServiceRequest request) {

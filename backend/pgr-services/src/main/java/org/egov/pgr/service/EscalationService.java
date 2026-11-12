@@ -92,7 +92,10 @@ public class EscalationService {
         Workflow escalationWorkflow = Workflow.builder()
                 .action(ESCALATE)
                 .assignes(Collections.singletonList(supervisorUuid))
-                .comments("Auto-escalated: SLA breach at level " + currentLevel)
+                // The comment names the step this escalation IS (1-based), not the
+                // 0-based count of escalations before it: the first escalation reads
+                // "level 1", one after a manual escalation reads "level 2" (#141).
+                .comments("Auto-escalated: SLA breach at level " + (currentLevel + 1))
                 .build();
 
         // 6. Update additionalDetails with escalation metadata

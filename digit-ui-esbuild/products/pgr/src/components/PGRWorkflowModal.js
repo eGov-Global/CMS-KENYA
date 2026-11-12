@@ -78,6 +78,9 @@ const PGRWorkflowModal = ({
       headerBarEnd={<CloseBtn onClick={closeModal} />}
       formId="modal-action"
     >
+      {config?.description ? (
+        <p style={{ margin: "0 0 1rem 0", fontSize: "1rem", lineHeight: 1.5, color: "#363636" }}>{t(config.description)}</p>
+      ) : null}
       <FormComposerV2
         config={form}
         noBoxShadow
