@@ -350,7 +350,7 @@ body:has(.citizen-form-wrapper) .digit-topbar {
    on this page and let the photo run to the top; the card stays centred. */
 .citizen .main.center-container.citizen-home-container:has(> .citizen-form-wrapper) {
   padding-top: 0 !important;
-  background-color: hsl(var(--pgrl-deep, 153 60% 11%));
+  background-color: var(--color-header-bg, #0b2d1e);
   align-items: stretch;
 }
 .citizen .citizen-home-container > .citizen-form-wrapper {
@@ -361,12 +361,16 @@ body:has(.citizen-form-wrapper) .digit-topbar {
   padding-top: 58px !important;
 }
 /* Root/body too: a few pixels of white were still visible under the footer
-   (the html element's own background). */
+   (the html element's own background).
+   These strips (and the container above) take the tenant's header colour, the
+   same token as the topbar and the photo overlay. `--pgrl-deep` is defined only
+   inside the landing page, so here it always fell back to Nairobi's green and a
+   blue tenant got a green bar under the footer (#215). */
 html:has(.citizen-form-wrapper),
 body:has(.citizen-form-wrapper),
 body:has(.citizen-form-wrapper) .body-container,
 body:has(.citizen-form-wrapper) .citizen {
-  background-color: hsl(var(--pgrl-deep, 153 60% 11%));
+  background-color: var(--color-header-bg, #0b2d1e);
 }
 
 /* The citizen card is white-on-white today; on the photo it needs its own
