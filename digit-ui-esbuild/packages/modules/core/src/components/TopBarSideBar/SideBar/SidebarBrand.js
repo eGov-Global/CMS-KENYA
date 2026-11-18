@@ -68,9 +68,9 @@ export const RailToggle = ({ t, expanded, onToggle }) => {
  * Foot of the desktop rail: Logout, then the eGov lockup. Closed, Logout keeps
  * only its icon and the lockup shrinks to fit the rail.
  *
- * The lockup is the brand's colour one on a white plate (the stylesheet paints
- * the plate), not the reversed white wordmark: the plate keeps the navy "GOV"
- * readable on the navy rail without a recoloured asset.
+ * The lockup is the brand's colour one, straight on the rail with a faint
+ * light shadow (stylesheet): Bomet asked for the original colours rather than
+ * the reversed white wordmark, and without the white plate #221 first added.
  */
 export const SidebarFoot = ({ t, expanded, onLogout }) => (
   <div className={`digit-sidebar-foot ${expanded ? "open" : "closed"}`}>
