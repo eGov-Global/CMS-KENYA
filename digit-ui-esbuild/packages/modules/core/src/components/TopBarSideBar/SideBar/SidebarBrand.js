@@ -1,5 +1,5 @@
 import React from "react";
-import { DEFAULT_EGOV_LOGO_ON_DARK } from "../brandLogos";
+import { DEFAULT_EGOV_LOGO } from "../brandLogos";
 
 /** Chevron for the rail toggle; points the way the rail will move. */
 const Chevron = ({ open }) => (
@@ -67,6 +67,10 @@ export const RailToggle = ({ t, expanded, onToggle }) => {
 /**
  * Foot of the desktop rail: Logout, then the eGov lockup. Closed, Logout keeps
  * only its icon and the lockup shrinks to fit the rail.
+ *
+ * The lockup is the brand's colour one on a white plate (the stylesheet paints
+ * the plate), not the reversed white wordmark: the plate keeps the navy "GOV"
+ * readable on the navy rail without a recoloured asset.
  */
 export const SidebarFoot = ({ t, expanded, onLogout }) => (
   <div className={`digit-sidebar-foot ${expanded ? "open" : "closed"}`}>
@@ -83,7 +87,7 @@ export const SidebarFoot = ({ t, expanded, onLogout }) => (
       </button>
     ) : null}
     <div className="digit-sidebar-egov-band">
-      <img className="digit-sidebar-egov" src={DEFAULT_EGOV_LOGO_ON_DARK} alt="eGov Foundation" />
+      <img className="digit-sidebar-egov" src={DEFAULT_EGOV_LOGO} alt="eGov Foundation" />
     </div>
   </div>
 );
@@ -95,6 +99,6 @@ export const SidebarFoot = ({ t, expanded, onLogout }) => (
  */
 export const DrawerFoot = () => (
   <div className="digit-sidebar-foot digit-drawer-foot">
-    <img className="digit-sidebar-egov" src={DEFAULT_EGOV_LOGO_ON_DARK} alt="eGov Foundation" />
+    <img className="digit-sidebar-egov" src={DEFAULT_EGOV_LOGO} alt="eGov Foundation" />
   </div>
 );
