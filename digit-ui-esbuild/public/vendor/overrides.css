@@ -8849,24 +8849,34 @@ html .header-dropdown-option:focus-visible {
   overflow: hidden;
   transition: padding-left 0.28s cubic-bezier(0.4, 0, 0.2, 1);
 }
-/* Closed, the lockup sits centred in the 80px rail: (80 - 56) / 2 = 12px. A
- * padding, not justify-content: center, because centring can't animate and
- * snapped the lockup from x=28 to the middle of the still-wide rail. */
+/* Closed, the plated lockup (63px, see below) sits centred in the 80px rail:
+ * (80 - 63) / 2 ≈ 8px. A padding, not justify-content: center, because
+ * centring can't animate and snapped the lockup from x=28 to the middle of
+ * the still-wide rail. */
 :is(.employee, .citizen) .digit-sidebar .digit-sidebar-foot.closed .digit-sidebar-egov-band {
-  padding-left: 12px;
+  padding-left: 8px;
 }
+/* The colour lockup on a white plate: its navy "GOV" would vanish straight on
+ * the navy rail, and the brand has no reversed colour variant to use instead.
+ * content-box keeps the 18px for the artwork and adds the plate around it. */
 .digit-sidebar-foot .digit-sidebar-egov {
   display: block;
+  box-sizing: content-box;
   height: 18px;
   width: auto;
+  padding: 5px 8px;
+  border-radius: 6px;
+  background: #ffffff;
 }
 :is(.employee, .citizen) .digit-sidebar .digit-sidebar-egov {
   flex: 0 0 auto;
   max-width: none;
-  transition: height 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: height 0.28s cubic-bezier(0.4, 0, 0.2, 1), padding 0.28s cubic-bezier(0.4, 0, 0.2, 1);
 }
+/* Closed: a 13px lockup is 51px wide, 63px with the plate, inside the 80px rail. */
 :is(.employee, .citizen) .digit-sidebar .digit-sidebar-foot.closed .digit-sidebar-egov {
-  height: 14px;
+  height: 13px;
+  padding: 4px 6px;
 }
 
 /* Phones: the eGov lockup moves to the drawer's foot, and the crest keeps the
