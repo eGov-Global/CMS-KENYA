@@ -1,0 +1,54 @@
+[
+  {
+    "tenantId": "ke",
+    "data": {
+      "code": "default",
+      "contextFields": [
+        {
+          "key": "typeName",
+          "label": "Complaint type",
+          "from": "catalog",
+          "path": "name"
+        },
+        {
+          "key": "category",
+          "label": "Category",
+          "from": "catalog",
+          "path": "category"
+        },
+        {
+          "key": "department",
+          "label": "Department",
+          "from": "complaint",
+          "path": "additionalDetail.department",
+          "fallback": {
+            "from": "catalog",
+            "path": "department"
+          }
+        },
+        {
+          "key": "sla",
+          "label": "County target resolution time",
+          "from": "catalog",
+          "path": "slaHours",
+          "transform": "hours"
+        },
+        {
+          "key": "photo",
+          "label": "Photo attached",
+          "from": "complaint",
+          "path": "documents",
+          "transform": "count"
+        },
+        {
+          "key": "channel",
+          "label": "Channel",
+          "from": "complaint",
+          "path": "source"
+        }
+      ],
+      "active": true,
+      "description": "Non-personal complaint details sent to the triage AI model with the cleaned description. Add a field with key, label, from (catalog | complaint), path and transform (value | yesNo | count | hours). The service refuses fields that could send personal data."
+    }
+  }
+]

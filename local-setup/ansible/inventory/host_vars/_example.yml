@@ -516,6 +516,26 @@ enable_overpass: false
 enable_file_scan: false
 # filestore_scan_proxy_image: ""    # published image; default builds filestore-scan-proxy:local on the box
 
+# ────────── Complaint priority (AI triage) ──────────
+# Turn on the `triage` compose profile: complaint-triage reads new complaints
+# from Kafka, removes personal details (patterns: MDMS RAINMAKER-PGR.PiiPatterns),
+# asks an LLM how urgent it is, and saves additionalDetail.priority
+# (LOW/MEDIUM/HIGH/CRITICAL). ~128MB RAM.
+# The provider key lives in OpenBao, never in host_vars:
+#   bao kv patch <secrets_path> llm_api_key=gsk_...
+# Without it the service runs rules-only (triage_default_priority).
+# Privacy: with a hosted provider the cleaned complaint text leaves the box;
+# get Data Protection Officer sign-off first. See backend/complaint-triage/README.md.
+enable_complaint_triage: false
+# complaint_triage_image: ""                              # published image; default builds complaint-triage:local
+# triage_llm_base_url: https://api.groq.com/openai/v1    # any OpenAI-compatible API
+# triage_llm_model: openai/gpt-oss-20b
+# triage_llm_reasoning_effort: low                       # "" for non-reasoning models
+# triage_default_priority: MEDIUM
+# triage_base_priority:                                  # starting level per complaint type
+#   SewerageOverflow: HIGH
+#   StreetLightNotWorking: LOW
+
 # ────────── Notifications (Novu + Twilio WhatsApp) ──────────
 # Turn on the `notifications` compose profile — adds 9 containers:
 #   digit-config-service, digit-user-preferences-service, novu-bridge,

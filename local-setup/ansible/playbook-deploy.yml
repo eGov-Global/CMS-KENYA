@@ -1565,6 +1565,14 @@
         filestore_scan_proxy_image: >-
           {{ filestore_scan_proxy_image | default('filestore-scan-proxy:local') }}
 
+    # complaint-triage (enable_complaint_triage): built on the box from
+    # backend/complaint-triage unless `complaint_triage_image:` names a
+    # published image.
+    - name: "Resolve complaint-triage image tag"
+      ansible.builtin.set_fact:
+        complaint_triage_image: >-
+          {{ complaint_triage_image | default('complaint-triage:local') }}
+
     # ==================== Compose .env (per-tenant overrides) ====================
     # Templates Grafana's public root URL (so the JVM dashboard / observability
     # links match the tenant's actual domain). Compose auto-loads .env from the
@@ -1971,6 +1979,7 @@
               + (['keycloak']      if enable_keycloak      | default(false) else [])
               + (['otp']           if enable_otp_services  | default(false) else [])
               + (['matomo']        if enable_matomo        | default(false) else [])
+              + (['triage']        if enable_complaint_triage | default(false) else [])
               + _obs_profiles
             ) | join(',')
           }}
@@ -2106,6 +2115,22 @@
       when:
         - enable_file_scan | default(false)
         - filestore_scan_proxy_image == 'filestore-scan-proxy:local'
+
+    # ==================== Build complaint-triage image locally ============
+    # Only when no published image was named (see "Resolve complaint-triage
+    # image tag"). Small Node image; builds in well under a minute.
+    - name: "Build complaint-triage image locally (when enable_complaint_triage)"
+      ansible.builtin.command: >-
+        docker build
+        -t complaint-triage:local
+        backend/complaint-triage
+      args:
+        chdir: "{{ playbook_dir }}/../.."
+      register: complaint_triage_build_run
+      changed_when: true
+      when:
+        - enable_complaint_triage | default(false)
+        - complaint_triage_image == 'complaint-triage:local'
 
     # ==================== Build digit-ui from source ====================
     # Mirrors the configurator + mcp fold-ins: when `build_digit_ui: true`,
@@ -2853,6 +2878,45 @@
         - { key: 'MINIO_QUARANTINE_READER_PASSWORD', value: "{{ minio_quarantine_reader_pw | default('') }}" }
       when: enable_file_scan | default(false)
       no_log: true
+
+    # ── Complaint triage: LLM API key ────────────────────────────────────
+    #
+    # Unlike the passwords above this is NOT generated: it's an account key
+    # from the LLM provider (Groq today). The operator stores it once:
+    #   bao kv patch {{ secrets_path }} llm_api_key=gsk_...
+    # Missing key = the service still runs, rules-only (DEFAULT_PRIORITY), so
+    # the deploy warns instead of failing. Re-read because earlier persists may
+    # have bumped the secret's version.
+    - name: "OpenBao — re-read tenant secrets (complaint-triage)"
+      ansible.builtin.uri:
+        url: "http://127.0.0.1:18200/v1/{{ secrets_path | regex_replace('^kv/', 'kv/data/') }}"
+        headers:
+          X-Vault-Token: "{{ bao_root_token }}"
+        status_code: [200]
+      register: bao_secrets_triage
+      when: enable_complaint_triage | default(false)
+      no_log: true
+
+    - name: "OpenBao — put the LLM API key into .env (complaint-triage)"
+      ansible.builtin.lineinfile:
+        path: "{{ digit_dir }}/.env"
+        regexp: '^LLM_API_KEY='
+        line: "LLM_API_KEY={{ bao_secrets_triage.json.data.data.llm_api_key | default('') }}"
+        create: true
+        mode: '0600'
+      when: enable_complaint_triage | default(false)
+      no_log: true
+
+    - name: "Complaint triage — warn when no LLM API key is stored"
+      ansible.builtin.debug:
+        msg: >-
+          enable_complaint_triage is on but OpenBao has no llm_api_key at
+          {{ secrets_path }}. complaint-triage will run rules-only (every
+          complaint gets DEFAULT_PRIORITY). Store it with:
+          bao kv patch {{ secrets_path }} llm_api_key=<key>
+      when:
+        - enable_complaint_triage | default(false)
+        - (bao_secrets_triage.json.data.data.llm_api_key | default('', true)) | length == 0
 
     # Keycloak-tier secrets — appended as a separate marked block so the
     # main TENANT SECRETS block stays untouched on Keycloak-free tenants.

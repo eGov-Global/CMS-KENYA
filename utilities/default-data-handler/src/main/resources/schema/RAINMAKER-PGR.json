@@ -818,5 +818,192 @@
       },
       "additionalProperties": false
     }
+  },
+  {
+    "tenantId": "{tenantid}",
+    "code": "RAINMAKER-PGR.PiiPatterns",
+    "description": "Rules complaint-triage uses to remove personal details before text goes to the AI. replace: swap regex matches for tag. block: do not send if regex still matches. numberWords, nameTitles, addressWords: per-language word lists. languageHints: language detection only. Changes apply within 5 minutes.",
+    "isActive": true,
+    "definition": {
+      "type": "object",
+      "title": "PGR PII Patterns",
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "required": [
+        "code",
+        "kind"
+      ],
+      "x-unique": [
+        "code"
+      ],
+      "properties": {
+        "code": {
+          "type": "string",
+          "minLength": 1
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "replace",
+            "block",
+            "numberWords",
+            "nameTitles",
+            "addressWords",
+            "languageHints"
+          ]
+        },
+        "language": {
+          "type": "string",
+          "description": "Language code for word-list kinds, e.g. en, sw, sheng, pt."
+        },
+        "tag": {
+          "type": "string",
+          "description": "Placeholder for replace patterns, e.g. [PHONE]"
+        },
+        "regex": {
+          "type": "string",
+          "minLength": 1,
+          "description": "JavaScript RegExp source. Required for kind replace and block."
+        },
+        "flags": {
+          "type": "string",
+          "pattern": "^[imsu]*$"
+        },
+        "words": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "minItems": 1,
+          "description": "Words or phrases. Required for numberWords, nameTitles, addressWords and languageHints."
+        },
+        "labels": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "description": "addressWords only: number labels such as number, nambari"
+        },
+        "order": {
+          "type": "number",
+          "description": "Lower runs first"
+        },
+        "active": {
+          "type": "boolean"
+        },
+        "description": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "x-ref-schema": []
+    }
+  },
+  {
+    "tenantId": "{tenantid}",
+    "code": "RAINMAKER-PGR.TriageConfig",
+    "description": "Per-tenant settings for complaint-triage. contextFields: the non-personal complaint details sent to the AI model with the cleaned description. Each entry is a built-in name (typeName, category, department, sla, photo, channel) or a definition {key, label, from, path, transform}, so new fields can be added here without a code change. The service refuses any field that could send personal data (citizen, address, IDs, free text…). Changes apply within 5 minutes.",
+    "isActive": true,
+    "definition": {
+      "type": "object",
+      "title": "PGR Triage Config",
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "required": [
+        "code",
+        "contextFields"
+      ],
+      "x-unique": [
+        "code"
+      ],
+      "properties": {
+        "code": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Use \"default\""
+        },
+        "contextFields": {
+          "type": "array",
+          "description": "Each item: a built-in name, or {key, label, from, path, transform}. from=catalog reads any attribute of the complaint type in MDMS (name, category, department, slaHours, keywords…); from=complaint reads a dotted path in the complaint (e.g. additionalDetail.escalationLevel). transform: value (the text), yesNo (only whether it has a value), count (only how many), hours (number as hours).",
+          "items": {
+            "oneOf": [
+              {
+                "type": "string",
+                "minLength": 1
+              },
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "key",
+                  "path"
+                ],
+                "properties": {
+                  "key": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "Unique id for the field, e.g. reopened"
+                  },
+                  "label": {
+                    "type": "string",
+                    "description": "What the model sees, e.g. Complaint reopened"
+                  },
+                  "from": {
+                    "type": "string",
+                    "enum": [
+                      "catalog",
+                      "complaint"
+                    ]
+                  },
+                  "path": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "Dotted path, e.g. additionalDetail.escalationLevel or slaHours"
+                  },
+                  "transform": {
+                    "type": "string",
+                    "enum": [
+                      "value",
+                      "yesNo",
+                      "count",
+                      "hours"
+                    ]
+                  },
+                  "fallback": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "from",
+                      "path"
+                    ],
+                    "properties": {
+                      "from": {
+                        "type": "string",
+                        "enum": [
+                          "catalog",
+                          "complaint"
+                        ]
+                      },
+                      "path": {
+                        "type": "string",
+                        "minLength": 1
+                      }
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        },
+        "active": {
+          "type": "boolean"
+        },
+        "description": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "x-ref-schema": []
+    }
   }
 ]
