@@ -190,7 +190,7 @@ LLM_REASONING_EFFORT="${LLM_REASONING_EFFORT:-low}"
 
 # ── plan ─────────────────────────────────────────────────────────────────────
 if [ -n "$IMAGE" ]; then BUILD=false; else BUILD=true; IMAGE=complaint-triage:local; fi
-EXISTING=$(docker inspect -f '{{.Config.Image}} ({{.State.Status}})' "$CONTAINER" 2>/dev/null || echo "none")
+EXISTING=$(docker container inspect -f '{{.Config.Image}} ({{.State.Status}})' "$CONTAINER" 2>/dev/null) || EXISTING=none
 
 step "Plan"
 info "Tenant (MDMS):     $STATE_TENANT $($SKIP_MDMS && echo '(skipped)')"
@@ -212,7 +212,15 @@ step "2/6 Image"
 if $BUILD; then
   if $DRY_RUN; then
     info "dry run: would build $IMAGE from $SERVICE_DIR"
-    docker image inspect "$IMAGE" >/dev/null 2>&1 || fail "dry run needs an existing $IMAGE to run MDMS checks; build once or pass --image"
+    if ! docker image inspect "$IMAGE" >/dev/null 2>&1; then
+      # No image yet: build a throwaway one so the checks below can run. Removed on exit;
+      # nothing in the running stack is touched.
+      IMAGE=complaint-triage:dryrun
+      trap 'docker image rm -f complaint-triage:dryrun >/dev/null 2>&1 || true' EXIT
+      info "building a temporary $IMAGE for the checks (removed afterwards)"
+      docker build -q -t "$IMAGE" "$SERVICE_DIR" >/dev/null || fail "image build failed"
+      ok "Image builds"
+    fi
   else
     docker image inspect "$IMAGE" >/dev/null 2>&1 && docker tag "$IMAGE" complaint-triage:previous && info "previous image kept as complaint-triage:previous"
     docker build -q -t "$IMAGE" "$SERVICE_DIR" >/dev/null || fail "image build failed"
