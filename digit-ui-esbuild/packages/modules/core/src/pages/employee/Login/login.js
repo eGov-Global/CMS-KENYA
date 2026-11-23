@@ -7,7 +7,7 @@
 //   - `useCustomAPIMutationHook` POSTing to /user-otp/v1/_send for the
 //     OTP-based mode (route still `/employee/user/login` then forwarded
 //     to `/employee/user/login/otp`),
-//   - `setEmployeeDetail` localStorage stamping,
+//   - `setEmployeeDetail` session stamping (tab-only since #224),
 //   - the `from=` query-string redirect for deep-linked entry,
 //   - the role-based redirects to NURT_DASHBOARD / dss/landing.
 //
@@ -20,6 +20,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import PropTypes from "prop-types";
 import { useHistory } from "react-router-dom";
+import { saveEmployeeLogin } from "@egovernments/digit-ui-libraries";
 import { Loader, Toast } from "@egovernments/digit-ui-components";
 import {
   Button as V2Button,
@@ -76,18 +77,12 @@ export const scopeLoginTenants = (tenants) => {
   return allowed.filter((tnt) => isTenantVisibleOnEntrance(tnt.code));
 };
 
+// #224: the token and user details stay in this tab only (sessionStorage), so
+// closing the tab ends the login — see libraries' employeeSession.js.
 const setEmployeeDetail = (userObject, token) => {
   if (Digit.Utils.getMultiRootTenant() && process.env.NODE_ENV !== "development") return;
   let locale = JSON.parse(sessionStorage.getItem("Digit.locale"))?.value || Digit.Utils.getDefaultLanguage();
-  localStorage.setItem("Employee.tenant-id", userObject?.tenantId);
-  localStorage.setItem("tenant-id", userObject?.tenantId);
-  localStorage.setItem("citizen.userRequestObject", JSON.stringify(userObject));
-  localStorage.setItem("locale", locale);
-  localStorage.setItem("Employee.locale", locale);
-  localStorage.setItem("token", token);
-  localStorage.setItem("Employee.token", token);
-  localStorage.setItem("user-info", JSON.stringify(userObject));
-  localStorage.setItem("Employee.user-info", JSON.stringify(userObject));
+  saveEmployeeLogin({ tab: sessionStorage, local: localStorage, userObject, token, locale });
 };
 
 export function V2LoginShell({ children, withCarousel, bannerImages }) {
