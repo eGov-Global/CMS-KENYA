@@ -42,13 +42,6 @@ export function safeHref(url?: string): string {
 export const isFileStoreId = (v?: string): boolean =>
   typeof v === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v.trim());
 
-/** The public, non-expiring path the file store serves a picture at. The
- *  signed URL the upload API returns expires, so it is never stored. */
-export function fileStoreImageUrl(fileStoreId: string, tenantId: string): string {
-  const q = new URLSearchParams({ tenantId, fileStoreId: fileStoreId.trim() });
-  return `/filestore/v1/files/id?${q.toString()}`;
-}
-
 /** Same allowlist narrowed for `<img src>`: an explicit https?: origin or an
  *  in-app path. Returns undefined so the caller falls back to no image. */
 export function safeMediaSrc(url?: string): string | undefined {
@@ -240,22 +233,15 @@ export function orderSections(
 // Registry adapters — shared by every layout's section entries
 // ---------------------------------------------------------------------------
 
-/** The state tenant the Builder uploads pictures under (the page only runs
- *  inside the DIGIT shell). */
-function stateTenantId(): string | undefined {
-  try {
-    return (window as any).Digit?.ULBService?.getStateId?.() || undefined;
-  } catch {
-    return undefined;
-  }
-}
-
-/** media.imageId is either a pasted URL (passed through safeMediaSrc) or the
- *  file-store id of an uploaded picture, served anonymously at a stable path. */
+/** media.imageId is a pasted URL or, for an uploaded picture, its public path
+ *  (/file-store/<bucket>/<tenant>/pgr-landing/...), both passed through
+ *  safeMediaSrc. A bare file-store id (saved by older Builders) can't be shown
+ *  any more: the file store needs a login (VAPT #223) and an <img> can't send
+ *  one. It yields undefined, so the section falls back to its built-in visual
+ *  instead of a broken image; re-selecting the picture in the Builder fixes it. */
 export function mediaUrl(media?: LandingMediaConfig): string | undefined {
   const id = media?.imageId;
-  const tenant = stateTenantId();
-  if (isFileStoreId(id) && tenant) return fileStoreImageUrl(id as string, tenant);
+  if (isFileStoreId(id)) return undefined;
   return safeMediaSrc(id);
 }
 

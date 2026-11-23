@@ -17,6 +17,16 @@ map $request_method $digit_filestore_upstream {
   default {{ nginx_upstream_host | default('127.0.0.1') }}:{{ upstream_scan_proxy_port | default(18183) }};
 }
 {% endif %}
+# Upload rate limit (VAPT #223): per client IP, uploads (POST) only — reads
+# get an empty key, which nginx does not count. Kong can't do this: it sees
+# every request as coming from nginx. A complaint takes a handful of photos;
+# 30/min with a burst of 20 leaves room for a busy office behind one NAT.
+map $request_method $digit_filestore_upload_key {
+  POST    $binary_remote_addr;
+  default "";
+}
+limit_req_zone $digit_filestore_upload_key zone=digit_filestore_upload:10m rate={{ filestore_upload_rate_per_min | default(30) }}r/m;
+
 {#
    ==================== Security headers ====================
    nginx's add_header does NOT inherit into a location that declares its own
@@ -791,6 +801,12 @@ server {
   location /file-store/egov-quarantine/ {
     return 403;
   }
+  # Bucket roots: S3 answers a listing there. The bucket is private now
+  # (minio-init), so MinIO refuses anyway; this keeps listing closed even if
+  # a bucket policy is loosened again (VAPT #223).
+  location ~ ^/file-store/?([^/]+/?)?$ {
+    return 403;
+  }
   location /file-store/ {
     proxy_pass http://{{ nginx_upstream_host | default('127.0.0.1') }}:{{ upstream_minio_port | default(19000) }}/;
     proxy_set_header Host minio:9000;
@@ -820,6 +836,8 @@ server {
     sub_filter_types application/json;
     sub_filter 'http://minio:9000/' '{{ "https://" if (tls_enabled | default(true)) else "http://" }}$host/file-store/';
     client_max_body_size 25M;
+    limit_req zone=digit_filestore_upload burst=20 nodelay;
+    limit_req_status 429;
     proxy_buffering off;
   }
 
@@ -889,6 +907,12 @@ server {
   location /file-store/egov-quarantine/ {
     return 403;
   }
+  # Bucket roots: S3 answers a listing there. The bucket is private now
+  # (minio-init), so MinIO refuses anyway; this keeps listing closed even if
+  # a bucket policy is loosened again (VAPT #223).
+  location ~ ^/file-store/?([^/]+/?)?$ {
+    return 403;
+  }
   location /file-store/ {
     proxy_pass http://{{ nginx_upstream_host | default('127.0.0.1') }}:{{ upstream_minio_port | default(19000) }}/;
     proxy_set_header Host minio:9000;
@@ -917,6 +941,8 @@ server {
     sub_filter_types application/json;
     sub_filter 'http://minio:9000/' '{{ "https://" if (tls_enabled | default(true)) else "http://" }}$host/file-store/';
     client_max_body_size 25M;
+    limit_req zone=digit_filestore_upload burst=20 nodelay;
+    limit_req_status 429;
     proxy_buffering off;
   }
 
