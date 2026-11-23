@@ -11,6 +11,7 @@ import SignUpV2 from "./pages/employee/SignUp-v2";
 import LoginV2 from "./pages/employee/Login-v2";
 import UnifiedLogin from "./pages/common/Login/index";
 import SessionCollisionNotice from "./components/SessionCollisionNotice";
+import IdleLogout from "./components/IdleLogout";
 
 // The unified `/user/login` + `/user/sign-up` entries (and the contextPath
 // mount below) are the CITIZEN single-sign-on surface. Resolve the citizen
@@ -104,6 +105,7 @@ export const DigitApp = ({ stateCode, modules, appTenants, logoUrl, logoUrlWhite
   return (
     <React.Fragment>
     <SessionCollisionNotice />
+    <IdleLogout />
     <Switch>
       {PGRLandingPage && (
         <Route exact path={`/${window?.contextPath}/landing`}>

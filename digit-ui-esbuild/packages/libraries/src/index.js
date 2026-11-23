@@ -96,3 +96,8 @@ export * from "./constants/mobileValidation";
 export { initLibraries, Enums, Hooks, subFormRegistry, Request, MdmsService, getAuthAdapter, initAuthAdapter, AuthAdapter };
 // Cross-tab session-collision detection — see services/atoms/Utils/sessionCollision.js
 export { detectSessionCollision, onSessionCollision } from "./services/atoms/Utils/sessionCollision";
+// Employee login is tab-only, plus idle logout (#224) — see employeeSession.js / idleTimer.js
+export { saveEmployeeLogin, purgeLegacyEmployeeAuth, bootUserFromLocal } from "./services/atoms/Utils/employeeSession";
+export { startIdleTimer, idleTimeoutMs, storageActivityStore, markEmployeeActive } from "./services/atoms/Utils/idleTimer";
+export { redirectToLogin } from "./services/atoms/Utils/authSession";
+export { isKeycloakAuth } from "./services/auth/authSurface";

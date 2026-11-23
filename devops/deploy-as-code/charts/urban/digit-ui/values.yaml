@@ -65,6 +65,8 @@ globalConfigs:
   mapCenter: {"lat": 20.5937, "lng": 78.9629}
   mapTenant: "pg"
   employeeModuleDenylist: ["IM"]
+  # #224: employees are logged out after this many idle minutes (0 = off).
+  employeeIdleTimeoutMinutes: 15
   loginTenantAllowlist: []
   # Employee inbox default list includes Resolved/Rejected (#46); false hides them until filtered (#144).
   pgrInboxIncludeResolvedRejected: true
