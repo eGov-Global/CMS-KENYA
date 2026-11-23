@@ -68,6 +68,8 @@ var globalConfigs = (function () {
   // the SPA falls back to its baked-in default.
   var mapTenant = {{ (city_tenant | default(ui_state_tenant_id | default(''))) | to_json }};
   var employeeModuleDenylist = {{ employee_module_denylist | to_json }};
+  // #224: idle logout for employees, in minutes (0 = off). Default 15.
+  var employeeIdleTimeoutMinutes = {{ (employee_idle_timeout_minutes | default(15)) | to_json }};
   var loginTenantAllowlist = {{ login_tenant_allowlist | to_json }};
   var coreMobileConfigs = {{ core_mobile_configs | to_json }};
   // `postalCodePattern` is the ONLY postal-code knob (CCRS#722): a regex
@@ -125,6 +127,7 @@ var globalConfigs = (function () {
     if (key === "TESTING_TENANT_ID") return testingTenantId;
 {% endif %}
     if (key === "EMPLOYEE_MODULE_DENYLIST") return employeeModuleDenylist;
+    if (key === "EMPLOYEE_IDLE_TIMEOUT_MINUTES") return employeeIdleTimeoutMinutes;
     if (key === "LOGIN_TENANT_ALLOWLIST") return loginTenantAllowlist;
     if (key === "STATE_LEVEL_TENANT_ID") {
       return stateTenantId;

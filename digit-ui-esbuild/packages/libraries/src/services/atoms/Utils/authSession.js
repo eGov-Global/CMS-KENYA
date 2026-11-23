@@ -31,7 +31,17 @@ export const loginPathFor = (pathname = window.location.pathname) => {
 // reopen drafts (Digit.reopen.*) — must survive, both so the user can continue
 // where they stopped after re-login and so a slow connection is not forced to
 // re-download hundreds of KB of caches it already had.
-const AUTH_SESSION_KEYS = ["Digit.User", "Digit.UserTokenExpiryAt"];
+// #224: the employee login (token + identity) also lives in this tab now — see
+// employeeSession.js — so a dead session removes those copies too.
+const AUTH_SESSION_KEYS = [
+  "Digit.User",
+  "Digit.UserTokenExpiryAt",
+  "Employee.token",
+  "Employee.refresh-token",
+  "Employee.user-info",
+  "token",
+  "user-info",
+];
 const AUTH_LOCAL_KEYS = [
   "Digit.User",
   "Citizen.token",
