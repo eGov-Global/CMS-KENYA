@@ -6,11 +6,10 @@
  * Builder-local convenience list (localStorage) — the filestore has no
  * listing API.
  *
- * NOTE (honest scope): the P1 runtime passes through URL-valued
- * media.imageId and ignores bare filestore ids (signed-URL delivery is the
- * P2 media phase). Until P2 lands, an uploaded asset previews in the Builder
- * but the PUBLISHED page renders its built-in visual for that slot; a pasted
- * absolute URL renders everywhere today. The Media tab states this.
+ * An upload is stored by its public path (/file-store/.../pgr-landing/...),
+ * which the published page shows before login. The rest of the file store
+ * needs a login (VAPT #223), so a bare file-store id saved before that change
+ * no longer renders on the public page; re-select the picture to fix it.
  */
 import { digitClient } from '@/providers/bridge';
 
@@ -20,9 +19,35 @@ const MAX_RECENTS = 24;
 export interface MediaAsset {
   fileStoreId?: string;
   url?: string;       // resolved (signed) or user-pasted URL
+  publicPath?: string; // anonymous path of an upload (see publicLandingPath)
   name: string;
   uploadedAt: number;
 }
+
+/** Folder (file-store module) landing pictures are uploaded to. It is the only
+ *  part of the bucket anyone can read without logging in (minio-init policy,
+ *  VAPT #223); every other file needs a login and a signed link. */
+export const LANDING_MODULE = 'pgr-landing';
+
+/** The stable, anonymous path of an uploaded landing picture, taken from the
+ *  signed link the file store returns: the host and the signature are
+ *  dropped, leaving /file-store/<bucket>/<tenant>/pgr-landing/<...>. Returns
+ *  undefined for anything outside that public folder, so a private file can
+ *  never be stored as if it were public. */
+export function publicLandingPath(url?: string): string | undefined {
+  if (!url) return undefined;
+  try {
+    const { pathname } = new URL(url, 'http://localhost');
+    return new RegExp(`^/file-store/[^/]+/[^/]+/${LANDING_MODULE}/[^?#]+$`).test(pathname) ? pathname : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/** What the page config stores for a picture: the public path when there is
+ *  one (renders before login), else the pasted URL or the file-store id. */
+export const storedImageValue = (a: MediaAsset): string | undefined =>
+  a.publicPath ?? publicLandingPath(a.url) ?? a.fileStoreId ?? a.url;
 
 export function getRecents(): MediaAsset[] {
   try {
@@ -47,13 +72,13 @@ export async function uploadImage(tenantId: string, file: File): Promise<MediaAs
   const buf = new Uint8Array(await file.arrayBuffer());
   const fileStoreId = await digitClient.filestoreUpload(
     tenantId,
-    'pgr-landing',
+    LANDING_MODULE,
     file.name,
     buf,
     file.type || 'image/*',
   );
   const url = await resolveUrl(tenantId, fileStoreId);
-  const asset: MediaAsset = { fileStoreId, url, name: file.name, uploadedAt: Date.now() };
+  const asset: MediaAsset = { fileStoreId, url, publicPath: publicLandingPath(url), name: file.name, uploadedAt: Date.now() };
   addRecent(asset);
   return asset;
 }

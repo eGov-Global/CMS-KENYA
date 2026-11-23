@@ -16,7 +16,7 @@ import {
 import { toast } from '@/hooks/use-toast';
 import { useApp } from '../../App';
 import { useBuilder } from './builderStore';
-import { getRecents, isUrl, uploadImage, type MediaAsset } from './media';
+import { getRecents, isUrl, publicLandingPath, storedImageValue, uploadImage, type MediaAsset } from './media';
 import type { BuilderFieldDef } from './sectionEditorRegistry';
 import type { LandingSectionData } from './types';
 
@@ -30,12 +30,17 @@ export function MediaLibraryDialog({ def, code, draft }: { def: BuilderFieldDef;
   const fileRef = useRef<HTMLInputElement>(null);
 
   const current = draft.media?.imageId;
+  // A bare file-store id (saved before VAPT #223) needs a login to read, so the
+  // public page can't show it; the dialog says so.
+  const legacyId = current && !isUrl(current) ? current : undefined;
   const setImage = (imageId?: string) =>
     dispatch({ type: 'patchSection', code, patch: { media: { ...(draft.media ?? {}), imageId } } });
 
   const pick = (asset: MediaAsset) => {
-    // Store URL when we have one (renders everywhere today); else the id.
-    setImage(asset.url && isUrl(asset.url) ? asset.url : asset.fileStoreId);
+    // An upload is stored by its public path (shown before login, never
+    // expires); the signed URL the upload returns expires within the hour
+    // (VAPT #223). A pasted address is stored as given.
+    setImage(storedImageValue(asset));
     setOpen(false);
   };
 
@@ -68,6 +73,11 @@ export function MediaLibraryDialog({ def, code, draft }: { def: BuilderFieldDef;
         <span className="min-w-0 flex-1 truncate text-xs text-muted-foreground" title={current}>
           {current ?? 'None'}
         </span>
+        {legacyId && (
+          <span className="text-[10px] text-amber-600" title="Saved before uploads moved to the public folder; visitors who are not logged in can't see it.">
+            Re-select to publish
+          </span>
+        )}
         <Button variant="outline" size="sm" className="h-7 px-2 text-xs" onClick={() => setOpen(true)}>Change</Button>
         {current && (
           <Button variant="ghost" size="icon" className="h-7 w-7" aria-label="Remove image" onClick={() => setImage(undefined)}>
@@ -119,8 +129,8 @@ export function MediaLibraryDialog({ def, code, draft }: { def: BuilderFieldDef;
                       className="group overflow-hidden rounded-md border border-border hover:border-primary"
                       title={a.name}
                     >
-                      {a.url ? (
-                        <img src={a.url} alt={a.name} className="h-16 w-full object-cover" />
+                      {a.publicPath ?? publicLandingPath(a.url) ?? a.url ? (
+                        <img src={a.publicPath ?? publicLandingPath(a.url) ?? a.url} alt={a.name} className="h-16 w-full object-cover" />
                       ) : (
                         <span className="flex h-16 items-center justify-center bg-muted"><ImageIcon className="h-4 w-4" /></span>
                       )}
@@ -132,8 +142,7 @@ export function MediaLibraryDialog({ def, code, draft }: { def: BuilderFieldDef;
             </div>
 
             <p className="m-0 text-[10px] text-muted-foreground">
-              Pasted URLs render on the published page today. Uploaded files preview in the Builder;
-              published-page delivery for uploads arrives with the media phase (P2).
+              Uploaded pictures and pasted URLs both show on the published page.
             </p>
           </div>
         </DialogContent>
