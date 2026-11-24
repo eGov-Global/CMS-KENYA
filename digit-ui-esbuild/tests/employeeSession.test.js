@@ -1,8 +1,9 @@
 // #224 (VAPT "Insecure Session Management"): an employee's login lives in THIS
 // browser tab only. Closing the tab or the browser must end it, and no token or
 // personal detail may be left in localStorage, which every tab shares and which
-// survives a browser restart. A citizen's login is out of scope and must be left
-// exactly as it was.
+// survives a browser restart. A citizen's login follows the same rule
+// (citizenSession.test.js); the employee purge itself still leaves a citizen's
+// keys to the citizen purge.
 "use strict";
 const test = require("node:test");
 const assert = require("node:assert");
@@ -126,12 +127,12 @@ test("new tab: an employee is never restored from localStorage (closing the tab 
   assert.strictEqual(boot.user.info, null);
 });
 
-test("new tab: a citizen is still restored from localStorage, as before", () => {
+test("new tab: a citizen is not restored from localStorage either", () => {
   const local = store({ token: "cit", "Citizen.token": "cit", "Citizen.user-info": JSON.stringify(CITIZEN) });
   const boot = bootUserFromLocal(local);
   assert.strictEqual(boot.userType, "citizen");
-  assert.strictEqual(boot.user.access_token, "cit");
-  assert.strictEqual(boot.user.info.uuid, "c-1");
+  assert.strictEqual(boot.user.access_token, null);
+  assert.strictEqual(boot.user.info, null);
 });
 
 test("new tab: a fresh browser keeps the old empty-session shape", () => {

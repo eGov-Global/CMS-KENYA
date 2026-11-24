@@ -14,7 +14,7 @@
  * Idle cases use Playwright's clock, so they run in seconds.
  */
 import { test, expect, type Page } from '@playwright/test';
-import { getDigitToken, injectEmployeeSession, loginViaApi } from '../../utils/auth';
+import { getDigitToken, injectCitizenSession, injectEmployeeSession, loginViaApi } from '../../utils/auth';
 
 const BASE_URL = process.env.BASE_URL || 'http://localhost:18080';
 const TENANT = process.env.DIGIT_TENANT || 'uitest.citya';
@@ -131,15 +131,21 @@ test.describe('#224 employee session is tab-only', () => {
 });
 
 test.describe('#224 idle logout', () => {
-  test('15 minutes with no activity logs the employee out, and keeps a citizen session and drafts', async ({ page }) => {
+  test('15 minutes with no activity logs the employee out, and keeps a citizen in another tab and drafts', async ({ context, page }) => {
     test.setTimeout(120_000);
     await page.clock.install();
-    // A citizen signed in on the same browser + a saved complaint draft: idle
-    // logout must end ONLY the employee's tab login (no localStorage.clear()).
+    // A citizen signed in on the same browser, in another tab (a citizen's login
+    // is tab-only too), + a saved complaint draft: idle logout must end ONLY the
+    // employee's tab login (no localStorage.clear()).
+    const citizenTab = await context.newPage();
+    await citizenTab.goto(`${BASE_URL}/digit-ui/citizen/select-language`, { waitUntil: 'domcontentloaded' });
+    await injectCitizenSession(citizenTab, {
+      token: 'citizen-224',
+      userInfo: { uuid: 'citizen-224', name: 'Citizen 224', type: 'CITIZEN', tenantId: TENANT },
+      tenant: TENANT,
+    });
     await page.goto(`${BASE_URL}/digit-ui/employee/user/login`, { waitUntil: 'domcontentloaded' });
     await page.evaluate(() => {
-      localStorage.setItem('Citizen.token', 'citizen-224');
-      localStorage.setItem('token', 'citizen-224');
       localStorage.setItem('Digit.PGR_CREATE_CITIZEN_DRAFT', JSON.stringify({ value: { note: 'draft-224' } }));
     });
     const { access_token: employeeToken } = await loginViaApi(page, CFG);
@@ -151,17 +157,13 @@ test.describe('#224 idle logout', () => {
     await expectSentToSignIn(page);
     const s = await storage(page);
     expect(s.session['Employee.token']).toBeNull();
-    // After the redirect the app rebuilds its session record — here from the
-    // citizen still signed in on this browser. It must no longer hold the
-    // EMPLOYEE's token.
+    // After the redirect the app writes a blank session record; it must no
+    // longer hold the EMPLOYEE's token.
     const sessionToken = s.digitUser ? JSON.parse(s.digitUser).value?.access_token ?? null : null;
     expect(sessionToken).not.toBe(employeeToken);
-    const kept = await page.evaluate(() => ({
-      citizen: localStorage.getItem('Citizen.token'),
-      draft: localStorage.getItem('Digit.PGR_CREATE_CITIZEN_DRAFT'),
-    }));
-    expect(kept.citizen).toBe('citizen-224');
-    expect(kept.draft).toContain('draft-224');
+    const draft = await page.evaluate(() => localStorage.getItem('Digit.PGR_CREATE_CITIZEN_DRAFT'));
+    expect(draft).toContain('draft-224');
+    expect(await citizenTab.evaluate(() => sessionStorage.getItem('Citizen.token'))).toBe('citizen-224');
   });
 
   test('activity within the limit keeps the session', async ({ page }) => {
