@@ -50,6 +50,24 @@ test("no app code reads Employee.token / Employee.user-info from localStorage ex
   assert.deepStrictEqual(offenders, []);
 });
 
+// The same for a citizen's login (tab-only too): Citizen.token, Citizen.user-info
+// and the shared user-info alias are read from the tab first.
+const CITIZEN_LOCAL_READ = /localStorage\??\.getItem\(\s*["'`](Citizen\.(token|user-info)|user-info)["'`]\s*\)/;
+
+test("no app code reads Citizen.token / Citizen.user-info / user-info from localStorage except as a fallback after the tab", () => {
+  const offenders = [];
+  for (const dir of ["packages", "products", "src"]) {
+    for (const file of walk(path.join(ROOT, dir))) {
+      const rel = path.relative(ROOT, file);
+      if (ALLOWED.includes(rel)) continue;
+      fs.readFileSync(file, "utf8").split("\n").forEach((line, i) => {
+        if (CITIZEN_LOCAL_READ.test(line) && !isTabFirst(line)) offenders.push(`${rel}:${i + 1}`);
+      });
+    }
+  }
+  assert.deepStrictEqual(offenders, []);
+});
+
 test("dashboard sidebar, catalog and locale runtime read the employee from the tab", () => {
   for (const f of ["products/dashboard/src/components/Sidebar.jsx", "products/dashboard/src/hooks/useCatalog.js", "products/dashboard/src/i18n/localeRuntime.js"]) {
     assert.match(read(f), /sessionStorage\??\.getItem\(\s*["']Employee\.(user-info|token)["']/, f);
@@ -141,7 +159,7 @@ test("redirect-to-login clean-up removes this tab's employee keys", () => {
   const s = read("packages/libraries/src/services/atoms/Utils/authSession.js");
   const list = s.match(/const AUTH_SESSION_KEYS = \[([^\]]*)\]/);
   assert.ok(list, "AUTH_SESSION_KEYS list exists");
-  for (const k of ["Employee.token", "Employee.user-info", "Employee.refresh-token", "token", "user-info"]) assert.ok(list[1].includes(`"${k}"`), k);
+  for (const k of ["Employee.token", "Employee.user-info", "Employee.refresh-token", "token", "user-info", "Citizen.token", "Citizen.user-info", "Digit.citizen.userRequestObject"]) assert.ok(list[1].includes(`"${k}"`), k);
 });
 
 /* ---------------- server: token valid 8 hours, not 7 days ---------------- */

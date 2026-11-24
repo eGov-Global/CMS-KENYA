@@ -41,6 +41,11 @@ const AUTH_SESSION_KEYS = [
   "Employee.user-info",
   "token",
   "user-info",
+  "Citizen.token",
+  "Citizen.user-info",
+  // The full login response the login page keeps for the city switcher and
+  // side menu; it holds the tokens too.
+  "Digit.citizen.userRequestObject",
 ];
 const AUTH_LOCAL_KEYS = [
   "Digit.User",
