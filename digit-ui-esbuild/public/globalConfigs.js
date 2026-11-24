@@ -71,6 +71,8 @@ var globalConfigs = (function () {
   // #224: an employee with no mouse/keyboard/touch/scroll activity for this many
   // minutes is logged out. 0 turns it off. Missing => 15 (IdleLogout default).
   var employeeIdleTimeoutMinutes = 15;
+  // How many seconds before the idle sign-out the employee is warned. 0 = no warning.
+  var employeeIdleWarningSeconds = 60;
 
   var getConfig = function (key) {
     if (key === "STATE_LEVEL_TENANT_ID") return stateTenantId;
@@ -101,6 +103,7 @@ var globalConfigs = (function () {
     else if (key === "ANALYTICS_SCRIPT_HOSTS") return analyticsScriptHosts;
     else if (key === "ANALYTICS_CUSTOM_ENABLED") return analyticsCustomEnabled;
     else if (key === "EMPLOYEE_IDLE_TIMEOUT_MINUTES") return employeeIdleTimeoutMinutes;
+    else if (key === "EMPLOYEE_IDLE_WARNING_SECONDS") return employeeIdleWarningSeconds;
   };
 
   return {

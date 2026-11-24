@@ -4,6 +4,7 @@ import { Storage } from "../../atoms/Utils/Storage";
 import { getAuthAdapter } from "../../auth/index";
 import { isKeycloakAuth } from "../../auth/authSurface";
 import { rememberSessionExpiry, isSessionExpired } from "../../atoms/Utils/authSession";
+import { announceEmployeeSignOut } from "../../atoms/Utils/employeeSignOutBroadcast";
 
 export const UserService = {
   authenticate: async (details) => {
@@ -98,6 +99,10 @@ export const UserService = {
     const logoutRedirectURL =
       window?.globalConfigs?.getConfig("LOGOUT_REDIRECT_URL") ||
       `/${window?.contextPath}/${isEmployee ? "employee/user/language-selection" : "citizen/login"}`;
+    // Each tab holds its own employee login (#224): tell the employee's other
+    // tabs to sign out too. Before localStorage.clear(), which would remove the
+    // announcement before the other tabs see it.
+    if (String(UserService.getUser()?.info?.type || "").toUpperCase() === "EMPLOYEE") announceEmployeeSignOut();
     try {
       await UserService.logoutUser();
     } catch (e) {

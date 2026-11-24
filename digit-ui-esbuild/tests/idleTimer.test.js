@@ -205,8 +205,15 @@ test("IdleLogout: employee pages only, DIGIT login only, shared clock, and a tab
   assert.match(c, /isKeycloakAuth\(\)/, "Keycloak mode is skipped");
   assert.match(c, /storageActivityStore\(window\.localStorage\)/, "uses the shared last-activity clock");
   assert.match(c, /Digit\.UserService\.logoutUser\(\)/, "ends the login on the server");
-  assert.match(c, /redirectToLogin\(\)/, "clears only this tab's credentials");
-  assert.doesNotMatch(c, /UserService\.logout\(\)/, "never the full logout, which runs localStorage.clear()");
+  // The automatic paths (idle, signed out in another tab) end only this tab's
+  // login; only the user's own "Sign out now" click may run the full logout,
+  // exactly as the Logout button does.
+  const automatic = (c.match(/const endThisLogin = async \(reason\) => \{([\s\S]*?)\n\};/) || [])[1];
+  assert.ok(automatic, "the automatic sign-out helper exists");
+  assert.match(automatic, /redirectToLogin\(reason\)/, "clears only this tab's credentials");
+  assert.doesNotMatch(automatic, /UserService\.logout\(\)/, "never the full logout, which runs localStorage.clear()");
+  assert.match(c, /onIdle: \(\) => endThisLogin\(/, "idle uses the tab-only sign-out");
+  assert.match(c, /onEmployeeSignOut\(\(\) => endThisLogin\(/, "a logout in another tab uses the tab-only sign-out");
 });
 
 test("the idle limit is a deploy setting in globalConfigs (bundled, ansible and Helm)", () => {

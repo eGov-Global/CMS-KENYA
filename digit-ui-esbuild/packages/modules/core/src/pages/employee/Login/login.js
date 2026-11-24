@@ -20,7 +20,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import PropTypes from "prop-types";
 import { useHistory } from "react-router-dom";
-import { saveEmployeeLogin } from "@egovernments/digit-ui-libraries";
+import { saveEmployeeLogin, readLoginRedirect, SIGN_OUT_REASONS } from "@egovernments/digit-ui-libraries";
 import { Loader, Toast } from "@egovernments/digit-ui-components";
 import {
   Button as V2Button,
@@ -282,12 +282,10 @@ const Login = ({ config: propsConfig, t, isDisabled, loginOTPBased, appTenants }
     if (user?.info?.roles?.length > 0) user.info.roles = filteredRoles;
     Digit.UserService.setUser(user);
     setEmployeeDetail(user?.info, user?.access_token);
-    let redirectPath = `/${window?.contextPath}/employee`;
-    if (window?.location?.href?.includes("from=")) {
-      redirectPath =
-        decodeURIComponent(window?.location?.href?.split("from=")?.[1]) ||
-        `/${window?.contextPath}/employee`;
-    }
+    // Back to the page the employee was on before signing in (idle sign-out,
+    // expired session, deep link) — only a path inside the employee app.
+    const { from } = readLoginRedirect(window?.location?.search, window?.contextPath);
+    let redirectPath = from || `/${window?.contextPath}/employee`;
     if (
       user?.info?.roles?.length > 0 &&
       user.info.roles.every((e) => e.code === "NATADMIN")
@@ -393,6 +391,15 @@ const Login = ({ config: propsConfig, t, isDisabled, loginOTPBased, appTenants }
   const headerKey = propsConfig?.texts?.header || "CORE_COMMON_LOGIN";
   const submitKey = propsConfig?.texts?.submitButtonLabel || "CORE_COMMON_LOGIN";
 
+  // Why the employee is here, when the app sent them (#224 follow-up): without
+  // it an idle sign-out looks like a crash or a lost session.
+  const { reason: signOutReason } = readLoginRedirect(window?.location?.search, window?.contextPath);
+  const signOutNotice = {
+    [SIGN_OUT_REASONS.IDLE]: tr("CORE_SIGNED_OUT_IDLE", "You were signed out because you had not used CMS for a while. Sign in again to continue."),
+    [SIGN_OUT_REASONS.EXPIRED]: tr("CORE_SIGNED_OUT_EXPIRED", "Your session has ended. Sign in again to continue."),
+    [SIGN_OUT_REASONS.OTHER_TAB]: tr("CORE_SIGNED_OUT_OTHER_TAB", "You signed out in another tab. Sign in again to continue."),
+  }[signOutReason];
+
   return (
     <V2LoginShell withCarousel={!!propsConfig?.bannerImages} bannerImages={propsConfig?.bannerImages}>
       <V2Card
@@ -448,6 +455,24 @@ const Login = ({ config: propsConfig, t, isDisabled, loginOTPBased, appTenants }
             {tr(headerKey, "Login")}
           </h1>
         </header>
+
+        {signOutNotice ? (
+          <div
+            role="status"
+            className="v2-signed-out-notice"
+            style={{
+              margin: 0,
+              padding: "10px 12px",
+              borderLeft: "4px solid var(--color-digitv2-alert-info, #3498DB)",
+              background: "var(--color-grey-light, #FAFAFA)",
+              color: "var(--color-text-primary, #0B0C0C)",
+              fontSize: "0.875rem",
+              lineHeight: 1.5,
+            }}
+          >
+            {signOutNotice}
+          </div>
+        ) : null}
 
         <form
           onSubmit={loginOTPBased ? onLoginOtp : onLoginPassword}

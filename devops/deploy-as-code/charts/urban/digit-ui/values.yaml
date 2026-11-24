@@ -67,6 +67,8 @@ globalConfigs:
   employeeModuleDenylist: ["IM"]
   # #224: employees are logged out after this many idle minutes (0 = off).
   employeeIdleTimeoutMinutes: 15
+  # Seconds of warning before the idle sign-out (0 = no warning).
+  employeeIdleWarningSeconds: 60
   loginTenantAllowlist: []
   coreMobileConfigs: {"countryCode": "+91", "mobileNumberRegex": "^[6-9][0-9]{9}$"}
   corePostalConfigs: {}

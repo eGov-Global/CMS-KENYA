@@ -55,31 +55,69 @@ export const storageActivityStore = (storage) => ({
 /** Records "the employee is active now" — called at login so a new session never starts out stale. */
 export const markEmployeeActive = (storage, now = Date.now()) => storageActivityStore(storage).write(now);
 
+export const DEFAULT_EMPLOYEE_IDLE_WARNING_SECONDS = 60;
+
+/**
+ * How long before the idle sign-out the employee is warned. Seconds from config →
+ * milliseconds. Missing/invalid → default; 0 or less → no warning. Always shorter
+ * than the idle limit itself, so a warning can never appear the moment a page loads.
+ */
+export const idleWarningMs = (configuredSeconds, timeoutMs) => {
+  if (!timeoutMs || timeoutMs <= 0) return 0;
+  let seconds = DEFAULT_EMPLOYEE_IDLE_WARNING_SECONDS;
+  if (configuredSeconds != null && configuredSeconds !== "") {
+    const n = Number(configuredSeconds);
+    if (Number.isFinite(n)) seconds = n;
+  }
+  if (seconds <= 0) return 0;
+  return Math.min(Math.round(seconds * 1000), Math.floor(timeoutMs / 2));
+};
+
 /**
  * Starts the countdown. Calls onIdle once, then stops itself. If the shared
  * last activity is already older than the limit when it starts (restored tab),
  * onIdle fires immediately.
- * @returns {() => void} stop: removes every listener and the interval.
+ *
+ * With warnBeforeMs and onWarn, onWarn(signOutAt) is called once when the
+ * sign-out is that close, and onActive() when the sign-out moves away again.
+ * While the warning is up, activity in THIS tab no longer counts by itself:
+ * only stop.keepAlive() (the "Stay signed in" button) or activity in another tab
+ * does. Otherwise reaching for the dialog's "Sign out now" button would count
+ * as activity and close the dialog under the pointer. The clock is checked every
+ * second during the warning, so the sign-out happens on time.
+ * @returns {() => void} stop: removes every listener and interval. Carries
+ *   stop.keepAlive(), which counts as activity now, also in the other tabs.
  */
 export const startIdleTimer = ({
   timeoutMs,
   onIdle,
+  warnBeforeMs = 0,
+  onWarn = null,
+  onActive = null,
   target = typeof window !== "undefined" ? window : null,
   doc = typeof document !== "undefined" ? document : null,
   now = () => Date.now(),
   setInterval: setIntervalFn = (fn, ms) => setInterval(fn, ms),
   clearInterval: clearIntervalFn = (id) => clearInterval(id),
   checkEveryMs = 15 * 1000,
+  warningCheckEveryMs = 1000,
   shared = null,
   writeEveryMs = 5 * 1000,
 }) => {
-  if (!timeoutMs || timeoutMs <= 0 || !target) return () => {};
+  if (!timeoutMs || timeoutMs <= 0 || !target) {
+    const noop = () => {};
+    noop.keepAlive = () => {};
+    return noop;
+  }
 
   const sharedRead = () => (shared ? shared.read() : null);
   let last = sharedRead() ?? now();
   let lastWritten = 0;
   let done = false;
   let intervalId = null;
+  let warning = false;
+  let warningIntervalId = null;
+  const warns = warnBeforeMs > 0 && typeof onWarn === "function";
 
   const latestActivity = () => Math.max(last, sharedRead() || 0);
   const expired = () => now() - latestActivity() >= timeoutMs;
@@ -92,12 +130,18 @@ export const startIdleTimer = ({
     }
   };
 
+  const stopWarningChecks = () => {
+    if (warningIntervalId != null) clearIntervalFn(warningIntervalId);
+    warningIntervalId = null;
+  };
+
   const stop = () => {
     ACTIVITY_EVENTS.forEach((e) => target.removeEventListener(e, onActivity));
     RETURN_EVENTS.forEach((e) => target.removeEventListener(e, check));
     if (doc) DOC_RETURN_EVENTS.forEach((e) => doc.removeEventListener(e, check));
     if (intervalId != null) clearIntervalFn(intervalId);
     intervalId = null;
+    stopWarningChecks();
   };
 
   const fire = () => {
@@ -107,15 +151,52 @@ export const startIdleTimer = ({
     onIdle();
   };
 
+  const updateWarning = () => {
+    if (!warns || done) return;
+    const signOutAt = latestActivity() + timeoutMs;
+    const close = signOutAt - now() <= warnBeforeMs;
+    if (close && !warning) {
+      warning = true;
+      warningIntervalId = setIntervalFn(check, warningCheckEveryMs);
+      onWarn(signOutAt);
+    } else if (!close && warning) {
+      warning = false;
+      stopWarningChecks();
+      if (typeof onActive === "function") onActive();
+    }
+  };
+
   function check() {
-    if (!done && expired()) fire();
+    if (done) return;
+    if (expired()) fire();
+    else updateWarning();
   }
 
   function onActivity() {
     if (done) return;
-    if (expired()) fire();
-    else record(now());
+    if (expired()) {
+      fire();
+      return;
+    }
+    if (warning) return; // only keepAlive() or another tab's activity ends the warning
+    record(now());
   }
+
+  const keepAlive = () => {
+    if (done) return;
+    if (expired()) {
+      fire();
+      return;
+    }
+    last = now();
+    if (shared) {
+      // Written at once (not throttled) so the warning closes in the other tabs too.
+      shared.write(last);
+      lastWritten = last;
+    }
+    updateWarning();
+  };
+  stop.keepAlive = keepAlive;
 
   ACTIVITY_EVENTS.forEach((e) => target.addEventListener(e, onActivity, { passive: true }));
   RETURN_EVENTS.forEach((e) => target.addEventListener(e, check));
@@ -123,9 +204,13 @@ export const startIdleTimer = ({
   intervalId = setIntervalFn(check, Math.min(checkEveryMs, timeoutMs));
 
   // A restored tab may already be past the limit; otherwise publish "active now"
-  // if nothing was recorded yet (a session from before this build).
+  // if nothing was recorded yet (a session from before this build). A tab
+  // restored inside the warning window warns straight away.
   if (expired()) fire();
-  else if (shared && sharedRead() == null) record(now());
+  else {
+    if (shared && sharedRead() == null) record(now());
+    updateWarning();
+  }
 
   return stop;
 };

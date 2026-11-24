@@ -98,6 +98,9 @@ export { initLibraries, Enums, Hooks, subFormRegistry, Request, MdmsService, get
 export { detectSessionCollision, onSessionCollision } from "./services/atoms/Utils/sessionCollision";
 // Employee login is tab-only, plus idle logout (#224) — see employeeSession.js / idleTimer.js
 export { saveEmployeeLogin, purgeLegacyEmployeeAuth, bootUserFromLocal } from "./services/atoms/Utils/employeeSession";
-export { startIdleTimer, idleTimeoutMs, storageActivityStore, markEmployeeActive } from "./services/atoms/Utils/idleTimer";
-export { redirectToLogin } from "./services/atoms/Utils/authSession";
+export { startIdleTimer, idleTimeoutMs, idleWarningMs, storageActivityStore, markEmployeeActive } from "./services/atoms/Utils/idleTimer";
+export { redirectToLogin, readLoginRedirect, SIGN_OUT_REASONS } from "./services/atoms/Utils/authSession";
+// Logout in one tab signs the employee out of every tab — see employeeSignOutBroadcast.js
+export { announceEmployeeSignOut, onEmployeeSignOut } from "./services/atoms/Utils/employeeSignOutBroadcast";
+export { openInNewTabSignedIn } from "./services/atoms/Utils/openInNewTab";
 export { isKeycloakAuth } from "./services/auth/authSurface";

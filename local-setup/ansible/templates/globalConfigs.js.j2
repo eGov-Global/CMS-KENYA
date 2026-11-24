@@ -70,6 +70,8 @@ var globalConfigs = (function () {
   var employeeModuleDenylist = {{ employee_module_denylist | to_json }};
   // #224: idle logout for employees, in minutes (0 = off). Default 15.
   var employeeIdleTimeoutMinutes = {{ (employee_idle_timeout_minutes | default(15)) | to_json }};
+  // Seconds of warning before the idle sign-out (0 = no warning). Default 60.
+  var employeeIdleWarningSeconds = {{ (employee_idle_warning_seconds | default(60)) | to_json }};
   var loginTenantAllowlist = {{ login_tenant_allowlist | to_json }};
   var coreMobileConfigs = {{ core_mobile_configs | to_json }};
   // `postalCodePattern` is the ONLY postal-code knob (CCRS#722): a regex
@@ -128,6 +130,7 @@ var globalConfigs = (function () {
 {% endif %}
     if (key === "EMPLOYEE_MODULE_DENYLIST") return employeeModuleDenylist;
     if (key === "EMPLOYEE_IDLE_TIMEOUT_MINUTES") return employeeIdleTimeoutMinutes;
+    if (key === "EMPLOYEE_IDLE_WARNING_SECONDS") return employeeIdleWarningSeconds;
     if (key === "LOGIN_TENANT_ALLOWLIST") return loginTenantAllowlist;
     if (key === "STATE_LEVEL_TENANT_ID") {
       return stateTenantId;
