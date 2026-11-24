@@ -13,7 +13,7 @@
  * Idle cases use Playwright's clock, as in session-224.spec.ts.
  */
 import { test, expect, type Page } from '@playwright/test';
-import { loginViaApi } from '../../utils/auth';
+import { getDigitToken, injectEmployeeSession, loginViaApi } from '../../utils/auth';
 
 const BASE_URL = process.env.BASE_URL || 'http://localhost:18080';
 const TENANT = process.env.DIGIT_TENANT || 'uitest.citya';
@@ -144,6 +144,30 @@ test.describe('#224 follow-up: several tabs', () => {
     await expectSentToSignIn(second);
     expect(second.url()).toContain('reason=signed-out-elsewhere');
     await expect(second.getByRole('status').filter({ hasText: 'signed out in another tab' })).toBeVisible({ timeout: 20_000 });
+  });
+
+  test('a DIFFERENT employee signed in in another tab stays signed in', async ({ context, page }) => {
+    test.setTimeout(150_000);
+    await loginViaApi(page, CFG);
+    await expectSignedIn(page);
+    // Tab B: a different employee (same browser, e.g. a shared desk). A real
+    // token, but a different identity, is enough for the tab to count as
+    // another employee's session.
+    const { access_token: token, UserRequest } = await getDigitToken(CFG);
+    const second = await context.newPage();
+    await second.goto(`${BASE_URL}/digit-ui/employee/user/login`, { waitUntil: 'domcontentloaded' });
+    await injectEmployeeSession(second, {
+      token,
+      userInfo: { ...(UserRequest || {}), uuid: 'another-employee-uuid', name: 'Other Employee' } as Record<string, unknown>,
+      tenant: TENANT,
+    });
+    await second.goto(`${BASE_URL}/digit-ui/employee`, { waitUntil: 'domcontentloaded' });
+    await expectSignedIn(second);
+
+    await page.evaluate(() => (window as unknown as { Digit: { UserService: { logout: () => void } } }).Digit.UserService.logout());
+    await expectSentToSignIn(page);
+    await second.waitForTimeout(5000);
+    expect(onSignInScreen(second.url()), `the other employee's tab must stay signed in, got ${second.url()}`).toBe(false);
   });
 
   test('"Open in new tab" in the inbox opens the complaint already signed in', async ({ context, page }) => {

@@ -170,11 +170,13 @@ const IdleLogout = () => {
     };
   }, [active, token]);
 
-  // Independent of the idle setting: a logout in another tab always ends this one.
+  // Independent of the idle setting: the same employee logging out in another
+  // tab ends this one too. A different employee's tab stays signed in.
+  const userId = user?.info?.uuid || null;
   useEffect(() => {
     if (!active) return undefined;
-    return onEmployeeSignOut(() => endThisLogin(SIGN_OUT_REASONS.OTHER_TAB));
-  }, [active, token]);
+    return onEmployeeSignOut(() => endThisLogin(SIGN_OUT_REASONS.OTHER_TAB), { userId });
+  }, [active, token, userId]);
 
   if (!active || !signOutAt) return null;
   return (

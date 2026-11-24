@@ -102,7 +102,8 @@ export const UserService = {
     // Each tab holds its own employee login (#224): tell the employee's other
     // tabs to sign out too. Before localStorage.clear(), which would remove the
     // announcement before the other tabs see it.
-    if (String(UserService.getUser()?.info?.type || "").toUpperCase() === "EMPLOYEE") announceEmployeeSignOut();
+    const signedIn = UserService.getUser()?.info;
+    if (String(signedIn?.type || "").toUpperCase() === "EMPLOYEE") announceEmployeeSignOut({ userId: signedIn?.uuid });
     try {
       await UserService.logoutUser();
     } catch (e) {
