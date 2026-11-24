@@ -103,12 +103,54 @@ export const isSessionExpired = () => {
   }
 };
 
+// ---- why the user is on the login page, and where they go back to ---------
+// The login page shows a one-line reason, and after signing in returns the user
+// to the page they were on. `reason` comes before `from` in the address: older
+// login code reads everything after "from=" as the return path.
+export const SIGN_OUT_REASONS = { IDLE: "idle", EXPIRED: "expired", OTHER_TAB: "signed-out-elsewhere" };
+const KNOWN_REASONS = Object.values(SIGN_OUT_REASONS);
+
+export const loginRedirectUrl = ({ loginPath, pathname = "", search = "", reason = null }) => {
+  const params = [];
+  if (reason && KNOWN_REASONS.includes(reason)) params.push(`reason=${encodeURIComponent(reason)}`);
+  params.push(`from=${encodeURIComponent(pathname + search)}`);
+  return `${loginPath}?${params.join("&")}`;
+};
+
+/**
+ * Reads `reason` and `from` from the login page's query string. `from` is kept
+ * only when it is a path inside this app's employee pages — never another site,
+ * a protocol-relative address, or the login page itself — so a crafted link
+ * cannot send a user somewhere else after they sign in.
+ */
+export const readLoginRedirect = (search, contextPath) => {
+  let params;
+  try {
+    params = new URLSearchParams(search || "");
+  } catch (e) {
+    return { from: null, reason: null };
+  }
+  const reason = KNOWN_REASONS.includes(params.get("reason")) ? params.get("reason") : null;
+  const raw = params.get("from");
+  const base = `/${contextPath}/employee`;
+  const isAppPath =
+    typeof raw === "string" &&
+    (raw === base || raw.startsWith(`${base}/`) || raw.startsWith(`${base}?`)) &&
+    !raw.includes("\\") &&
+    !raw.startsWith(`${base}/user/login`);
+  return { from: isAppPath ? raw : null, reason };
+};
+
 // One redirect per page lifetime: several requests failing together (a page
 // fires many in parallel) must not stack navigations.
-export const redirectToLogin = () => {
+export const redirectToLogin = (reason = SIGN_OUT_REASONS.EXPIRED) => {
   if (window.__digitAuthRedirectInFlight) return;
   window.__digitAuthRedirectInFlight = true;
   clearAuthSession();
-  const from = encodeURIComponent(window.location.pathname + window.location.search);
-  window.location.href = `${loginPathFor()}?from=${from}`;
+  window.location.href = loginRedirectUrl({
+    loginPath: loginPathFor(),
+    pathname: window.location.pathname,
+    search: window.location.search,
+    reason,
+  });
 };

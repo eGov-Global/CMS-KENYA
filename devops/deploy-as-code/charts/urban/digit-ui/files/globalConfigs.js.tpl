@@ -35,6 +35,7 @@ var globalConfigs = (function () {
   var employeeModuleDenylist = {{ .Values.globalConfigs.employeeModuleDenylist | toJson }};
   // #224: idle logout for employees, in minutes (0 = off). Default 15.
   var employeeIdleTimeoutMinutes = {{ if hasKey .Values.globalConfigs "employeeIdleTimeoutMinutes" }}{{ .Values.globalConfigs.employeeIdleTimeoutMinutes | toJson }}{{ else }}15{{ end }};
+  var employeeIdleWarningSeconds = {{ if hasKey .Values.globalConfigs "employeeIdleWarningSeconds" }}{{ .Values.globalConfigs.employeeIdleWarningSeconds | toJson }}{{ else }}60{{ end }};
   var loginTenantAllowlist = {{ .Values.globalConfigs.loginTenantAllowlist | toJson }};
   var coreMobileConfigs = {{ .Values.globalConfigs.coreMobileConfigs | toJson }};
   var corePostalConfigs = {{ .Values.globalConfigs.corePostalConfigs | toJson }};
@@ -72,6 +73,7 @@ var globalConfigs = (function () {
     else if (key === "MAP_TENANT") { return mapTenant; }
     else if (key === "EMPLOYEE_MODULE_DENYLIST") { return employeeModuleDenylist; }
     else if (key === "EMPLOYEE_IDLE_TIMEOUT_MINUTES") { return employeeIdleTimeoutMinutes; }
+    else if (key === "EMPLOYEE_IDLE_WARNING_SECONDS") { return employeeIdleWarningSeconds; }
     else if (key === "LOGIN_TENANT_ALLOWLIST") { return loginTenantAllowlist; }
     else if (key === "CORE_MOBILE_CONFIGS") { return coreMobileConfigs; }
     else if (key === "CORE_POSTAL_CONFIGS") { return corePostalConfigs; }

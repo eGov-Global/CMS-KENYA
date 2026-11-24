@@ -8,6 +8,8 @@ import { useLocation, useHistory, Link, useParams } from "react-router-dom";
 import React, { useState, Fragment } from "react";
 import { DeleteIconv2, DownloadIcon, FileIcon, Button, Card, CardSubHeader, EditIcon, ArrowForward, Modal, CloseSvg, Close, } from "@egovernments/digit-ui-react-components";
 import { Button as ButtonNew, Dropdown, Toast, Tag, Loader, FormComposerV2 } from "@egovernments/digit-ui-components";
+import { openInNewTabSignedIn } from "@egovernments/digit-ui-libraries";
+import { ExternalLink } from "lucide-react";
 
 //create functions here based on module name set in mdms(eg->SearchProjectConfig)
 //how to call these -> Digit?.Customizations?.[masterName]?.[moduleName]
@@ -1804,10 +1806,44 @@ export const UICustomizations = {
                   const creatorUuid = row?.businessObject?.service?.auditDetails?.createdBy;
                   const query =
                     creatorUuid && creatorUuid === currentUserUuid ? `?createdBy=${encodeURIComponent(currentUserUuid)}` : "";
+                  const detailsPath = `/${window.contextPath}/employee/pgr/complaint-details/${value}${query}`;
+                  // Since #224 a tab the employee opens by themselves starts signed out;
+                  // this button opens the complaint in a new tab that keeps the login.
+                  const newTabLabel = t("CS_OPEN_IN_NEW_TAB") === "CS_OPEN_IN_NEW_TAB" ? "Open in new tab" : t("CS_OPEN_IN_NEW_TAB");
                   return (
-                    <Link to={`/${window.contextPath}/employee/pgr/complaint-details/${value}${query}`}>
-                      {String(value ? (column.translate ? t(column.prefix ? `${column.prefix}${value}` : value) : value) : t("ES_COMMON_NA"))}
-                    </Link>
+                    <span style={{ display: "inline-flex", alignItems: "center", gap: "0.375rem" }}>
+                      <Link to={detailsPath}>
+                        {String(value ? (column.translate ? t(column.prefix ? `${column.prefix}${value}` : value) : value) : t("ES_COMMON_NA"))}
+                      </Link>
+                      {value ? (
+                        <button
+                          type="button"
+                          className="pgr-open-new-tab"
+                          aria-label={`${newTabLabel}: ${value}`}
+                          title={newTabLabel}
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            openInNewTabSignedIn(detailsPath);
+                          }}
+                          style={{
+                            display: "inline-flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            width: "1.75rem",
+                            height: "1.75rem",
+                            padding: 0,
+                            border: 0,
+                            borderRadius: "0.25rem",
+                            background: "transparent",
+                            color: "var(--color-primary-main, #c84c0e)",
+                            cursor: "pointer",
+                          }}
+                        >
+                          <ExternalLink aria-hidden="true" style={{ width: "1rem", height: "1rem" }} />
+                        </button>
+                      ) : null}
+                    </span>
                   );
                 })()}
               </span>
