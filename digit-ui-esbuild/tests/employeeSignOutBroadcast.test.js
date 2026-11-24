@@ -132,3 +132,39 @@ test("announcing never throws, even with blocked storage and no channel", () => 
   const broken = { postMessage: () => { throw new Error("closed"); } };
   assert.doesNotThrow(() => a.announceEmployeeSignOut({ channel: broken, local: null }));
 });
+
+test("only the same employee's tabs sign out; a different employee stays signed in", () => {
+  const bus = makeBus();
+  const a = tab(bus, "tab-a");
+  const sameUser = tab(bus, "tab-b");
+  const otherUser = tab(bus, "tab-c");
+  let same = 0;
+  let other = 0;
+  sameUser.onEmployeeSignOut(() => (same += 1), { userId: "uuid-alice", channel: bus.make(), target: makeWindow() });
+  otherUser.onEmployeeSignOut(() => (other += 1), { userId: "uuid-bob", channel: bus.make(), target: makeWindow() });
+  a.announceEmployeeSignOut({ userId: "uuid-alice", channel: bus.make(), local: memLocal(), now: 5 });
+  assert.strictEqual(same, 1, "the same employee's other tab signs out");
+  assert.strictEqual(other, 0, "a different employee's tab stays signed in");
+});
+
+test("the announcement carries a hash, never the user id itself", () => {
+  const a = tab(null, "tab-a");
+  const local = memLocal();
+  a.announceEmployeeSignOut({ userId: "5c0a1b2e-uuid-of-alice", channel: null, local, now: 9 });
+  const stored = local.getItem(a.SIGN_OUT_KEY);
+  assert.ok(!stored.includes("5c0a1b2e-uuid-of-alice"));
+  assert.ok(JSON.parse(stored).user, "a user hash is present");
+  assert.strictEqual(a.userKey("x"), a.userKey("x"), "stable");
+  assert.notStrictEqual(a.userKey("uuid-alice"), a.userKey("uuid-bob"));
+  assert.strictEqual(a.userKey(""), null);
+});
+
+test("an announcement without a user (older build) still signs out every employee tab", () => {
+  const bus = makeBus();
+  const a = tab(bus, "tab-a");
+  const b = tab(bus, "tab-b");
+  let heard = 0;
+  b.onEmployeeSignOut(() => (heard += 1), { userId: "uuid-bob", channel: bus.make(), target: makeWindow() });
+  a.announceEmployeeSignOut({ channel: bus.make(), local: memLocal(), now: 3 });
+  assert.strictEqual(heard, 1);
+});

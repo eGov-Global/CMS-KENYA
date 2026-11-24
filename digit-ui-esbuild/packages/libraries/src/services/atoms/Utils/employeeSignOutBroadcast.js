@@ -7,9 +7,14 @@
 //
 // Two channels, because neither alone reaches every browser and situation:
 // BroadcastChannel (immediate, not stored) and a storage event on a
-// localStorage key (holds only a timestamp, never a credential). A tab ignores
-// its own announcement, and a message that arrives on both channels is handled
-// once.
+// localStorage key (holds only a timestamp and a hash, never a credential). A
+// tab ignores its own announcement, and a message that arrives on both channels
+// is handled once.
+//
+// Only the SAME employee's tabs sign out. Each tab holds its own login, so a
+// different employee may be signed in in another tab of a shared browser; that
+// tab stays signed in. The announcement carries a one-way hash of the user's
+// id, not the id itself.
 
 export const SIGN_OUT_CHANNEL = "digit-employee-session";
 export const SIGN_OUT_KEY = "Digit.EmployeeSignedOut";
@@ -41,9 +46,26 @@ const defaultLocal = () => {
   }
 };
 
-/** Tells the employee's other tabs that they signed out here. Never throws. */
-export const announceEmployeeSignOut = ({ channel = defaultChannel(), local = defaultLocal(), now = Date.now() } = {}) => {
-  const message = { type: MESSAGE_TYPE, tab: thisTabId, at: now };
+/** A short one-way hash of a user id, so the announcement never carries the id itself. */
+export const userKey = (userId) => {
+  const s = String(userId || "");
+  if (!s) return null;
+  let h1 = 0x811c9dc5;
+  let h2 = 0x01000193;
+  for (let i = 0; i < s.length; i += 1) {
+    const c = s.charCodeAt(i);
+    h1 = Math.imul(h1 ^ c, 16777619) >>> 0;
+    h2 = Math.imul(h2 ^ c, 2246822519) >>> 0;
+  }
+  return `${h1.toString(36)}${h2.toString(36)}`;
+};
+
+/**
+ * Tells the employee's other tabs that they signed out here. `userId` is the
+ * employee's uuid; only tabs signed in as the same employee react. Never throws.
+ */
+export const announceEmployeeSignOut = ({ userId = null, channel = defaultChannel(), local = defaultLocal(), now = Date.now() } = {}) => {
+  const message = { type: MESSAGE_TYPE, tab: thisTabId, at: now, user: userKey(userId) };
   try {
     if (channel) {
       channel.postMessage(message);
@@ -60,16 +82,20 @@ export const announceEmployeeSignOut = ({ channel = defaultChannel(), local = de
 };
 
 /**
- * Calls onSignOut once per announcement from ANOTHER tab.
+ * Calls onSignOut once per announcement from ANOTHER tab of the same employee
+ * (`userId` is this tab's employee uuid). An announcement without a user — from
+ * an older build — signs out every employee tab, the safe default.
  * @returns {() => void} unsubscribe
  */
 export const onEmployeeSignOut = (
   onSignOut,
-  { channel = defaultChannel(), target = typeof window !== "undefined" ? window : null } = {}
+  { userId = null, channel = defaultChannel(), target = typeof window !== "undefined" ? window : null } = {}
 ) => {
   const handled = new Set();
+  const mine = userKey(userId);
   const handle = (message) => {
     if (!message || message.type !== MESSAGE_TYPE || message.tab === thisTabId) return;
+    if (message.user && mine && message.user !== mine) return; // a different employee: stays signed in
     const id = `${message.tab}:${message.at}`;
     if (handled.has(id)) return;
     handled.add(id);
