@@ -26,6 +26,7 @@ import {
 } from "@egovernments/digit-ui-components-v2";
 import { Phone } from "lucide-react";
 import Header from "../../../components/Header";
+import SignedOutNotice from "../../../components/SignedOutNotice";
 
 const SelectMobileNumber = ({
   t,
@@ -81,6 +82,7 @@ const SelectMobileNumber = ({
   return (
     <V2LoginShell>
       <SignInCard title={headerText} text={cardText}>
+        <SignedOutNotice />
         {/* Privacy notice at the point of collection (Bomet DPIA): the phone
             number is the first personal data the resident gives. */}
         <p
