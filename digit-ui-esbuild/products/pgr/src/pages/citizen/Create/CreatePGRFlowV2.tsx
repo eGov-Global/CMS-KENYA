@@ -40,6 +40,7 @@ import {
   Input,
   Select,
 } from "@egovernments/digit-ui-components-v2";
+import { takeResumeAfterSignIn } from "@egovernments/digit-ui-libraries";
 import { compareLabels, sortByLabel } from "../../../utils/sortByLabel";
 
 /**
@@ -1668,8 +1669,9 @@ const CreatePGRFlowV2: React.FC = () => {
     Digit.ULBService.getStateId() ||
     (baseTenant ? String(baseTenant).split(".")[0] : baseTenant);
 
-  // Seed from the session draft ONLY on a document reload (mid-flow F5) so the
-  // citizen doesn't lose their answers to an accidental refresh. Every other
+  // Seed from the session draft ONLY on a document reload (mid-flow F5), or on
+  // the way back from a sign-out the app forced here, so the citizen doesn't
+  // lose their answers to an accidental refresh or an idle timeout. Every other
   // entry ("File a Complaint", sidebar, deep link) starts completely clean and
   // deletes the stored draft. The draft is also stamped with the tenant + user
   // it was written under and DISCARDED on mismatch — a home-city switch or a
@@ -1678,6 +1680,12 @@ const CreatePGRFlowV2: React.FC = () => {
   const draftUserUuid = Digit.UserService.getUser()?.info?.uuid;
   const savedDraftRef = React.useRef<any>(null);
   if (savedDraftRef.current === null) {
+    // Coming back after the app signed the citizen out here (idle, expired
+    // session) counts like a reload: they did not choose to leave the form.
+    // The user + tenant stamp below still discards anyone else's draft.
+    if (!RESTORE_STEP_ARMED && takeResumeAfterSignIn(`/${window?.contextPath || "digit-ui"}/citizen/pgr/create-complaint`)) {
+      RESTORE_STEP_ARMED = true;
+    }
     if (RESTORE_STEP_ARMED) {
       const d = Digit.SessionStorage.get(CREATE_DRAFT_KEY) || {};
       savedDraftRef.current =
