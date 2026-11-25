@@ -12,6 +12,10 @@
 // Employee + citizen never collide (different key prefixes), and the same
 // person in two tabs never collides (same uuid).
 //
+// Since #224 a DIGIT employee login is tab-only (sessionStorage) and never
+// written to these shared keys, so employee collisions no longer occur and only
+// citizen (and Keycloak employee) sessions can trigger this.
+//
 // Detection only — nothing here logs anyone out or mutates a session. The
 // user decides what to do, so an in-progress complaint is never destroyed.
 

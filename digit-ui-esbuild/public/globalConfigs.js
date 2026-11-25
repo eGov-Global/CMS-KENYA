@@ -68,6 +68,10 @@ var globalConfigs = (function () {
   // this out is what masked every environment built from this repo.
   var pgrPiiMasking = false;
 
+  // #224: an employee with no mouse/keyboard/touch/scroll activity for this many
+  // minutes is logged out. 0 turns it off. Missing => 15 (IdleLogout default).
+  var employeeIdleTimeoutMinutes = 15;
+
   var getConfig = function (key) {
     if (key === "STATE_LEVEL_TENANT_ID") return stateTenantId;
     else if (key === "PGR_PII_MASKING") return pgrPiiMasking;
@@ -96,6 +100,7 @@ var globalConfigs = (function () {
     else if (key === "ANALYTICS_KILL_SWITCH") return analyticsKillSwitch;
     else if (key === "ANALYTICS_SCRIPT_HOSTS") return analyticsScriptHosts;
     else if (key === "ANALYTICS_CUSTOM_ENABLED") return analyticsCustomEnabled;
+    else if (key === "EMPLOYEE_IDLE_TIMEOUT_MINUTES") return employeeIdleTimeoutMinutes;
   };
 
   return {
