@@ -41,6 +41,8 @@ const AUTH_SESSION_KEYS = [
   "Employee.user-info",
   "token",
   "user-info",
+  "Citizen.token",
+  "Citizen.user-info",
   // The full login response the login page keeps for the city switcher and
   // side menu; it holds the tokens too.
   "Digit.citizen.userRequestObject",
@@ -106,12 +108,88 @@ export const isSessionExpired = () => {
   }
 };
 
+// ---- why the user is on the login page, and where they go back to ---------
+// The login page shows a one-line reason, and after signing in returns the user
+// to the page they were on. `reason` comes before `from` in the address: older
+// login code reads everything after "from=" as the return path.
+export const SIGN_OUT_REASONS = { IDLE: "idle", EXPIRED: "expired", OTHER_TAB: "signed-out-elsewhere" };
+const KNOWN_REASONS = Object.values(SIGN_OUT_REASONS);
+
+export const loginRedirectUrl = ({ loginPath, pathname = "", search = "", reason = null }) => {
+  const params = [];
+  if (reason && KNOWN_REASONS.includes(reason)) params.push(`reason=${encodeURIComponent(reason)}`);
+  params.push(`from=${encodeURIComponent(pathname + search)}`);
+  return `${loginPath}?${params.join("&")}`;
+};
+
+/**
+ * Reads `reason` and `from` from the login page's query string. `from` is kept
+ * only when it is a path inside this app's employee pages — never another site,
+ * a protocol-relative address, or the login page itself — so a crafted link
+ * cannot send a user somewhere else after they sign in.
+ */
+export const readLoginRedirect = (search, contextPath) => {
+  let params;
+  try {
+    params = new URLSearchParams(search || "");
+  } catch (e) {
+    return { from: null, reason: null };
+  }
+  const reason = KNOWN_REASONS.includes(params.get("reason")) ? params.get("reason") : null;
+  const raw = params.get("from");
+  const base = `/${contextPath}/employee`;
+  const isAppPath =
+    typeof raw === "string" &&
+    (raw === base || raw.startsWith(`${base}/`) || raw.startsWith(`${base}?`)) &&
+    !raw.includes("\\") &&
+    !raw.startsWith(`${base}/user/login`);
+  return { from: isAppPath ? raw : null, reason };
+};
+
+// A sign-out the app starts itself (idle, another tab) first ends the login on
+// the server. Requests still in flight then fail with 401 and can reach
+// redirectToLogin() before the sign-out does, which reported an idle sign-out
+// as an expired session. Recording the reason first makes it win either way.
+let startedSignOutReason = null;
+export const startSignOut = (reason) => {
+  if (KNOWN_REASONS.includes(reason)) startedSignOutReason = reason;
+};
+
+// Where the user was when the app sent them to sign in, so a form can put their
+// answers back afterwards: the citizen complaint draft survives clearAuthSession,
+// but the form only restored it after a page reload. A path and a time, no
+// credential; read once.
+const RESUME_KEY = "Digit.ResumeAfterSignIn";
+const RESUME_MAX_AGE_MS = 24 * 60 * 60 * 1000; // the draft's own lifetime
+
+/** True once when the user was signed out on a page under `pathPrefix` (within a day); always forgets it. */
+export const takeResumeAfterSignIn = (pathPrefix, now = Date.now()) => {
+  try {
+    const raw = window.sessionStorage.getItem(RESUME_KEY);
+    if (!raw) return false;
+    window.sessionStorage.removeItem(RESUME_KEY);
+    const { path, at } = JSON.parse(raw) || {};
+    return typeof path === "string" && path.startsWith(pathPrefix) && now - Number(at) < RESUME_MAX_AGE_MS;
+  } catch (e) {
+    return false;
+  }
+};
+
 // One redirect per page lifetime: several requests failing together (a page
 // fires many in parallel) must not stack navigations.
-export const redirectToLogin = () => {
+export const redirectToLogin = (reason = SIGN_OUT_REASONS.EXPIRED) => {
   if (window.__digitAuthRedirectInFlight) return;
   window.__digitAuthRedirectInFlight = true;
   clearAuthSession();
-  const from = encodeURIComponent(window.location.pathname + window.location.search);
-  window.location.href = `${loginPathFor()}?from=${from}`;
+  try {
+    window.sessionStorage.setItem(RESUME_KEY, JSON.stringify({ path: window.location.pathname, at: Date.now() }));
+  } catch (e) {
+    /* blocked storage: the user starts the form afresh, as before */
+  }
+  window.location.href = loginRedirectUrl({
+    loginPath: loginPathFor(),
+    pathname: window.location.pathname,
+    search: window.location.search,
+    reason: startedSignOutReason || reason,
+  });
 };

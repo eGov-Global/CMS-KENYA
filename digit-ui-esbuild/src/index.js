@@ -1,6 +1,6 @@
 import React from 'react';
 import ReactDOM from 'react-dom';
-import { initLibraries, purgeLegacyEmployeeAuth, bootUserFromLocal } from "@egovernments/digit-ui-libraries";
+import { initLibraries, purgeLegacyEmployeeAuth, purgeLegacyCitizenAuth, bootUserFromLocal } from "@egovernments/digit-ui-libraries";
 import { isKeycloakAuth } from "../packages/libraries/src/services/auth/authSurface";
 import "./index.css";
 import App from './App';
@@ -119,16 +119,15 @@ async function bootstrap() {
       }
     }
   } else {
-    // #224: an employee's login lives in its tab only. Remove any credential an
-    // older build left in localStorage, and never rebuild an employee session
-    // from it — so closing the tab (or the browser) ends the login. A citizen is
-    // still restored from localStorage, as before.
+    // #224: an employee's and a citizen's login live in their tab only. Remove
+    // any credential an older build left in localStorage, and never rebuild a
+    // session from it — so closing the tab (or the browser) ends the login.
     purgeLegacyEmployeeAuth(window.localStorage);
+    purgeLegacyCitizenAuth(window.localStorage);
     const user = window.Digit.SessionStorage.get("User");
     if (!user || !user.access_token || !user.info) {
-      const citizenInfo = getFromStorage("Citizen.user-info");
       const stateCode = window?.globalConfigs?.getConfig("STATE_LEVEL_TENANT_ID");
-      const citizenTenantId = getFromStorage("Citizen.tenant-id") || getFromInfo(citizenInfo) || stateCode;
+      const citizenTenantId = getFromStorage("Citizen.tenant-id") || stateCode;
       const employeeTenantId = getFromStorage("Employee.tenant-id") || stateCode;
       const { userType, user: userDetails } = bootUserFromLocal(window.localStorage);
 

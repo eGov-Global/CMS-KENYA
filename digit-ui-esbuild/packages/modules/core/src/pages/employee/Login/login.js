@@ -20,7 +20,8 @@
 import React, { useEffect, useMemo, useState } from "react";
 import PropTypes from "prop-types";
 import { useHistory } from "react-router-dom";
-import { saveEmployeeLogin } from "@egovernments/digit-ui-libraries";
+import { saveEmployeeLogin, readLoginRedirect } from "@egovernments/digit-ui-libraries";
+import SignedOutNotice from "../../../components/SignedOutNotice";
 import { Loader, Toast } from "@egovernments/digit-ui-components";
 import {
   Button as V2Button,
@@ -282,12 +283,10 @@ const Login = ({ config: propsConfig, t, isDisabled, loginOTPBased, appTenants }
     if (user?.info?.roles?.length > 0) user.info.roles = filteredRoles;
     Digit.UserService.setUser(user);
     setEmployeeDetail(user?.info, user?.access_token);
-    let redirectPath = `/${window?.contextPath}/employee`;
-    if (window?.location?.href?.includes("from=")) {
-      redirectPath =
-        decodeURIComponent(window?.location?.href?.split("from=")?.[1]) ||
-        `/${window?.contextPath}/employee`;
-    }
+    // Back to the page the employee was on before signing in (idle sign-out,
+    // expired session, deep link) — only a path inside the employee app.
+    const { from } = readLoginRedirect(window?.location?.search, window?.contextPath);
+    let redirectPath = from || `/${window?.contextPath}/employee`;
     if (
       user?.info?.roles?.length > 0 &&
       user.info.roles.every((e) => e.code === "NATADMIN")
@@ -448,6 +447,8 @@ const Login = ({ config: propsConfig, t, isDisabled, loginOTPBased, appTenants }
             {tr(headerKey, "Login")}
           </h1>
         </header>
+
+        <SignedOutNotice />
 
         <form
           onSubmit={loginOTPBased ? onLoginOtp : onLoginPassword}

@@ -12,9 +12,8 @@
 // cleared when it closes. Non-secret preferences (tenant, language) stay in
 // localStorage so the next login still opens in the right city and language.
 //
-// A CITIZEN's login is deliberately untouched: it still persists in
-// localStorage exactly as before. Keycloak mode has its own adapter and is not
-// covered here.
+// A citizen's login follows the same rule (citizenSession.js). Keycloak mode
+// has its own adapter and is not covered here.
 
 import { markEmployeeActive } from "./idleTimer";
 
@@ -24,7 +23,7 @@ export const EMPLOYEE_TAB_KEYS = ["token", "Employee.token", "user-info", "Emplo
 // What older builds left in localStorage for an employee.
 const LEGACY_EMPLOYEE_LOCAL_KEYS = ["Employee.token", "Employee.user-info", "Employee.refresh-token"];
 
-const parse = (raw) => {
+export const parse = (raw) => {
   if (raw == null || raw === "undefined" || raw === "null") return null;
   try {
     return JSON.parse(raw);
@@ -33,7 +32,7 @@ const parse = (raw) => {
   }
 };
 
-const isCitizen = (info) => String((info && (info.type || (info.info && info.info.type))) || "").toUpperCase() === "CITIZEN";
+export const isCitizen = (info) => String((info && (info.type || (info.info && info.info.type))) || "").toUpperCase() === "CITIZEN";
 
 /**
  * Removes every employee credential an older build left in localStorage.
@@ -91,9 +90,10 @@ export const saveEmployeeLogin = ({ tab, local, userObject, token, locale }) => 
 };
 
 /**
- * The user a NEW tab starts with (DIGIT login). A citizen is restored from
- * localStorage as before; an employee never is, so closing the tab ends the
- * login. The shape matches what app start-up wrote before this change.
+ * The user a NEW tab starts with (DIGIT login): nobody. Neither an employee nor
+ * a citizen is rebuilt from localStorage, so closing the tab ends the login and
+ * a new tab asks for it again. Only the user type is worked out as before, and
+ * the shape matches what app start-up wrote before this change.
  */
 export const bootUserFromLocal = (local) => {
   const read = (key) => {
@@ -103,10 +103,6 @@ export const bootUserFromLocal = (local) => {
       return null;
     }
   };
-  const token = read("token");
-  const citizenToken = read("Citizen.token");
-  if (token === citizenToken) {
-    return { userType: "citizen", user: { token: citizenToken, access_token: citizenToken, info: read("Citizen.user-info") } };
-  }
-  return { userType: "employee", user: { token: null, access_token: null, info: null } };
+  const userType = read("token") === read("Citizen.token") ? "citizen" : "employee";
+  return { userType, user: { token: null, access_token: null, info: null } };
 };
