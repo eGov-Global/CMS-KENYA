@@ -25,6 +25,7 @@ import {
   Field as V2Field,
 } from "@egovernments/digit-ui-components-v2";
 import { Phone } from "lucide-react";
+import SignedOutNotice from "../../../components/SignedOutNotice";
 
 const SelectMobileNumber = ({
   t,
@@ -124,6 +125,7 @@ const SelectMobileNumber = ({
             </p>
           ) : null}
         </header>
+        <SignedOutNotice />
 
         <form
           onSubmit={handleSubmit}
