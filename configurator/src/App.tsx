@@ -58,6 +58,8 @@ import { Toaster } from './components/ui/toaster';
 import { apiClient, getApiBaseUrl, getConfiguredRootTenant } from './api';
 import { identifyUser, clearUser, trackEvent } from './lib/telemetry';
 import PageViewTracker from './components/PageViewTracker';
+import IdleSignOut from './components/IdleSignOut';
+import { configuratorSignOut, rememberSignOutReason, type SignOutReason } from './lib/sessionGuard';
 import './App.css';
 import { LEGACY_PGR_DASHBOARD_ENABLED } from '@/config/featureFlags';
 import { readSavedAuth, saveAuth, clearSavedAuth } from '@/lib/authStorage';
@@ -423,18 +425,36 @@ function App() {
     trackEvent('target_tenant_set', { targetTenant: code });
   };
 
-  const logout = () => {
-    trackEvent('logout', { tenant: state.tenant });
+  // Ends this tab's login: on the server first, so the token stops working at
+  // once (#232), then here. Shared by the Logout button, the idle sign-out
+  // (#233) and a logout in another tab (#232).
+  const endLogin = useCallback((reason: SignOutReason | null) => {
+    if (reason) rememberSignOutReason(reason);
+    void apiClient.endServerSession(); // reads the token before it is cleared below
     clearUser();
-
     // Clear the saved login
     clearSavedAuth();
     // Clear apiClient and digitClient
     apiClient.logout();
     digitClient.clearAuth();
     resetProviders();
+  }, []);
+
+  const logout = () => {
+    trackEvent('logout', { tenant: state.tenant });
+    // Sign the same admin out of the configurator's other tabs too (#232).
+    configuratorSignOut.announce({ userId: state.user?.uuid ?? null });
+    endLogin(null);
     setState(s => ({ ...s, isAuthenticated: false, user: null, mode: 'onboarding', currentPhase: 1, completedPhases: [], targetTenant: s.tenant }));
   };
+
+  // Idle, or logged out in another tab: ends only this tab's login, and the
+  // login page says why. Like an expired session, it keeps the mode and phase.
+  const signOutHere = useCallback((reason: SignOutReason) => {
+    trackEvent('logout', { reason });
+    endLogin(reason);
+    setState(s => ({ ...s, isAuthenticated: false, user: null }));
+  }, [endLogin]);
 
   const completePhase = (phase: number) => {
     setState(s => ({
@@ -554,6 +574,16 @@ function App() {
               : state.isAuthenticated ? <Navigate to="/phase/1" /> : <Navigate to="/login" />
           } />
         </Routes>
+
+        {/* Idle sign-out with a warning, and logout in another tab (#232, #233) */}
+        {state.isAuthenticated && (
+          <IdleSignOut
+            token={apiClient.getAuth().token}
+            userId={state.user?.uuid ?? null}
+            onSignOut={signOutHere}
+            onSignOutNow={logout}
+          />
+        )}
 
         {/* Global modals and toasts */}
         {state.showHelp && <HelpModal onClose={toggleHelp} />}

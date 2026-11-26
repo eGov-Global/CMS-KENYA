@@ -61,11 +61,38 @@ class DigitApiClient {
     this.tenantId = tenantId;
   }
 
-  // Clear auth
+  // Clear auth (this tab only; see endServerSession for the server side)
   logout(): void {
     this.authToken = null;
     this.userInfo = null;
     this.tenantId = '';
+  }
+
+  /**
+   * Ends this login on the server (DIGIT /user/_logout, as digit-ui's logout
+   * does), so the token stops working at once instead of staying valid until
+   * it expires — signing out used to only forget it in the browser (#232).
+   *
+   * Reads the token straight away, so the caller may clear the client right
+   * after calling it. Never throws, and never reports an expired session: it
+   * runs while signing out, when the token may already be dead. `keepalive`
+   * lets the request finish even if the page navigates away.
+   */
+  async endServerSession(): Promise<void> {
+    const token = this.authToken;
+    if (!token) return;
+    const tenantId = this.tenantId || this.userInfo?.tenantId || '';
+    const body = { RequestInfo: this.buildRequestInfo({ authToken: token }), access_token: token };
+    try {
+      await fetch(`${this.baseUrl}${ENDPOINTS.USER_LOGOUT}?tenantId=${encodeURIComponent(tenantId)}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify(body),
+        keepalive: true,
+      });
+    } catch {
+      /* offline or already signed out: the tab is cleared regardless */
+    }
   }
 
   // Generate message ID

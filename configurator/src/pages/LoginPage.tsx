@@ -9,6 +9,7 @@ import { LabelFieldPair, CardLabel, Field } from '@/components/digit/LabelFieldP
 import { SubmitBar } from '@/components/digit/SubmitBar';
 import { apiClient, getApiBaseUrl, getConfiguredRootTenant, ApiClientError } from '@/api';
 import { DigitFooter } from '@/components/DigitFooter';
+import { SIGNED_OUT_MESSAGES, takeSignOutReason } from '@/lib/sessionGuard';
 
 type AppMode = 'onboarding' | 'management';
 
@@ -40,9 +41,17 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Explain the bounce when an expired session sent the operator back here.
+  // Explain the bounce: signed out for being idle or by a logout in another tab
+  // (#232, #233), or an expired session. A stated reason wins over "expired":
+  // requests still in flight during the sign-out can also flag an expiry.
   useEffect(() => {
     try {
+      const reason = takeSignOutReason();
+      if (reason) {
+        setError(SIGNED_OUT_MESSAGES[reason]);
+        sessionStorage.removeItem(SESSION_EXPIRED_KEY);
+        return;
+      }
       if (sessionStorage.getItem(SESSION_EXPIRED_KEY)) {
         setError('Your session expired. Please log in again to continue.');
         sessionStorage.removeItem(SESSION_EXPIRED_KEY);

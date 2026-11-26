@@ -40,6 +40,7 @@ export function getConfiguredRootTenant(): string {
 export const ENDPOINTS = {
   // Authentication
   AUTH: '/user/oauth/token',
+  USER_LOGOUT: '/user/_logout',
   USER_SEARCH: '/user/_search',
 
   // MDMS
