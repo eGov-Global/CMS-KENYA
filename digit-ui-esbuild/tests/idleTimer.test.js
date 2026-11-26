@@ -200,12 +200,12 @@ test("an employee on employee pages gets the employee rules and the shared clock
   assert.strictEqual(p.activityKey, LAST_ACTIVITY_KEY);
 });
 
-test("a citizen on citizen pages gets the citizen rules and a clock kept in the tab", () => {
+test("a citizen on citizen pages gets the citizen rules and a clock shared by their tabs (#231)", () => {
   const p = idleProfileFor({ pathname: "/digit-ui/citizen/pgr/create-complaint/complaint-type", userType: "citizen" });
   assert.strictEqual(p.userType, "CITIZEN");
   assert.strictEqual(p.timeoutConfig, "CITIZEN_IDLE_TIMEOUT_MINUTES");
   assert.strictEqual(p.warningConfig, "CITIZEN_IDLE_WARNING_SECONDS");
-  assert.strictEqual(p.clockStorage, "sessionStorage");
+  assert.strictEqual(p.clockStorage, "localStorage", "one clock for all the citizen's tabs, not a separate timer per tab");
   assert.strictEqual(p.activityKey, CITIZEN_LAST_ACTIVITY_KEY);
   assert.notStrictEqual(CITIZEN_LAST_ACTIVITY_KEY, LAST_ACTIVITY_KEY);
 });
@@ -262,7 +262,11 @@ test("IdleLogout: the user type's own pages only, DIGIT login only, its own cloc
   assert.match(c, /config\(profile\.warningConfig\)/);
   assert.match(c, /isKeycloakAuth\(\)/, "Keycloak mode is skipped");
   assert.match(c, /storageActivityStore\(window\[profile\.clockStorage\], profile\.activityKey\)/, "uses the profile's last-activity clock");
-  assert.match(c, /if \(userType !== "EMPLOYEE"\) return undefined;\s*return onEmployeeSignOut/, "the other-tab logout stays employee-only");
+  assert.match(
+    c,
+    /if \(userType !== "EMPLOYEE" && userType !== "CITIZEN"\) return undefined;\s*return onSignOutElsewhere\(\(\) => endThisLogin\(SIGN_OUT_REASONS\.OTHER_TAB\), \{ userType, userId \}\)/,
+    "employees and citizens both hear a logout in another tab, each on their own channel (#231)"
+  );
   assert.match(c, /Digit\.UserService\.logoutUser\(\)/, "ends the login on the server");
   // The automatic paths (idle, signed out in another tab) end only this tab's
   // login; only the user's own "Sign out now" click may run the full logout,
@@ -272,7 +276,7 @@ test("IdleLogout: the user type's own pages only, DIGIT login only, its own cloc
   assert.match(automatic, /redirectToLogin\(reason\)/, "clears only this tab's credentials");
   assert.doesNotMatch(automatic, /UserService\.logout\(\)/, "never the full logout, which runs localStorage.clear()");
   assert.match(c, /onIdle: \(\) => endThisLogin\(/, "idle uses the tab-only sign-out");
-  assert.match(c, /onEmployeeSignOut\(\(\) => endThisLogin\(/, "a logout in another tab uses the tab-only sign-out");
+  assert.match(c, /onSignOutElsewhere\(\(\) => endThisLogin\(/, "a logout in another tab uses the tab-only sign-out");
 });
 
 test("the idle limits are deploy settings in globalConfigs (bundled, ansible and Helm)", () => {

@@ -11,7 +11,7 @@ import {
   redirectToLogin,
   startSignOut,
   isKeycloakAuth,
-  onEmployeeSignOut,
+  onSignOutElsewhere,
   SIGN_OUT_REASONS,
 } from "@egovernments/digit-ui-libraries";
 
@@ -23,14 +23,15 @@ import {
 // to 0 to turn it off. See idleProfileFor for what differs between the two.
 //
 // A minute before (EMPLOYEE_/CITIZEN_IDLE_WARNING_SECONDS, 0 = no warning) a
-// dialog says so and offers to stay signed in. For an employee, staying signed
-// in or working in another of their tabs closes the dialog in every tab. A
-// citizen signed out mid-complaint gets their answers back after signing in
-// (authSession keeps the draft; the form restores it, see takeResumeAfterSignIn).
+// dialog says so and offers to stay signed in. Staying signed in, or working in
+// another of the user's tabs, closes the dialog in every tab: an employee's tabs
+// share one activity clock, and so do a citizen's (#231). A citizen signed out
+// mid-complaint gets their answers back after signing in (authSession keeps the
+// draft; the form restores it, see takeResumeAfterSignIn).
 //
-// Also ends an employee tab's login when that employee logs out in another
-// tab: since #224 every tab holds its own login, so the logout button alone
-// used to leave the other tabs signed in.
+// Also ends a tab's login when the same user logs out in another tab of the
+// browser — employees (#224) and citizens (#231): since #224 every tab holds its
+// own login, so the logout button alone used to leave the other tabs signed in.
 
 // Remembers, per tab, which login the shared activity clock was last reset for.
 // A NEW token here (any login screen, the dashboard's own login, a password
@@ -179,12 +180,13 @@ const IdleLogout = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userType, token]);
 
-  // Independent of the idle setting: the same employee logging out in another
-  // tab ends this one too. A different employee's tab stays signed in.
+  // Independent of the idle setting: the same user logging out in another tab
+  // ends this one too — employees (#224) and citizens (#231), each on their own
+  // channel. A different user's tab stays signed in.
   const userId = user?.info?.uuid || null;
   useEffect(() => {
-    if (userType !== "EMPLOYEE") return undefined;
-    return onEmployeeSignOut(() => endThisLogin(SIGN_OUT_REASONS.OTHER_TAB), { userId });
+    if (userType !== "EMPLOYEE" && userType !== "CITIZEN") return undefined;
+    return onSignOutElsewhere(() => endThisLogin(SIGN_OUT_REASONS.OTHER_TAB), { userType, userId });
   }, [userType, token, userId]);
 
   if (!active || !signOutAt) return null;

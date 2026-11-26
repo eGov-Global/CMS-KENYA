@@ -4,7 +4,7 @@ import { Storage } from "../../atoms/Utils/Storage";
 import { getAuthAdapter } from "../../auth/index";
 import { isKeycloakAuth } from "../../auth/authSurface";
 import { rememberSessionExpiry, isSessionExpired } from "../../atoms/Utils/authSession";
-import { announceEmployeeSignOut } from "../../atoms/Utils/employeeSignOutBroadcast";
+import { announceSignOut } from "../../atoms/Utils/employeeSignOutBroadcast";
 
 export const UserService = {
   authenticate: async (details) => {
@@ -99,11 +99,12 @@ export const UserService = {
     const logoutRedirectURL =
       window?.globalConfigs?.getConfig("LOGOUT_REDIRECT_URL") ||
       `/${window?.contextPath}/${isEmployee ? "employee/user/language-selection" : "citizen/login"}`;
-    // Each tab holds its own employee login (#224): tell the employee's other
-    // tabs to sign out too. Before localStorage.clear(), which would remove the
+    // Each tab holds its own login (#224): tell the user's other tabs to sign
+    // out too — an employee's (#224) or a citizen's (#231), each on its own
+    // channel. Before localStorage.clear(), which would remove the
     // announcement before the other tabs see it.
     const signedIn = UserService.getUser()?.info;
-    if (String(signedIn?.type || "").toUpperCase() === "EMPLOYEE") announceEmployeeSignOut({ userId: signedIn?.uuid });
+    announceSignOut({ userType: signedIn?.type, userId: signedIn?.uuid });
     try {
       await UserService.logoutUser();
     } catch (e) {

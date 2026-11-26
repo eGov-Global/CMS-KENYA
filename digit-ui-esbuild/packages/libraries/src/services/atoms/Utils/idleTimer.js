@@ -9,7 +9,7 @@
 //   Activity that arrives AFTER the limit logs out instead of restarting it.
 // - The last-activity time is SHARED (a plain timestamp in localStorage, no
 //   credential): activity in any open tab keeps every tab alive, so a forgotten
-//   background tab cannot sign out a tab the employee is using. It also survives
+//   background tab cannot sign out a tab the user is using. It also survives
 //   a reload or a browser "reopen closed tab", so a restored tab whose last
 //   activity is older than the limit is logged out as soon as it loads, instead
 //   of starting a fresh 15 minutes.
@@ -21,14 +21,16 @@ export const ACTIVITY_EVENTS = ["mousemove", "mousedown", "keydown", "touchstart
 /** localStorage key holding the last employee activity time (epoch ms). Not a secret. */
 export const LAST_ACTIVITY_KEY = "Digit.EmployeeLastActivity";
 
-/** sessionStorage key holding a citizen's last activity time (epoch ms). Not a secret. */
+/** localStorage key holding a citizen's last activity time (epoch ms). Not a secret. */
 export const CITIZEN_LAST_ACTIVITY_KEY = "Digit.CitizenLastActivity";
 
-// The same timer for both user types; only the settings and the clock differ.
-// An employee's tabs share one clock (localStorage) so a forgotten background
-// tab cannot sign out the tab in use. Each citizen tab is its own OTP login
-// (#224), so a citizen's clock lives in that tab (sessionStorage); it still
-// survives a reload or a "reopen closed tab", like the employee's.
+// The same timer for both user types; only the settings and the clock key differ.
+// Each user type's tabs share one clock (localStorage), so a forgotten background
+// tab cannot sign out the tab in use, and every tab signs out together: for
+// employees since #224, for citizens since #231 (each citizen tab used to keep
+// its own clock, so one tab could sign out while another kept counting). The
+// clock survives a reload or a "reopen closed tab", so a restored tab whose last
+// activity is older than the limit is signed out as soon as it loads.
 // A citizen is timed on every page outside the employee app, the public landing
 // and privacy pages included: activity there keeps the clock fresh, where an
 // untimed landing page used to leave it stale and sign the citizen out the
@@ -45,7 +47,7 @@ const IDLE_PROFILES = {
     appliesOn: (segments) => !segments.includes("employee"),
     timeoutConfig: "CITIZEN_IDLE_TIMEOUT_MINUTES",
     warningConfig: "CITIZEN_IDLE_WARNING_SECONDS",
-    clockStorage: "sessionStorage",
+    clockStorage: "localStorage",
     activityKey: CITIZEN_LAST_ACTIVITY_KEY,
   },
 };
