@@ -6,13 +6,14 @@
  *   EMPLOYEE_IDLE_TIMEOUT_MINUTES / EMPLOYEE_IDLE_WARNING_SECONDS from
  *   /digit-ui/globalConfigs.js, which index.html already loads: configurator
  *   admins are employees, so one setting covers both apps (default 15 minutes
- *   and 60 seconds; 0 turns it off). The configurator's tabs share their own
- *   activity clock, separate from digit-ui's.
+ *   and 60 seconds; 0 turns it off). An admin's configurator tabs share an
+ *   activity clock of their own, separate from digit-ui's and from any other
+ *   admin's in the same browser (#235).
  * - Logging out in one tab signs the same admin out of the configurator's other
  *   tabs in this browser (#232), on the configurator's own channel.
  * - The login page says why the admin was signed out.
  */
-import { createSignOutBroadcast } from '../../../ui-shared/session/signOutBroadcast';
+import { createSignOutBroadcast, userKey } from '../../../ui-shared/session/signOutBroadcast';
 import { idleTimeoutMs, idleWarningMs, storageActivityStore, type ActivityStore } from '../../../ui-shared/session/idleTimer';
 
 /** localStorage key holding the configurator's last activity time (epoch ms). Not a secret. */
@@ -56,15 +57,26 @@ export function readIdleSettings(win: { globalConfigs?: GlobalConfigs } | undefi
   return { timeoutMs, warnBeforeMs: idleWarningMs(get('EMPLOYEE_IDLE_WARNING_SECONDS'), timeoutMs) };
 }
 
-/** The activity clock shared by the configurator's tabs. */
-export function configuratorActivityClock(): ActivityStore {
+/**
+ * The clock key for ONE admin: `<base>.<hash of the uuid>` (#235). An admin's
+ * tabs share it, but a different admin signed in in another tab of the same
+ * browser keeps their own: neither keeps the other signed in or signs the other
+ * out. A one-way hash, never the id; without a uuid, the plain base key.
+ */
+export function activityKeyFor(userId: string | null | undefined): string {
+  const hash = userKey(userId);
+  return hash ? `${CONFIGURATOR_LAST_ACTIVITY_KEY}.${hash}` : CONFIGURATOR_LAST_ACTIVITY_KEY;
+}
+
+/** The activity clock shared by this admin's configurator tabs. */
+export function configuratorActivityClock(userId: string | null | undefined): ActivityStore {
   let storage: Storage | null = null;
   try {
     storage = window.localStorage;
   } catch {
     /* blocked storage: each tab counts on its own */
   }
-  return storageActivityStore(storage, CONFIGURATOR_LAST_ACTIVITY_KEY);
+  return storageActivityStore(storage, activityKeyFor(userId));
 }
 
 const fingerprint = (token: string) => {

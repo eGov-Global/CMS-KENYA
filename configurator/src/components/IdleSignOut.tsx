@@ -48,7 +48,7 @@ export default function IdleSignOut({ token, userId, onSignOut, onSignOutNow }: 
     if (!token) return undefined;
     const { timeoutMs, warnBeforeMs } = readIdleSettings();
     if (!timeoutMs) return undefined;
-    const clock = configuratorActivityClock();
+    const clock = configuratorActivityClock(userId); // this admin's own clock (#235)
     markLoginActivity(token, clock);
     const stop = startIdleTimer({
       timeoutMs,
@@ -63,7 +63,7 @@ export default function IdleSignOut({ token, userId, onSignOut, onSignOutNow }: 
       timer.current = null;
       stop();
     };
-  }, [token]);
+  }, [token, userId]);
 
   // Independent of the idle setting.
   useEffect(() => {

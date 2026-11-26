@@ -13,7 +13,7 @@ const SRC = path.join(ROOT, "packages/libraries/src/services/atoms/Utils/idleTim
 const { outputFiles } = esbuild.buildSync({ entryPoints: [SRC], bundle: true, write: false, format: "cjs", platform: "node", target: "es2018" });
 const mod = { exports: {} };
 vm.runInNewContext(outputFiles[0].text, { module: mod, exports: mod.exports });
-const { startIdleTimer, idleTimeoutMs, DEFAULT_EMPLOYEE_IDLE_MINUTES, ACTIVITY_EVENTS, storageActivityStore, markEmployeeActive, LAST_ACTIVITY_KEY, CITIZEN_LAST_ACTIVITY_KEY, idleProfileFor } = mod.exports;
+const { startIdleTimer, idleTimeoutMs, DEFAULT_EMPLOYEE_IDLE_MINUTES, ACTIVITY_EVENTS, storageActivityStore, markEmployeeActive, LAST_ACTIVITY_KEY, CITIZEN_LAST_ACTIVITY_KEY, idleProfileFor, userActivityKey } = mod.exports;
 
 const MIN = 60 * 1000;
 
@@ -247,6 +247,59 @@ test("a citizen left idle is logged out by the same timer, on the citizen clock"
   assert.strictEqual(store.getItem(LAST_ACTIVITY_KEY), null, "the employee clock is untouched");
 });
 
+/* ---------------- one clock per user (#235) ---------------- */
+
+test("each user has their own clock key: a one-way hash of the uuid, stable, never the id", () => {
+  const a = userActivityKey(LAST_ACTIVITY_KEY, "uuid-alice");
+  const b = userActivityKey(LAST_ACTIVITY_KEY, "uuid-bob");
+  assert.notStrictEqual(a, b);
+  assert.strictEqual(a, userActivityKey(LAST_ACTIVITY_KEY, "uuid-alice"));
+  assert.ok(a.startsWith(`${LAST_ACTIVITY_KEY}.`));
+  assert.ok(!a.includes("alice"));
+  assert.ok(userActivityKey(CITIZEN_LAST_ACTIVITY_KEY, "uuid-alice").startsWith(`${CITIZEN_LAST_ACTIVITY_KEY}.`));
+  assert.strictEqual(userActivityKey(LAST_ACTIVITY_KEY, null), LAST_ACTIVITY_KEY, "no uuid: the plain key");
+  assert.strictEqual(userActivityKey(LAST_ACTIVITY_KEY, ""), LAST_ACTIVITY_KEY);
+});
+
+test("two different users in one browser: one's activity never keeps the other signed in", () => {
+  const local = memStore();
+  const alice = storageActivityStore(local, userActivityKey(LAST_ACTIVITY_KEY, "uuid-alice"));
+  const bob = storageActivityStore(local, userActivityKey(LAST_ACTIVITY_KEY, "uuid-bob"));
+  const hBob = harness(3 * MIN, { shared: bob });
+  for (let i = 0; i < 4; i += 1) {
+    hBob.advance(50 * 1000);
+    alice.write(hBob.now()); // Alice is working in her own tab
+  }
+  assert.strictEqual(hBob.idle(), 1, "Bob, idle for 3 minutes, is signed out although Alice was active");
+});
+
+test("two different users in one browser: one's idle sign-out leaves the other signed in", () => {
+  const local = memStore();
+  const start = 1_000_000;
+  const hAlice = harness(3 * MIN, { shared: storageActivityStore(local, userActivityKey(LAST_ACTIVITY_KEY, "uuid-alice")), start });
+  const bobClock = storageActivityStore(local, userActivityKey(LAST_ACTIVITY_KEY, "uuid-bob"));
+  const hBob = harness(3 * MIN, { shared: bobClock, start });
+  hAlice.advance(90 * 1000);
+  hBob.advance(90 * 1000);
+  bobClock.write(hBob.now()); // Bob works; Alice does not
+  hAlice.advance(90 * 1000);
+  hBob.advance(90 * 1000);
+  assert.strictEqual(hAlice.idle(), 1, "Alice is signed out at her 3 minutes");
+  assert.strictEqual(hBob.idle(), 0, "Bob stays signed in");
+});
+
+test("the same user's tabs still share one clock (#231)", () => {
+  const local = memStore();
+  const tab1 = storageActivityStore(local, userActivityKey(CITIZEN_LAST_ACTIVITY_KEY, "uuid-carol"));
+  const tab2 = storageActivityStore(local, userActivityKey(CITIZEN_LAST_ACTIVITY_KEY, "uuid-carol"));
+  const h = harness(3 * MIN, { shared: tab1 });
+  for (let i = 0; i < 4; i += 1) {
+    h.advance(50 * 1000);
+    tab2.write(h.now());
+  }
+  assert.strictEqual(h.idle(), 0, "activity in the same citizen's other tab keeps this one alive");
+});
+
 /* ---------------- wiring ---------------- */
 
 test("IdleLogout is mounted in the app next to SessionCollisionNotice", () => {
@@ -261,7 +314,12 @@ test("IdleLogout: the user type's own pages only, DIGIT login only, its own cloc
   assert.match(c, /config\(profile\.timeoutConfig\)/);
   assert.match(c, /config\(profile\.warningConfig\)/);
   assert.match(c, /isKeycloakAuth\(\)/, "Keycloak mode is skipped");
-  assert.match(c, /storageActivityStore\(window\[profile\.clockStorage\], profile\.activityKey\)/, "uses the profile's last-activity clock");
+  assert.match(
+    c,
+    /storageActivityStore\(window\[profile\.clockStorage\], userActivityKey\(profile\.activityKey, userId\)\)/,
+    "uses the profile's last-activity clock, one per user (#235)"
+  );
+  assert.match(c, /\}, \[userType, token, userId\]\);/, "a different user signing in restarts the timer on their own clock");
   assert.match(
     c,
     /if \(userType !== "EMPLOYEE" && userType !== "CITIZEN"\) return undefined;\s*return onSignOutElsewhere\(\(\) => endThisLogin\(SIGN_OUT_REASONS\.OTHER_TAB\), \{ userType, userId \}\)/,

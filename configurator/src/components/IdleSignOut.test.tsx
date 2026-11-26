@@ -3,11 +3,12 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { render, screen, act, fireEvent } from '@testing-library/react';
 import IdleSignOut, { formatCountdown } from './IdleSignOut';
-import { CONFIGURATOR_LAST_ACTIVITY_KEY, markLoginActivity } from '@/lib/sessionGuard';
+import { activityKeyFor, markLoginActivity } from '@/lib/sessionGuard';
 import { userKey } from '../../../ui-shared/session/signOutBroadcast';
 
 const SEC = 1000;
 const MIN = 60 * SEC;
+const MY_CLOCK = activityKeyFor('uuid-admin');
 type Win = Window & { globalConfigs?: { getConfig: (k: string) => unknown } };
 
 const setConfig = (values: Record<string, unknown>) => {
@@ -71,7 +72,7 @@ describe('IdleSignOut', () => {
     act(() => { vi.advanceTimersByTime(2 * MIN + 30 * SEC); });
     fireEvent.click(screen.getByRole('button', { name: 'Stay signed in' }));
     expect(screen.queryByText('Are you still there?')).toBeNull();
-    expect(Number(localStorage.getItem(CONFIGURATOR_LAST_ACTIVITY_KEY))).toBe(Date.now());
+    expect(Number(localStorage.getItem(MY_CLOCK))).toBe(Date.now());
     act(() => { vi.advanceTimersByTime(2 * MIN + 59 * SEC); });
     expect(onSignOut).not.toHaveBeenCalled();
   });
@@ -103,15 +104,36 @@ describe('IdleSignOut', () => {
 
   it("a restored tab whose clock is older than the limit signs out as soon as it loads", () => {
     markLoginActivity('tok-1', { read: () => null, write: () => {} }); // this tab already saw this login
-    localStorage.setItem(CONFIGURATOR_LAST_ACTIVITY_KEY, String(Date.now() - 20 * MIN));
+    localStorage.setItem(MY_CLOCK, String(Date.now() - 20 * MIN));
     const { onSignOut } = mount();
     expect(onSignOut).toHaveBeenCalledWith('idle');
   });
 
   it('a fresh login starts a fresh clock even if an old one is stale', () => {
-    localStorage.setItem(CONFIGURATOR_LAST_ACTIVITY_KEY, String(Date.now() - 20 * MIN));
+    localStorage.setItem(MY_CLOCK, String(Date.now() - 20 * MIN));
     const { onSignOut } = mount({ token: 'brand-new-token' });
     expect(onSignOut).not.toHaveBeenCalled();
+  });
+
+  it("another admin working in another tab of the same browser does not keep this admin signed in (#235)", () => {
+    const { onSignOut } = mount();
+    const otherClock = activityKeyFor('uuid-someone-else');
+    for (let i = 0; i < 4; i += 1) {
+      act(() => { vi.advanceTimersByTime(45 * SEC); });
+      act(() => { localStorage.setItem(otherClock, String(Date.now())); });
+    }
+    act(() => { vi.advanceTimersByTime(SEC); });
+    expect(onSignOut).toHaveBeenCalledWith('idle');
+  });
+
+  it("this admin's 'Stay signed in' writes only their own clock (#235)", () => {
+    mount();
+    const otherClock = activityKeyFor('uuid-someone-else');
+    localStorage.setItem(otherClock, '42');
+    act(() => { vi.advanceTimersByTime(2 * MIN); });
+    fireEvent.click(screen.getByRole('button', { name: 'Stay signed in' }));
+    expect(localStorage.getItem(otherClock)).toBe('42');
+    expect(Number(localStorage.getItem(MY_CLOCK))).toBe(Date.now());
   });
 
   it('the same admin logging out in another tab signs this tab out (#232)', () => {

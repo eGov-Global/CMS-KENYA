@@ -22,6 +22,7 @@ import {
   SIGNED_OUT_MESSAGES,
   CONFIGURATOR_LAST_ACTIVITY_KEY,
   configuratorActivityClock,
+  activityKeyFor,
 } from './sessionGuard';
 import { apiClient } from '@/api';
 
@@ -376,8 +377,19 @@ describe('configurator session settings', () => {
   it('the configurator keeps its own clock, apart from digit-ui employees and citizens', () => {
     expect(CONFIGURATOR_LAST_ACTIVITY_KEY).not.toBe('Digit.EmployeeLastActivity');
     expect(CONFIGURATOR_LAST_ACTIVITY_KEY).not.toBe('Digit.CitizenLastActivity');
-    configuratorActivityClock().write(1234);
-    expect(localStorage.getItem(CONFIGURATOR_LAST_ACTIVITY_KEY)).toBe('1234');
+    configuratorActivityClock('uuid-admin').write(1234);
+    expect(localStorage.getItem(activityKeyFor('uuid-admin'))).toBe('1234');
+  });
+
+  it('each admin has their own clock key: a hash of the uuid, never the id (#235)', () => {
+    const a = activityKeyFor('uuid-alice');
+    expect(a).not.toBe(activityKeyFor('uuid-bob'));
+    expect(a).toBe(activityKeyFor('uuid-alice'));
+    expect(a.startsWith(`${CONFIGURATOR_LAST_ACTIVITY_KEY}.`)).toBe(true);
+    expect(a).not.toContain('alice');
+    expect(activityKeyFor(null)).toBe(CONFIGURATOR_LAST_ACTIVITY_KEY);
+    configuratorActivityClock('uuid-alice').write(5);
+    expect(configuratorActivityClock('uuid-bob').read()).toBeNull();
   });
 
   it('a new login resets the shared clock once; the same login (reload) does not', () => {

@@ -99,7 +99,7 @@ export { detectSessionCollision, onSessionCollision } from "./services/atoms/Uti
 // Employee and citizen logins are tab-only, plus idle logout for both (#224) — see employeeSession.js / idleTimer.js
 export { saveEmployeeLogin, purgeLegacyEmployeeAuth, bootUserFromLocal } from "./services/atoms/Utils/employeeSession";
 export { saveCitizenLogin, purgeLegacyCitizenAuth } from "./services/atoms/Utils/citizenSession";
-export { startIdleTimer, idleTimeoutMs, idleWarningMs, idleProfileFor, storageActivityStore, markEmployeeActive } from "./services/atoms/Utils/idleTimer";
+export { startIdleTimer, idleTimeoutMs, idleWarningMs, idleProfileFor, storageActivityStore, markEmployeeActive, userActivityKey } from "./services/atoms/Utils/idleTimer";
 export { redirectToLogin, readLoginRedirect, SIGN_OUT_REASONS, startSignOut, takeResumeAfterSignIn } from "./services/atoms/Utils/authSession";
 // Logout in one tab signs the employee out of every tab — see employeeSignOutBroadcast.js
 export { announceEmployeeSignOut, onEmployeeSignOut, announceSignOut, onSignOutElsewhere } from "./services/atoms/Utils/employeeSignOutBroadcast";

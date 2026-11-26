@@ -14,6 +14,8 @@
 //   activity is older than the limit is logged out as soon as it loads, instead
 //   of starting a fresh 15 minutes.
 
+import { userKey } from "./employeeSignOutBroadcast";
+
 export const DEFAULT_EMPLOYEE_IDLE_MINUTES = 15;
 
 export const ACTIVITY_EVENTS = ["mousemove", "mousedown", "keydown", "touchstart", "scroll", "wheel"];
@@ -25,10 +27,12 @@ export const LAST_ACTIVITY_KEY = "Digit.EmployeeLastActivity";
 export const CITIZEN_LAST_ACTIVITY_KEY = "Digit.CitizenLastActivity";
 
 // The same timer for both user types; only the settings and the clock key differ.
-// Each user type's tabs share one clock (localStorage), so a forgotten background
-// tab cannot sign out the tab in use, and every tab signs out together: for
+// A user's tabs share one clock (localStorage), so a forgotten background tab
+// cannot sign out the tab in use, and every tab signs out together: for
 // employees since #224, for citizens since #231 (each citizen tab used to keep
 // its own clock, so one tab could sign out while another kept counting). The
+// clock is per USER (userActivityKey, #235): a different user signed in in
+// another tab of the same browser keeps a clock of their own. The
 // clock survives a reload or a "reopen closed tab", so a restored tab whose last
 // activity is older than the limit is signed out as soon as it loads.
 // A citizen is timed on every page outside the employee app, the public landing
@@ -74,6 +78,19 @@ export const idleTimeoutMs = (configuredMinutes) => {
   if (!Number.isFinite(n)) return DEFAULT_EMPLOYEE_IDLE_MINUTES * 60 * 1000;
   if (n <= 0) return 0;
   return Math.round(n * 60 * 1000);
+};
+
+/**
+ * The last-activity key for ONE user: `<base>.<hash of the user's uuid>` (#235).
+ * Each user's tabs share a clock, but two different users signed in in tabs of
+ * the same browser (a shared desk computer) each keep their own: one's activity
+ * never keeps the other signed in, "Stay signed in" closes only that user's
+ * warning, and one user's idle sign-out leaves the other signed in. Carries a
+ * one-way hash, never the id. Without a uuid, the plain base key.
+ */
+export const userActivityKey = (baseKey, userId) => {
+  const hash = userKey(userId);
+  return hash ? `${baseKey}.${hash}` : baseKey;
 };
 
 /** A last-activity store over a Storage, under `key` (the employee's by default). Never throws. */

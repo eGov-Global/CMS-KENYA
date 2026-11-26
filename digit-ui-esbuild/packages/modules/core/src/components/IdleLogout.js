@@ -8,6 +8,7 @@ import {
   idleWarningMs,
   idleProfileFor,
   storageActivityStore,
+  userActivityKey,
   redirectToLogin,
   startSignOut,
   isKeycloakAuth,
@@ -139,6 +140,7 @@ const IdleLogout = () => {
   const token = user?.access_token || null;
   const profile = token && !isKeycloakAuth() ? idleProfileFor({ pathname, userType: user?.info?.type }) : null;
   const userType = profile?.userType || null;
+  const userId = user?.info?.uuid || null;
   const active = !!profile;
   const [signOutAt, setSignOutAt] = useState(null);
   const timer = useRef(null);
@@ -150,7 +152,10 @@ const IdleLogout = () => {
     const config = (key) => window?.globalConfigs?.getConfig?.(key);
     const timeoutMs = idleTimeoutMs(config(profile.timeoutConfig));
     if (!timeoutMs) return undefined;
-    const clock = storageActivityStore(window[profile.clockStorage], profile.activityKey);
+    // This user's own clock (#235): another user signed in in another tab of
+    // the same browser keeps theirs, so neither keeps the other signed in or
+    // signs the other out.
+    const clock = storageActivityStore(window[profile.clockStorage], userActivityKey(profile.activityKey, userId));
 
     try {
       const seen = window.sessionStorage.getItem(SEEN_LOGIN_KEY);
@@ -178,12 +183,11 @@ const IdleLogout = () => {
     };
     // `profile` is a new object each render; its identity is the user type.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userType, token]);
+  }, [userType, token, userId]);
 
   // Independent of the idle setting: the same user logging out in another tab
   // ends this one too — employees (#224) and citizens (#231), each on their own
   // channel. A different user's tab stays signed in.
-  const userId = user?.info?.uuid || null;
   useEffect(() => {
     if (userType !== "EMPLOYEE" && userType !== "CITIZEN") return undefined;
     return onSignOutElsewhere(() => endThisLogin(SIGN_OUT_REASONS.OTHER_TAB), { userType, userId });
